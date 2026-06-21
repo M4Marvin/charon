@@ -1,0 +1,34 @@
+/** A single message in the chat tree. */
+export interface ChatMessage {
+  id: number;
+  parent_id: number | null;
+  children: number[];
+  selected_child_id: number | null;
+  role: 'user' | 'assistant' | 'system';
+  name?: string;
+  content: string;
+  is_user?: boolean;
+  is_system?: boolean;
+  extra?: Record<string, unknown>;
+}
+
+/** Metadata attached to a chat. */
+export interface ChatMetadata {
+  active_leaf_id?: number | null;
+  [key: string]: unknown;
+}
+
+/** Tree structure: Map of node ID → ChatMessage. */
+export type ChatTree = Map<number, ChatMessage>;
+
+/** A token counter abstraction. */
+export interface ITokenCounter {
+  count(text: string): number;
+}
+
+/** An event bus for pub/sub. */
+export interface IEventBus {
+  on(event: string, handler: (...args: unknown[]) => void): void;
+  off(event: string, handler: (...args: unknown[]) => void): void;
+  emit(event: string, ...args: unknown[]): void;
+}
