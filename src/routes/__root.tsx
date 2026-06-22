@@ -8,7 +8,8 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 
-import appCss from '../styles.css?url'
+import Header from '@/components/Header'
+import appCss from '@/styles.css?url'
 
 import type { QueryClient } from '@tanstack/react-query'
 
@@ -42,11 +43,12 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <head>
         <HeadContent />
       </head>
       <body>
+        <Header />
         {children}
         <TanStackDevtools
           config={{
