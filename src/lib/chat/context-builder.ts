@@ -4,6 +4,7 @@ import type { StoryStringParams } from '@/lib/st-core/context/types.js'
 import type { ChatMessage } from '@/lib/st-core/shared/types.js'
 import type { LoreGlobalData } from '@/lib/st-core/lorebook/types.js'
 import { convertBookEntries, scanLoreEntries, toLoreEntryView } from './lorebook.js'
+import { toModelMessages } from './pre-process.js'
 import type { ModelMessage, SampleCharacter, ChatCompletionPreset, LoreScanView } from './types.js'
 
 export function buildMessages(
@@ -36,6 +37,32 @@ export function buildMessages(
     .map((b) => b.trim())
     .filter(Boolean)
 
+  function parseExampleBlock(
+    block: string,
+    charName: string,
+    userName: string,
+  ): ModelMessage[] {
+    const lines = block.split('\n').map((l) => l.trim()).filter(Boolean)
+    const out: ModelMessage[] = []
+    let expectAssistant = true
+    for (const line of lines) {
+      const colon = line.indexOf(': ')
+      if (colon === -1) {
+        out.push({ role: expectAssistant ? 'assistant' : 'user', content: line })
+        continue
+      }
+      const speaker = line.slice(0, colon)
+      const content = line.slice(colon + 2)
+      let role: 'assistant' | 'user'
+      if (speaker === charName) role = 'assistant'
+      else if (speaker === userName) role = 'user'
+      else role = expectAssistant ? 'assistant' : 'user'
+      out.push({ role, content, name: role === 'assistant' ? charName : userName })
+      expectAssistant = role !== 'assistant'
+    }
+    return out
+  }
+
   const globalData: LoreGlobalData = {
     personaDescription: character.persona,
     characterDescription: character.description,
@@ -56,11 +83,7 @@ export function buildMessages(
   const afterEntries = activated.filter((e) => e.position === LorePosition.After)
   const atDepthEntries = activated.filter((e) => e.position === LorePosition.AtDepth)
 
-  let historyMessages: ModelMessage[] = chatHistory.map((m) => ({
-    role: m.role,
-    content: m.content,
-    name: m.role === 'assistant' ? character.name : m.role === 'user' ? userName : undefined,
-  }))
+  let historyMessages: ModelMessage[] = toModelMessages(chatHistory, character.name, userName)
 
   if (character.depthPrompt) {
     const insertIdx = Math.max(0, historyMessages.length - character.depthPrompt.depth)
@@ -107,7 +130,10 @@ export function buildMessages(
 
   for (const block of exampleBlocks) {
     messages.push({ role: 'system', content: '[Example Chat]' })
-    messages.push({ role: 'system', content: block, name: 'example_assistant' })
+    const exampleMessages = parseExampleBlock(block, character.name, userName)
+    for (const msg of exampleMessages) {
+      messages.push(msg)
+    }
   }
 
   messages.push({ role: 'system', content: '[Start a new Chat]' })

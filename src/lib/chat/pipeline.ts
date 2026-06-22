@@ -6,6 +6,7 @@ import {
   applyContinuePostfix,
   applyContinuePrefill,
   truncateToContext,
+  toModelMessages,
 } from './pre-process.js'
 import type { PipelineInput, PipelineStep, ModelMessage, ChatCompletionPreset } from './types.js'
 
@@ -41,11 +42,7 @@ export function runPipeline(input: PipelineInput): PipelineStep[] {
 
   // Step 1: Raw Input
   const rawHistory: ModelMessage[] = [
-    ...chatHistory.map((m) => ({
-      role: m.role as 'user' | 'assistant' | 'system',
-      content: m.content,
-      name: m.role === 'assistant' ? character.name : 'You',
-    })),
+    ...toModelMessages(chatHistory, character.name, 'You'),
     { role: 'user', content: userMessage, name: 'You' },
   ]
   steps.push({

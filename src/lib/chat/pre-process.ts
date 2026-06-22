@@ -1,4 +1,17 @@
+import type { ChatMessage } from '@/lib/st-core/shared/types.js'
 import type { ModelMessage } from './types.js'
+
+export function toModelMessages(
+  history: ChatMessage[],
+  charName: string,
+  userName: string,
+): ModelMessage[] {
+  return history.map((m) => ({
+    role: m.role,
+    content: m.content,
+    name: m.role === 'assistant' ? charName : m.role === 'user' ? userName : undefined,
+  }))
+}
 
 export function squashSystemMessages(messages: ModelMessage[]): ModelMessage[] {
   const out: ModelMessage[] = []
