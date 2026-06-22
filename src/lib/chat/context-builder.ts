@@ -21,8 +21,13 @@ export function buildMessages(
     user: userName,
     mesExamples: character.mesExample,
   }
-  const storyString = renderStoryString(
-    '{{#if system}}{{system}}\n{{/if}}{{#if description}}{{description}}\n{{/if}}{{#if personality}}{{char}}\'s personality: {{personality}}\n{{/if}}{{#if scenario}}Scenario: {{scenario}}\n{{/if}}',
+  const charDescription = renderStoryString(
+    '{{#if system}}{{system}}\n{{/if}}{{#if description}}{{description}}\n{{/if}}{{#if personality}}{{char}}\'s personality: {{personality}}\n{{/if}}',
+    storyParams,
+  )
+
+  const scenario = renderStoryString(
+    '{{#if scenario}}Scenario: {{scenario}}\n{{/if}}',
     storyParams,
   )
 
@@ -88,8 +93,12 @@ export function buildMessages(
     messages.push({ role: 'system', content: character.persona })
   }
 
-  if (storyString) {
-    messages.push({ role: 'system', content: storyString })
+  if (charDescription) {
+    messages.push({ role: 'system', content: charDescription })
+  }
+
+  if (scenario) {
+    messages.push({ role: 'system', content: scenario })
   }
 
   for (const entry of afterEntries) {
