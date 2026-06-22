@@ -23,18 +23,24 @@ function Home() {
   const [userMessage, setUserMessage] = useState('')
   const [preset, setPreset] = useState<ChatCompletionPreset>(DEFAULT_PRESET)
   const [steps, setSteps] = useState<PipelineStep[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   const hasRun = steps.length > 0
 
   const handleRun = () => {
-    const msg = userMessage.trim() || 'Tell me about your day.'
-    const result = runPipeline({
-      userMessage: msg,
-      preset,
-      character: SAMPLE_CHARACTER,
-      chatHistory: SAMPLE_CHAT_HISTORY,
-    })
-    setSteps(result)
+    try {
+      const msg = userMessage.trim() || 'Tell me about your day.'
+      const result = runPipeline({
+        userMessage: msg,
+        preset,
+        character: SAMPLE_CHARACTER,
+        chatHistory: SAMPLE_CHAT_HISTORY,
+      })
+      setSteps(result)
+      setError(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
   }
 
   const updatePreset = <K extends keyof ChatCompletionPreset>(key: K, value: ChatCompletionPreset[K]) => {
@@ -213,6 +219,17 @@ function Home() {
       {/* Right panel — Pipeline output */}
       <section className="flex-1">
         <ScrollArea className="h-dvh p-4 md:p-6">
+          {error && (
+            <Card size="sm" className="mb-4 border-destructive/50 bg-destructive/5">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-destructive mb-2">
+                  <span>⚠</span>
+                  <span>Pipeline Error</span>
+                </div>
+                <pre className="text-xs text-destructive whitespace-pre-wrap font-mono">{error}</pre>
+              </CardContent>
+            </Card>
+          )}
           {hasRun ? (
             <div className="space-y-4 max-w-4xl">
               {steps.map(step => (
