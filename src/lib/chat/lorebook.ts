@@ -1,5 +1,4 @@
 import { LoreBuffer } from '@/lib/st-core/lorebook/buffer.js'
-import { buildLoreContext, formatLoreBlock } from '@/lib/st-core/lorebook/context-builder.js'
 import { ScanState, DEFAULT_LORE_CONFIG } from '@/lib/st-core/lorebook/types.js'
 import type { LoreEntry, LoreGlobalData, LoreConfig } from '@/lib/st-core/lorebook/types.js'
 import type { ChatMessage } from '@/lib/st-core/shared/types.js'
@@ -91,14 +90,4 @@ export function toLoreEntryView(entry: LoreEntry): LoreEntryView {
     order: entry.order,
     position: entry.position,
   }
-}
-
-export function buildLoreStrings(activated: LoreEntry[]): {
-  before: string | undefined
-  after: string | undefined
-} {
-  const loreContext = buildLoreContext(activated)
-  const before = formatLoreBlock(loreContext.beforeEntries) || undefined
-  const after = formatLoreBlock(loreContext.afterEntries) || undefined
-  return { before, after }
 }

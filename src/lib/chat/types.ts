@@ -94,6 +94,7 @@ export interface SampleCharacter {
   scenario: string
   mesExample: string
   systemPrompt: string
+  persona: string
   firstMes: string
   creatorNotes: string
   postHistoryInstructions: string

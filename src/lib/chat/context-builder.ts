@@ -1,12 +1,9 @@
 import { renderStoryString } from '@/lib/st-core/context/story-string.js'
-import { parseExampleBlocks } from '@/lib/st-core/context/examples.js'
-import { PromptAssembler } from '@/lib/st-core/context/assembler.js'
-import { PromptCollection } from '@/lib/st-core/context/collection.js'
-import { InjectionPosition, SectionRole } from '@/lib/st-core/context/types.js'
+import { LorePosition } from '@/lib/st-core/lorebook/types.js'
 import type { StoryStringParams } from '@/lib/st-core/context/types.js'
 import type { ChatMessage } from '@/lib/st-core/shared/types.js'
 import type { LoreGlobalData } from '@/lib/st-core/lorebook/types.js'
-import { convertBookEntries, scanLoreEntries, toLoreEntryView, buildLoreStrings } from './lorebook.js'
+import { convertBookEntries, scanLoreEntries, toLoreEntryView } from './lorebook.js'
 import type { ModelMessage, SampleCharacter, ChatCompletionPreset, LoreScanView } from './types.js'
 
 export function buildMessages(
@@ -29,10 +26,13 @@ export function buildMessages(
     storyParams,
   )
 
-  const exampleMessages = parseExampleBlocks(character.mesExample, userName, character.name)
+  const exampleBlocks: string[] = character.mesExample
+    .split(/<START>/gi)
+    .map((b) => b.trim())
+    .filter(Boolean)
 
   const globalData: LoreGlobalData = {
-    personaDescription: '',
+    personaDescription: character.persona,
     characterDescription: character.description,
     characterPersonality: character.personality,
     characterDepthPrompt: character.depthPrompt?.prompt ?? '',
@@ -47,11 +47,9 @@ export function buildMessages(
     inactive: inactive.map(toLoreEntryView),
   }
 
-  const { before: worldInfoBefore, after: worldInfoAfter } = buildLoreStrings(activated)
-
-  const sections = new PromptCollection()
-  sections.add({ identifier: 'main', content: preset.utilityPrompts.join('\n\n'), role: SectionRole.System, position: InjectionPosition.InPrompt, system_prompt: true })
-  sections.add({ identifier: 'charDescription', content: storyString, role: SectionRole.System, position: InjectionPosition.InPrompt, system_prompt: true })
+  const beforeEntries = activated.filter((e) => e.position === LorePosition.Before)
+  const afterEntries = activated.filter((e) => e.position === LorePosition.After)
+  const atDepthEntries = activated.filter((e) => e.position === LorePosition.AtDepth)
 
   let historyMessages: ModelMessage[] = chatHistory.map((m) => ({
     role: m.role,
@@ -68,28 +66,48 @@ export function buildMessages(
     ]
   }
 
-  const assembler = new PromptAssembler({
-    exampleSeparator: '***',
-    storyStringPosition: InjectionPosition.InPrompt,
-    storyStringDepth: 1,
-    storyStringRole: SectionRole.System,
-    pinExamples: false,
-  })
-
-  const result = assembler.buildChatMessages({
-    sections,
-    worldInfoBefore,
-    worldInfoAfter,
-    charDescription: storyString,
-    exampleMessages: exampleMessages.map((e) => ({ role: e.role, content: e.content, name: e.name })),
-    chatHistory: historyMessages,
-    mainPrompt: preset.utilityPrompts.join('\n\n'),
-  })
-
-  let finalMessages = (result.messages ?? []) as ModelMessage[]
-  if (character.postHistoryInstructions) {
-    finalMessages = [...finalMessages, { role: 'system', content: character.postHistoryInstructions }]
+  for (const entry of atDepthEntries) {
+    const insertIdx = Math.max(0, historyMessages.length - entry.depth)
+    historyMessages = [
+      ...historyMessages.slice(0, insertIdx),
+      { role: 'system', content: entry.content },
+      ...historyMessages.slice(insertIdx),
+    ]
   }
 
-  return { messages: finalMessages, loreScan }
+  const messages: ModelMessage[] = []
+
+  const mainPrompt = preset.utilityPrompts.join('\n\n')
+  if (mainPrompt) messages.push({ role: 'system', content: mainPrompt })
+
+  for (const entry of beforeEntries) {
+    messages.push({ role: 'system', content: entry.content })
+  }
+
+  if (character.persona) {
+    messages.push({ role: 'system', content: character.persona })
+  }
+
+  if (storyString) {
+    messages.push({ role: 'system', content: storyString })
+  }
+
+  for (const entry of afterEntries) {
+    messages.push({ role: 'system', content: entry.content })
+  }
+
+  for (const block of exampleBlocks) {
+    messages.push({ role: 'system', content: '[Example Chat]' })
+    messages.push({ role: 'system', content: block, name: 'example_assistant' })
+  }
+
+  messages.push({ role: 'system', content: '[Start a new Chat]' })
+
+  messages.push(...historyMessages)
+
+  if (character.postHistoryInstructions) {
+    messages.push({ role: 'system', content: character.postHistoryInstructions })
+  }
+
+  return { messages, loreScan }
 }
