@@ -1,4 +1,4 @@
-export { ArgType, ParserFlag } from './types.js';
+export { ArgType, ParserFlag } from "./types.js";
 export type {
   SlashCommandDef,
   SlashCommandArgDef,
@@ -13,7 +13,7 @@ export type {
   ClosureResult,
   ExecutionStep,
   VariableScope,
-} from './types.js';
+} from "./types.js";
 
 export {
   createScope,
@@ -23,8 +23,8 @@ export {
   letVariable,
   existsVariable,
   existsVariableInScope,
-} from './scope.js';
+} from "./scope.js";
 
-export { parse } from './parser.js';
+export { parse } from "./parser.js";
 
-export { registerCommand, execute, executeLines, createCommandArgs } from './runtime.js';
+export { registerCommand, execute, executeLines, createCommandArgs } from "./runtime.js";

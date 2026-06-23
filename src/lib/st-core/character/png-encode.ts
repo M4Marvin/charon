@@ -1,4 +1,4 @@
-import { crc32 } from 'crc';
+import { crc32 } from "crc";
 
 interface PngChunk {
   name: string;

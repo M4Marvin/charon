@@ -4,7 +4,7 @@ export interface ChatMessage {
   parent_id: number | null;
   children: number[];
   selected_child_id: number | null;
-  role: 'user' | 'assistant' | 'system';
+  role: "user" | "assistant" | "system";
   name?: string;
   content: string;
   is_user?: boolean;

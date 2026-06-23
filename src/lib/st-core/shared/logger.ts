@@ -5,9 +5,9 @@ export interface Logger {
 }
 
 const defaultLogger: Logger = {
-  warn: typeof console !== 'undefined' ? console.warn.bind(console) : () => {},
-  error: typeof console !== 'undefined' ? console.error.bind(console) : () => {},
-  info: typeof console !== 'undefined' ? console.log.bind(console) : () => {},
+  warn: typeof console !== "undefined" ? console.warn.bind(console) : () => {},
+  error: typeof console !== "undefined" ? console.error.bind(console) : () => {},
+  info: typeof console !== "undefined" ? console.log.bind(console) : () => {},
 };
 
 let active: Logger = defaultLogger;

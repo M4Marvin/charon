@@ -12,3 +12,7 @@ dist-ssr
 __unconfig*
 todos.json
 public/data/
+dev.db
+dev.db-journal
+dev.db-shm
+dev.db-wal

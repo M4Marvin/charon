@@ -5,8 +5,8 @@ import type {
   UnnamedArgAssignment,
   ParseOptions,
   ISlashCommandClosure,
-} from './types.js';
-import { createScope } from './scope.js';
+} from "./types.js";
+import { createScope } from "./scope.js";
 
 /**
  * Minimal STscript parser.
@@ -42,7 +42,7 @@ export function parse(
     argumentList: [],
     ...(options.abortController ? { abortController: options.abortController } : {}),
     async execute() {
-      let pipe = '';
+      let pipe = "";
       for (const executor of closure.executorList) {
         const namedArgs: Record<string, unknown> = {
           _scope: closure.scope,
@@ -57,9 +57,9 @@ export function parse(
           namedArgs[arg.name] = arg.value;
         }
 
-        let value = '';
+        let value = "";
         if (executor.unnamedArgumentList.length > 0) {
-          value = executor.unnamedArgumentList.map((a) => a.value).join(' ');
+          value = executor.unnamedArgumentList.map((a) => a.value).join(" ");
         } else if (executor.injectPipe && pipe) {
           value = pipe;
           namedArgs._hasUnnamedArgument = true;
@@ -67,18 +67,20 @@ export function parse(
 
         try {
           const result = await executor.command.callback(
-            namedArgs as import('./types.js').CommandArgs,
+            namedArgs as import("./types.js").CommandArgs,
             value,
           );
-          if (typeof result === 'string') {
+          if (typeof result === "string") {
             pipe = result;
-          } else if (result && typeof result === 'object' && 'execute' in result) {
+          } else if (result && typeof result === "object" && "execute" in result) {
             closure.scope.pipe = pipe;
             const subResult = await result.execute();
-            pipe = subResult.pipe ?? '';
+            pipe = subResult.pipe ?? "";
           }
         } catch (e) {
-          throw new Error(`Error executing "/${executor.name}": ${(e as Error).message}`, { cause: e });
+          throw new Error(`Error executing "/${executor.name}": ${(e as Error).message}`, {
+            cause: e,
+          });
         }
       }
       return { pipe, isAborted: false, isError: false };
@@ -88,15 +90,15 @@ export function parse(
   index.discardWhitespace();
 
   while (!index.isEnd()) {
-    if (index.peek() === '/' && index.peek(1) === '/') {
+    if (index.peek() === "/" && index.peek(1) === "/") {
       // Line comment
-      index.discardUntil('\n');
+      index.discardUntil("\n");
       index.discardWhitespace();
-    } else if (index.peek() === '/') {
+    } else if (index.peek() === "/") {
       index.advance(); // consume /
 
       const start = index.pos;
-      let name = '';
+      let name = "";
       while (!index.isEnd() && !/\s/.test(index.peek())) {
         name += index.advance();
       }
@@ -140,18 +142,18 @@ export function parse(
 
       executor.end = index.pos;
       closure.executorList.push(executor);
-    } else if (index.peek() === '{' && index.peek(1) === ':') {
+    } else if (index.peek() === "{" && index.peek(1) === ":") {
       // Nested closure {: ... :}
       index.advance(2);
       index.discardWhitespace();
-      index.discardUntil(':}');
-      if (index.peek() === ':' && index.peek(1) === '}') {
+      index.discardUntil(":}");
+      if (index.peek() === ":" && index.peek(1) === "}") {
         index.advance(2);
       }
       index.discardWhitespace();
     } else if (testPipe(index)) {
       index.advance();
-      if (index.peek() === '|') {
+      if (index.peek() === "|") {
         index.advance();
         // || suppresses pipe injection for next command
         const lastExecutor = closure.executorList[closure.executorList.length - 1];
@@ -178,7 +180,7 @@ class ParserCursor {
   ) {}
 
   peek(offset = 0): string {
-    return this.text[this.pos + offset] ?? '';
+    return this.text[this.pos + offset] ?? "";
   }
 
   peekN(n: number): string {
@@ -216,19 +218,19 @@ function testNamedArg(index: ParserCursor): boolean {
 }
 
 function parseNamedArg(index: ParserCursor): NamedArgAssignment {
-  let key = '';
+  let key = "";
   while (/\w/.test(index.peek())) {
     key += index.advance();
   }
   index.advance(); // consume '='
 
-  let value = '';
+  let value = "";
   // Check for closure value {: ... :}
-  if (index.peek() === '{' && index.peek(1) === ':') {
+  if (index.peek() === "{" && index.peek(1) === ":") {
     index.advance(2);
     let depth = 1;
     while (!index.isEnd() && depth > 0) {
-      if (index.peek() === ':' && index.peek(1) === '}') {
+      if (index.peek() === ":" && index.peek(1) === "}") {
         depth--;
         index.advance(2);
       } else {
@@ -238,7 +240,7 @@ function parseNamedArg(index: ParserCursor): NamedArgAssignment {
   } else if (index.peek() === '"' || index.peek() === "'") {
     const quote = index.advance();
     while (!index.isEnd() && index.peek() !== quote) {
-      if (index.peek() === '\\') {
+      if (index.peek() === "\\") {
         index.advance();
         value += index.advance();
       } else {
@@ -247,9 +249,9 @@ function parseNamedArg(index: ParserCursor): NamedArgAssignment {
     }
     index.advance(); // consume closing quote
   } else {
-    while (!index.isEnd() && !/\s/.test(index.peek()) && index.peek() !== '|') {
+    while (!index.isEnd() && !/\s/.test(index.peek()) && index.peek() !== "|") {
       // Detect closures inline
-      if (index.peek() === '{' && index.peek(1) === ':') {
+      if (index.peek() === "{" && index.peek(1) === ":") {
         break;
       }
       value += index.advance();
@@ -265,7 +267,7 @@ function parseUnnamedArgs(index: ParserCursor): UnnamedArgAssignment[] {
   const args: UnnamedArgAssignment[] = [];
 
   // Read the rest of the line/block until pipe or end
-  let value = '';
+  let value = "";
   while (!index.isEnd() && !testPipe(index)) {
     value += index.advance();
   }
@@ -280,5 +282,5 @@ function parseUnnamedArgs(index: ParserCursor): UnnamedArgAssignment[] {
 // ── Helpers ──
 
 function testPipe(index: ParserCursor): boolean {
-  return index.peek() === '|' && index.peekN(2) !== '|}';
+  return index.peek() === "|" && index.peekN(2) !== "|}";
 }

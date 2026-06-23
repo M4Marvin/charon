@@ -1,5 +1,5 @@
-import type { MacroEnv, MacroResolver } from './types.js';
-import { substituteMacros } from './regex.js';
+import type { MacroEnv, MacroResolver } from "./types.js";
+import { substituteMacros } from "./regex.js";
 
 export { substituteMacros };
 
@@ -23,20 +23,20 @@ export function evaluateMacros(
   env: MacroEnv,
   additionalResolve?: MacroResolver,
 ): string {
-  if (!content) return '';
+  if (!content) return "";
 
   const preEnvMacros: MacroDef[] = [
-    { regex: /{{newline}}/gi, replace: () => '\n' },
-    { regex: /(?:\r?\n)*{{trim}}(?:\r?\n)*/gi, replace: () => '' },
-    { regex: /{{noop}}/gi, replace: () => '' },
+    { regex: /{{newline}}/gi, replace: () => "\n" },
+    { regex: /(?:\r?\n)*{{trim}}(?:\r?\n)*/gi, replace: () => "" },
+    { regex: /{{noop}}/gi, replace: () => "" },
   ];
 
   const envMacros: MacroDef[] = [];
   for (const key of Object.keys(env)) {
-    const regex = new RegExp(`{{${escapeRegex(key)}}}`, 'gi');
+    const regex = new RegExp(`{{${escapeRegex(key)}}}`, "gi");
     const replace = () => {
       const value = env[key];
-      return typeof value === 'function' ? (value as () => string)() : String(value ?? '');
+      return typeof value === "function" ? (value as () => string)() : String(value ?? "");
     };
     envMacros.push({ regex, replace });
   }
@@ -46,9 +46,9 @@ export function evaluateMacros(
     { regex: /{{date}}/gi, replace: () => new Date().toLocaleDateString() },
     {
       regex: /{{reverse:(.+?)}}/gi,
-      replace: (_match: string, str: string) => Array.from(str).reverse().join(''),
+      replace: (_match: string, str: string) => Array.from(str).reverse().join(""),
     },
-    { regex: /\{\{\/\/([\s\S]*?)\}\}/gm, replace: () => '' },
+    { regex: /\{\{\/\/([\s\S]*?)\}\}/gm, replace: () => "" },
     {
       regex: /{{uppercase:(.+?)}}/gi,
       replace: (_match: string, str: string) => str.toUpperCase(),
@@ -64,7 +64,7 @@ export function evaluateMacros(
   let result = content;
   for (const macro of macros) {
     if (!result) break;
-    if (!result.includes('{{')) break;
+    if (!result.includes("{{")) break;
     try {
       result = result.replace(macro.regex, (...args) => macro.replace(...args));
     } catch {
@@ -84,7 +84,7 @@ export function evaluateMacros(
  * Escape regex special characters in a string.
  */
 function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
@@ -92,23 +92,23 @@ function escapeRegex(str: string): string {
  */
 export function buildMacroEnv(overrides: Partial<MacroEnv> = {}): MacroEnv {
   return {
-    user: '',
-    char: '',
-    description: '',
-    personality: '',
-    scenario: '',
-    persona: '',
-    mesExamples: '',
-    mesExamplesRaw: '',
-    group: '',
-    charPrompt: '',
-    charJailbreak: '',
-    original: '',
-    model: '',
-    charVersion: '',
-    charDepthPrompt: '',
-    creatorNotes: '',
-    notChar: '',
+    user: "",
+    char: "",
+    description: "",
+    personality: "",
+    scenario: "",
+    persona: "",
+    mesExamples: "",
+    mesExamplesRaw: "",
+    group: "",
+    charPrompt: "",
+    charJailbreak: "",
+    original: "",
+    model: "",
+    charVersion: "",
+    charDepthPrompt: "",
+    creatorNotes: "",
+    notChar: "",
     ...overrides,
   };
 }

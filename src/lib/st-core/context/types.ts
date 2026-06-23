@@ -8,9 +8,9 @@ export enum InjectionPosition {
 
 /** The role of a message in a chat completion context. */
 export enum SectionRole {
-  System = 'system',
-  User = 'user',
-  Assistant = 'assistant',
+  System = "system",
+  User = "user",
+  Assistant = "assistant",
 }
 
 /** A single section of the prompt. */
@@ -55,7 +55,7 @@ export interface PromptAssemblyConfig {
 }
 
 export const DEFAULT_PROMPT_CONFIG: PromptAssemblyConfig = {
-  exampleSeparator: '***',
+  exampleSeparator: "***",
   storyStringPosition: InjectionPosition.InPrompt,
   storyStringDepth: 1,
   storyStringRole: SectionRole.System,

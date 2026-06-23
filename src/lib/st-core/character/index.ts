@@ -12,11 +12,11 @@ export type {
   FlattenedCharacter,
   ValidationError,
   ValidationResult,
-} from './types.js';
+} from "./types.js";
 
-export { readCharacterCard, parseCharacterCard } from './parser.js';
-export { writeCharacterCard } from './serializer.js';
-export { validateCharacterCard as validateCharacterCardLegacy } from './validator.js';
+export { readCharacterCard, parseCharacterCard } from "./parser.js";
+export { writeCharacterCard } from "./serializer.js";
+export { validateCharacterCard as validateCharacterCardLegacy } from "./validator.js";
 
 // ArkType validators — runtime Type objects for parsing unknown data.
 // Use `typeof CharacterCardSchema.infer` in place of the corresponding TS interface.
@@ -32,7 +32,7 @@ import {
   CharacterCardV3 as _CharacterCardV3,
   FlattenedCharacter as _FlattenedCharacter,
   CharacterBookEntryExtensions as _CharacterBookEntryExtensions,
-} from './validators.js';
+} from "./validators.js";
 
 export const CharacterCardSchema = _CharacterCard;
 export const CharacterDataV2Schema = _CharacterDataV2;
@@ -50,4 +50,4 @@ export {
   validateCharacterCard,
   validateCharacterBook,
   validateCharacterBookEntry,
-} from './validators.js';
+} from "./validators.js";

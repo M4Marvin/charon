@@ -1,5 +1,5 @@
-import type { LoreEntry, LoreGlobalData, LoreConfig, ScanState } from './types.js';
-import { ScanState as SS, SelectiveLogic as SL } from './types.js';
+import type { LoreEntry, LoreGlobalData, LoreConfig, ScanState } from "./types.js";
+import { ScanState as SS, SelectiveLogic as SL } from "./types.js";
 
 /**
  * Builds and queries a searchable text buffer from chat message history
@@ -41,14 +41,14 @@ export class LoreBuffer {
   /** Build the haystack string for an entry to match against. */
   get(entry: LoreEntry, scanState: ScanState): string {
     let depth = entry.scanDepth ?? this.getDepth();
-    if (depth <= this.startDepth) return '';
-    if (depth < 0) return '';
+    if (depth <= this.startDepth) return "";
+    if (depth < 0) return "";
     if (depth > LoreBuffer.MAX_SCAN_DEPTH) {
       depth = LoreBuffer.MAX_SCAN_DEPTH;
     }
 
-    const MATCHER = '\x01';
-    const JOINER = '\n' + MATCHER;
+    const MATCHER = "\x01";
+    const JOINER = "\n" + MATCHER;
     let result = MATCHER + this.depthBuffer.slice(this.startDepth, depth).join(JOINER);
 
     if (entry.matchPersonaDescription && this.globalData.personaDescription)
@@ -154,7 +154,7 @@ export function parseRegexFromString(input: string): RegExp | null {
   if (!match) return null;
   let [, pattern, flags] = match;
   if (pattern.match(/(^|[^\\])\//)) return null;
-  pattern = pattern.replace('\\/', '/');
+  pattern = pattern.replace("\\/", "/");
   try {
     return new RegExp(pattern, flags);
   } catch {
@@ -164,5 +164,5 @@ export function parseRegexFromString(input: string): RegExp | null {
 
 /** Escape regex special characters in a string. */
 export function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

@@ -1,4 +1,4 @@
-import type { ITokenCounter } from './types.js';
+import type { ITokenCounter } from "./types.js";
 
 /**
  * A minimal token counter using whitespace-splitting approximation.

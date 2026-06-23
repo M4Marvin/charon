@@ -1,4 +1,4 @@
-import type { PromptSection } from './types.js';
+import type { PromptSection } from "./types.js";
 
 /**
  * Ordered collection of prompt sections.

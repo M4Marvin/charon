@@ -1,15 +1,15 @@
 // ── Argument Types ──
 
 export enum ArgType {
-  String = 'string',
-  Number = 'number',
-  Range = 'range',
-  Boolean = 'bool',
-  VariableName = 'varname',
-  Closure = 'closure',
-  Subcommand = 'subcommand',
-  List = 'list',
-  Dictionary = 'dictionary',
+  String = "string",
+  Number = "number",
+  Range = "range",
+  Boolean = "bool",
+  VariableName = "varname",
+  Closure = "closure",
+  Subcommand = "subcommand",
+  List = "list",
+  Dictionary = "dictionary",
 }
 
 export interface SlashCommandEnumValue {
@@ -91,7 +91,7 @@ export interface SlashCommandExecutor {
 
 export interface ExecutionStep {
   executor: SlashCommandExecutor;
-  phase: 'before' | 'during' | 'after';
+  phase: "before" | "during" | "after";
 }
 
 // ── Scope ──
@@ -105,7 +105,7 @@ export interface VariableScope {
 // ── Parser flags ──
 
 export enum ParserFlag {
-  StrictEscaping = 'strictEscaping',
+  StrictEscaping = "strictEscaping",
 }
 
 // ── SlashCommandClosure (pending forward ref) ──

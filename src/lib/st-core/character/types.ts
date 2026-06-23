@@ -2,13 +2,13 @@
 // Spec: https://github.com/malfoyslastname/character-card-spec-v2
 
 export interface CharacterCardV2 {
-  spec: 'chara_card_v2';
-  spec_version: '2.0';
+  spec: "chara_card_v2";
+  spec_version: "2.0";
   data: CharacterDataV2;
 }
 
 export interface CharacterCardV3 {
-  spec: 'chara_card_v3';
+  spec: "chara_card_v3";
   spec_version: string;
   data: Record<string, unknown>;
 }
@@ -44,7 +44,7 @@ export interface CharacterExtensions {
 export interface DepthPrompt {
   prompt: string;
   depth: number;
-  role: 'system' | 'user' | 'assistant';
+  role: "system" | "user" | "assistant";
 }
 
 export interface CharacterBook {
@@ -67,7 +67,7 @@ export interface CharacterBookEntry {
   selective?: boolean;
   insertion_order: number;
   enabled?: boolean;
-  position?: 'before_char' | 'after_char';
+  position?: "before_char" | "after_char";
   case_sensitive?: boolean;
   name?: string;
   priority?: number;
@@ -146,8 +146,8 @@ export interface FlattenedCharacter {
   talkativeness: number;
   fav: boolean;
   tags: string[];
-  spec: 'chara_card_v2';
-  spec_version: '2.0';
+  spec: "chara_card_v2";
+  spec_version: "2.0";
   data: CharacterDataV2;
   create_date?: string;
   creator?: string;

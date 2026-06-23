@@ -1,5 +1,5 @@
-import type { SlashCommandDef, CommandArgs } from './types.js';
-import { parse } from './parser.js';
+import type { SlashCommandDef, CommandArgs } from "./types.js";
+import { parse } from "./parser.js";
 
 /**
  * Register a command in the command map.
@@ -25,7 +25,7 @@ export async function execute(
 ): Promise<string> {
   const closure = parse(text, commands);
   const result = await closure.execute();
-  return result.pipe ?? '';
+  return result.pipe ?? "";
 }
 
 /**
@@ -33,7 +33,7 @@ export async function execute(
  */
 export function createCommandArgs(overrides: Record<string, unknown> = {}): CommandArgs {
   return {
-    _scope: { parent: null, variables: {}, pipe: '' },
+    _scope: { parent: null, variables: {}, pipe: "" },
     _abortController: new AbortController(),
     _hasUnnamedArgument: false,
     ...overrides,
@@ -49,7 +49,7 @@ export async function executeLines(
   commands: Record<string, SlashCommandDef>,
   context: Record<string, unknown> = {},
 ): Promise<string[]> {
-  const lines = text.split('\n').filter((l) => l.trim().startsWith('/'));
+  const lines = text.split("\n").filter((l) => l.trim().startsWith("/"));
   const results: string[] = [];
   for (const line of lines) {
     const result = await execute(line, commands, context);

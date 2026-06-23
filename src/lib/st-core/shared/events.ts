@@ -1,4 +1,4 @@
-import type { IEventBus } from './types.js';
+import type { IEventBus } from "./types.js";
 
 /** A minimal in-process event bus. */
 export class EventBus implements IEventBus {

@@ -1,11 +1,7 @@
-import type {
-  PromptAssemblyConfig,
-  StoryStringParams,
-  AssembledPrompt,
-} from './types.js';
-import { InjectionPosition, SectionRole } from './types.js';
-import { PromptCollection } from './collection.js';
-import { renderStoryString } from './story-string.js';
+import type { PromptAssemblyConfig, StoryStringParams, AssembledPrompt } from "./types.js";
+import { InjectionPosition, SectionRole } from "./types.js";
+import { PromptCollection } from "./collection.js";
+import { renderStoryString } from "./story-string.js";
 
 /**
  * Assembles a final prompt from character data, lore, and chat history.
@@ -44,7 +40,7 @@ export class PromptAssembler {
       parts.push(params.cyclePrompt);
     }
 
-    let text = parts.join('').replace(/\r/gm, '');
+    let text = parts.join("").replace(/\r/gm, "");
 
     // Add jailbreak at the end if present
     if (params.jailbreak) {
@@ -89,14 +85,14 @@ export class PromptAssembler {
     };
 
     // Build in the standard SillyTavern order
-    addSection('worldInfoBefore', params.worldInfoBefore);
-    addSection('main', params.mainPrompt);
-    addSection('worldInfoAfter', params.worldInfoAfter);
-    addSection('charDescription', params.charDescription);
-    addSection('charPersonality', params.charPersonality);
-    addSection('scenario', params.scenario);
-    addSection('personaDescription', params.personaDescription);
-    addSection('nsfw', params.nsfwPrompt);
+    addSection("worldInfoBefore", params.worldInfoBefore);
+    addSection("main", params.mainPrompt);
+    addSection("worldInfoAfter", params.worldInfoAfter);
+    addSection("charDescription", params.charDescription);
+    addSection("charPersonality", params.charPersonality);
+    addSection("scenario", params.scenario);
+    addSection("personaDescription", params.personaDescription);
+    addSection("nsfw", params.nsfwPrompt);
 
     // User-defined relative prompts
     const userPrompts = params.sections.collection.filter(
@@ -106,7 +102,7 @@ export class PromptAssembler {
       addSection(prompt.identifier, prompt.content, prompt.role);
     }
 
-    addSection('bias', params.bias, SectionRole.Assistant);
+    addSection("bias", params.bias, SectionRole.Assistant);
 
     // Example messages and chat history
     if (this.config.pinExamples) {

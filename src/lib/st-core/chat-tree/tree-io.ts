@@ -1,5 +1,5 @@
-import type { ChatMessage, ChatTree } from '../shared/types.js';
-import { getRootId, getActiveLeafId } from './tree.js';
+import type { ChatMessage, ChatTree } from "../shared/types.js";
+import { getRootId, getActiveLeafId } from "./tree.js";
 
 /** Deserialize a flat node array into a Map. */
 export function treeFromNodes(nodes: ChatMessage[]): ChatTree {
@@ -58,9 +58,9 @@ export function validateTree(tree: ChatTree): ValidationResult {
   }
 
   if (roots.length === 0) {
-    errors.push('No root node found (every node has a parent)');
+    errors.push("No root node found (every node has a parent)");
   } else if (roots.length > 1) {
-    errors.push(`Multiple root nodes found: ${roots.join(', ')}`);
+    errors.push(`Multiple root nodes found: ${roots.join(", ")}`);
   }
 
   // 2. Check children arrays

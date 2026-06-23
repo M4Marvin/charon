@@ -1,7 +1,7 @@
-import type { ChatCompletionPreset } from './types.js'
+import type { ChatCompletionPreset } from "./types.js";
 
 export const DEFAULT_PRESET: ChatCompletionPreset = {
-  name: 'Default',
+  name: "Default",
   unlockedContextSize: false,
   contextSize: 8192,
   maxResponseLength: 1200,
@@ -12,17 +12,19 @@ export const DEFAULT_PRESET: ChatCompletionPreset = {
   presencePenalty: 0,
   topP: 1,
   seed: -1,
-  utilityPrompts: ['Write {{{char}}}\'s} next reply in a fictional chat between {{{char}}} and {{{user}}}. Write 1 reply only in internet RP style. Use markdown. Be proactive.'],
-  continuePostfix: ' ',
+  utilityPrompts: [
+    "Write {{{char}}}'s} next reply in a fictional chat between {{{char}}} and {{{user}}}. Write 1 reply only in internet RP style. Use markdown. Be proactive.",
+  ],
+  continuePostfix: " ",
   continuePrefill: false,
-  characterNamesBehavior: 'default',
+  characterNamesBehavior: "default",
   squashSystemMessages: false,
   enableFunctionCalling: false,
   interleavedThinking: false,
   sendInlineMedia: false,
-  inlineImageQuality: 'medium',
+  inlineImageQuality: "medium",
   requestModelReasoning: false,
-  reasoningEffort: 'auto',
-  verbosity: 'medium',
+  reasoningEffort: "auto",
+  verbosity: "medium",
   logitBias: {},
-}
+};

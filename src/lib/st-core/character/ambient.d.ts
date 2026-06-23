@@ -1,4 +1,4 @@
-declare module 'png-chunks-extract' {
+declare module "png-chunks-extract" {
   interface PngChunk {
     name: string;
     data: Uint8Array;
@@ -6,7 +6,7 @@ declare module 'png-chunks-extract' {
   export default function extract(image: Uint8Array): PngChunk[];
 }
 
-declare module 'png-chunk-text' {
+declare module "png-chunk-text" {
   interface DecodedText {
     keyword: string;
     text: string;

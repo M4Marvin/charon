@@ -1,4 +1,4 @@
-import type { VariableScope } from './types.js';
+import type { VariableScope } from "./types.js";
 
 /**
  * Create a new variable scope with optional parent.
@@ -7,7 +7,7 @@ export function createScope(parent: VariableScope | null = null): VariableScope 
   return {
     parent,
     variables: {},
-    pipe: '',
+    pipe: "",
   };
 }
 
@@ -53,7 +53,7 @@ export function getVariable(scope: VariableScope, key: string): string | undefin
 /**
  * Create a new variable (throws if already exists in scope chain).
  */
-export function letVariable(scope: VariableScope, key: string, value: string = ''): void {
+export function letVariable(scope: VariableScope, key: string, value: string = ""): void {
   if (existsVariable(scope, key)) {
     throw new Error(`Variable "${key}" already exists.`);
   }

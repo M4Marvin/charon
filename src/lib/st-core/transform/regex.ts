@@ -1,5 +1,5 @@
-import type { RegexScript, RegexParams, MacroResolver } from './types.js';
-import { SubstituteMode } from './types.js';
+import type { RegexScript, RegexParams, MacroResolver } from "./types.js";
+import { SubstituteMode } from "./types.js";
 
 /**
  * Apply all matching regex scripts to a string.
@@ -12,7 +12,7 @@ export function getRegexedString(
   params: RegexParams = {},
   resolveMacro?: MacroResolver,
 ): string {
-  if (typeof rawString !== 'string') return '';
+  if (typeof rawString !== "string") return "";
   if (!rawString || placement === undefined) return rawString;
 
   const { characterOverride, isMarkdown, isPrompt, isEdit, depth } = params;
@@ -36,7 +36,7 @@ export function getRegexedString(
     if (isEdit && !script.runOnEdit) continue;
 
     // Depth filter
-    if (typeof depth === 'number') {
+    if (typeof depth === "number") {
       if (
         !isNaN(script.minDepth) &&
         script.minDepth !== null &&
@@ -91,7 +91,7 @@ export function runRegexScript(
       break;
     case SubstituteMode.Escaped:
       regexString = resolveMacro
-        ? substituteMacros(script.findRegex, (name) => sanitizeRegexMacro(resolveMacro(name) ?? ''))
+        ? substituteMacros(script.findRegex, (name) => sanitizeRegexMacro(resolveMacro(name) ?? ""))
         : script.findRegex;
       break;
     default:
@@ -105,7 +105,7 @@ export function runRegexScript(
     if (match) {
       findRegex = new RegExp(match[1], match[2]);
     } else {
-      findRegex = new RegExp(regexString, 'g');
+      findRegex = new RegExp(regexString, "g");
     }
   } catch {
     return rawString;
@@ -119,7 +119,7 @@ export function runRegexScript(
 
   let newString = rawString.replace(findRegex, function (this: unknown, ...args: unknown[]) {
     // Convert {{match}} to $0
-    const replaceWithGroups = replaceString.replace(/{{match}}/gi, '$0');
+    const replaceWithGroups = replaceString.replace(/{{match}}/gi, "$0");
 
     // Resolve $1, $2, $<name> references
     const resolved = replaceWithGroups.replace(
@@ -134,7 +134,7 @@ export function runRegexScript(
           match = groups?.[groupName];
         }
 
-        if (!match) return '';
+        if (!match) return "";
 
         // Apply trim strings
         const filterParams = characterOverride !== undefined ? { characterOverride } : {};
@@ -164,7 +164,7 @@ export function filterString(
   let result = rawString;
   for (const trim of trimStrings) {
     const subTrim = resolveMacro ? substituteMacros(trim, resolveMacro) : trim;
-    result = result.replaceAll(subTrim, '');
+    result = result.replaceAll(subTrim, "");
   }
   return result;
 }
@@ -173,20 +173,45 @@ export function filterString(
  * Escape string for safe use inside a regex pattern.
  */
 export function sanitizeRegexMacro(value: unknown): string {
-  if (typeof value !== 'string') return String(value ?? '');
-  const specialChars = ['\n', '\r', '\t', '\v', '\f', '\0', '.', '^', '$', '*', '+', '?', '{', '}', '[', ']', '\\', '/', '|', '(', ')'];
+  if (typeof value !== "string") return String(value ?? "");
+  const specialChars = [
+    "\n",
+    "\r",
+    "\t",
+    "\v",
+    "\f",
+    "\0",
+    ".",
+    "^",
+    "$",
+    "*",
+    "+",
+    "?",
+    "{",
+    "}",
+    "[",
+    "]",
+    "\\",
+    "/",
+    "|",
+    "(",
+    ")",
+  ];
   const escMap: Record<string, string> = {
-    '\n': '\\n',
-    '\r': '\\r',
-    '\t': '\\t',
-    '\v': '\\v',
-    '\f': '\\f',
-    '\0': '\\0',
+    "\n": "\\n",
+    "\r": "\\r",
+    "\t": "\\t",
+    "\v": "\\v",
+    "\f": "\\f",
+    "\0": "\\0",
   };
-  return value.split('').map((ch) => {
-    if (specialChars.includes(ch)) return escMap[ch] || ('\\' + ch);
-    return ch;
-  }).join('');
+  return value
+    .split("")
+    .map((ch) => {
+      if (specialChars.includes(ch)) return escMap[ch] || "\\" + ch;
+      return ch;
+    })
+    .join("");
 }
 
 /**
@@ -197,6 +222,6 @@ export function substituteMacros(
   resolve: (name: string) => string | undefined,
 ): string {
   return text.replace(/\{\{(\w+)\}\}/g, (_match, name: string) => {
-    return resolve(name) ?? '';
+    return resolve(name) ?? "";
   });
 }
