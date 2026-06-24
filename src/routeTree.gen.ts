@@ -10,11 +10,48 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LorebooksIndexRouteImport } from './routes/lorebooks/index'
+import { Route as CharactersIndexRouteImport } from './routes/characters/index'
+import { Route as LorebooksNewRouteImport } from './routes/lorebooks/new'
+import { Route as LorebooksIdRouteImport } from './routes/lorebooks/$id'
+import { Route as CharactersNewRouteImport } from './routes/characters/new'
+import { Route as CharactersIdRouteImport } from './routes/characters/$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiCharactersIdAvatarRouteImport } from './routes/api/characters/$id/avatar'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LorebooksIndexRoute = LorebooksIndexRouteImport.update({
+  id: '/lorebooks/',
+  path: '/lorebooks/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CharactersIndexRoute = CharactersIndexRouteImport.update({
+  id: '/characters/',
+  path: '/characters/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LorebooksNewRoute = LorebooksNewRouteImport.update({
+  id: '/lorebooks/new',
+  path: '/lorebooks/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LorebooksIdRoute = LorebooksIdRouteImport.update({
+  id: '/lorebooks/$id',
+  path: '/lorebooks/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CharactersNewRoute = CharactersNewRouteImport.update({
+  id: '/characters/new',
+  path: '/characters/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CharactersIdRoute = CharactersIdRouteImport.update({
+  id: '/characters/$id',
+  path: '/characters/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -22,31 +59,92 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCharactersIdAvatarRoute = ApiCharactersIdAvatarRouteImport.update({
+  id: '/api/characters/$id/avatar',
+  path: '/api/characters/$id/avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/characters/$id': typeof CharactersIdRoute
+  '/characters/new': typeof CharactersNewRoute
+  '/lorebooks/$id': typeof LorebooksIdRoute
+  '/lorebooks/new': typeof LorebooksNewRoute
+  '/characters/': typeof CharactersIndexRoute
+  '/lorebooks/': typeof LorebooksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/characters/$id': typeof CharactersIdRoute
+  '/characters/new': typeof CharactersNewRoute
+  '/lorebooks/$id': typeof LorebooksIdRoute
+  '/lorebooks/new': typeof LorebooksNewRoute
+  '/characters': typeof CharactersIndexRoute
+  '/lorebooks': typeof LorebooksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/characters/$id': typeof CharactersIdRoute
+  '/characters/new': typeof CharactersNewRoute
+  '/lorebooks/$id': typeof LorebooksIdRoute
+  '/lorebooks/new': typeof LorebooksNewRoute
+  '/characters/': typeof CharactersIndexRoute
+  '/lorebooks/': typeof LorebooksIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/characters/$id'
+    | '/characters/new'
+    | '/lorebooks/$id'
+    | '/lorebooks/new'
+    | '/characters/'
+    | '/lorebooks/'
+    | '/api/auth/$'
+    | '/api/characters/$id/avatar'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/auth/$'
-  id: '__root__' | '/' | '/api/auth/$'
+  to:
+    | '/'
+    | '/characters/$id'
+    | '/characters/new'
+    | '/lorebooks/$id'
+    | '/lorebooks/new'
+    | '/characters'
+    | '/lorebooks'
+    | '/api/auth/$'
+    | '/api/characters/$id/avatar'
+  id:
+    | '__root__'
+    | '/'
+    | '/characters/$id'
+    | '/characters/new'
+    | '/lorebooks/$id'
+    | '/lorebooks/new'
+    | '/characters/'
+    | '/lorebooks/'
+    | '/api/auth/$'
+    | '/api/characters/$id/avatar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CharactersIdRoute: typeof CharactersIdRoute
+  CharactersNewRoute: typeof CharactersNewRoute
+  LorebooksIdRoute: typeof LorebooksIdRoute
+  LorebooksNewRoute: typeof LorebooksNewRoute
+  CharactersIndexRoute: typeof CharactersIndexRoute
+  LorebooksIndexRoute: typeof LorebooksIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiCharactersIdAvatarRoute: typeof ApiCharactersIdAvatarRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,6 +156,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lorebooks/': {
+      id: '/lorebooks/'
+      path: '/lorebooks'
+      fullPath: '/lorebooks/'
+      preLoaderRoute: typeof LorebooksIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/characters/': {
+      id: '/characters/'
+      path: '/characters'
+      fullPath: '/characters/'
+      preLoaderRoute: typeof CharactersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lorebooks/new': {
+      id: '/lorebooks/new'
+      path: '/lorebooks/new'
+      fullPath: '/lorebooks/new'
+      preLoaderRoute: typeof LorebooksNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lorebooks/$id': {
+      id: '/lorebooks/$id'
+      path: '/lorebooks/$id'
+      fullPath: '/lorebooks/$id'
+      preLoaderRoute: typeof LorebooksIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/characters/new': {
+      id: '/characters/new'
+      path: '/characters/new'
+      fullPath: '/characters/new'
+      preLoaderRoute: typeof CharactersNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/characters/$id': {
+      id: '/characters/$id'
+      path: '/characters/$id'
+      fullPath: '/characters/$id'
+      preLoaderRoute: typeof CharactersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -65,12 +205,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/characters/$id/avatar': {
+      id: '/api/characters/$id/avatar'
+      path: '/api/characters/$id/avatar'
+      fullPath: '/api/characters/$id/avatar'
+      preLoaderRoute: typeof ApiCharactersIdAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CharactersIdRoute: CharactersIdRoute,
+  CharactersNewRoute: CharactersNewRoute,
+  LorebooksIdRoute: LorebooksIdRoute,
+  LorebooksNewRoute: LorebooksNewRoute,
+  CharactersIndexRoute: CharactersIndexRoute,
+  LorebooksIndexRoute: LorebooksIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiCharactersIdAvatarRoute: ApiCharactersIdAvatarRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

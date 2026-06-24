@@ -12,8 +12,23 @@ export default function Header() {
             to="/"
             className="text-muted-foreground no-underline transition-colors hover:text-foreground"
             activeOptions={{ exact: true }}
+            activeProps={{ className: "text-foreground" }}
           >
             Home
+          </Link>
+          <Link
+            to="/characters"
+            className="text-muted-foreground no-underline transition-colors hover:text-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Characters
+          </Link>
+          <Link
+            to="/lorebooks"
+            className="text-muted-foreground no-underline transition-colors hover:text-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Lorebooks
           </Link>
         </nav>
       </div>
