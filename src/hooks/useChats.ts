@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ChatMessageRow } from "@/db/schema";
 import {
   createChat,
   deleteChat,
+  deleteMessageBranch,
+  editMessage,
   getChat,
   getChatMessages,
   listChats,
-  regenerateMessage,
   sendMessage,
   swipeMessage,
   type SendResult,
@@ -46,8 +46,7 @@ export function useChatMessages(id: string) {
 export function useCreateChat() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { characterId: string; greetingIndex?: number }) =>
-      createChat({ data: input }),
+    mutationFn: (input: { characterId: string }) => createChat({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.all });
     },
@@ -65,22 +64,36 @@ export function useSendMessage() {
   });
 }
 
-export function useRegenerateMessage() {
+export function useSwipeMessage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { chatId: string }): Promise<{ message: ChatMessageRow }> =>
-      regenerateMessage({ data: input }),
+    mutationFn: (input: {
+      chatId: string;
+      messageLocalId: number;
+      direction: "next" | "prev";
+    }): Promise<SwipeResult> => swipeMessage({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
   });
 }
 
-export function useSwipeMessage() {
+export function useDeleteMessage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { chatId: string; direction: "next" | "prev" }): Promise<SwipeResult> =>
-      swipeMessage({ data: input }),
+    mutationFn: (input: { chatId: string; messageLocalId: number }) =>
+      deleteMessageBranch({ data: input }),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
+    },
+  });
+}
+
+export function useEditMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { chatId: string; messageLocalId: number; content: string }) =>
+      editMessage({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },

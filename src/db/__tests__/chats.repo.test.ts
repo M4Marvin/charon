@@ -245,5 +245,157 @@ describe("chats repo", () => {
         ),
       ).toThrow("Chat not found");
     });
+
+    it("updates content only without touching children/selected", () => {
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 1,
+          parentLocalId: null,
+          children: [2, 3],
+          selectedChildLocalId: 2,
+          role: "assistant",
+          content: "Original",
+          isUser: false,
+          isSystem: false,
+          extra: null,
+        },
+        db,
+      );
+      repoUpdateMessage(userId, "chat-1", 1, { content: "Edited" }, db);
+      const msg = repoGetMessage(userId, "chat-1", 1, db);
+      expect(msg!.content).toBe("Edited");
+      expect(msg!.children).toEqual([2, 3]);
+      expect(msg!.selectedChildLocalId).toBe(2);
+    });
+
+    it("round-trips isSystem on a system role message", () => {
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 0,
+          parentLocalId: null,
+          children: [1],
+          selectedChildLocalId: 1,
+          role: "system",
+          name: null,
+          content: "",
+          isUser: null,
+          isSystem: true,
+          extra: null,
+        },
+        db,
+      );
+      const root = repoGetMessage(userId, "chat-1", 0, db);
+      expect(root).toBeDefined();
+      expect(root!.role).toBe("system");
+      expect(root!.isSystem).toBe(true);
+      expect(root!.content).toBe("");
+    });
+
+    it("round-trips extra JSON (draft flag)", () => {
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 1,
+          parentLocalId: null,
+          children: [],
+          selectedChildLocalId: null,
+          role: "user",
+          content: "",
+          isUser: true,
+          isSystem: false,
+          extra: { isDraft: true },
+        },
+        db,
+      );
+      const msg = repoGetMessage(userId, "chat-1", 1, db);
+      expect(msg!.extra).toEqual({ isDraft: true });
+    });
+
+    it("supports multiple children of a hidden root (greeting pattern)", () => {
+      // Hidden root with three greeting children — the createChat flow shape.
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 0,
+          parentLocalId: null,
+          children: [1, 2, 3],
+          selectedChildLocalId: 1,
+          role: "system",
+          name: null,
+          content: "",
+          isUser: null,
+          isSystem: true,
+          extra: null,
+        },
+        db,
+      );
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 1,
+          parentLocalId: 0,
+          children: [],
+          selectedChildLocalId: null,
+          role: "assistant",
+          content: "Greeting 1",
+          isUser: false,
+          isSystem: false,
+          extra: null,
+        },
+        db,
+      );
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 2,
+          parentLocalId: 0,
+          children: [],
+          selectedChildLocalId: null,
+          role: "assistant",
+          content: "Greeting 2",
+          isUser: false,
+          isSystem: false,
+          extra: null,
+        },
+        db,
+      );
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 3,
+          parentLocalId: 0,
+          children: [],
+          selectedChildLocalId: null,
+          role: "assistant",
+          content: "Greeting 3",
+          isUser: false,
+          isSystem: false,
+          extra: null,
+        },
+        db,
+      );
+      const all = repoListMessages(userId, "chat-1", db);
+      expect(all).toHaveLength(4);
+      const root = all.find((m) => m.localId === 0)!;
+      expect(root.children).toEqual([1, 2, 3]);
+      expect(root.selectedChildLocalId).toBe(1);
+      expect(root.isSystem).toBe(true);
+    });
   });
 });
