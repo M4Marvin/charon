@@ -2,7 +2,6 @@ export type {
   CharacterCard,
   CharacterCardV1,
   CharacterCardV2,
-  CharacterCardV3,
   CharacterDataV2,
   CharacterExtensions,
   DepthPrompt,
@@ -29,7 +28,6 @@ import {
   CharacterExtensions as _CharacterExtensions,
   CharacterCardV1 as _CharacterCardV1,
   CharacterCardV2 as _CharacterCardV2,
-  CharacterCardV3 as _CharacterCardV3,
   FlattenedCharacter as _FlattenedCharacter,
   CharacterBookEntryExtensions as _CharacterBookEntryExtensions,
 } from "./validators.js";
@@ -42,7 +40,6 @@ export const DepthPromptSchema = _DepthPrompt;
 export const CharacterExtensionsSchema = _CharacterExtensions;
 export const CharacterCardV1Schema = _CharacterCardV1;
 export const CharacterCardV2Schema = _CharacterCardV2;
-export const CharacterCardV3Schema = _CharacterCardV3;
 export const FlattenedCharacterSchema = _FlattenedCharacter;
 export const CharacterBookEntryExtensionsSchema = _CharacterBookEntryExtensions;
 

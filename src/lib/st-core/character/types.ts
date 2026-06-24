@@ -5,15 +5,10 @@ export interface CharacterCardV2 {
   spec: "chara_card_v2";
   spec_version: "2.0";
   data: CharacterDataV2;
+  [key: string]: unknown;
 }
 
-export interface CharacterCardV3 {
-  spec: "chara_card_v3";
-  spec_version: string;
-  data: Record<string, unknown>;
-}
-
-export type CharacterCard = CharacterCardV2 | CharacterCardV3;
+export type CharacterCard = CharacterCardV2;
 
 export interface CharacterDataV2 {
   name: string;
@@ -31,6 +26,7 @@ export interface CharacterDataV2 {
   creator: string;
   character_version: string;
   extensions: CharacterExtensions;
+  [key: string]: unknown;
 }
 
 export interface CharacterExtensions {

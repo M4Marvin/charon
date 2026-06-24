@@ -104,6 +104,7 @@ export const CharacterDataV2 = type({
   creator: "string",
   character_version: "string",
   extensions: CharacterExtensions,
+  "[string]": "unknown",
 });
 
 // ── CharacterCardV2 ──
@@ -112,19 +113,12 @@ export const CharacterCardV2 = type({
   spec: "'chara_card_v2'",
   spec_version: "'2.0'",
   data: CharacterDataV2,
-});
-
-// ── CharacterCardV3 ──
-
-export const CharacterCardV3 = type({
-  spec: "'chara_card_v3'",
-  spec_version: "string",
-  data: type({ "[string]": "unknown" }),
+  "[string]": "unknown",
 });
 
 // ── CharacterCard ──
 
-export const CharacterCard = CharacterCardV2.or(CharacterCardV3);
+export const CharacterCard = CharacterCardV2;
 
 // ── CharacterCardV1 (legacy) ──
 
