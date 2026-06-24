@@ -166,7 +166,7 @@ Idempotent — re-runs skip by `(userId, name)`. Safe to run after partial failu
 | | App import | Migration |
 |---|---|---|
 | User | authenticated via `getSession()` | hardcoded `DEFAULT_USER_ID = "default-user"` |
-| Validation | strict `validateCharacterCard` | `normalizeCardData(raw)` then `validateCharacterCard` |
+| Validation | `normalizeCardData(raw)` then `validateCharacterCard` | `normalizeCardData(raw)` then `validateCharacterCard` |
 | Input | base64 string | file on disk |
 | Output | return result to client | log progress to stdout |
 | Idempotency | not idempotent (every call inserts) | dedup by name |
@@ -175,7 +175,7 @@ Idempotent — re-runs skip by `(userId, name)`. Safe to run after partial failu
 
 ### Card normalization (the key difference)
 
-`normalizeCardData()` in `scripts/migrate-data.ts` rewrites legacy ST data into a shape that passes the strict `validateCharacterCard`. Real-world SillyTavern cards routinely violate the V2 spec in benign ways. The user-facing import fn does **not** normalize — uploaded cards must already conform. The migration does, because the source data is already in our repo and we own it.
+`normalizeCardData()` lives in `src/lib/character/normalize.ts` (extracted from the migration script). Both paths — the user-facing `importCharacter` server fn and the legacy migration — run cards through it before `validateCharacterCard`, so uploads and migrations get identical leniency for benign V2 spec violations. The strict `validateCharacterCard` arktype gate still runs after normalization as the final check.
 
 Transformations applied:
 - `extensions.talkativeness` "0.5" → `0.5` (string → number, parseable)

@@ -1,6 +1,6 @@
 # st-v2 — Handoff
 
-Snapshot of project state, decisions, and next steps. Last updated: 2026-06-24.
+Snapshot of project state, decisions, and next steps. Last updated: 2026-06-25.
 
 ---
 
@@ -8,10 +8,12 @@ Snapshot of project state, decisions, and next steps. Last updated: 2026-06-24.
 
 - **st-core copied to `src/lib/st-core/`** — 7 pure-logic modules extracted from SillyTavern: `shared`, `character`, `chat-tree`, `lorebook`, `context`, `script`, `transform`.
 - **chat-tree logic verified** — 75 vitest tests covering every exported function in `tree.ts` and `tree-io.ts`, plus a swipe/regenerate integration scenario.
-- **Phase 0 done** — Drizzle schema, better-auth adapter wired, `dev.db` created with all 11 tables via `drizzle/0000_nebulous_famine.sql`. `getSession()` helper at `src/server/session.ts:14`.
+- **Phase 0 done** — Drizzle schema, better-auth adapter wired, `dev.db` created with all 11 tables via `drizzle/0000_nebulous_famine.sql`. `getSession()` helper at `src/server/session.ts:14` (single-user stub until real auth UX lands).
 - **Phase 1 (characters) done** — repo + server fns + hooks + UI routes + 15 repo tests. End-to-end V2 character import works: `/characters/new` → upload PNG → write to DB + `data/avatars/`.
+- **Phase 2 (lorebooks) done** — repo + server fns + hooks + UI routes (list, new, detail with entry CRUD dialog) + 36 repo tests. `listLorebooks` includes `entryCount` via leftJoin + groupBy. Schema: `lorebooks.config` and `lore_entries.data` typed via `$type<>`.
+- **Character detail page done** — `/characters/$id` two-column layout (sticky avatar+meta sidebar, scrollable field Cards), read-only display of all `CharacterDataV2` fields with empty fields skipped, Rename Dialog (name only) + Delete with confirm, collapsible embedded lorebook with read-only entries table.
 - **Legacy migration done** — `scripts/migrate-data.ts` imports the existing `public/data/` SillyTavern export (30 characters, 13 standalone lorebooks, 14 embedded books → 27 total, 278 entries, 1 persona). Re-runnable, idempotent.
-- **Roadmap** — Next is **Phase 2 (lorebooks UI)**, then **Phase 3 (chats)**, then **Phase 4 (presets)**, then **Phase 5 (personas)**.
+- **Upload validation fix done** — `src/lib/character/normalize.ts` (extracted from migration) is now shared by `importCharacter` and the migration script. Benign V2 violations (talkativeness-as-string, missing depth_prompt role, `character_book: null`) pass through. 9 unit tests cover the normalizer; total **135/135 green**. Next: **Phase 3 (chats)**, **Phase 4 (presets)**, **Phase 5 (personas)**.
 
 See `docs/character-import.md` for the V2 import + migration writeup.
 
@@ -108,13 +110,14 @@ src/db/
     character-data.ts             # makeCharacterData() fixture
     characters.repo.test.ts       # 15 tests covering create/get/list/update/delete + wrong-user throws
 src/server/
-  session.ts                      # getSession() — throws Unauthorized if no session
+  session.ts                      # getSession() — single-user stub (real auth wiring pending)
   fns/
     characters.ts                 # createServerFn list/get/import/update/delete
 src/routes/
   api/characters/$id/avatar.ts    # GET handler streams PNG bytes from data/avatars/
-  characters/index.tsx            # list view with delete buttons
+  characters/index.tsx            # list view with Open + Delete buttons
   characters/new.tsx              # import form (file input → base64 → server fn)
+  characters/$id.tsx              # detail page: two-column, read-only, rename + delete
 src/hooks/
   useCharacters.ts                # TanStack Query hooks: list, detail, import, update, delete + fileToBase64
 ```
@@ -124,12 +127,22 @@ src/hooks/
 **V2 import flow:**
 1. Client reads `File` via `file.arrayBuffer()` → `fileToBase64()` → base64 string.
 2. `importCharacter({ data: { pngBase64 } })` server fn.
-3. Server: `parseCharacterCard` → `validateCharacterCard` (arktype) → write PNG to `data/avatars/<uuid>.png` → insert `characters` row.
+3. Server: `parseCharacterCard` → `normalizeCardData` (shared app-level module) → `validateCharacterCard` (arktype) → write PNG to `data/avatars/<uuid>.png` → insert `characters` row.
 4. On success: `queryClient.invalidateQueries({ queryKey: ['characters'] })` in the hook.
 
-**Validation strictness:** the user-facing `importCharacter` is strict (real `validateCharacterCard` arktype call). The migration script (see below) uses a softer normalization layer first.
+**Validation strictness:** both `importCharacter` and the migration script run cards through the shared `normalizeCardData` (in `src/lib/character/normalize.ts`) before the strict `validateCharacterCard` arktype gate. Benign V2 violations pass through; genuinely malformed cards still reject with `ImportError.kind === "validation"`.
 
 **Edge cases handled (covered in `docs/character-import.md`):** corrupt PNG, no `chara` chunk, V3-only PNG, invalid V2 card, disk write failure, DB insert failure → orphan file cleanup, ENOENT on delete, duplicate imports allowed, single-user via `getSession()`.
+
+**Character detail page (`/characters/$id`):**
+- Two-column layout: sticky left sidebar (avatar, name, spec/version/creator/tags badges, `extensions.world` + `talkativeness`, created/updated dates, Rename + Delete buttons) and a scrollable right column of field Cards.
+- Read-only display of all `CharacterDataV2` fields. Empty fields are skipped entirely (no empty cards). Long-text fields use `whitespace-pre-wrap`.
+- Alternate greetings rendered as a numbered list (if any). Creator Notes / System Prompt / Post-History Instructions / Example Messages each get their own Card when present.
+- Optional `extensions.depth_prompt` shown in a dedicated Card with role + depth header.
+- Optional embedded `character_book` rendered via shadcn `Collapsible`: header row shows book name, description, entry count, scan depth, recursive flag; expanded view is a read-only entries table.
+- **Rename Dialog** — name-only edit via `useUpdateCharacter`; uses `Dialog` + `Input`. `useUpdateCharacter.onSuccess` writes the cache for `characterKeys.detail(id)`, so the header updates reactively.
+- **Delete** — `window.confirm` guard + `useDeleteCharacter`; on success, navigate back to `/characters`.
+- No new shadcn components needed (uses `badge`, `button`, `card`, `collapsible`, `dialog`, `input`, `label`, `table` — all already present).
 
 ### Legacy migration (`scripts/migrate-data.ts`)
 
@@ -158,12 +171,61 @@ V3 cards (4 in the current dataset: Kyane, Naomi, Rachel, "Kyomi, Summer with yo
 
 **Last run result:** 30/34 characters, 13 standalone + 14 embedded = 27 lorebooks (278 entries: 134 standalone + 144 embedded), 1 persona.
 
+### Lorebooks slice (Phase 2 complete)
+
+**Architecture (in place):**
+
+```
+src/db/
+  repositories/
+    lorebooks.ts                  # listLorebooks (with entryCount), getLorebook, createLorebook, updateLorebook, deleteLorebook,
+                                  # listEntries, getEntry, createEntry, updateEntry, deleteEntry, nextEntryUid
+  __tests__/
+    lorebook-data.ts              # makeLorebookConfig, makeLoreEntry fixtures
+    lorebooks.repo.test.ts        # 36 tests covering lorebook CRUD + entry CRUD + user isolation + cascade delete + nextEntryUid
+src/server/
+  fns/
+    lorebooks.ts                  # listLorebooks, getLorebook, createLorebook, updateLorebook, deleteLorebook,
+                                  # listLorebookEntries, createLorebookEntry, updateLorebookEntry, deleteLorebookEntry
+src/routes/
+  lorebooks/index.tsx             # list view with per-lorebook entry count badge + Delete with confirm
+  lorebooks/new.tsx               # create form (name + description)
+  lorebooks/$id.tsx               # detail with entries Table + entry CRUD Dialog (create + edit modes)
+src/hooks/
+  useLorebooks.ts                 # useLorebooks, useLorebook, useCreateLorebook, useUpdateLorebook, useDeleteLorebook,
+                                  # useLorebookEntries, useCreateLorebookEntry, useUpdateLorebookEntry, useDeleteLorebookEntry
+```
+
+**Layering:** same as characters — route/hook → `createServerFn` (validator + auth check) → repository (drizzle) → `db`. Repositories throw on not-found / wrong-user; the entry operations enforce ownership via `getLorebook(userId, lorebookId)` at the top of every entry op (entries have no `userId` column; ownership is transitive through the parent lorebook).
+
+**API surface (server fns):**
+- `listLorebooks()` — returns `LorebookWithCount` (`Lorebook & { entryCount: number }`) using a leftJoin + groupBy on `lore_entries`. Trivial cost at 27 rows.
+- `getLorebook({ id })` — full lorebook row.
+- `createLorebook({ name, description? })` — `id = randomUUID()`; `config` initialized from `DEFAULT_LORE_CONFIG` (depth 4, scanDepth 10, etc.).
+- `updateLorebook({ id, name?, description?, config? })` — partial patch; `config` is validated through `LoreConfigSchema` arktype before repo call.
+- `deleteLorebook({ id })` — DB cascade removes entries (FK `ON DELETE CASCADE`).
+- `listLorebookEntries({ lorebookId })` — entries ordered by `uid` ASC.
+- `createLorebookEntry({ lorebookId, ... })` — server fetches `nextEntryUid(userId, lorebookId)` (max+1) and builds a full `LoreEntry` object (with `position: 0`, `selectiveLogic: 0`, `scanDepth: null`, etc. for all the required fields the UI doesn't collect); the object is run through `LoreEntrySchema(...)` arktype for validation before write.
+- `updateLorebookEntry({ lorebookId, entryId, data, uid? })` — patches `data` and optionally `uid`; new `data` is arktype-validated.
+- `deleteLorebookEntry({ lorebookId, entryId })`.
+
+**Schema additions for Phase 2:** `lorebooks.config` typed via `$type<LoreConfig>()`; `lore_entries.data` typed via `$type<LoreEntryData>()`. This satisfies the framework's `ValidateSerializable` check (raw `text({ mode: 'json' })` would be `unknown`) and keeps the columns strongly typed end-to-end. Migration script (`scripts/migrate-data.ts`) now uses `as unknown as LoreEntryData` at both `lore_entries` insert sites — safe because the runtime JSON shape is already validated by the normalization + arktype pipeline before insert.
+
+**UI surface (`/lorebooks/$id`):**
+- List view (`/lorebooks`): card grid with name, description, entry count badge, Open + Delete buttons. Backed by `useLorebooks`.
+- Create form (`/lorebooks/new`): name (required) + description (optional). On success → navigate to the new lorebook's detail page.
+- Detail page (`/lorebooks/$id`): back button + title + entry count badge + `depth N · scan M` config badge. New Entry button at top right.
+- **Entries table**: columns are `UID | Comment | Keys | Order | On (enable badge) | Actions`. Clicking **Edit** opens a Dialog; **Delete** uses `window.confirm`.
+- **Entry Dialog** is a single shadcn `Dialog` reused for both `create` and `edit` modes via a discriminated `DialogState = { kind: "closed" } | { kind: "create" } | { kind: "edit"; entry: LoreEntry }` union. Form fields: `Comment`, `Keywords` (comma-separated), `Secondary keys` (optional, comma-separated), `Content` (required), `Order` (integer), `Constant` + `Disabled` checkboxes. Constant entries skip the "at least one keyword" requirement.
+
+**shadcn components used:** `badge`, `button`, `card`, `dialog`, `input`, `label`, `table`, `textarea` — all already present, none added.
+
 ### Existing app surface
 
 - `src/routes/__root.tsx` — root with Header + TanStack providers.
 - `src/routes/index.tsx` — **client-side pipeline demo** (no DB, no API calls). Uses in-memory `SAMPLE_CHARACTER` + `SAMPLE_CHAT_HISTORY` from `src/lib/chat/sample-data.ts` and `runPipeline` from `src/lib/chat/pipeline.ts`. 9-step preprocessing visualization.
 - `src/lib/chat/` — pipeline, preset, pre-process, context-builder, lorebook, types, sample-data. App-level logic, no persistence.
-- `src/components/Header.tsx` — Home + Characters nav.
+- `src/components/Header.tsx` — Home + Characters + Lorebooks nav.
 - `src/integrations/tanstack-query/` — root provider + devtools.
 - `src/styles.css` and `src/lib/utils.ts` — tailwind v4 + shadcn-style helpers.
 
@@ -190,7 +252,7 @@ V3 cards (4 in the current dataset: Kyane, Naomi, Rachel, "Kyomi, Summer with yo
 
 ---
 
-## Architecture (CRUD layers — Phase 1 pattern, not yet built for other entities)
+## Architecture (CRUD layers — Phase 1 + 2 built; chats/presets/personas pending)
 
 ```
 src/db/
@@ -198,7 +260,7 @@ src/db/
   index.ts                  # db instance + DB type export
   repositories/
     characters.ts           # thin drizzle query fns, all take userId ✅
-    lorebooks.ts            # ⏳ Phase 2
+    lorebooks.ts            # lorebook + entry CRUD, all take userId ✅
     chats.ts                # ⏳ Phase 3 (includes message-tree ops)
     presets.ts              # ⏳ Phase 4
     personas.ts             # ⏳ Phase 5
@@ -206,24 +268,30 @@ src/db/
     helpers.ts              # in-memory :memory: db + schema builder ✅
     character-data.ts       # fixture factory ✅
     characters.repo.test.ts # 15 tests ✅
+    lorebook-data.ts        # makeLorebookConfig + makeLoreEntry fixtures ✅
+    lorebooks.repo.test.ts  # 36 tests ✅
 src/server/
-  session.ts                # getSession() — throws Unauthorized ✅
+  session.ts                # getSession() — single-user stub ✅
   fns/
     characters.ts           # list/get/import/update/delete ✅
-    lorebooks.ts            # ⏳ Phase 2
+    lorebooks.ts            # lorebook + entry server fns ✅
     chats.ts                # ⏳ Phase 3
     presets.ts              # ⏳ Phase 4
     personas.ts             # ⏳ Phase 5
 src/hooks/
   useCharacters.ts          # TanStack Query hooks ✅
-  useLorebooks.ts           # ⏳
+  useLorebooks.ts           # TanStack Query hooks ✅
   useChats.ts               # ⏳
   usePresets.ts             # ⏳
   usePersonas.ts            # ⏳
 src/routes/
-  characters/index.tsx      # list view ✅
+  characters/index.tsx      # list view with Open + Delete ✅
   characters/new.tsx        # import form ✅
+  characters/$id.tsx        # detail page (two-column, rename + delete) ✅
   api/characters/$id/avatar.ts # avatar stream ✅
+  lorebooks/index.tsx       # list view with entry count badges ✅
+  lorebooks/new.tsx         # create form ✅
+  lorebooks/$id.tsx         # detail page with entries + entry CRUD dialog ✅
 ```
 
 **Layering:** route/hook → `createServerFn` (validator + auth check) → repository (drizzle) → `db`.
@@ -252,8 +320,8 @@ src/routes/
 | Table | Key columns | Status |
 |---|---|---|
 | `characters` | id (uuid text pk), userId fk, name, `data` text-json (`CharacterDataV2` via `$type<>`), spec, specVersion, imagePath, createdAt, updatedAt | ✅ in use |
-| `lorebooks` | id pk, userId fk, name, description, imagePath, `config` text-json (`LoreConfig`), createdAt, updatedAt | ✅ in use (read via migration) |
-| `lore_entries` | id pk, lorebookId fk, uid int (per-book), `data` text-json, createdAt, updatedAt | ✅ in use |
+| `lorebooks` | id pk, userId fk, name, description, imagePath, `config` text-json (`$type<LoreConfig>()` — added Phase 2), createdAt, updatedAt | ✅ in use (read via migration) |
+| `lore_entries` | id pk, lorebookId fk, uid int (per-book), `data` text-json (`$type<LoreEntryData>()` — added Phase 2), createdAt, updatedAt | ✅ in use |
 | `chats` | id pk, userId fk, characterId fk, title, backgroundPath, `metadata` text-json, createdAt, updatedAt | ⏳ Phase 3 |
 | `chat_messages` | composite pk (chatId, localId int), parentLocalId int nullable, `children` text-json (number[]), selectedChildLocalId int nullable, role, name, content, isUser int, isSystem int, `extra` text-json | ⏳ Phase 3 |
 | `presets` | id pk, userId fk, name (unique per user), `data` text-json, createdAt, updatedAt | ⏳ Phase 4 (out of scope — user opted out of preset migration) |
@@ -277,17 +345,28 @@ User-scoped CRUD for **Characters, Chats+messages, Lorebooks, Presets, Personas*
 | **0** | `src/db/schema.ts` · wire `drizzleAdapter` in `auth.ts` · `src/server/session.ts` `getSession()` · generate + run migrations | ✅ Done |
 | **1** | Characters: repo + server fns + hooks + UI routes + repo test | ✅ Done |
 | **migration** | `scripts/migrate-data.ts` for legacy `public/data/` | ✅ Done |
-| **2** | Lorebooks + entries: repo + server fns + hooks + repo test | ⏳ Next |
-| **3** | Chats + messages: repo + server fns + hooks + repo test (re-uses chat-tree integration scenario) | ⏳ |
+| **2** | Lorebooks + entries: repo + server fns + hooks + UI routes + repo test | ✅ Done |
+| **character detail** | `/characters/$id` — two-column read-only + rename + delete + collapsible embedded lorebook | ✅ Done |
+| **upload-fix** | Share `normalizeCardData` between migration + `importCharacter` so PNG uploads get the same leniency as legacy imports | ✅ Done (see "Upload Validation Fix" below) |
+| **3** | Chats + messages: repo + server fns + hooks + repo test (re-uses chat-tree integration scenario) | ⏳ Next |
 | **4** | Presets: repo + server fns + hooks + repo test | ⏳ (user opted out of preset migration; still want CRUD for future user-created presets) |
 | **5** | Personas: repo + server fns + hooks + repo test | ⏳ |
 | **6** | Cross-cutting: `nub run test`, `npx tsc --noEmit`, lint, format, user-isolation tests | ⏳ |
 
-**Next: Phase 2 (lorebooks)** — `useLorebooks` hook + list/detail routes, build on the same pattern as characters. Character slice has only the bare CRUD; lorebooks are similar but with embedded-entries display (a lorebook's list of entries is its main content).
+**Next: Phase 3 (chats)**.
 
 ---
 
-## Decisions Log
+## Upload Validation Fix (done 2026-06-25)
+
+`src/lib/character/normalize.ts` (extracted from `scripts/migrate-data.ts`) is now shared by both `importCharacter` and the migration script. Both paths run raw cards through `normalizeCardData` before the strict `validateCharacterCard` arktype gate, so uploads and migrations get identical leniency for benign V2 spec violations (talkativeness-as-string, missing `depth_prompt.role`, `character_book: null`, etc.).
+
+- 9 unit tests in `src/lib/character/normalize.test.ts` cover the normalizer; total **135/135 green**.
+- The strict `validateCharacterCard` still runs *after* normalization as the final gate — genuinely malformed cards (missing `name`, non-array `tags`) still reject with `ImportError.kind === "validation"`.
+- The stored card is the *normalized* version, identical to what the migration already stored. Avatar PNG bytes on disk are untouched.
+- st-core validators are unchanged (copied library not edited).
+
+---
 
 | Decision | Choice | Why |
 |---|---|---|
@@ -315,6 +394,16 @@ User-scoped CRUD for **Characters, Chats+messages, Lorebooks, Presets, Personas*
 | Migration chats | **Not migrated** | User opted out (chats were causing 0-message issue + skipping is easier). |
 | Server fn output strictness | `strict: { output: false }` on fns returning `Character` | The `Record<string, unknown>` in st-core's `CharacterBook.extensions` and `CharacterExtensions` is not statically serializable, even though the runtime data is JSON. |
 | Server fn validator pattern | Plain `(data: unknown) => CleanType` wrappers around arktype | arktype's `ArkErrors` union doesn't satisfy the framework's `ValidateSerializable`. Wrappers rethrow on error. |
+| Lorebook list entry counts | `leftJoin + groupBy` in `listLorebooks` returning `LorebookWithCount` | Single query returns lorebooks with `entryCount` badge. Trivial cost at 27 rows; clean per-row object for consumers. |
+| Lore entry ownership check | `getLorebook(userId, lorebookId)` at top of every entry repo fn | Entries have no `userId` column; ownership enforced transitively via the parent lorebook. Same pattern as the character avatar API route. |
+| Lorebook data column typing | `$type<LoreConfig>()` on `lorebooks.config`, `$type<LoreEntryData>()` on `lore_entries.data` | Per handoff convention ($type<> for known JSON shapes). Satisfies framework's `ValidateSerializable` check; avoids `unknown` end-to-end. Added in Phase 2. |
+| Lorebook entry create input | Build full `LoreEntry` from sparse UI form, validate via `LoreEntrySchema(...)` arktype | The form only collects a few fields; the rest are filled with safe defaults (position 0, selectiveLogic 0, scanDepth null, etc.) and the whole object is arktype-validated before write. |
+| Entry create/edit Dialog | Single shadcn `Dialog` reused for both modes via discriminated `DialogState` union | One form, two entry points; avoids duplicating the create vs edit form structure. |
+| Character detail page scope | Read-only display of all `CharacterDataV2` fields + Rename Dialog (name only) + Delete | `useUpdateCharacter` only patches `name` today; editing card data fields is a separate task. Empty fields skipped to keep the page tight. |
+| Character detail layout | Two-column: sticky avatar+meta sidebar left, scrollable field Cards right | User choice 2026-06-25. Balances dense field data with a persistent identity sidebar. |
+| Embedded lorebook on character page | shadcn `Collapsible` with read-only entries table | Editing embedded books happens via the lorebooks UI after migration extracts the book. Character page is for inspection. |
+| Character list Delete guard | `window.confirm` | Matches lorebook list pattern; no new component needed (alert-dialog not wired for confirmation in this slice). |
+| Upload validation strictness | Both `importCharacter` and the migration script run cards through the shared `normalizeCardData` (`src/lib/character/normalize.ts`) before the strict `validateCharacterCard` gate | Benign V2 violations (talkativeness-as-string, missing `depth_prompt.role`, `character_book: null`) pass through. Done 2026-06-25. |
 
 ---
 
@@ -325,6 +414,8 @@ Per `AGENTS.md`, these are **pre-existing and expected** — do not fix unless a
 - `src/lib/st-core/transform/regex.ts:161` — `'params' is declared but its value is never read` (`noUnusedLocals`).
 - `drizzle.config.ts(6,29)` — pre-existing type error in drizzle config (DB url typed as `string` not `string | undefined`). Surfaced by `npx tsc --noEmit`.
 
+**Migration script cast at `lore_entries` insert sites:** `scripts/migrate-data.ts` uses `as unknown as LoreEntryData` at the two `loreEntries` insert sites (embedded books + standalone worlds). Required after `lore_entries.data` gained its `$type<>()` in Phase 2. Safe — the runtime JSON shape is already validated by the normalization + arktype pipeline before insert; the double-cast bridges the loose `WorldEntry` / `CharacterBookEntry` import types to the strict stored type.
+
 **Operational gotcha — FKs are not enforced in dev.db:**
 
 The schema declares `ON DELETE CASCADE` on `lore_entries.lorebook_id` and `chat_messages.chat_id`, but the drizzle instance in `src/db/index.ts` does not set `PRAGMA foreign_keys = ON` per connection. So deleting a lorebook or chat leaves their children as orphans in the DB. This is a SQLite-level concern; the FK declarations are correct in the schema and would take effect on any client that enables enforcement. Workaround for now: manual wipes must also delete `lore_entries` and `chat_messages` (see the "To re-run safely" section in `docs/character-import.md`).
@@ -333,8 +424,10 @@ The schema declares `ON DELETE CASCADE` on `lore_entries.lorebook_id` and `chat_
 
 ## Deferred / Out of Scope
 
-- **Character detail page / chat kickoff UI** — list + import work, but `/characters/$id` route not built. Phase 3 will need a similar "open chat" link.
-- **Persona / Lorebook / Preset CRUD UI** — `useX` hooks and routes not yet built (Phases 2 / 4 / 5).
+- **Editing character card `data` fields via UI** — the character detail page is read-only + rename (name only). The `updateCharacter` server fn only patches `name` today; extending it to patch `data` (description / personality / scenario / etc.) is a separate task.
+- **Full embedded-lorebook editing on the character page** — the embedded book is shown as a read-only `Collapsible`. Editing happens via the lorebooks UI (`/lorebooks/$id`) after migration extracts the book into its own lorebook row.
+- **"Start chat" CTA on the character detail page** — chats are Phase 3; the detail page does not yet link into a chat.
+- **Persona / Preset CRUD UI** — lorebooks UI is built (Phase 2); persona + preset `useX` hooks and routes are still Phases 4 / 5.
 - **Chat JSONL migration** — the script tried to migrate chats but user opted out. Tamyra's chat files have messages without `id` fields (different ST export format). For future re-attempt: re-id messages sequentially, parse metadata line into `metadata` column.
 - **Prompt-manager / PromptSection persistence** — the `context` module has a `PromptCollection`; not in the 5-entity scope.
 - **Top-level `st-core` barrel expansion** — `index.ts` still only re-exports `shared/`.
@@ -361,27 +454,39 @@ The schema declares `ON DELETE CASCADE` on `lore_entries.lorebook_id` and `chat_
 
 ### Tests
 - `src/lib/st-core/chat-tree/tree.test.ts` — **75/75 passing**
+- `src/lib/character/normalize.test.ts` — **9/9 passing**
 - `src/db/__tests__/characters.repo.test.ts` — **15/15 passing**
+- `src/db/__tests__/lorebooks.repo.test.ts` — **36/36 passing**
 
 ### App (existing)
 - `src/routes/__root.tsx` — root route with providers
 - `src/routes/index.tsx` — pipeline demo (client-side, in-memory)
 - `src/routes/api/auth/$.ts` — better-auth API route
-- `src/routes/characters/index.tsx` — character list view
+- `src/routes/characters/index.tsx` — character list view (with Open + Delete)
 - `src/routes/characters/new.tsx` — V2 import form
+- `src/routes/characters/$id.tsx` — character detail (two-column, rename + delete, collapsible embedded lorebook)
 - `src/routes/api/characters/$id/avatar.ts` — avatar PNG stream
-- `src/components/Header.tsx` — Home + Characters nav
+- `src/routes/lorebooks/index.tsx` — lorebook list view (with entry count badges)
+- `src/routes/lorebooks/new.tsx` — new lorebook form
+- `src/routes/lorebooks/$id.tsx` — lorebook detail with entries table + entry CRUD dialog
+- `src/components/Header.tsx` — Home + Characters + Lorebooks nav
 - `src/lib/auth.ts` — better-auth instance
 - `src/lib/auth-client.ts` — better-auth client
 - `src/lib/chat/{pipeline,preset,pre-process,context-builder,lorebook,types,sample-data}.ts`
 - `src/lib/utils.ts` — `cn()` helper
 - `src/integrations/tanstack-query/{root-provider,devtools}.tsx`
 - `src/db/index.ts` — drizzle instance (DB type export)
-- `src/db/schema.ts` — all table defs (auth + 5 domain entities)
+- `src/db/schema.ts` — all table defs (auth + 5 domain entities; `$type<>` on `characters.data`, `lorebooks.config`, `lore_entries.data`)
 - `src/db/repositories/characters.ts` — character CRUD
-- `src/server/session.ts` — getSession() helper
+- `src/db/repositories/lorebooks.ts` — lorebook + entry CRUD (with `entryCount` aggregation)
+- `src/db/__tests__/character-data.ts` — `makeCharacterData` fixture
+- `src/db/__tests__/lorebook-data.ts` — `makeLorebookConfig`, `makeLoreEntry` fixtures
+- `src/server/session.ts` — getSession() helper (single-user stub)
 - `src/server/fns/characters.ts` — character server fns
+- `src/server/fns/lorebooks.ts` — lorebook + entry server fns
 - `src/hooks/useCharacters.ts` — character TanStack Query hooks
+- `src/hooks/useLorebooks.ts` — lorebook + entry TanStack Query hooks
+- `src/lib/character/normalize.ts` — shared `normalizeCardData` (extracted from migration; called by both `importCharacter` and the migration script)
 - `scripts/migrate-data.ts` — legacy ST data migration
 - `drizzle.config.ts` — drizzle-kit config
 
@@ -405,7 +510,7 @@ The schema declares `ON DELETE CASCADE` on `lore_entries.lorebook_id` and `chat_
 2. Read `docs/handoff.md` (this file) for state.
 3. Read `docs/character-import.md` for the import + migration writeup.
 4. Read `docs/pages.md` for the characters UI pages (list, import form, avatar API).
-5. Run `nub run test` — expect **90/90** green (75 chat-tree + 15 characters repo).
+5. Run `nub run test` — expect **135/135** green (75 chat-tree + 15 characters repo + 36 lorebooks repo + 9 normalize).
 6. Run `npx tsc --noEmit` — expect 2 pre-existing errors only (drizzle config + transform/regex:161).
 7. Run `nub run migrate` — expect 30 chars, 27 lorebooks, 1 persona (re-runs are no-ops via dedup).
-8. Continue with **Phase 2 (lorebooks)** — mirror the characters pattern.
+8. **Next: Phase 3 (chats)** — repo + server fns + hooks + UI + tests. Mirror the characters / lorebooks pattern. Re-use the chat-tree `tree.test.ts` swipe/regenerate integration scenario at the repo level.

@@ -133,7 +133,8 @@ For full project state, see `docs/handoff.md` (this used to be `HANDOFF.md` at r
 - **Phase 0 (DB + auth) done** — drizzle schema with 11 tables, better-auth adapter wired, `dev.db` created via `drizzle/0000_nebulous_famine.sql`
 - **Phase 1 (Characters) done** — repo (`src/db/repositories/characters.ts`) + 15 repo tests + server fns (`src/server/fns/characters.ts`) + TanStack Query hooks (`src/hooks/useCharacters.ts`) + 2 UI routes (`/characters`, `/characters/new`) + avatar API route (`/api/characters/$id/avatar`)
 - **Legacy migration done** — `scripts/migrate-data.ts` (run via `nub run migrate`) imports 30/34 V2 characters, 13 standalone + 14 embedded = 27 lorebooks, 1 persona from `public/data/`
-- 90/90 tests passing (75 chat-tree + 15 characters repo)
+- **Upload validation fix done** — `src/lib/character/normalize.ts` extracted from migration; shared by `importCharacter` and the migration script. Benign V2 spec violations (talkativeness-as-string, missing `depth_prompt.role`, `character_book: null`) now pass the user-facing upload path. 9 unit tests cover the normalizer.
+- 135/135 tests passing (75 chat-tree + 9 normalize + 15 characters repo + 36 lorebooks repo)
 
 ## Commands
 
