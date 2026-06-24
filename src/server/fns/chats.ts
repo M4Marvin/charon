@@ -360,12 +360,6 @@ export const swipeMessage = createServerFn({ method: "POST", strict: { output: f
     if (data.messageLocalId === 0) throw new Error("Cannot swipe the hidden root");
     const { user } = await getSession();
 
-    // Load chat + character up front — needed for the character name when
-    // creating a new assistant sibling (esp. for the edited-user-treated-as-
-    // assistant case where target.name is the user's name, not the char's).
-    const chat = repoGetChat(user.id, data.chatId);
-    const char: Character = repoGetChar(user.id, chat.characterId);
-
     const rows = repoListMessages(user.id, data.chatId);
     const tree = treeFromNodes(rows.map(rowToMessage));
 
@@ -404,17 +398,7 @@ export const swipeMessage = createServerFn({ method: "POST", strict: { output: f
 
     // Next direction, no sibling — right arrow is never disabled, so we
     // always create a new sibling. addSibling does NOT auto-select.
-    //
-    // Role logic for the new sibling:
-    //   - Edited messages always treat as assistant (override).
-    //   - Greetings (children of the hidden root) treat as user so an
-    //     exhausted greeting list yields a draft user message to type into.
-    //   - Otherwise, follow the actual role.
-    const isEdited = (target.extra?.edited ?? false) === true;
-    const isUserMsg =
-      !isEdited &&
-      ((target.is_user ?? target.role === "user") === true || target.parent_id === 0);
-
+    const isUserMsg = (target.is_user ?? target.role === "user") === true;
     const newMsg: ChatMessage = isUserMsg
       ? {
           id: getNextId(tree),
@@ -435,11 +419,11 @@ export const swipeMessage = createServerFn({ method: "POST", strict: { output: f
           children: [],
           selected_child_id: null,
           role: "assistant",
-          // Use the chat's character name — correct for the common case
-          // (regenerate an assistant reply) and the new edited-user ->
-          // assistant case (where target.name is the user's name).
-          name: char.data.name,
-          content: pickDefaultReply(rows.length + 1),
+          name: target.name,
+          content:
+            target.parent_id === 0
+              ? "Make your own greeting!"
+              : pickDefaultReply(rows.length + 1),
           is_user: false,
           is_system: false,
         };
@@ -519,10 +503,7 @@ export const editMessage = createServerFn({ method: "POST", strict: { output: fa
         throw new Error("Cannot edit a draft message; send to populate it instead");
       }
 
-      repoUpdateMessage(user.id, data.chatId, data.messageLocalId, {
-        content: data.content,
-        extra: { edited: true },
-      });
+      repoUpdateMessage(user.id, data.chatId, data.messageLocalId, { content: data.content });
       return { messageLocalId: data.messageLocalId, content: data.content };
     },
   );
