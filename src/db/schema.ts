@@ -7,6 +7,8 @@ import {
   text,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
+import type { CharacterDataV2 } from "@/lib/st-core/character";
+import type { LoreConfig, LoreEntry as LoreEntryData } from "@/lib/st-core/lorebook";
 
 // ── Auth tables (better-auth) ────────────────────────────────────────────────
 // Shape matches better-auth's drizzle adapter expectations. Table names and
@@ -96,10 +98,10 @@ export const characters = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    data: text("data", { mode: "json" }).notNull(),
+    data: text("data", { mode: "json" }).$type<CharacterDataV2>().notNull(),
     spec: text("spec").notNull().default("chara_card_v2"),
     specVersion: text("spec_version").notNull().default("2.0"),
-    avatar: integer("avatar", { mode: "boolean" }).notNull().default(false),
+    imagePath: text("image_path"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -121,7 +123,8 @@ export const lorebooks = sqliteTable(
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description"),
-    config: text("config", { mode: "json" }).notNull(),
+    imagePath: text("image_path"),
+    config: text("config", { mode: "json" }).$type<LoreConfig>().notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -142,7 +145,7 @@ export const loreEntries = sqliteTable(
       .notNull()
       .references(() => lorebooks.id, { onDelete: "cascade" }),
     uid: integer("uid").notNull(),
-    data: text("data", { mode: "json" }).notNull(),
+    data: text("data", { mode: "json" }).$type<LoreEntryData>().notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -169,6 +172,7 @@ export const chats = sqliteTable(
       .notNull()
       .references(() => characters.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
+    backgroundPath: text("background_path"),
     metadata: text("metadata", { mode: "json" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
@@ -244,7 +248,7 @@ export const personas = sqliteTable(
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description"),
-    icon: text("icon"),
+    iconPath: text("icon_path"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),

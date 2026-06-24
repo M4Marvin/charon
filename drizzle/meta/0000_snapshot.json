@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "b448c7c5-4602-46c8-816b-eb26ec088ceb",
+  "id": "d6e2b6af-b35d-4b6c-96e3-e35d2ca9d1ef",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "account": {
@@ -166,13 +166,12 @@
           "autoincrement": false,
           "default": "'2.0'"
         },
-        "avatar": {
-          "name": "avatar",
-          "type": "integer",
+        "image_path": {
+          "name": "image_path",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
+          "notNull": false,
+          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",
@@ -366,6 +365,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "background_path": {
+          "name": "background_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "metadata": {
           "name": "metadata",
           "type": "text",
@@ -549,6 +555,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "image_path": {
+          "name": "image_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "config": {
           "name": "config",
           "type": "text",
@@ -630,8 +643,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "icon": {
-          "name": "icon",
+        "icon_path": {
+          "name": "icon_path",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

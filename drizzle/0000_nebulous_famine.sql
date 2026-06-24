@@ -22,7 +22,7 @@ CREATE TABLE `characters` (
 	`data` text NOT NULL,
 	`spec` text DEFAULT 'chara_card_v2' NOT NULL,
 	`spec_version` text DEFAULT '2.0' NOT NULL,
-	`avatar` integer DEFAULT false NOT NULL,
+	`image_path` text,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
@@ -51,6 +51,7 @@ CREATE TABLE `chats` (
 	`user_id` text NOT NULL,
 	`character_id` text NOT NULL,
 	`title` text NOT NULL,
+	`background_path` text,
 	`metadata` text,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
@@ -77,6 +78,7 @@ CREATE TABLE `lorebooks` (
 	`user_id` text NOT NULL,
 	`name` text NOT NULL,
 	`description` text,
+	`image_path` text,
 	`config` text NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
@@ -89,7 +91,7 @@ CREATE TABLE `personas` (
 	`user_id` text NOT NULL,
 	`name` text NOT NULL,
 	`description` text,
-	`icon` text,
+	`icon_path` text,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
