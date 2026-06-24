@@ -1,22 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { getSession } from "@/server/session";
-import type { Chat, ChatMessageRow, NewChatMessageRow, Character } from "@/db/schema";
+import type { ChatMessageRow, NewChatMessageRow, Character } from "@/db/schema";
 import {
   createChat as repoCreateChat,
   deleteChat as repoDeleteChat,
-  deleteMessages as repoDeleteMessages,
   getChat as repoGetChat,
   insertMessage as repoInsertMessage,
   listChats as repoListChats,
   listMessages as repoListMessages,
   updateMessage as repoUpdateMessage,
   type ChatWithCharacter,
-  type MessagePatch,
 } from "@/db/repositories/chats";
 import { getCharacter as repoGetChar } from "@/db/repositories/characters";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
-import { treeFromNodes, treeToNodes } from "@/lib/st-core/chat-tree/tree-io";
+import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import {
   addChild,
   addSibling,
@@ -87,6 +85,8 @@ export type ChatListItem = ChatWithCharacter;
 export type ChatDetail = {
   id: string;
   characterId: string;
+  characterName: string;
+  characterImagePath: string | null;
   title: string;
   createdAt: Date;
   updatedAt: Date;
@@ -103,14 +103,14 @@ export type SwipeResult = {
 
 // ── Server functions ────────────────────────────────────────────────────────
 
-export const listChats = createServerFn({ method: "GET" }).handler(
+export const listChats = createServerFn({ method: "GET", strict: { output: false } }).handler(
   async (): Promise<ChatListItem[]> => {
     const { user } = await getSession();
     return repoListChats(user.id);
   },
 );
 
-export const getChat = createServerFn({ method: "GET" })
+export const getChat = createServerFn({ method: "GET", strict: { output: false } })
   .validator((data: unknown) => {
     if (typeof data !== "object" || data === null) throw new Error("Invalid input");
     const d = data as Record<string, unknown>;
@@ -120,16 +120,19 @@ export const getChat = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<ChatDetail> => {
     const { user } = await getSession();
     const chat = repoGetChat(user.id, data.id);
+    const char = repoGetChar(user.id, chat.characterId);
     return {
       id: chat.id,
       characterId: chat.characterId,
+      characterName: char.name,
+      characterImagePath: char.imagePath,
       title: chat.title,
       createdAt: chat.createdAt,
       updatedAt: chat.updatedAt,
     };
   });
 
-export const getChatMessages = createServerFn({ method: "GET" })
+export const getChatMessages = createServerFn({ method: "GET", strict: { output: false } })
   .validator((data: unknown) => {
     if (typeof data !== "object" || data === null) throw new Error("Invalid input");
     const d = data as Record<string, unknown>;
@@ -141,7 +144,7 @@ export const getChatMessages = createServerFn({ method: "GET" })
     return repoListMessages(user.id, data.id);
   });
 
-export const createChat = createServerFn({ method: "POST" })
+export const createChat = createServerFn({ method: "POST", strict: { output: false } })
   .validator((data: unknown) => {
     if (typeof data !== "object" || data === null) throw new Error("Invalid input");
     const d = data as Record<string, unknown>;
@@ -183,13 +186,15 @@ export const createChat = createServerFn({ method: "POST" })
     return {
       id: chat.id,
       characterId: chat.characterId,
+      characterName: char.data.name,
+      characterImagePath: char.imagePath,
       title: chat.title,
       createdAt: chat.createdAt,
       updatedAt: chat.updatedAt,
     };
   });
 
-export const sendMessage = createServerFn({ method: "POST" })
+export const sendMessage = createServerFn({ method: "POST", strict: { output: false } })
   .validator((data: unknown) => {
     if (typeof data !== "object" || data === null) throw new Error("Invalid input");
     const d = data as Record<string, unknown>;
@@ -257,12 +262,12 @@ export const sendMessage = createServerFn({ method: "POST" })
     repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, reply));
 
     return {
-      userMessage: messageToInsert(data.chatId, userMsg),
-      assistantMessage: messageToInsert(data.chatId, reply),
+      userMessage: messageToInsert(data.chatId, userMsg) as ChatMessageRow,
+      assistantMessage: messageToInsert(data.chatId, reply) as ChatMessageRow,
     };
   });
 
-export const regenerateMessage = createServerFn({ method: "POST" })
+export const regenerateMessage = createServerFn({ method: "POST", strict: { output: false } })
   .validator((data: unknown) => {
     if (typeof data !== "object" || data === null) throw new Error("Invalid input");
     const d = data as Record<string, unknown>;
@@ -307,10 +312,10 @@ export const regenerateMessage = createServerFn({ method: "POST" })
     });
     repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, newReply));
 
-    return { message: messageToInsert(data.chatId, newReply) };
+    return { message: messageToInsert(data.chatId, newReply) as ChatMessageRow };
   });
 
-export const swipeMessage = createServerFn({ method: "POST" })
+export const swipeMessage = createServerFn({ method: "POST", strict: { output: false } })
   .validator((data: unknown) => {
     if (typeof data !== "object" || data === null) throw new Error("Invalid input");
     const d = data as Record<string, unknown>;

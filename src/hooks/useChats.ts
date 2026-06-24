@@ -9,7 +9,6 @@ import {
   regenerateMessage,
   sendMessage,
   swipeMessage,
-  type ChatListItem,
   type SendResult,
   type SwipeResult,
 } from "@/server/fns/chats";

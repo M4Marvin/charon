@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { makeTestDb, seedTestUser, seedSecondUser, type TestDb } from "./helpers";
 import { makeCharacterData } from "./character-data";
