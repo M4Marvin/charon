@@ -1,0 +1,249 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
+import { makeTestDb, seedTestUser, seedSecondUser, type TestDb } from "./helpers";
+import { makeCharacterData } from "./character-data";
+import { characters, chatMessages } from "@/db/schema";
+import {
+  createChat as repoCreateChat,
+  deleteChat as repoDeleteChat,
+  getChat as repoGetChat,
+  listChats as repoListChats,
+  listMessages as repoListMessages,
+  insertMessage as repoInsertMessage,
+  getMessage as repoGetMessage,
+  updateMessage as repoUpdateMessage,
+  deleteMessages as repoDeleteMessages,
+} from "@/db/repositories/chats";
+
+describe("chats repo", () => {
+  let db: TestDb;
+  let userId: string;
+  let charId: string;
+
+  beforeEach(() => {
+    const ctx = makeTestDb();
+    db = ctx.db;
+    userId = seedTestUser(db);
+    const data = makeCharacterData();
+    charId = "char-1";
+    db.insert(characters)
+      .values({
+        id: charId,
+        userId,
+        name: data.name,
+        data,
+        spec: "chara_card_v2",
+        specVersion: "2.0",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .run();
+  });
+
+  describe("chat CRUD", () => {
+    it("creates a chat", () => {
+      const chat = repoCreateChat(
+        { id: "chat-1", userId, characterId: charId, title: "My Chat" },
+        db,
+      );
+      expect(chat.id).toBe("chat-1");
+      expect(chat.title).toBe("My Chat");
+      expect(chat.characterId).toBe(charId);
+    });
+
+    it("lists chats with character info", () => {
+      repoCreateChat({ id: "chat-1", userId, characterId: charId, title: "A" }, db);
+      repoCreateChat({ id: "chat-2", userId, characterId: charId, title: "B" }, db);
+      const all = repoListChats(userId, db);
+      expect(all).toHaveLength(2);
+      expect(all[0]!.characterName).toBe("Test Character");
+    });
+
+    it("gets a chat by id", () => {
+      repoCreateChat({ id: "chat-1", userId, characterId: charId, title: "My Chat" }, db);
+      const chat = repoGetChat(userId, "chat-1", db);
+      expect(chat.id).toBe("chat-1");
+    });
+
+    it("throws on get by wrong user", () => {
+      repoCreateChat({ id: "chat-1", userId, characterId: charId, title: "My Chat" }, db);
+      expect(() => repoGetChat("other-user", "chat-1", db)).toThrow("Chat not found");
+    });
+
+    it("lists only the current user's chats", () => {
+      const otherId = seedSecondUser(db);
+      repoCreateChat({ id: "chat-1", userId, characterId: charId, title: "Mine" }, db);
+      repoCreateChat({ id: "chat-2", userId: otherId, characterId: charId, title: "Theirs" }, db);
+      expect(repoListChats(userId, db)).toHaveLength(1);
+    });
+
+    it("deletes a chat and its messages", () => {
+      repoCreateChat({ id: "chat-1", userId, characterId: charId, title: "My Chat" }, db);
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 1,
+          parentLocalId: null,
+          children: [],
+          selectedChildLocalId: null,
+          role: "assistant",
+          name: "Test",
+          content: "Hello!",
+          isUser: false,
+          isSystem: false,
+          extra: null,
+        },
+        db,
+      );
+      repoDeleteChat(userId, "chat-1", db);
+      expect(() => repoGetChat(userId, "chat-1", db)).toThrow("Chat not found");
+      // Verify messages were cascade-deleted (raw query since listMessages checks ownership)
+      const remaining = db.select().from(chatMessages).where(eq(chatMessages.chatId, "chat-1")).all();
+      expect(remaining).toHaveLength(0);
+    });
+
+    it("throws on delete by wrong user", () => {
+      repoCreateChat({ id: "chat-1", userId, characterId: charId, title: "My Chat" }, db);
+      expect(() => repoDeleteChat("other-user", "chat-1", db)).toThrow("Chat not found");
+    });
+  });
+
+  describe("message CRUD", () => {
+    beforeEach(() => {
+      repoCreateChat({ id: "chat-1", userId, characterId: charId, title: "My Chat" }, db);
+    });
+
+    it("inserts and lists messages", () => {
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 1,
+          parentLocalId: null,
+          children: [],
+          selectedChildLocalId: null,
+          role: "assistant",
+          content: "Hello!",
+          isUser: false,
+          isSystem: false,
+          extra: null,
+        },
+        db,
+      );
+      const msgs = repoListMessages(userId, "chat-1", db);
+      expect(msgs).toHaveLength(1);
+      expect(msgs[0]!.content).toBe("Hello!");
+    });
+
+    it("gets a message by localId", () => {
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 1,
+          parentLocalId: null,
+          children: [2],
+          selectedChildLocalId: 2,
+          role: "assistant",
+          content: "Greeting",
+          isUser: false,
+          isSystem: false,
+          extra: null,
+        },
+        db,
+      );
+      const msg = repoGetMessage(userId, "chat-1", 1, db);
+      expect(msg).toBeDefined();
+      expect(msg!.children).toEqual([2]);
+    });
+
+    it("updates a message", () => {
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 1,
+          parentLocalId: null,
+          children: [],
+          selectedChildLocalId: null,
+          role: "assistant",
+          content: "Hello!",
+          isUser: false,
+          isSystem: false,
+          extra: null,
+        },
+        db,
+      );
+      repoUpdateMessage(userId, "chat-1", 1, { children: [2], selectedChildLocalId: 2 }, db);
+      const msg = repoGetMessage(userId, "chat-1", 1, db);
+      expect(msg!.children).toEqual([2]);
+      expect(msg!.selectedChildLocalId).toBe(2);
+    });
+
+    it("deletes messages", () => {
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 1,
+          parentLocalId: null,
+          children: [],
+          selectedChildLocalId: null,
+          role: "assistant",
+          content: "Hello!",
+          isUser: false,
+          isSystem: false,
+          extra: null,
+        },
+        db,
+      );
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 2,
+          parentLocalId: 1,
+          children: [],
+          selectedChildLocalId: null,
+          role: "user",
+          content: "Hi!",
+          isUser: true,
+          isSystem: false,
+          extra: null,
+        },
+        db,
+      );
+      repoDeleteMessages(userId, "chat-1", [1, 2], db);
+      expect(repoListMessages(userId, "chat-1", db)).toHaveLength(0);
+    });
+
+    it("requires chat ownership for message operations", () => {
+      expect(() =>
+        repoInsertMessage(
+          "other-user",
+          "chat-1",
+          {
+            chatId: "chat-1",
+            localId: 1,
+            parentLocalId: null,
+            children: [],
+            selectedChildLocalId: null,
+            role: "assistant",
+            content: "Hello!",
+            isUser: false,
+            isSystem: false,
+            extra: null,
+          },
+          db,
+        ),
+      ).toThrow("Chat not found");
+    });
+  });
+});
