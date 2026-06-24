@@ -213,6 +213,34 @@ export const chatMessages = sqliteTable(
   ],
 );
 
+export const aiProviders = sqliteTable(
+  "ai_providers",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    baseUrl: text("base_url").notNull(),
+    apiKey: text("api_key").notNull(),
+    defaultModel: text("default_model"),
+    defaultHeaders: text("default_headers", { mode: "json" })
+      .$type<Record<string, string>>(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [
+    index("ai_providers_user_id_idx").on(table.userId),
+    uniqueIndex("ai_providers_user_name_uq").on(table.userId, table.name),
+  ],
+);
+
 export const presets = sqliteTable(
   "presets",
   {
@@ -223,6 +251,10 @@ export const presets = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    providerId: text("provider_id").references(() => aiProviders.id, {
+      onDelete: "set null",
+    }),
+    model: text("model"),
     data: text("data", { mode: "json" }).notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
@@ -233,6 +265,7 @@ export const presets = sqliteTable(
   },
   (table) => [
     index("presets_user_id_idx").on(table.userId),
+    index("presets_provider_id_idx").on(table.providerId),
     uniqueIndex("presets_user_name_uq").on(table.userId, table.name),
   ],
 );
@@ -315,6 +348,15 @@ export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
 
 export const presetsRelations = relations(presets, ({ one }) => ({
   user: one(user, { fields: [presets.userId], references: [user.id] }),
+  provider: one(aiProviders, {
+    fields: [presets.providerId],
+    references: [aiProviders.id],
+  }),
+}));
+
+export const aiProvidersRelations = relations(aiProviders, ({ one, many }) => ({
+  user: one(user, { fields: [aiProviders.userId], references: [user.id] }),
+  presets: many(presets),
 }));
 
 export const personasRelations = relations(personas, ({ one }) => ({
@@ -347,3 +389,5 @@ export type Preset = typeof presets.$inferSelect;
 export type NewPreset = typeof presets.$inferInsert;
 export type Persona = typeof personas.$inferSelect;
 export type NewPersona = typeof personas.$inferInsert;
+export type AiProvider = typeof aiProviders.$inferSelect;
+export type NewAiProvider = typeof aiProviders.$inferInsert;

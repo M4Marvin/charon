@@ -37,6 +37,13 @@ export default function Header() {
           >
             Lorebooks
           </Link>
+          <Link
+            to="/ai-playground"
+            className="text-muted-foreground no-underline transition-colors hover:text-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            AI
+          </Link>
         </nav>
       </div>
     </header>
