@@ -24,6 +24,13 @@ export default function Header() {
             Characters
           </Link>
           <Link
+            to="/chats"
+            className="text-muted-foreground no-underline transition-colors hover:text-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Chats
+          </Link>
+          <Link
             to="/lorebooks"
             className="text-muted-foreground no-underline transition-colors hover:text-foreground"
             activeProps={{ className: "text-foreground" }}
