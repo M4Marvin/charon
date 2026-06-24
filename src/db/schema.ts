@@ -173,6 +173,13 @@ export const chats = sqliteTable(
       .references(() => characters.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     backgroundPath: text("background_path"),
+    providerId: text("provider_id").references(() => aiProviders.id, {
+      onDelete: "set null",
+    }),
+    presetId: text("preset_id").references(() => presets.id, {
+      onDelete: "set null",
+    }),
+    selectedModel: text("selected_model"),
     metadata: text("metadata", { mode: "json" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
@@ -184,6 +191,8 @@ export const chats = sqliteTable(
   (table) => [
     index("chats_user_id_idx").on(table.userId),
     index("chats_character_id_idx").on(table.characterId),
+    index("chats_provider_id_idx").on(table.providerId),
+    index("chats_preset_id_idx").on(table.presetId),
   ],
 );
 
@@ -335,6 +344,14 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
   character: one(characters, {
     fields: [chats.characterId],
     references: [characters.id],
+  }),
+  provider: one(aiProviders, {
+    fields: [chats.providerId],
+    references: [aiProviders.id],
+  }),
+  preset: one(presets, {
+    fields: [chats.presetId],
+    references: [presets.id],
   }),
   messages: many(chatMessages),
 }));
