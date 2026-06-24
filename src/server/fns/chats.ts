@@ -181,8 +181,11 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
     });
 
     // Collect all greetings: first_mes + every alternate_greeting.
+    // Use != null so an empty-string first_mes is still included (some cards
+    // have a present-but-empty first_mes and rely on alternates as the actual
+    // opening message).
     const greetingTexts: string[] = [];
-    if (char.data.first_mes) greetingTexts.push(char.data.first_mes);
+    if (char.data.first_mes != null) greetingTexts.push(char.data.first_mes);
     if (char.data.alternate_greetings) greetingTexts.push(...char.data.alternate_greetings);
     if (greetingTexts.length === 0) greetingTexts.push("Hello!");
 
@@ -403,7 +406,8 @@ export const swipeMessage = createServerFn({ method: "POST", strict: { output: f
           children: [],
           selected_child_id: null,
           role: "user",
-          name: target.name,
+          // Draft user message — no character name; the user fills it in.
+          name: undefined,
           content: "",
           is_user: true,
           is_system: false,
@@ -491,6 +495,10 @@ export const editMessage = createServerFn({ method: "POST", strict: { output: fa
         (r) => r.localId === data.messageLocalId,
       );
       if (!existing) throw new Error("Message not found");
+      // Drafts are populated via send, not edited in place.
+      if ((existing.extra?.isDraft ?? false) === true) {
+        throw new Error("Cannot edit a draft message; send to populate it instead");
+      }
 
       repoUpdateMessage(user.id, data.chatId, data.messageLocalId, { content: data.content });
       return { messageLocalId: data.messageLocalId, content: data.content };
