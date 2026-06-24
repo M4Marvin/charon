@@ -13,6 +13,7 @@ import {
 } from "@/db/repositories/characters";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import { parseCharacterCard, validateCharacterCard } from "@/lib/st-core/character";
+import { normalizeCardData } from "@/lib/character/normalize";
 import { getSession } from "@/server/session";
 
 const AVATAR_DIR = "data/avatars";
@@ -109,6 +110,8 @@ export const importCharacter = createServerFn({ method: "POST" })
         },
       };
     }
+
+    raw = normalizeCardData(raw);
 
     const validation = validateCharacterCard(raw);
     if (!validation.ok) {
