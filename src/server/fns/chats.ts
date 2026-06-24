@@ -398,7 +398,12 @@ export const swipeMessage = createServerFn({ method: "POST", strict: { output: f
 
     // Next direction, no sibling — right arrow is never disabled, so we
     // always create a new sibling. addSibling does NOT auto-select.
-    const isUserMsg = (target.is_user ?? target.role === "user") === true;
+    // Greetings (children of the hidden root) are treated as user for
+    // swipe-right-at-end so an exhausted greeting list yields a draft user
+    // message to type into, instead of another assistant regenerate-reply.
+    const isUserMsg =
+      (target.is_user ?? target.role === "user") === true ||
+      target.parent_id === 0;
     const newMsg: ChatMessage = isUserMsg
       ? {
           id: getNextId(tree),
