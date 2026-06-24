@@ -123,12 +123,17 @@ The `character` module (`parser.ts`, `png-encode.ts`, `serializer.ts`) uses `Buf
 
 # Current progress
 
+For full project state, see `docs/handoff.md` (this used to be `HANDOFF.md` at root).
+
 ## What's been done
-- st-core copied to `src/lib/st-core/` (42 files, 7 modules + index.ts) from `sillytavern-dev/st-core/src/`
+- st-core copied to `src/lib/st-core/` (42 files, 7 modules + index.ts) from `sillytavern-dev/st-core/src/` — V3 removed, V2-only, arktype catchalls added for real-world card compatibility
 - Runtime deps added: `arktype`, `crc`, `png-chunk-text`, `png-chunks-extract`
 - Dev deps added: `oxlint@1.70.0`, `oxfmt@0.55.0`
 - All deps installed via `nub install`
-- Typecheck passes except 1 expected st-core error (see below)
+- **Phase 0 (DB + auth) done** — drizzle schema with 11 tables, better-auth adapter wired, `dev.db` created via `drizzle/0000_nebulous_famine.sql`
+- **Phase 1 (Characters) done** — repo (`src/db/repositories/characters.ts`) + 15 repo tests + server fns (`src/server/fns/characters.ts`) + TanStack Query hooks (`src/hooks/useCharacters.ts`) + 2 UI routes (`/characters`, `/characters/new`) + avatar API route (`/api/characters/$id/avatar`)
+- **Legacy migration done** — `scripts/migrate-data.ts` (run via `nub run migrate`) imports 30/34 V2 characters, 13 standalone + 14 embedded = 27 lorebooks, 1 persona from `public/data/`
+- 90/90 tests passing (75 chat-tree + 15 characters repo)
 
 ## Commands
 
@@ -138,14 +143,15 @@ The `character` module (`parser.ts`, `png-encode.ts`, `serializer.ts`) uses `Buf
 | Add dev dep | `nub add -D <pkg>` |
 | Add runtime dep | `nub add <pkg>` |
 | Run script | `nub run dev` |
+| **Run tests** | `nub run test` |
+| **Run legacy migration** | `nub run migrate` |
 | Lint | `nubx oxlint src/` |
 | Format | `nubx oxfmt src/` |
 | Typecheck | `npx tsc --noEmit` |
 
 ## Known typecheck noise
-
 - `src/lib/st-core/transform/regex.ts:161` — `'params' is declared but its value is never read` (`noUnusedLocals`). Expected; st-core copied as-is. Do not fix unless asked.
-- Pre-existing app errors in demo routes (missing `routeTree.gen.ts`, missing `#/components/ui/*`) are unrelated to st-core.
+- `drizzle.config.ts(6,29)` — pre-existing `string | undefined` issue with DATABASE_URL. Surfaced by `npx tsc --noEmit`. Pre-existing, do not fix.
 
 ## Import convention preference
 
