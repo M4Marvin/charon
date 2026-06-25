@@ -225,7 +225,7 @@ export function deleteSubtree(tree: ChatTree, nodeId: number): void {
   if (!node) return;
 
   // Recursively delete children
-  for (const childId of [...node.children]) {
+  for (const childId of node.children.slice()) {
     deleteSubtree(tree, childId);
   }
 
