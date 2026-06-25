@@ -110,7 +110,7 @@ export function usePrepareStream() {
   return useMutation({
     mutationFn: (input: {
       chatId: string;
-      mode: "send" | "regenerate";
+      mode: "send" | "regenerate" | "continue";
       content?: string;
       messageLocalId?: number;
     }): Promise<StreamResult> => prepareStreamMessage({ data: input }),

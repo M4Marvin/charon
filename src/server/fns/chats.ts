@@ -592,6 +592,55 @@ export const prepareStreamMessage = createServerFn({
         repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, placeholder));
         assistantMessageLocalId = placeholder.id;
       }
+    } else if (data.mode === "continue") {
+      // Empty-send continue: generate a response from the active leaf.
+      // If the active leaf is a user message → add assistant placeholder
+      // as its child. If it's an assistant message → add a sibling
+      // (regenerate). This lets the user press Send with empty input to
+      // get a new response after deleting the previous assistant reply.
+      const activeLeafId = getActiveLeafId(tree);
+      if (activeLeafId === null) throw new Error("No active message to continue from");
+      const activeLeaf = getNode(tree, activeLeafId);
+
+      if ((activeLeaf.extra?.isDraft ?? false) === true)
+        throw new Error("Cannot continue from a draft message");
+
+      const placeholder: ChatMessage = {
+        id: getNextId(tree),
+        parent_id: null,
+        children: [],
+        selected_child_id: null,
+        role: "assistant",
+        name: char.data.name,
+        content: "",
+        is_user: false,
+        is_system: false,
+        extra: { isStreaming: true },
+      };
+
+      if (activeLeaf.role === "user" || activeLeaf.is_user) {
+        // Active leaf is a user message awaiting a reply.
+        addChild(tree, activeLeafId, placeholder);
+        const updatedLeaf = getNode(tree, activeLeafId);
+        repoUpdateMessage(user.id, data.chatId, activeLeafId, {
+          children: updatedLeaf.children,
+          selectedChildLocalId: updatedLeaf.selected_child_id,
+        });
+      } else {
+        // Active leaf is an assistant message — add sibling (regenerate).
+        if (activeLeaf.parent_id === null)
+          throw new Error("Cannot continue from a root-level assistant");
+        addSibling(tree, activeLeafId, placeholder);
+        selectChild(tree, activeLeaf.parent_id, placeholder.id);
+        const parent = getNode(tree, activeLeaf.parent_id);
+        repoUpdateMessage(user.id, data.chatId, activeLeaf.parent_id, {
+          children: parent.children,
+          selectedChildLocalId: parent.selected_child_id,
+        });
+      }
+
+      repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, placeholder));
+      assistantMessageLocalId = placeholder.id;
     } else {
       // Regenerate mode: create sibling of target assistant message
       const target = getNode(tree, messageLocalId);

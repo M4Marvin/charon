@@ -25,7 +25,6 @@ import type { PresetData, PresetListItem } from "@/hooks/usePresets";
 interface PresetDialogProps {
   state: PresetListItem | "new" | null;
   providers: AiProviderListItem[];
-  models: { id: string }[];
   defaultModel: string;
   onClose: () => void;
   onCreate: (input: {
@@ -46,7 +45,6 @@ interface PresetDialogProps {
 export function PresetDialog({
   state,
   providers,
-  models,
   defaultModel,
   onClose,
   onCreate,
@@ -127,17 +125,14 @@ export function PresetDialog({
               onChange={(e) => setModel(e.target.value)}
               placeholder="model id"
             />
-            {models.length > 0 && (
-              <p className="text-muted-foreground text-xs">
-                Available: {models.map((m) => m.id).join(", ")}
-              </p>
-            )}
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <div>
                 <Label>Temperature</Label>
-                <p className="text-muted-foreground text-xs">Higher = more creative, lower = more focused</p>
+                <p className="text-muted-foreground text-xs">
+                  Higher = more creative, lower = more focused
+                </p>
               </div>
               <span className="text-muted-foreground font-mono text-xs tabular-nums">
                 {temperature.toFixed(1)}
@@ -156,7 +151,9 @@ export function PresetDialog({
             <div className="flex items-center justify-between">
               <div>
                 <Label>Top P</Label>
-                <p className="text-muted-foreground text-xs">Nucleus sampling. Lower = fewer token choices</p>
+                <p className="text-muted-foreground text-xs">
+                  Nucleus sampling. Lower = fewer token choices
+                </p>
               </div>
               <span className="text-muted-foreground font-mono text-xs tabular-nums">
                 {topP.toFixed(2)}
@@ -197,7 +194,9 @@ export function PresetDialog({
             <div className="flex items-center justify-between">
               <div>
                 <Label>Context size</Label>
-                <p className="text-muted-foreground text-xs">Token budget for the prompt context window</p>
+                <p className="text-muted-foreground text-xs">
+                  Token budget for the prompt context window
+                </p>
               </div>
               <Input
                 type="number"

@@ -47,7 +47,7 @@ export const EditMessage = Schema.Struct({
 
 export const PrepareStream = Schema.Struct({
   chatId: Schema.String,
-  mode: Schema.Literal("send", "regenerate"),
+  mode: Schema.Literal("send", "regenerate", "continue"),
   content: Schema.optional(Schema.String),
   messageLocalId: Schema.optional(Schema.Number),
 });

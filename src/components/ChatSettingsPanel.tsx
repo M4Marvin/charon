@@ -365,7 +365,6 @@ function AiSection({ chat }: { chat: ChatDetail }) {
       <PresetDialog
         state={editing}
         providers={providers}
-        models={models}
         defaultModel={selectedModel}
         onClose={() => setEditing(null)}
         onCreate={(input) =>

@@ -264,8 +264,35 @@ function ChatPage() {
 
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
-    if (!trimmed || !canSend) return;
+    if (!canSend) return;
     clearInput();
+
+    if (!trimmed) {
+      // Empty send → continue from the active leaf: generate a response
+      // for the last user message or regenerate the last assistant.
+      if (!hasAi || activePath.length === 0) return;
+      prepareStream.mutate(
+        { chatId: id, mode: "continue" },
+        {
+          onSuccess: (result) => {
+            console.log("[send] continue success", {
+              placeholderId: result.assistantMessageLocalId,
+            });
+            setPlaceholder(result.assistantMessageLocalId);
+            // "." sentinel triggers the stream; the server only injects
+            // it into the prompt when there's zero user messages, which
+            // our case doesn't match, so it's harmless.
+            void aiChat.sendMessage(".");
+          },
+          onError: (e) => {
+            console.error("[send] continue error", e);
+            toast.error(`Continue error: ${(e as Error).message}`);
+          },
+        },
+      );
+      return;
+    }
+
     if (!hasAi) {
       sendMessageMutation.mutate(
         { chatId: id, content: trimmed },
@@ -294,6 +321,7 @@ function ChatPage() {
     input,
     canSend,
     hasAi,
+    activePath.length,
     id,
     prepareStream,
     sendMessageMutation,
@@ -574,7 +602,7 @@ function ChatPage() {
             <Button
               size="icon"
               onClick={handleSend}
-              disabled={!canSend || !input.trim()}
+              disabled={!canSend || (!input.trim() && (!hasAi || activePath.length === 0))}
               className="size-8 shrink-0 rounded-full"
               aria-label="Send message"
             >
