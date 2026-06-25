@@ -16,9 +16,7 @@ function ChatsPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Chats</h1>
-          <p className="text-muted-foreground text-sm">
-            Your conversations with characters.
-          </p>
+          <p className="text-muted-foreground text-sm">Your conversations with characters.</p>
         </div>
         <Button asChild>
           <Link to="/chats/new">New Chat</Link>
@@ -64,9 +62,7 @@ function ChatsPage() {
                 </div>
               </CardHeader>
               <CardContent className="flex items-center justify-between gap-2">
-                <p className="text-muted-foreground text-xs">
-                  {formatDate(chat.createdAt)}
-                </p>
+                <p className="text-muted-foreground text-xs">{formatDate(chat.createdAt)}</p>
                 <div className="flex gap-2">
                   <Button asChild size="sm">
                     <Link to="/chats/$id" params={{ id: chat.id }}>

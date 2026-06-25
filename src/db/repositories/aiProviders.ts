@@ -39,10 +39,7 @@ export function getAiProvider(userId: string, id: string, db: DB = defaultDb): A
   return row;
 }
 
-export function createAiProvider(
-  input: CreateAiProviderInput,
-  db: DB = defaultDb,
-): AiProvider {
+export function createAiProvider(input: CreateAiProviderInput, db: DB = defaultDb): AiProvider {
   const row: NewAiProvider = {
     id: input.id,
     userId: input.userId,

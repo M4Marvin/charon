@@ -12,10 +12,7 @@ import {
   updateLorebook,
   updateLorebookEntry,
 } from "@/server/fns/lorebooks";
-import {
-  setLorebookEnabled,
-  setLoreEntryDisabled,
-} from "@/server/fns/userLorebookSettings";
+import { setLorebookEnabled, setLoreEntryDisabled } from "@/server/fns/userLorebookSettings";
 
 export const lorebookKeys = {
   all: ["lorebooks"] as const,
@@ -45,8 +42,7 @@ export function useCreateLorebook() {
     mutationFn: (input: {
       name: string;
       description?: string;
-    }): Promise<{ id: string; name: string }> =>
-      createLorebook({ data: input }),
+    }): Promise<{ id: string; name: string }> => createLorebook({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: lorebookKeys.all });
     },
@@ -72,8 +68,7 @@ export function useUpdateLorebook() {
 export function useDeleteLorebook() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string }): Promise<{ id: string }> =>
-      deleteLorebook({ data: input }),
+    mutationFn: (input: { id: string }): Promise<{ id: string }> => deleteLorebook({ data: input }),
     onSuccess: ({ id }) => {
       void queryClient.invalidateQueries({ queryKey: lorebookKeys.all });
       queryClient.removeQueries({ queryKey: lorebookKeys.detail(id) });
@@ -85,7 +80,9 @@ export function useDeleteLorebook() {
 export function useImportLorebook() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { content: string }): Promise<{
+    mutationFn: (input: {
+      content: string;
+    }): Promise<{
       id: string;
       name: string;
       entriesInserted: number;
@@ -129,8 +126,7 @@ export function useUpdateLorebookEntry(lorebookId: string) {
       entryId: string;
       data: LoreEntry["data"];
       uid?: number;
-    }): Promise<LoreEntry> =>
-      updateLorebookEntry({ data: { lorebookId, ...input } }),
+    }): Promise<LoreEntry> => updateLorebookEntry({ data: { lorebookId, ...input } }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: lorebookKeys.entries(lorebookId) });
     },
@@ -152,7 +148,10 @@ export function useDeleteLorebookEntry(lorebookId: string) {
 export function useToggleLorebook() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { lorebookId: string; enabled: boolean }): Promise<{
+    mutationFn: (input: {
+      lorebookId: string;
+      enabled: boolean;
+    }): Promise<{
       lorebookId: string;
       enabled: boolean;
     }> => setLorebookEnabled({ data: input }),
@@ -165,7 +164,10 @@ export function useToggleLorebook() {
 export function useToggleLoreEntry(lorebookId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { entryId: string; disabled: boolean }): Promise<{
+    mutationFn: (input: {
+      entryId: string;
+      disabled: boolean;
+    }): Promise<{
       entryId: string;
       disabled: boolean;
     }> => setLoreEntryDisabled({ data: { lorebookId, ...input } }),

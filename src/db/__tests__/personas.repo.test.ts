@@ -97,9 +97,7 @@ describe("personas repository", () => {
 
     it("throws when accessed by a different user", () => {
       const otherId = seedSecondUser(db);
-      expect(() => updatePersona(otherId, "p-1", { name: "X" }, db)).toThrow(
-        "Persona not found",
-      );
+      expect(() => updatePersona(otherId, "p-1", { name: "X" }, db)).toThrow("Persona not found");
     });
   });
 

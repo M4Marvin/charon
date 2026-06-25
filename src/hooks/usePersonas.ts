@@ -62,8 +62,7 @@ export function useUpdatePersona() {
 export function useDeletePersona() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string }): Promise<{ id: string }> =>
-      deletePersona({ data: input }),
+    mutationFn: (input: { id: string }): Promise<{ id: string }> => deletePersona({ data: input }),
     onSuccess: ({ id }) => {
       void queryClient.invalidateQueries({ queryKey: personaKeys.all });
       queryClient.removeQueries({ queryKey: personaKeys.detail(id) });

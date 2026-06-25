@@ -110,11 +110,7 @@ describe("lorebooks repository", () => {
       createLorebook({ id: "lb-1", userId, name: "Has entries", config: makeLorebookConfig() }, db);
       createLorebook({ id: "lb-2", userId, name: "Empty", config: makeLorebookConfig() }, db);
       const entry = makeLoreEntry({ uid: 1 });
-      createEntry(
-        userId,
-        { id: "e-1", lorebookId: "lb-1", uid: 1, data: entry },
-        db,
-      );
+      createEntry(userId, { id: "e-1", lorebookId: "lb-1", uid: 1, data: entry }, db);
       createEntry(
         userId,
         { id: "e-2", lorebookId: "lb-1", uid: 2, data: { ...entry, uid: 2 } },
@@ -194,11 +190,7 @@ describe("lorebooks repository", () => {
 
     it("inserts a row with all fields and returns it", () => {
       const data = makeLoreEntry({ uid: 1, comment: "First" });
-      const row = createEntry(
-        userId,
-        { id: "e-1", lorebookId: "lb-1", uid: 1, data },
-        db,
-      );
+      const row = createEntry(userId, { id: "e-1", lorebookId: "lb-1", uid: 1, data }, db);
       expect(row.id).toBe("e-1");
       expect(row.lorebookId).toBe("lb-1");
       expect(row.uid).toBe(1);
@@ -209,11 +201,7 @@ describe("lorebooks repository", () => {
       const otherId = seedSecondUser(db);
       const data = makeLoreEntry({ uid: 1 });
       expect(() =>
-        createEntry(
-          otherId,
-          { id: "e-1", lorebookId: "lb-1", uid: 1, data },
-          db,
-        ),
+        createEntry(otherId, { id: "e-1", lorebookId: "lb-1", uid: 1, data }, db),
       ).toThrow("Lorebook not found");
     });
   });
@@ -231,9 +219,7 @@ describe("lorebooks repository", () => {
     });
 
     it("throws when entry does not exist", () => {
-      expect(() => getEntry(userId, "lb-1", "missing", db)).toThrow(
-        "Lore entry not found",
-      );
+      expect(() => getEntry(userId, "lb-1", "missing", db)).toThrow("Lore entry not found");
     });
 
     it("throws when entry belongs to another lorebook", () => {
@@ -302,16 +288,16 @@ describe("lorebooks repository", () => {
     });
 
     it("throws when entry does not exist", () => {
-      expect(() =>
-        updateEntry(userId, "lb-1", "missing", { data: makeLoreEntry() }, db),
-      ).toThrow("Lore entry not found");
+      expect(() => updateEntry(userId, "lb-1", "missing", { data: makeLoreEntry() }, db)).toThrow(
+        "Lore entry not found",
+      );
     });
 
     it("throws when updating entry in another user's lorebook", () => {
       const otherId = seedSecondUser(db);
-      expect(() =>
-        updateEntry(otherId, "lb-1", "e-1", { data: makeLoreEntry() }, db),
-      ).toThrow("Lorebook not found");
+      expect(() => updateEntry(otherId, "lb-1", "e-1", { data: makeLoreEntry() }, db)).toThrow(
+        "Lorebook not found",
+      );
     });
   });
 
@@ -331,16 +317,12 @@ describe("lorebooks repository", () => {
     });
 
     it("throws when entry does not exist", () => {
-      expect(() => deleteEntry(userId, "lb-1", "missing", db)).toThrow(
-        "Lore entry not found",
-      );
+      expect(() => deleteEntry(userId, "lb-1", "missing", db)).toThrow("Lore entry not found");
     });
 
     it("throws when deleting from another user's lorebook", () => {
       const otherId = seedSecondUser(db);
-      expect(() => deleteEntry(otherId, "lb-1", "e-1", db)).toThrow(
-        "Lorebook not found",
-      );
+      expect(() => deleteEntry(otherId, "lb-1", "e-1", db)).toThrow("Lorebook not found");
     });
   });
 

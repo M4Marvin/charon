@@ -69,9 +69,7 @@ function normalizeCharacterBook(raw: unknown): CharacterBook | null {
   const book = raw as RawCardBook;
 
   const entriesIn = Array.isArray(book.entries) ? (book.entries as RawCardEntry[]) : [];
-  const entriesOut = entriesIn
-    .map(normalizeBookEntry)
-    .filter((e): e is RawCardEntry => e !== null);
+  const entriesOut = entriesIn.map(normalizeBookEntry).filter((e): e is RawCardEntry => e !== null);
 
   if (entriesOut.length === 0) return null;
 
@@ -89,7 +87,8 @@ function normalizeCharacterBook(raw: unknown): CharacterBook | null {
   if (typeof book.description === "string") out.description = book.description;
   if (typeof book.scan_depth === "number") out.scan_depth = book.scan_depth;
   if (typeof book.token_budget === "number") out.token_budget = book.token_budget;
-  if (typeof book.recursive_scanning === "boolean") out.recursive_scanning = book.recursive_scanning;
+  if (typeof book.recursive_scanning === "boolean")
+    out.recursive_scanning = book.recursive_scanning;
   return out;
 }
 

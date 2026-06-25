@@ -15,15 +15,8 @@ export type UserSettingsPatch = Partial<
   >
 >;
 
-export function getUserSettings(
-  userId: string,
-  db: DB = defaultDb,
-): UserSettings | null {
-  const row = db
-    .select()
-    .from(userSettings)
-    .where(eq(userSettings.userId, userId))
-    .get();
+export function getUserSettings(userId: string, db: DB = defaultDb): UserSettings | null {
+  const row = db.select().from(userSettings).where(eq(userSettings.userId, userId)).get();
   return row ?? null;
 }
 
@@ -56,11 +49,14 @@ export function upsertUserSettings(
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (patch.defaultProviderId !== undefined) updates.defaultProviderId = patch.defaultProviderId;
   if (patch.defaultPresetId !== undefined) updates.defaultPresetId = patch.defaultPresetId;
-  if (patch.defaultSelectedModel !== undefined) updates.defaultSelectedModel = patch.defaultSelectedModel;
+  if (patch.defaultSelectedModel !== undefined)
+    updates.defaultSelectedModel = patch.defaultSelectedModel;
   if (patch.defaultPersonaId !== undefined) updates.defaultPersonaId = patch.defaultPersonaId;
   if (patch.systemPrompt !== undefined) updates.systemPrompt = patch.systemPrompt;
-  if (patch.postHistoryInstructions !== undefined) updates.postHistoryInstructions = patch.postHistoryInstructions;
-  if (patch.impersonationPrompt !== undefined) updates.impersonationPrompt = patch.impersonationPrompt;
+  if (patch.postHistoryInstructions !== undefined)
+    updates.postHistoryInstructions = patch.postHistoryInstructions;
+  if (patch.impersonationPrompt !== undefined)
+    updates.impersonationPrompt = patch.impersonationPrompt;
   if (Object.keys(updates).length === 1) return existing;
   const row = db
     .update(userSettings)

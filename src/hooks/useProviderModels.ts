@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { listProviderModels, type ProviderModel } from "@/server/fns/models";
 
-export const providerModelsKey = (providerId: string) =>
-  ["providerModels", providerId] as const;
+export const providerModelsKey = (providerId: string) => ["providerModels", providerId] as const;
 
 export function useProviderModels(providerId: string) {
   return useQuery({

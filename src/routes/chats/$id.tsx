@@ -18,7 +18,6 @@ import {
   useSendMessage,
 } from "@/hooks/useChats";
 
-
 import { ChatSettingsPanel } from "@/components/ChatSettingsPanel";
 import { useChatStore } from "@/stores/chat-store";
 import type { ChatMessageRow } from "@/db/schema";
@@ -93,7 +92,10 @@ function ChatPage() {
   const connection = useMemo(
     () =>
       fetchServerSentEvents("/api/chat-generate", () => ({
-        body: { chatId: id, assistantMessageLocalId: useChatStore.getState().activePlaceholderId ?? 0 },
+        body: {
+          chatId: id,
+          assistantMessageLocalId: useChatStore.getState().activePlaceholderId ?? 0,
+        },
       })),
     [id],
   );
@@ -160,9 +162,7 @@ function ChatPage() {
     for (let i = msgs.length - 1; i >= 0; i--) {
       const m = msgs[i]!;
       if (m.role !== "assistant") continue;
-      const text = m.parts
-        .map((p) => (p.type === "text" ? p.content : ""))
-        .join("");
+      const text = m.parts.map((p) => (p.type === "text" ? p.content : "")).join("");
       if (text.length > 0) return text;
     }
     return null;
@@ -179,9 +179,8 @@ function ChatPage() {
         const siblings = getSiblings(tree, msg.id);
         const idx = siblings.findIndex((s) => s.id === msg.id);
         const isStreaming = msg.id === activePlaceholderId;
-        const baseMessage = isStreaming && liveAssistantText !== null
-          ? { ...msg, content: liveAssistantText }
-          : msg;
+        const baseMessage =
+          isStreaming && liveAssistantText !== null ? { ...msg, content: liveAssistantText } : msg;
         return {
           message: baseMessage,
           siblingIndex: idx,
@@ -256,7 +255,17 @@ function ChatPage() {
         },
       },
     );
-  }, [input, canSend, hasAi, id, prepareStream, sendMessageMutation, aiChat, setPlaceholder, clearInput]);
+  }, [
+    input,
+    canSend,
+    hasAi,
+    id,
+    prepareStream,
+    sendMessageMutation,
+    aiChat,
+    setPlaceholder,
+    clearInput,
+  ]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -332,7 +341,7 @@ function ChatPage() {
               // required to bypass chat-client.js:548 trim guard) and the server
               // builds the greeting prompt from the root.
               if (isGreeting) {
-                console.log("[swipe] → aiChat.sendMessage(\".\")", {
+                console.log('[swipe] → aiChat.sendMessage(".")', {
                   placeholderId: result.assistantMessageLocalId,
                 });
                 void aiChat.sendMessage(".");
@@ -355,7 +364,16 @@ function ChatPage() {
       console.log("[swipe] → user-draft", { messageLocalId });
       swipeMutation.mutate({ chatId: id, messageLocalId, direction });
     },
-    [id, swipeMutation, prepareStream, activePlaceholderId, activePath, aiChat, setPlaceholder, hasAi],
+    [
+      id,
+      swipeMutation,
+      prepareStream,
+      activePlaceholderId,
+      activePath,
+      aiChat,
+      setPlaceholder,
+      hasAi,
+    ],
   );
 
   const handleDeleteMessage = useCallback(
@@ -377,10 +395,7 @@ function ChatPage() {
 
   const handleDeleteChat = useCallback(() => {
     if (!window.confirm("Delete chat?")) return;
-    deleteChatMutation.mutate(
-      { id },
-      { onSuccess: () => void navigate({ to: "/chats" }) },
-    );
+    deleteChatMutation.mutate({ id }, { onSuccess: () => void navigate({ to: "/chats" }) });
   }, [id, deleteChatMutation, navigate]);
 
   const isLoading = chatLoading || msgsLoading;
@@ -494,9 +509,7 @@ function ChatPage() {
         </div>
       </div>
 
-      {settingsOpen && (
-        <ChatSettingsPanel chat={chat} onClose={() => setSettingsOpen(false)} />
-      )}
+      {settingsOpen && <ChatSettingsPanel chat={chat} onClose={() => setSettingsOpen(false)} />}
     </div>
   );
 }
@@ -567,9 +580,7 @@ function MessageBubble({
           </p>
           <div
             className={`rounded-2xl px-4 py-2.5 text-sm ${
-              isUser
-                ? "bg-primary text-primary-foreground rounded-br-md"
-                : "bg-muted rounded-bl-md"
+              isUser ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted rounded-bl-md"
             } ${isDraft || isStreaming ? "opacity-50" : ""}`}
           >
             {isDraft ? (
@@ -644,4 +655,3 @@ function MessageBubble({
     </div>
   );
 }
-

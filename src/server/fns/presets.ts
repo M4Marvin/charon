@@ -68,9 +68,7 @@ function validateCreateInput(data: unknown): {
   return { ...result, data: validatePresetData(result.data) };
 }
 
-function validateUpdateInput(
-  data: unknown,
-): {
+function validateUpdateInput(data: unknown): {
   id: string;
   name?: string;
   providerId?: string | null;

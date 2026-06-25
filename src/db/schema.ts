@@ -284,8 +284,7 @@ export const aiProviders = sqliteTable(
     baseUrl: text("base_url").notNull(),
     apiKey: text("api_key").notNull(),
     defaultModel: text("default_model"),
-    defaultHeaders: text("default_headers", { mode: "json" })
-      .$type<Record<string, string>>(),
+    defaultHeaders: text("default_headers", { mode: "json" }).$type<Record<string, string>>(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),

@@ -65,8 +65,7 @@ export function useUpdatePreset() {
 export function useDeletePreset() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string }): Promise<{ id: string }> =>
-      deletePreset({ data: input }),
+    mutationFn: (input: { id: string }): Promise<{ id: string }> => deletePreset({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: presetKeys.all });
       queryClient.removeQueries({ queryKey: presetKeys.detail(variables.id) });

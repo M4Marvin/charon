@@ -62,8 +62,11 @@ function AiPlaygroundPage() {
     setSelectedModel("");
   }, [selectedProviderId]);
 
-  const { data: models = [], isFetching: modelsLoading, error: modelsError } =
-    useProviderModels(selectedProviderId);
+  const {
+    data: models = [],
+    isFetching: modelsLoading,
+    error: modelsError,
+  } = useProviderModels(selectedProviderId);
 
   useEffect(() => {
     if (modelsError) toast.error(`Failed to fetch models: ${(modelsError as Error).message}`);
@@ -91,9 +94,7 @@ function AiPlaygroundPage() {
     setSystemPrompt(data.systemPrompt ?? "");
   }, [selectedPresetId, presets]);
 
-  const canSend =
-    selectedProviderId.length > 0 &&
-    selectedModel.length > 0;
+  const canSend = selectedProviderId.length > 0 && selectedModel.length > 0;
 
   const bodyRef = useRef<{
     providerId: string;
@@ -191,7 +192,12 @@ function AiPlaygroundPage() {
                 Stop
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={() => clear()} disabled={messages.length === 0}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => clear()}
+              disabled={messages.length === 0}
+            >
               Clear
             </Button>
           </div>
@@ -221,7 +227,12 @@ function AiPlaygroundPage() {
                     {m.role === "user" ? "You" : "Assistant"}
                   </p>
                   {m.parts.map((part, i) => {
-                    if (part.type === "text") return <p key={i} className="whitespace-pre-wrap">{part.content}</p>;
+                    if (part.type === "text")
+                      return (
+                        <p key={i} className="whitespace-pre-wrap">
+                          {part.content}
+                        </p>
+                      );
                     return null;
                   })}
                 </div>
@@ -241,7 +252,9 @@ function AiPlaygroundPage() {
                 handleSend();
               }
             }}
-            placeholder={canSend ? "Type a message..." : "Add a provider and select a model to start"}
+            placeholder={
+              canSend ? "Type a message..." : "Add a provider and select a model to start"
+            }
             className="min-h-[40px] flex-1 resize-none"
             rows={1}
             disabled={!canSend || isLoading}
@@ -394,9 +407,7 @@ function ProviderDialog({
       setBaseUrl(editing.baseUrl);
       setApiKey(editing.apiKey);
       setDefaultModel(editing.defaultModel ?? "");
-      setHeadersText(
-        editing.defaultHeaders ? JSON.stringify(editing.defaultHeaders, null, 2) : "",
-      );
+      setHeadersText(editing.defaultHeaders ? JSON.stringify(editing.defaultHeaders, null, 2) : "");
     } else {
       setName("");
       setBaseUrl("");
@@ -438,7 +449,11 @@ function ProviderDialog({
           </div>
           <div className="space-y-1">
             <Label htmlFor="p-model">Default model (optional)</Label>
-            <Input id="p-model" value={defaultModel} onChange={(e) => setDefaultModel(e.target.value)} />
+            <Input
+              id="p-model"
+              value={defaultModel}
+              onChange={(e) => setDefaultModel(e.target.value)}
+            />
           </div>
           <div className="space-y-1">
             <Label htmlFor="p-headers">Default headers JSON (optional)</Label>
@@ -521,9 +536,7 @@ function ModelSection({
       ) : (
         <Select value={selectedModel} onValueChange={onSelect} disabled={!canFetch}>
           <SelectTrigger className="w-full">
-            <SelectValue
-              placeholder={loading ? "Loading models..." : "Select model"}
-            />
+            <SelectValue placeholder={loading ? "Loading models..." : "Select model"} />
           </SelectTrigger>
           <SelectContent>
             {models.map((m) => (
@@ -573,10 +586,7 @@ function PresetsSection({
           + Add
         </Button>
       </div>
-      <Select
-        value={selectedId || "_none"}
-        onValueChange={(v) => onSelect(v === "_none" ? "" : v)}
-      >
+      <Select value={selectedId || "_none"} onValueChange={(v) => onSelect(v === "_none" ? "" : v)}>
         <SelectTrigger className="w-full">
           <SelectValue placeholder={loading ? "Loading..." : "Select preset"} />
         </SelectTrigger>
@@ -733,7 +743,10 @@ function PresetDialog({
           </div>
           <div className="space-y-1">
             <Label>Provider (optional)</Label>
-            <Select value={providerId || "_none"} onValueChange={(v) => setProviderId(v === "_none" ? "" : v)}>
+            <Select
+              value={providerId || "_none"}
+              onValueChange={(v) => setProviderId(v === "_none" ? "" : v)}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select provider" />
               </SelectTrigger>
@@ -749,7 +762,11 @@ function PresetDialog({
           </div>
           <div className="space-y-1">
             <Label>Model (optional)</Label>
-            <Input value={model} onChange={(e) => setModel(e.target.value)} placeholder="model id" />
+            <Input
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              placeholder="model id"
+            />
             {models.length > 0 && (
               <p className="text-muted-foreground text-xs">
                 Available: {models.map((m) => m.id).join(", ")}
@@ -758,7 +775,11 @@ function PresetDialog({
           </div>
           <div className="space-y-1">
             <Label>System prompt</Label>
-            <Textarea value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)} rows={3} />
+            <Textarea
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
+              rows={3}
+            />
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">

@@ -57,11 +57,14 @@ export const updateUserSettings = createServerFn({ method: "POST", strict: { out
     const patch: UserSettingsPatch = {};
     if (data.defaultProviderId !== undefined) patch.defaultProviderId = data.defaultProviderId;
     if (data.defaultPresetId !== undefined) patch.defaultPresetId = data.defaultPresetId;
-    if (data.defaultSelectedModel !== undefined) patch.defaultSelectedModel = data.defaultSelectedModel;
+    if (data.defaultSelectedModel !== undefined)
+      patch.defaultSelectedModel = data.defaultSelectedModel;
     if (data.defaultPersonaId !== undefined) patch.defaultPersonaId = data.defaultPersonaId;
     if (data.systemPrompt !== undefined) patch.systemPrompt = data.systemPrompt;
-    if (data.postHistoryInstructions !== undefined) patch.postHistoryInstructions = data.postHistoryInstructions;
-    if (data.impersonationPrompt !== undefined) patch.impersonationPrompt = data.impersonationPrompt;
+    if (data.postHistoryInstructions !== undefined)
+      patch.postHistoryInstructions = data.postHistoryInstructions;
+    if (data.impersonationPrompt !== undefined)
+      patch.impersonationPrompt = data.impersonationPrompt;
     const row = repoUpsertUserSettings(user.id, patch);
     return toView(row);
   });

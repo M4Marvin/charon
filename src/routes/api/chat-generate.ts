@@ -147,18 +147,18 @@ export const Route = createFileRoute("/api/chat-generate")({
 
           const providerId = chatRow.providerId;
           if (!providerId) {
-            return new Response(
-              JSON.stringify({ error: "No provider configured for this chat" }),
-              { status: 400, headers: { "Content-Type": "application/json" } },
-            );
+            return new Response(JSON.stringify({ error: "No provider configured for this chat" }), {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            });
           }
           const provider = repoGetProvider(user.id, providerId);
           const model = chatRow.selectedModel ?? provider.defaultModel;
           if (!model) {
-            return new Response(
-              JSON.stringify({ error: "No model configured for this chat" }),
-              { status: 400, headers: { "Content-Type": "application/json" } },
-            );
+            return new Response(JSON.stringify({ error: "No model configured for this chat" }), {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            });
           }
 
           let dbPresetRaw: { model?: string | null; data: unknown } | null = null;
@@ -239,7 +239,9 @@ export const Route = createFileRoute("/api/chat-generate")({
             sentinelInjected: !hasUserMessage,
             finalMsgCount: finalMessages.length,
             finalRoles: finalMessages.map((m) => m.role),
-            finalContentLens: finalMessages.map((m) => (m as { content?: string }).content?.length ?? 0),
+            finalContentLens: finalMessages.map(
+              (m) => (m as { content?: string }).content?.length ?? 0,
+            ),
             model,
             providerId,
           });

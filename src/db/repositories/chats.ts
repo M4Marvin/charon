@@ -168,11 +168,6 @@ export function deleteMessages(
 ): void {
   getChat(userId, chatId, db);
   db.delete(chatMessages)
-    .where(
-      and(
-        eq(chatMessages.chatId, chatId),
-        inArray(chatMessages.localId, localIds),
-      ),
-    )
+    .where(and(eq(chatMessages.chatId, chatId), inArray(chatMessages.localId, localIds)))
     .run();
 }

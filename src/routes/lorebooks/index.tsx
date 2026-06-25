@@ -162,7 +162,9 @@ function ImportLorebookDialog({
       const parts: string[] = [];
       parts.push(`Imported "${result.name}"`);
       if (result.entriesInserted > 0) {
-        parts.push(`${result.entriesInserted} ${result.entriesInserted === 1 ? "entry" : "entries"}`);
+        parts.push(
+          `${result.entriesInserted} ${result.entriesInserted === 1 ? "entry" : "entries"}`,
+        );
       }
       if (result.entriesSkipped > 0) {
         parts.push(`${result.entriesSkipped} skipped`);
@@ -180,8 +182,8 @@ function ImportLorebookDialog({
         <DialogHeader>
           <DialogTitle>Import Lorebook</DialogTitle>
           <DialogDescription>
-            Upload a SillyTavern world-info JSON file. The lorebook is created
-            disabled — toggle it on from the list to activate.
+            Upload a SillyTavern world-info JSON file. The lorebook is created disabled — toggle it
+            on from the list to activate.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">

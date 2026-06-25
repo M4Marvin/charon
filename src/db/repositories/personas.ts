@@ -25,11 +25,7 @@ export function listPersonas(userId: string, db: DB = defaultDb): Persona[] {
     .all();
 }
 
-export function getPersona(
-  userId: string,
-  id: string,
-  db: DB = defaultDb,
-): Persona {
+export function getPersona(userId: string, id: string, db: DB = defaultDb): Persona {
   const row = db
     .select()
     .from(personas)
@@ -39,10 +35,7 @@ export function getPersona(
   return row;
 }
 
-export function createPersona(
-  input: CreatePersonaInput,
-  db: DB = defaultDb,
-): Persona {
+export function createPersona(input: CreatePersonaInput, db: DB = defaultDb): Persona {
   const row: NewPersona = {
     id: input.id,
     userId: input.userId,

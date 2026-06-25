@@ -127,8 +127,7 @@ export function useFinalizeStream() {
       chatId: string;
       messageLocalId: number;
       content: string;
-    }): Promise<{ messageLocalId: number; content: string }> =>
-      finalizeStream({ data: input }),
+    }): Promise<{ messageLocalId: number; content: string }> => finalizeStream({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
@@ -166,8 +165,7 @@ export function useUpdateChatSettings() {
 export function useDeleteChat() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string }): Promise<{ id: string }> =>
-      deleteChat({ data: input }),
+    mutationFn: (input: { id: string }): Promise<{ id: string }> => deleteChat({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.all });
     },

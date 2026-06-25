@@ -94,7 +94,9 @@ function Home() {
                     <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Creator Notes
                     </h4>
-                    <p className="text-xs text-muted-foreground">{SAMPLE_CHARACTER.creator_notes}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {SAMPLE_CHARACTER.creator_notes}
+                    </p>
                   </div>
                   {SAMPLE_CHARACTER.depth_prompt && (
                     <div className="space-y-1">
@@ -114,7 +116,8 @@ function Home() {
                   )}
                   <div className="space-y-1">
                     <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Character Book ({SAMPLE_CHARACTER.character_book?.entries.length ?? 0} entries)
+                      Character Book ({SAMPLE_CHARACTER.character_book?.entries.length ?? 0}{" "}
+                      entries)
                     </h4>
                     <p className="text-xs text-muted-foreground">
                       {SAMPLE_CHARACTER.character_book?.name}

@@ -3,11 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +14,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useCharacter, useDeleteCharacter, useUpdateCharacter } from "@/hooks/useCharacters";
 import type { Character } from "@/db/schema";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
@@ -138,8 +141,7 @@ function CharacterSidebar({
         ) : null}
         {data.extensions.talkativeness !== undefined ? (
           <p className="text-muted-foreground text-xs">
-            Talkativeness:{" "}
-            <span className="text-foreground">{data.extensions.talkativeness}</span>
+            Talkativeness: <span className="text-foreground">{data.extensions.talkativeness}</span>
           </p>
         ) : null}
       </div>
@@ -201,10 +203,7 @@ function CharacterFields({ character }: { character: Character }) {
       <TextFieldCard title="Example Messages" content={data.mes_example} />
       <TextFieldCard title="Creator Notes" content={data.creator_notes} />
       <TextFieldCard title="System Prompt" content={data.system_prompt} />
-      <TextFieldCard
-        title="Post-History Instructions"
-        content={data.post_history_instructions}
-      />
+      <TextFieldCard title="Post-History Instructions" content={data.post_history_instructions} />
 
       {data.extensions.depth_prompt ? (
         <Card>
@@ -216,9 +215,7 @@ function CharacterFields({ character }: { character: Character }) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <pre className="text-sm whitespace-pre-wrap">
-              {data.extensions.depth_prompt.prompt}
-            </pre>
+            <pre className="text-sm whitespace-pre-wrap">{data.extensions.depth_prompt.prompt}</pre>
           </CardContent>
         </Card>
       ) : null}

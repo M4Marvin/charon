@@ -77,10 +77,7 @@ export function getLorebook(userId: string, id: string, db: DB = defaultDb): Lor
   return row;
 }
 
-export function createLorebook(
-  input: CreateLorebookInput,
-  db: DB = defaultDb,
-): Lorebook {
+export function createLorebook(input: CreateLorebookInput, db: DB = defaultDb): Lorebook {
   const now = new Date();
   const row = db
     .insert(lorebooks)
@@ -102,9 +99,7 @@ export function createLorebook(
 export function updateLorebook(
   userId: string,
   id: string,
-  patch: Partial<
-    Pick<NewLorebook, "name" | "description" | "config">
-  >,
+  patch: Partial<Pick<NewLorebook, "name" | "description" | "config">>,
   db: DB = defaultDb,
 ): Lorebook {
   const row = db
@@ -236,9 +231,7 @@ export function deleteEntry(
 ): void {
   getLorebook(userId, lorebookId, db);
   // Manual cascade: clear the per-user disable overlay for this entry.
-  db.delete(userLoreEntrySettings)
-    .where(eq(userLoreEntrySettings.entryId, entryId))
-    .run();
+  db.delete(userLoreEntrySettings).where(eq(userLoreEntrySettings.entryId, entryId)).run();
   const result = db
     .delete(loreEntries)
     .where(and(eq(loreEntries.id, entryId), eq(loreEntries.lorebookId, lorebookId)))
@@ -246,11 +239,7 @@ export function deleteEntry(
   if (result.changes === 0) throw new Error("Lore entry not found");
 }
 
-export function nextEntryUid(
-  userId: string,
-  lorebookId: string,
-  db: DB = defaultDb,
-): number {
+export function nextEntryUid(userId: string, lorebookId: string, db: DB = defaultDb): number {
   getLorebook(userId, lorebookId, db);
   const row = db
     .select({ max: sql<number>`COALESCE(MAX(${loreEntries.uid}), 0)` })

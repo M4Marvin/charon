@@ -68,9 +68,7 @@ function validateCreateInput(data: unknown): {
   };
 }
 
-function validateUpdateInput(
-  data: unknown,
-): {
+function validateUpdateInput(data: unknown): {
   id: string;
   name?: string;
   baseUrl?: string;

@@ -14,7 +14,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import {
   useCreateLorebookEntry,
@@ -26,10 +33,7 @@ import {
 } from "@/hooks/useLorebooks";
 import type { LoreEntry } from "@/db/schema";
 
-type DialogState =
-  | { kind: "closed" }
-  | { kind: "create" }
-  | { kind: "edit"; entry: LoreEntry };
+type DialogState = { kind: "closed" } | { kind: "create" } | { kind: "edit"; entry: LoreEntry };
 
 export const Route = createFileRoute("/lorebooks/$id")({
   component: LorebookDetailPage,
@@ -60,8 +64,7 @@ function LorebookDetailPage() {
               ) : null}
               <div className="mt-2 flex items-center gap-2">
                 <Badge variant="secondary">
-                  {entries?.length ?? 0}{" "}
-                  {(entries?.length ?? 0) === 1 ? "entry" : "entries"}
+                  {entries?.length ?? 0} {(entries?.length ?? 0) === 1 ? "entry" : "entries"}
                 </Badge>
                 <Badge variant="outline">
                   depth {lorebook.config.depth} · scan {lorebook.config.scanDepth}
@@ -136,11 +139,7 @@ function LorebookDetailPage() {
       </Card>
 
       {dialog.kind === "create" ? (
-        <EntryDialog
-          lorebookId={id}
-          mode="create"
-          onClose={() => setDialog({ kind: "closed" })}
-        />
+        <EntryDialog lorebookId={id} mode="create" onClose={() => setDialog({ kind: "closed" })} />
       ) : null}
       {dialog.kind === "edit" ? (
         <EntryDialog
@@ -183,9 +182,7 @@ function EntryDialog(props: EntryDialogProps) {
   const [comment, setComment] = useState(initial?.data.comment ?? "");
   const [content, setContent] = useState(initial?.data.content ?? "");
   const [keysText, setKeysText] = useState((initial?.data.key ?? []).join(", "));
-  const [secondaryText, setSecondaryText] = useState(
-    (initial?.data.keysecondary ?? []).join(", "),
-  );
+  const [secondaryText, setSecondaryText] = useState((initial?.data.keysecondary ?? []).join(", "));
   const [order, setOrder] = useState(String(initial?.data.order ?? 100));
   const [disable, setDisable] = useState(initial?.data.disable ?? false);
   const [constant, setConstant] = useState(initial?.data.constant ?? false);
@@ -384,9 +381,7 @@ function EntryToggleCell({
       <Switch
         checked={effectiveOn}
         disabled={toggle.isPending}
-        onCheckedChange={(checked) =>
-          toggle.mutate({ entryId: entry.id, disabled: !checked })
-        }
+        onCheckedChange={(checked) => toggle.mutate({ entryId: entry.id, disabled: !checked })}
         aria-label={`Toggle ${entry.data.comment || `entry ${entry.uid}`}`}
       />
       <span className="text-muted-foreground text-xs">

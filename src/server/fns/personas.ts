@@ -48,9 +48,7 @@ function validateCreateInput(data: unknown): {
   return result;
 }
 
-function validateUpdateInput(
-  data: unknown,
-): {
+function validateUpdateInput(data: unknown): {
   id: string;
   name?: string;
   description?: string | null;

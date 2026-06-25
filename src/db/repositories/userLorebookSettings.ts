@@ -11,28 +11,18 @@ import { userLorebookSettings, userLoreEntrySettings } from "@/db/schema";
 
 // ── Lorebook activation ─────────────────────────────────────────────────────
 
-export function isLorebookEnabled(
-  userId: string,
-  lorebookId: string,
-  db: DB = defaultDb,
-): boolean {
+export function isLorebookEnabled(userId: string, lorebookId: string, db: DB = defaultDb): boolean {
   const row = db
     .select({ lorebookId: userLorebookSettings.lorebookId })
     .from(userLorebookSettings)
     .where(
-      and(
-        eq(userLorebookSettings.userId, userId),
-        eq(userLorebookSettings.lorebookId, lorebookId),
-      ),
+      and(eq(userLorebookSettings.userId, userId), eq(userLorebookSettings.lorebookId, lorebookId)),
     )
     .get();
   return row !== undefined;
 }
 
-export function listEnabledLorebookIds(
-  userId: string,
-  db: DB = defaultDb,
-): string[] {
+export function listEnabledLorebookIds(userId: string, db: DB = defaultDb): string[] {
   return db
     .select({ lorebookId: userLorebookSettings.lorebookId })
     .from(userLorebookSettings)
@@ -53,7 +43,9 @@ export function setLorebookEnabled(
     const now = new Date();
     db.insert(userLorebookSettings)
       .values({ userId, lorebookId, createdAt: now, updatedAt: now })
-      .onConflictDoNothing({ target: [userLorebookSettings.userId, userLorebookSettings.lorebookId] })
+      .onConflictDoNothing({
+        target: [userLorebookSettings.userId, userLorebookSettings.lorebookId],
+      })
       .run();
   } else {
     db.delete(userLorebookSettings)
@@ -69,28 +61,18 @@ export function setLorebookEnabled(
 
 // ── Entry disable overlay ───────────────────────────────────────────────────
 
-export function isEntryUserDisabled(
-  userId: string,
-  entryId: string,
-  db: DB = defaultDb,
-): boolean {
+export function isEntryUserDisabled(userId: string, entryId: string, db: DB = defaultDb): boolean {
   const row = db
     .select({ entryId: userLoreEntrySettings.entryId })
     .from(userLoreEntrySettings)
     .where(
-      and(
-        eq(userLoreEntrySettings.userId, userId),
-        eq(userLoreEntrySettings.entryId, entryId),
-      ),
+      and(eq(userLoreEntrySettings.userId, userId), eq(userLoreEntrySettings.entryId, entryId)),
     )
     .get();
   return row !== undefined;
 }
 
-export function listUserDisabledEntryIds(
-  userId: string,
-  db: DB = defaultDb,
-): string[] {
+export function listUserDisabledEntryIds(userId: string, db: DB = defaultDb): string[] {
   return db
     .select({ entryId: userLoreEntrySettings.entryId })
     .from(userLoreEntrySettings)
@@ -112,15 +94,14 @@ export function setLoreEntryDisabled(
     const now = new Date();
     db.insert(userLoreEntrySettings)
       .values({ userId, entryId, createdAt: now, updatedAt: now })
-      .onConflictDoNothing({ target: [userLoreEntrySettings.entryId, userLoreEntrySettings.userId] })
+      .onConflictDoNothing({
+        target: [userLoreEntrySettings.entryId, userLoreEntrySettings.userId],
+      })
       .run();
   } else {
     db.delete(userLoreEntrySettings)
       .where(
-        and(
-          eq(userLoreEntrySettings.userId, userId),
-          eq(userLoreEntrySettings.entryId, entryId),
-        ),
+        and(eq(userLoreEntrySettings.userId, userId), eq(userLoreEntrySettings.entryId, entryId)),
       )
       .run();
   }

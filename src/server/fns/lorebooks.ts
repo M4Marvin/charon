@@ -54,9 +54,9 @@ const UpdateLorebookInput = type({
 
 const CreateEntryInput = type({
   lorebookId: "string > 0",
-  "comment": "string",
-  "content": "string > 0",
-  "key": "string[]",
+  comment: "string",
+  content: "string > 0",
+  key: "string[]",
   "keysecondary?": "string[]",
   "order?": "number",
   "position?": "number.integer",
@@ -76,7 +76,7 @@ const UpdateEntryInput = type({
   lorebookId: "string > 0",
   entryId: "string > 0",
   "uid?": "number.integer",
-  "data": "unknown",
+  data: "unknown",
 });
 
 function validateIdInput(data: unknown): { id: string } {
@@ -158,9 +158,12 @@ function validateImportLorebookInput(data: unknown): { content: string } {
   return result;
 }
 
-function validateUpdateEntryInput(
-  data: unknown,
-): { lorebookId: string; entryId: string; uid?: number; data: LoreEntryData } {
+function validateUpdateEntryInput(data: unknown): {
+  lorebookId: string;
+  entryId: string;
+  uid?: number;
+  data: LoreEntryData;
+} {
   const result = UpdateEntryInput(data);
   if (result instanceof type.errors) throw new Error("Invalid entry update");
   const entryResult = LoreEntrySchema(result.data);

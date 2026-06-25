@@ -100,7 +100,11 @@ describe("chats repo", () => {
       repoDeleteChat(userId, "chat-1", db);
       expect(() => repoGetChat(userId, "chat-1", db)).toThrow("Chat not found");
       // Verify messages were cascade-deleted (raw query since listMessages checks ownership)
-      const remaining = db.select().from(chatMessages).where(eq(chatMessages.chatId, "chat-1")).all();
+      const remaining = db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.chatId, "chat-1"))
+        .all();
       expect(remaining).toHaveLength(0);
     });
 

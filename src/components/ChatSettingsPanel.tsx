@@ -3,12 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -38,10 +33,7 @@ import {
   useUpdatePersona,
   type PersonaListItem,
 } from "@/hooks/usePersonas";
-import {
-  useLorebooks,
-  useToggleLorebook,
-} from "@/hooks/useLorebooks";
+import { useLorebooks, useToggleLorebook } from "@/hooks/useLorebooks";
 import { useUpdateChatSettings } from "@/hooks/useChats";
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import type { ChatDetail } from "@/server/fns/chats";
@@ -55,15 +47,10 @@ export function ChatSettingsPanel({ chat, onClose }: ChatSettingsPanelProps) {
   return (
     <div className="fixed inset-0 z-40">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
       {/* Panel */}
-      <div
-        className="bg-popover text-popover-foreground border-border/60 absolute inset-[10vh_10vw] flex flex-col rounded-lg border shadow-2xl"
-      >
+      <div className="bg-popover text-popover-foreground border-border/60 absolute inset-[10vh_10vw] flex flex-col rounded-lg border shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between rounded-t-lg border-b px-4 py-3">
           <div className="flex items-center gap-2">
@@ -72,12 +59,7 @@ export function ChatSettingsPanel({ chat, onClose }: ChatSettingsPanelProps) {
             </span>
             <span className="text-sm font-semibold">Chat Settings</span>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onClose}
-            aria-label="Close settings"
-          >
+          <Button size="sm" variant="ghost" onClick={onClose} aria-label="Close settings">
             ✕
           </Button>
         </div>
@@ -86,10 +68,18 @@ export function ChatSettingsPanel({ chat, onClose }: ChatSettingsPanelProps) {
         <div className="flex min-h-0 flex-1 flex-col">
           <Tabs defaultValue="ai" className="flex flex-1 flex-col">
             <TabsList className="mx-3 mt-2 w-auto">
-              <TabsTrigger value="ai" className="text-xs">AI</TabsTrigger>
-              <TabsTrigger value="lorebooks" className="text-xs">Lorebooks</TabsTrigger>
-              <TabsTrigger value="persona" className="text-xs">Persona</TabsTrigger>
-              <TabsTrigger value="prompts" className="text-xs">Prompts</TabsTrigger>
+              <TabsTrigger value="ai" className="text-xs">
+                AI
+              </TabsTrigger>
+              <TabsTrigger value="lorebooks" className="text-xs">
+                Lorebooks
+              </TabsTrigger>
+              <TabsTrigger value="persona" className="text-xs">
+                Persona
+              </TabsTrigger>
+              <TabsTrigger value="prompts" className="text-xs">
+                Prompts
+              </TabsTrigger>
             </TabsList>
             <div className="flex-1 overflow-y-auto p-4">
               <TabsContent value="ai">
@@ -177,9 +167,7 @@ function AiSection({ chat }: { chat: ChatDetail }) {
               </SelectItem>
             ))}
             {providers.length === 0 && (
-              <div className="text-muted-foreground px-3 py-2 text-xs">
-                No providers configured
-              </div>
+              <div className="text-muted-foreground px-3 py-2 text-xs">No providers configured</div>
             )}
           </SelectContent>
         </Select>
@@ -194,9 +182,7 @@ function AiSection({ chat }: { chat: ChatDetail }) {
         >
           <SelectTrigger className="w-full">
             <SelectValue
-              placeholder={
-                selectedProviderId ? "Loading models..." : "Select a provider first"
-              }
+              placeholder={selectedProviderId ? "Loading models..." : "Select a provider first"}
             />
           </SelectTrigger>
           <SelectContent>
@@ -206,9 +192,7 @@ function AiSection({ chat }: { chat: ChatDetail }) {
               </SelectItem>
             ))}
             {models.length === 0 && selectedProviderId && (
-              <div className="text-muted-foreground px-3 py-2 text-xs">
-                No models fetched
-              </div>
+              <div className="text-muted-foreground px-3 py-2 text-xs">No models fetched</div>
             )}
           </SelectContent>
         </Select>
@@ -315,12 +299,14 @@ function PersonaSection() {
   return (
     <div className="space-y-2">
       <p className="text-muted-foreground text-xs">
-        The active persona's description is injected into the prompt for all
-        chats.
+        The active persona's description is injected into the prompt for all chats.
       </p>
       <div className="space-y-1">
         <Label className="text-xs">Active persona</Label>
-        <Select value={activeId || "_none"} onValueChange={(v) => handleSelect(v === "_none" ? "" : v)}>
+        <Select
+          value={activeId || "_none"}
+          onValueChange={(v) => handleSelect(v === "_none" ? "" : v)}
+        >
           <SelectTrigger className="w-full">
             <SelectValue placeholder={isLoading ? "Loading..." : "No persona"} />
           </SelectTrigger>
@@ -334,11 +320,7 @@ function PersonaSection() {
           </SelectContent>
         </Select>
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setEditing("new")}
-          >
+          <Button size="sm" variant="outline" onClick={() => setEditing("new")}>
             + Add
           </Button>
           {activeId && (
@@ -434,9 +416,7 @@ function PersonaDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{editing ? "Edit persona" : "New persona"}</DialogTitle>
-          <DialogDescription>
-            The description is injected into the chat prompt.
-          </DialogDescription>
+          <DialogDescription>The description is injected into the chat prompt.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
@@ -511,7 +491,11 @@ function PromptsSection() {
     setSystemPrompt(userSettings?.systemPrompt ?? "");
     setPostHistoryInstructions(userSettings?.postHistoryInstructions ?? "");
     setImpersonationPrompt(userSettings?.impersonationPrompt ?? "");
-  }, [userSettings?.systemPrompt, userSettings?.postHistoryInstructions, userSettings?.impersonationPrompt]);
+  }, [
+    userSettings?.systemPrompt,
+    userSettings?.postHistoryInstructions,
+    userSettings?.impersonationPrompt,
+  ]);
 
   const commit = useCallback(
     (field: "systemPrompt" | "postHistoryInstructions" | "impersonationPrompt", value: string) => {
@@ -536,9 +520,7 @@ function PromptsSection() {
             placeholder="You are a helpful assistant."
             rows={4}
           />
-          <p className="text-muted-foreground text-xs">
-            Injected as the first system message.
-          </p>
+          <p className="text-muted-foreground text-xs">Injected as the first system message.</p>
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Post-history instructions</Label>
@@ -570,5 +552,3 @@ function PromptsSection() {
     </div>
   );
 }
-
-

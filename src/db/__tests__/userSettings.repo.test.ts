@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb, seedTestUser, type TestDb } from "./helpers";
 import { aiProviders, personas, presets } from "@/db/schema";
-import {
-  getUserSettings,
-  upsertUserSettings,
-} from "@/db/repositories/userSettings";
+import { getUserSettings, upsertUserSettings } from "@/db/repositories/userSettings";
 
 function seedProvider(db: TestDb, userId: string, id = "prov-1") {
   const now = new Date();

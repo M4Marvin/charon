@@ -14,12 +14,16 @@ export function buildOptions(preset: ChatCompletionPreset): Record<string, unkno
   const modelOptions: Record<string, unknown> = {};
   if (preset.temperature !== undefined) modelOptions.temperature = preset.temperature;
   if (preset.topP !== undefined) modelOptions.top_p = preset.topP;
-  if (preset.maxResponseLength !== undefined) modelOptions.max_output_tokens = preset.maxResponseLength;
+  if (preset.maxResponseLength !== undefined)
+    modelOptions.max_output_tokens = preset.maxResponseLength;
   if (preset.verbosity) modelOptions.verbosity = preset.verbosity;
-  if (preset.frequencyPenalty && preset.frequencyPenalty !== 0) modelOptions.frequency_penalty = preset.frequencyPenalty;
-  if (preset.presencePenalty && preset.presencePenalty !== 0) modelOptions.presence_penalty = preset.presencePenalty;
+  if (preset.frequencyPenalty && preset.frequencyPenalty !== 0)
+    modelOptions.frequency_penalty = preset.frequencyPenalty;
+  if (preset.presencePenalty && preset.presencePenalty !== 0)
+    modelOptions.presence_penalty = preset.presencePenalty;
   if (preset.seed !== undefined && preset.seed !== -1) modelOptions.seed = preset.seed;
-  if (preset.logitBias && Object.keys(preset.logitBias).length > 0) modelOptions.logit_bias = preset.logitBias;
+  if (preset.logitBias && Object.keys(preset.logitBias).length > 0)
+    modelOptions.logit_bias = preset.logitBias;
   if (preset.requestModelReasoning) {
     modelOptions.reasoning = {
       effort: preset.reasoningEffort === "auto" ? undefined : preset.reasoningEffort,

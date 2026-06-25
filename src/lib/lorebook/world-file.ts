@@ -147,9 +147,7 @@ export function parseWorldFile(json: string): ParsedWorldFile {
   try {
     world = JSON.parse(json) as WorldFileRaw;
   } catch (e) {
-    throw new Error(
-      `Invalid world file: ${e instanceof Error ? e.message : "not valid JSON"}`,
-    );
+    throw new Error(`Invalid world file: ${e instanceof Error ? e.message : "not valid JSON"}`);
   }
   if (!world || typeof world !== "object" || Array.isArray(world)) {
     throw new Error("Invalid world file: expected a JSON object");

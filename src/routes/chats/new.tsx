@@ -33,9 +33,7 @@ function NewChatPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">New Chat</h1>
-          <p className="text-muted-foreground text-sm">
-            Pick a character to start a conversation.
-          </p>
+          <p className="text-muted-foreground text-sm">Pick a character to start a conversation.</p>
         </div>
         <Button asChild variant="ghost" size="sm">
           <Link to="/chats">← Back</Link>
