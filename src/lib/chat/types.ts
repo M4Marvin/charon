@@ -1,4 +1,20 @@
 import type { ChatMessage } from "@/lib/st-core/shared/types.js";
+import type { CharacterBook, DepthPrompt } from "@/lib/st-core/character/types.js";
+
+export interface PipelineCharacter {
+  name: string;
+  description: string;
+  personality: string;
+  scenario: string;
+  first_mes: string;
+  mes_example: string;
+  creator_notes: string;
+  system_prompt: string;
+  post_history_instructions: string;
+  alternate_greetings: string[];
+  character_book?: CharacterBook;
+  depth_prompt?: DepthPrompt;
+}
 
 export interface ChatCompletionPreset {
   name: string;
@@ -25,25 +41,14 @@ export interface ChatCompletionPreset {
   reasoningEffort: "auto" | "low" | "medium" | "high" | "minimum" | "maximum";
   verbosity: "low" | "medium" | "high";
   logitBias: Record<string, number>;
+  systemPrompt?: string;
+  maxTokens?: number;
 }
 
 export interface ModelMessage {
   role: "system" | "user" | "assistant";
   content: string;
   name?: string;
-}
-
-export interface SampleLoreEntry {
-  uid: number;
-  key: string[];
-  keysecondary: string[];
-  content: string;
-  comment: string;
-  constant: boolean;
-  disable: boolean;
-  order: number;
-  position: number;
-  depth: number;
 }
 
 export interface LoreEntryView {
@@ -77,28 +82,6 @@ export interface PipelineStep {
 export interface PipelineInput {
   userMessage: string;
   preset: ChatCompletionPreset;
-  character: SampleCharacter;
+  character: PipelineCharacter;
   chatHistory: ChatMessage[];
-}
-
-export interface DepthPrompt {
-  prompt: string;
-  depth: number;
-  role: "system" | "user" | "assistant";
-}
-
-export interface SampleCharacter {
-  name: string;
-  description: string;
-  personality: string;
-  scenario: string;
-  mesExample: string;
-  systemPrompt: string;
-  persona: string;
-  firstMes: string;
-  creatorNotes: string;
-  postHistoryInstructions: string;
-  alternateGreetings: string[];
-  depthPrompt: DepthPrompt | null;
-  characterBook: { name: string; entries: SampleLoreEntry[] };
 }

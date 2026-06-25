@@ -5,6 +5,7 @@ import { getSession } from "@/server/session";
 import { getAiProvider as repoGetProvider } from "@/db/repositories/aiProviders";
 import { getPreset as repoGetPreset } from "@/db/repositories/presets";
 import type { PresetData } from "@/db/repositories/presets";
+import { ApproxTokenCounter } from "@/lib/st-core/shared/tokens";
 
 export const Route = createFileRoute("/api/chat")({
   server: {
@@ -37,6 +38,9 @@ export const Route = createFileRoute("/api/chat")({
           let temperature: number | undefined;
           let topP: number | undefined;
           let maxTokens: number | undefined;
+          let contextSize: number | undefined;
+          let frequencyPenalty: number | undefined;
+          let presencePenalty: number | undefined;
 
           if (forwarded.presetId) {
             const preset = repoGetPreset(user.id, forwarded.presetId);
@@ -46,6 +50,9 @@ export const Route = createFileRoute("/api/chat")({
             if (typeof data.temperature === "number") temperature = data.temperature;
             if (typeof data.topP === "number") topP = data.topP;
             if (typeof data.maxTokens === "number") maxTokens = data.maxTokens;
+            if (typeof data.contextSize === "number") contextSize = data.contextSize;
+            if (typeof data.frequencyPenalty === "number") frequencyPenalty = data.frequencyPenalty;
+            if (typeof data.presencePenalty === "number") presencePenalty = data.presencePenalty;
           }
 
           if (!model) {
@@ -65,6 +72,8 @@ export const Route = createFileRoute("/api/chat")({
           if (temperature !== undefined) modelOptions.temperature = temperature;
           if (topP !== undefined) modelOptions.top_p = topP;
           if (maxTokens !== undefined) modelOptions.max_tokens = maxTokens;
+          if (frequencyPenalty !== undefined) modelOptions.frequency_penalty = frequencyPenalty;
+          if (presencePenalty !== undefined) modelOptions.presence_penalty = presencePenalty;
 
           const wireMessages = Array.isArray(body.messages) ? body.messages : [];
           const userMessages = wireMessages.flatMap((m) => {
@@ -75,9 +84,27 @@ export const Route = createFileRoute("/api/chat")({
             }
             return [];
           });
+
+          let trimmedMessages = userMessages;
+          if (contextSize && contextSize > 0) {
+            const counter = new ApproxTokenCounter();
+            const systemTokens = systemPrompt ? counter.count(systemPrompt) : 0;
+            const budget = contextSize - systemTokens;
+            const kept: typeof userMessages = [];
+            let used = 0;
+            for (let i = userMessages.length - 1; i >= 0; i--) {
+              const m = userMessages[i]!;
+              const t = counter.count(m.content) + counter.count(m.role);
+              if (used + t > budget) break;
+              kept.unshift(m);
+              used += t;
+            }
+            trimmedMessages = kept;
+          }
+
           const messages = systemPrompt
-            ? [{ role: "system" as const, content: systemPrompt }, ...userMessages]
-            : userMessages;
+            ? [{ role: "system" as const, content: systemPrompt }, ...trimmedMessages]
+            : trimmedMessages;
 
           if (messages.length === 0) {
             return new Response(JSON.stringify({ error: "No messages to process" }), {

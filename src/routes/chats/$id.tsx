@@ -1,17 +1,38 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { useChat as useAiChat, fetchServerSentEvents } from "@tanstack/ai-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   useChat,
   useChatMessages,
   useDeleteChat,
   useDeleteMessage,
   useEditMessage,
-  useSendMessage,
+  usePrepareStream,
+  useFinalizeStream,
+  useCancelStream,
+  useUpdateChatSettings,
   useSwipeMessage,
+  useSendMessage,
 } from "@/hooks/useChats";
+import { useAiProviders } from "@/hooks/useAiProviders";
+import { usePresets } from "@/hooks/usePresets";
+import { useProviderModels } from "@/hooks/useProviderModels";
+import { useUpdateUserSettings } from "@/hooks/useUserSettings";
+import { useChatStore } from "@/stores/chat-store";
 import type { ChatMessageRow } from "@/db/schema";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
@@ -41,6 +62,7 @@ interface PathEntry {
   siblingIndex: number;
   siblingTotal: number;
   isDraft: boolean;
+  isStreaming: boolean;
 }
 
 function ChatPage() {
@@ -48,44 +70,254 @@ function ChatPage() {
   const navigate = useNavigate();
   const { data: chat, isLoading: chatLoading, error: chatError } = useChat(id);
   const { data: messages, isLoading: msgsLoading } = useChatMessages(id);
-  const sendMutation = useSendMessage();
-  const swipeMutation = useSwipeMessage();
+
+  const { data: providers = [] } = useAiProviders();
+  const { data: presets = [] } = usePresets();
+
+  const prepareStream = usePrepareStream();
+  const finalizeStream = useFinalizeStream();
+  const cancelStream = useCancelStream();
+  const sendMessageMutation = useSendMessage();
   const deleteMessageMutation = useDeleteMessage();
   const editMessageMutation = useEditMessage();
   const deleteChatMutation = useDeleteChat();
+  const swipeMutation = useSwipeMessage();
+  const updateSettings = useUpdateChatSettings();
+  const updateUserDefaults = useUpdateUserSettings();
 
-  const [input, setInput] = useState("");
+  // ── Chat store: replaces 5 useState + 3 useRef ──────────────────────
+  const sidebarOpen = useChatStore((s) => s.sidebarOpen);
+  const input = useChatStore((s) => s.input);
+  const activePlaceholderId = useChatStore((s) => s.activePlaceholderId);
+  const setSidebarOpen = useChatStore((s) => s.setSidebarOpen);
+  const setInput = useChatStore((s) => s.setInput);
+  const clearInput = useChatStore((s) => s.clearInput);
+  const setPlaceholder = useChatStore((s) => s.setPlaceholder);
+  const clearPlaceholder = useChatStore((s) => s.clearPlaceholder);
+  const markRecovered = useChatStore((s) => s.markRecovered);
+  const recoveredFor = useChatStore((s) => s.recoveredFor);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const selectedProviderId = chat?.providerId ?? "";
+  const selectedPresetId = chat?.presetId ?? "";
+  const selectedModel = chat?.selectedModel ?? "";
+
+  const { data: models = [] } = useProviderModels(selectedProviderId);
+
+  const handleChangeProvider = useCallback(
+    (providerId: string) => {
+      if (!chat) return;
+      // Changing the provider invalidates the previous model and preset.
+      // Mirror the same reset to user-level defaults so the next chat starts
+      // with the new provider and no stale model/preset.
+      updateSettings.mutate({
+        id: chat.id,
+        providerId,
+        selectedModel: null,
+        presetId: null,
+      });
+      updateUserDefaults.mutate({
+        defaultProviderId: providerId,
+        defaultSelectedModel: null,
+        defaultPresetId: null,
+      });
+    },
+    [chat, updateSettings, updateUserDefaults],
+  );
+
+  const handleChangePreset = useCallback(
+    (presetId: string) => {
+      if (!chat) return;
+      const value = presetId || null;
+      updateSettings.mutate({ id: chat.id, presetId: value });
+      updateUserDefaults.mutate({ defaultPresetId: value });
+    },
+    [chat, updateSettings, updateUserDefaults],
+  );
+
+  const handleChangeModel = useCallback(
+    (model: string) => {
+      if (!chat) return;
+      const value = model || null;
+      updateSettings.mutate({ id: chat.id, selectedModel: value });
+      updateUserDefaults.mutate({ defaultSelectedModel: value });
+    },
+    [chat, updateSettings, updateUserDefaults],
+  );
+
+  const hasAi = selectedProviderId.length > 0 && selectedModel.length > 0;
+  const canSend = activePlaceholderId === null;
+
+  // Streaming connection — body reads from the store synchronously. No more
+  // ref + useEffect sync race: getState() always returns the current value.
+  const connection = useMemo(
+    () =>
+      fetchServerSentEvents("/api/chat-generate", () => ({
+        body: { chatId: id, assistantMessageLocalId: useChatStore.getState().activePlaceholderId ?? 0 },
+      })),
+    [id],
+  );
+
+  const aiChat = useAiChat({
+    connection,
+    onFinish: () => {
+      const placeholderId = useChatStore.getState().activePlaceholderId;
+      const msgs = aiChat.messages;
+      const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant");
+      const content = lastAssistant
+        ? lastAssistant.parts.map((p) => (p.type === "text" ? p.content : "")).join("")
+        : "";
+      console.log("[stream][onFinish]", {
+        placeholderId,
+        msgsLen: msgs.length,
+        assistantContentLen: content.length,
+      });
+      if (!placeholderId) return;
+      if (content) {
+        finalizeStream.mutate(
+          { chatId: id, messageLocalId: placeholderId, content },
+          {
+            onSuccess: () => clearPlaceholder(),
+            onError: (e) => toast.error(`Save failed: ${(e as Error).message}`),
+          },
+        );
+      } else {
+        cancelStream.mutate(
+          { chatId: id, messageLocalId: placeholderId },
+          { onSuccess: () => clearPlaceholder() },
+        );
+      }
+    },
+    onError: (err) => {
+      console.error("[stream][onError]", {
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+        cause: (err as { cause?: unknown }).cause,
+      });
+      const causeStr = (() => {
+        const c = (err as { cause?: unknown }).cause;
+        if (!c) return "";
+        if (c instanceof Error) return ` — ${c.message}`;
+        return ` — ${JSON.stringify(c)}`;
+      })();
+      toast.error(`Stream error: ${err.message}${causeStr}`);
+      const placeholderId = useChatStore.getState().activePlaceholderId;
+      if (placeholderId) {
+        cancelStream.mutate(
+          { chatId: id, messageLocalId: placeholderId },
+          { onSuccess: () => clearPlaceholder() },
+        );
+      }
+    },
+  });
+
+  // Live in-flight assistant text. Drives B1 (visible streaming): shown in
+  // place of the (empty) DB content while the placeholder is active.
+  const liveAssistantText = useMemo(() => {
+    if (activePlaceholderId === null) return null;
+    const msgs = aiChat.messages;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i]!;
+      if (m.role !== "assistant") continue;
+      const text = m.parts
+        .map((p) => (p.type === "text" ? p.content : ""))
+        .join("");
+      if (text.length > 0) return text;
+    }
+    return null;
+  }, [aiChat.messages, activePlaceholderId]);
+
+  // Active path
   const activePath: PathEntry[] = useMemo(() => {
     if (!messages || messages.length === 0) return [];
     const tree = treeFromNodes(messages.map(rowToMessage));
     const path = getActivePath(tree);
-    // Filter out the hidden system root (role === "system") — never rendered.
     return path
       .filter((msg) => msg.role !== "system")
       .map((msg) => {
         const siblings = getSiblings(tree, msg.id);
         const idx = siblings.findIndex((s) => s.id === msg.id);
+        const isStreaming = msg.id === activePlaceholderId;
+        const baseMessage = isStreaming && liveAssistantText !== null
+          ? { ...msg, content: liveAssistantText }
+          : msg;
         return {
-          message: msg,
+          message: baseMessage,
           siblingIndex: idx,
           siblingTotal: siblings.length,
           isDraft: (msg.extra?.isDraft ?? false) === true,
+          isStreaming,
         };
       });
-  }, [messages]);
+  }, [messages, activePlaceholderId, liveAssistantText]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Stale isStreaming recovery (B3). Runs once per chat id: on mount, if the
+  // DB has any message with extra.isStreaming, mark it for cancellation.
+  useEffect(() => {
+    if (recoveredFor === id) return;
+    if (!messages) return;
+    const stale = messages.find((m) => (m.extra?.isStreaming ?? false) === true);
+    if (!stale) {
+      // Nothing to recover, but mark this chat id as visited so we don't
+      // re-scan on every messages refetch.
+      markRecovered(id, 0);
+      return;
+    }
+    markRecovered(id, stale.localId);
+    cancelStream.mutate({ chatId: id, messageLocalId: stale.localId });
+    // We intentionally do NOT set activePlaceholderId — the placeholder was
+    // never displayed in this session, so the user doesn't see a ghost.
+  }, [messages, id, recoveredFor, cancelStream, markRecovered]);
+
+  // Clean up the recovered-marker when navigating to a different chat.
+  useEffect(() => {
+    return () => {
+      // On unmount, do not clear activePlaceholderId — the user might be
+      // navigating away mid-stream and we'd want the same behaviour as
+      // before (the DB stays dirty, next mount will recover it). Actually
+      // this is fine because on the next mount the new chat id will
+      // differ and the recovery effect will run for that new chat.
+    };
+  }, []);
+
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
-    if (!trimmed || sendMutation.isPending) return;
-    setInput("");
-    sendMutation.mutate({ chatId: id, content: trimmed });
-  }, [input, id, sendMutation]);
+    if (!trimmed || !canSend) return;
+    clearInput();
+    if (!hasAi) {
+      sendMessageMutation.mutate(
+        { chatId: id, content: trimmed },
+        { onError: (e) => toast.error(`Send error: ${(e as Error).message}`) },
+      );
+      return;
+    }
+    prepareStream.mutate(
+      { chatId: id, mode: "send", content: trimmed },
+      {
+        onSuccess: (result) => {
+          console.log("[send] prepareStream success", {
+            placeholderId: result.assistantMessageLocalId,
+            contentLen: trimmed.length,
+          });
+          // Synchronous store update: the connection body reads
+          // getState().activePlaceholderId and will see this value when
+          // aiChat.sendMessage fires its fetch — no effect-lag race.
+          setPlaceholder(result.assistantMessageLocalId);
+          void aiChat.sendMessage(trimmed);
+        },
+        onError: (e) => {
+          console.error("[send] prepareStream error", e);
+          toast.error(`Send error: ${(e as Error).message}`);
+        },
+      },
+    );
+  }, [input, canSend, hasAi, id, prepareStream, sendMessageMutation, aiChat, setPlaceholder, clearInput]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -99,31 +331,113 @@ function ChatPage() {
 
   const handleSwipe = useCallback(
     (messageLocalId: number, direction: "next" | "prev") => {
-      if (swipeMutation.isPending) return;
+      console.log("[swipe] entry", {
+        id,
+        messageLocalId,
+        direction,
+        activePlaceholderId,
+        hasAi,
+      });
+      if (activePlaceholderId !== null) return;
+      if (direction === "prev") {
+        console.log("[swipe] → prev", { messageLocalId });
+        swipeMutation.mutate({ chatId: id, messageLocalId, direction });
+        return;
+      }
+      // Next on assistant → cycle through existing siblings, regenerate only
+      // when at the last one. Greeting regenerate uses sendMessage(".") because
+      // aiChat.reload() silently no-ops without a prior user turn, and the
+      // client guards against whitespace-only content (see chat-client.js:548).
+      const entry = activePath.find((p) => p.message.id === messageLocalId);
+      if (entry) {
+        console.log("[swipe] entry resolved", {
+          isUser: entry.message.is_user,
+          parentId: entry.message.parent_id,
+          siblingIndex: entry.siblingIndex,
+          siblingTotal: entry.siblingTotal,
+          isStreaming: entry.isStreaming,
+        });
+      }
+      if (entry && !entry.message.is_user && messageLocalId !== 0) {
+        if (entry.isStreaming) {
+          toast.error("Wait for the current response to finish");
+          return;
+        }
+        if (!hasAi) {
+          console.log("[swipe] → no-ai-fallback", { messageLocalId });
+          // No AI configured: fall back to default-reply sibling ("Make your
+          // own greeting!" for greetings, pickDefaultReply otherwise).
+          swipeMutation.mutate({ chatId: id, messageLocalId, direction });
+          return;
+        }
+        if (entry.siblingIndex < entry.siblingTotal - 1) {
+          console.log("[swipe] → cycle", { messageLocalId });
+          // Cycle to existing next sibling instead of generating a new one.
+          swipeMutation.mutate({ chatId: id, messageLocalId, direction });
+          return;
+        }
+        const isGreeting = entry.message.parent_id === 0;
+        console.log("[swipe] → regen", { messageLocalId, isGreeting });
+        prepareStream.mutate(
+          { chatId: id, mode: "regenerate", messageLocalId },
+          {
+            onSuccess: (result) => {
+              console.log("[swipe] prepareStream success", {
+                messageLocalId,
+                placeholderId: result.assistantMessageLocalId,
+                isGreeting,
+              });
+              setPlaceholder(result.assistantMessageLocalId);
+              // Greeting = parent_id 0 = no preceding user message; reload()
+              // would no-op. sendMessage(".") triggers the stream (non-whitespace
+              // required to bypass chat-client.js:548 trim guard) and the server
+              // builds the greeting prompt from the root.
+              if (isGreeting) {
+                console.log("[swipe] → aiChat.sendMessage(\".\")", {
+                  placeholderId: result.assistantMessageLocalId,
+                });
+                void aiChat.sendMessage(".");
+              } else {
+                console.log("[swipe] → aiChat.reload()", {
+                  placeholderId: result.assistantMessageLocalId,
+                });
+                void aiChat.reload();
+              }
+            },
+            onError: (e) => {
+              console.error("[swipe] prepareStream error", e);
+              toast.error(`Regenerate error: ${(e as Error).message}`);
+            },
+          },
+        );
+        return;
+      }
+      // Next on user → default swipe (draft)
+      console.log("[swipe] → user-draft", { messageLocalId });
       swipeMutation.mutate({ chatId: id, messageLocalId, direction });
     },
-    [id, swipeMutation],
+    [id, swipeMutation, prepareStream, activePlaceholderId, activePath, aiChat, setPlaceholder, hasAi],
   );
 
   const handleDeleteMessage = useCallback(
     (messageLocalId: number) => {
-      if (deleteMessageMutation.isPending) return;
+      if (activePlaceholderId !== null) return;
       if (!window.confirm("Delete this message and all replies below it?")) return;
       deleteMessageMutation.mutate({ chatId: id, messageLocalId });
     },
-    [id, deleteMessageMutation],
+    [id, deleteMessageMutation, activePlaceholderId],
   );
 
   const handleEditMessage = useCallback(
     (messageLocalId: number, content: string) => {
-      if (editMessageMutation.isPending) return;
+      if (activePlaceholderId !== null) return;
       editMessageMutation.mutate({ chatId: id, messageLocalId, content });
     },
-    [id, editMessageMutation],
+    [id, editMessageMutation, activePlaceholderId],
   );
 
   const handleDeleteChat = useCallback(() => {
-    if (!window.confirm("Delete this chat?")) return;
+    if (!window.confirm("Delete chat?")) return;
     deleteChatMutation.mutate(
       { id },
       { onSuccess: () => void navigate({ to: "/chats" }) },
@@ -152,67 +466,186 @@ function ChatPage() {
   }
 
   return (
-    <div className="mx-auto flex h-dvh max-w-4xl flex-col px-4">
-      {/* Header */}
-      <div className="flex shrink-0 items-center gap-3 border-b py-3">
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/chats">←</Link>
-        </Button>
-        <Avatar className="size-8">
-          {chat.characterImagePath ? (
-            <AvatarImage
-              src={`/api/characters/${chat.characterId}/avatar`}
-              alt={chat.characterName}
-            />
-          ) : null}
-          <AvatarFallback className="text-xs">{chat.characterName[0]}</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{chat.title}</p>
-          <p className="text-muted-foreground truncate text-xs">with {chat.characterName}</p>
-        </div>
-        <Button variant="destructive" size="sm" onClick={handleDeleteChat}>
-          Delete
-        </Button>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 space-y-4 overflow-y-auto py-4">
-        {activePath.length === 0 ? (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-muted-foreground text-sm">No messages yet.</p>
+    <div className="flex h-dvh">
+      {/* Settings sidebar */}
+      {sidebarOpen && (
+        <aside className="w-72 shrink-0 overflow-y-auto border-r p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold">Chat Settings</h2>
+            <Button size="sm" variant="ghost" onClick={() => setSidebarOpen(false)}>
+              ✕
+            </Button>
           </div>
-        ) : (
-          activePath.map((entry) => (
-            <MessageBubble
-              key={entry.message.id}
-              entry={entry}
-              characterName={chat.characterName}
-              characterImagePath={chat.characterImagePath}
-              characterId={chat.characterId}
-              onSwipe={handleSwipe}
-              onDelete={handleDeleteMessage}
-              onEdit={handleEditMessage}
-            />
-          ))
-        )}
-        <div ref={messagesEndRef} />
-      </div>
 
-      {/* Input */}
-      <div className="flex shrink-0 items-end gap-2 border-t py-3">
-        <Textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Type a message... (Enter to send, Shift+Enter for newline)"
-          className="min-h-[40px] flex-1 resize-none"
-          rows={1}
-          disabled={sendMutation.isPending}
-        />
-        <Button onClick={handleSend} disabled={!input.trim() || sendMutation.isPending}>
-          {sendMutation.isPending ? "..." : "Send"}
-        </Button>
+          <section className="space-y-2">
+            <Label className="text-xs">Provider</Label>
+            <Select value={selectedProviderId} onValueChange={handleChangeProvider}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
+              <SelectContent>
+                {providers.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+                {providers.length === 0 && (
+                  <div className="text-muted-foreground px-3 py-2 text-xs">
+                    No providers configured
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+          </section>
+
+          <Separator className="my-3" />
+
+          <section className="space-y-2">
+            <Label className="text-xs">Model</Label>
+            <Select
+              value={selectedModel}
+              onValueChange={handleChangeModel}
+              disabled={!selectedProviderId}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue
+                  placeholder={
+                    selectedProviderId ? "Loading models..." : "Select a provider first"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {models.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.id}
+                  </SelectItem>
+                ))}
+                {models.length === 0 && selectedProviderId && (
+                  <div className="text-muted-foreground px-3 py-2 text-xs">
+                    No models fetched
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+            <Input
+              value={selectedModel}
+              onChange={(e) => handleChangeModel(e.target.value)}
+              placeholder="Or type model ID"
+              className="mt-1"
+            />
+          </section>
+
+          <Separator className="my-3" />
+
+          <section className="space-y-2">
+            <Label className="text-xs">Preset</Label>
+            <Select
+              value={selectedPresetId || "_none"}
+              onValueChange={(v) => handleChangePreset(v === "_none" ? "" : v)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select preset" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">— None —</SelectItem>
+                {presets.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </section>
+
+          <Separator className="my-3" />
+
+          <Button asChild variant="outline" size="sm" className="w-full">
+            <Link to="/ai-playground">Configure providers</Link>
+          </Button>
+        </aside>
+      )}
+
+      {/* Main chat area */}
+      <div className="mx-auto flex max-w-4xl flex-1 flex-col px-4">
+        {/* Header */}
+        <div className="flex shrink-0 items-center gap-3 border-b py-3">
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/chats">←</Link>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)}>
+            {sidebarOpen ? "✕ Settings" : "☰ Settings"}
+          </Button>
+          <Avatar className="size-8">
+            {chat.characterImagePath ? (
+              <AvatarImage
+                src={`/api/characters/${chat.characterId}/avatar`}
+                alt={chat.characterName}
+              />
+            ) : null}
+            <AvatarFallback className="text-xs">{chat.characterName[0]}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{chat.title}</p>
+            <p className="text-muted-foreground truncate text-xs">with {chat.characterName}</p>
+          </div>
+          <Button variant="destructive" size="sm" onClick={handleDeleteChat}>
+            Delete
+          </Button>
+        </div>
+
+        {!selectedProviderId && (
+          <div className="bg-muted/50 mx-2 mt-2 rounded-lg px-4 py-2 text-center text-xs">
+            Configure an AI provider in the{" "}
+            <button type="button" className="underline" onClick={() => setSidebarOpen(true)}>
+              settings sidebar
+            </button>{" "}
+            to start chatting.
+          </div>
+        )}
+
+        <div className="flex-1 space-y-4 overflow-y-auto py-4">
+          {activePath.length === 0 ? (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-muted-foreground text-sm">
+                No messages yet. Start a conversation!
+              </p>
+            </div>
+          ) : (
+            activePath.map((entry) => (
+              <MessageBubble
+                key={entry.message.id}
+                entry={entry}
+                characterName={chat.characterName}
+                characterImagePath={chat.characterImagePath}
+                characterId={chat.characterId}
+                onSwipe={handleSwipe}
+                onDelete={handleDeleteMessage}
+                onEdit={handleEditMessage}
+                disabled={activePlaceholderId !== null}
+              />
+            ))
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="flex shrink-0 items-end gap-2 border-t py-3">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              activePlaceholderId
+                ? "Waiting for response..."
+                : "Type a message... (Enter to send, Shift+Enter for newline)"
+            }
+            className="min-h-[40px] flex-1 resize-none"
+            rows={1}
+            disabled={!canSend}
+          />
+          <Button onClick={handleSend} disabled={!canSend || !input.trim()}>
+            {activePlaceholderId ? "..." : "Send"}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -226,6 +659,7 @@ function MessageBubble({
   onSwipe,
   onDelete,
   onEdit,
+  disabled,
 }: {
   entry: PathEntry;
   characterName: string;
@@ -234,20 +668,19 @@ function MessageBubble({
   onSwipe: (messageLocalId: number, direction: "next" | "prev") => void;
   onDelete: (messageLocalId: number) => void;
   onEdit: (messageLocalId: number, content: string) => void;
+  disabled: boolean;
 }) {
-  const { message, siblingIndex, siblingTotal, isDraft } = entry;
+  const { message, siblingIndex, siblingTotal, isDraft, isStreaming } = entry;
   const isUser = message.is_user ?? message.role === "user";
   const [isEditing, setIsEditing] = useState(false);
   const [draftContent, setDraftContent] = useState(message.content);
 
-  // Reset local edit state when the underlying message content changes
-  // (e.g. after server-side edit round-trip or after messages refetch).
   useEffect(() => {
     if (!isEditing) setDraftContent(message.content);
   }, [message.content, isEditing]);
 
   const beginEdit = () => {
-    if (isDraft) return;
+    if (isDraft || disabled) return;
     setDraftContent(message.content);
     setIsEditing(true);
   };
@@ -270,7 +703,6 @@ function MessageBubble({
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div className={`flex max-w-[80%] gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
-        {/* Avatar */}
         <Avatar className={`mt-1 size-8 shrink-0 ${isUser ? "hidden" : ""}`}>
           {characterImagePath ? (
             <AvatarImage src={`/api/characters/${characterId}/avatar`} alt={characterName} />
@@ -278,15 +710,17 @@ function MessageBubble({
           <AvatarFallback className="text-xs">{characterName[0]}</AvatarFallback>
         </Avatar>
 
-        {/* Content */}
         <div className="space-y-1">
           <p className={`text-muted-foreground text-xs ${isUser ? "text-right" : ""}`}>
             {isUser ? "You" : characterName}
+            {isStreaming && " ✦"}
           </p>
           <div
             className={`rounded-2xl px-4 py-2.5 text-sm ${
-              isUser ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted rounded-bl-md"
-            } ${isDraft ? "opacity-50" : ""}`}
+              isUser
+                ? "bg-primary text-primary-foreground rounded-br-md"
+                : "bg-muted rounded-bl-md"
+            } ${isDraft || isStreaming ? "opacity-50" : ""}`}
           >
             {isDraft ? (
               <p className="italic">Type your message...</p>
@@ -308,16 +742,15 @@ function MessageBubble({
                 </div>
               </div>
             ) : (
-              <p className="whitespace-pre-wrap">{message.content}</p>
+              <p className="whitespace-pre-wrap">
+                {message.content}
+                {isStreaming && <span className="animate-pulse">▌</span>}
+              </p>
             )}
           </div>
 
-          {/* Controls (hidden while editing or on drafts) */}
-          {!isEditing && !isDraft ? (
+          {!isEditing && !isDraft && !isStreaming && !disabled ? (
             <div className="flex flex-wrap items-center gap-2 pt-1">
-              {/* Swipe arrows always render — right arrow is never disabled, so
-                  a single-sibling message (1/1) can still be regenerated
-                  (assistant) or expanded into a draft (user) via ▶. */}
               <button
                 type="button"
                 onClick={() => onSwipe(message.id, "prev")}

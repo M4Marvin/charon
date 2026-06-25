@@ -173,6 +173,13 @@ export const chats = sqliteTable(
       .references(() => characters.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     backgroundPath: text("background_path"),
+    providerId: text("provider_id").references(() => aiProviders.id, {
+      onDelete: "set null",
+    }),
+    presetId: text("preset_id").references(() => presets.id, {
+      onDelete: "set null",
+    }),
+    selectedModel: text("selected_model"),
     metadata: text("metadata", { mode: "json" }),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
@@ -184,6 +191,8 @@ export const chats = sqliteTable(
   (table) => [
     index("chats_user_id_idx").on(table.userId),
     index("chats_character_id_idx").on(table.characterId),
+    index("chats_provider_id_idx").on(table.providerId),
+    index("chats_preset_id_idx").on(table.presetId),
   ],
 );
 
@@ -292,10 +301,31 @@ export const personas = sqliteTable(
   (table) => [index("personas_user_id_idx").on(table.userId)],
 );
 
+// One row per user; stores the AI defaults to seed new chats with.
+// Upserted on first use. All three columns nullable so partial defaults work.
+export const userSettings = sqliteTable("user_settings", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  defaultProviderId: text("default_provider_id").references(() => aiProviders.id, {
+    onDelete: "set null",
+  }),
+  defaultPresetId: text("default_preset_id").references(() => presets.id, {
+    onDelete: "set null",
+  }),
+  defaultSelectedModel: text("default_selected_model"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 // ── Relations ────────────────────────────────────────────────────────────────
 // Optional but useful for typed `with: { ... }` joins. Kept minimal here.
 
-export const usersRelations = relations(user, ({ many }) => ({
+export const usersRelations = relations(user, ({ many, one }) => ({
   sessions: many(session),
   accounts: many(account),
   characters: many(characters),
@@ -303,6 +333,7 @@ export const usersRelations = relations(user, ({ many }) => ({
   chats: many(chats),
   presets: many(presets),
   personas: many(personas),
+  settings: one(userSettings, { fields: [user.id], references: [userSettings.userId] }),
 }));
 
 export const sessionsRelations = relations(session, ({ one }) => ({
@@ -335,6 +366,14 @@ export const chatsRelations = relations(chats, ({ one, many }) => ({
   character: one(characters, {
     fields: [chats.characterId],
     references: [characters.id],
+  }),
+  provider: one(aiProviders, {
+    fields: [chats.providerId],
+    references: [aiProviders.id],
+  }),
+  preset: one(presets, {
+    fields: [chats.presetId],
+    references: [presets.id],
   }),
   messages: many(chatMessages),
 }));
@@ -390,4 +429,6 @@ export type NewPreset = typeof presets.$inferInsert;
 export type Persona = typeof personas.$inferSelect;
 export type NewPersona = typeof personas.$inferInsert;
 export type AiProvider = typeof aiProviders.$inferSelect;
+export type UserSettings = typeof userSettings.$inferSelect;
+export type NewUserSettings = typeof userSettings.$inferInsert;
 export type NewAiProvider = typeof aiProviders.$inferInsert;

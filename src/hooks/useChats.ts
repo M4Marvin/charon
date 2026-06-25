@@ -1,15 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  cancelStream,
   createChat,
   deleteChat,
   deleteMessageBranch,
   editMessage,
+  finalizeStream,
   getChat,
   getChatMessages,
   listChats,
+  prepareStreamMessage,
   sendMessage,
   swipeMessage,
+  updateChatSettings,
   type SendResult,
+  type StreamResult,
   type SwipeResult,
 } from "@/server/fns/chats";
 
@@ -96,6 +101,64 @@ export function useEditMessage() {
       editMessage({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
+    },
+  });
+}
+
+export function usePrepareStream() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      chatId: string;
+      mode: "send" | "regenerate";
+      content?: string;
+      messageLocalId?: number;
+    }): Promise<StreamResult> => prepareStreamMessage({ data: input }),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
+    },
+  });
+}
+
+export function useFinalizeStream() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      chatId: string;
+      messageLocalId: number;
+      content: string;
+    }): Promise<{ messageLocalId: number; content: string }> =>
+      finalizeStream({ data: input }),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
+    },
+  });
+}
+
+export function useCancelStream() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      chatId: string;
+      messageLocalId: number;
+    }): Promise<{ deletedIds: number[] }> => cancelStream({ data: input }),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
+    },
+  });
+}
+
+export function useUpdateChatSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      id: string;
+      providerId?: string | null;
+      presetId?: string | null;
+      selectedModel?: string | null;
+    }): Promise<{ id: string }> => updateChatSettings({ data: input }),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: chatKeys.detail(variables.id) });
     },
   });
 }
