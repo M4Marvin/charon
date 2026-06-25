@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useChat as useAiChat, fetchServerSentEvents } from "@tanstack/ai-react";
+import { ArrowDown, ArrowLeft, ArrowUp, Settings } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,11 +18,15 @@ import {
   useSwipeMessage,
   useSendMessage,
 } from "@/hooks/useChats";
+import { useCharacter } from "@/hooks/useCharacters";
+import { usePersonas, type PersonaListItem } from "@/hooks/usePersonas";
+import { useUserSettings } from "@/hooks/useUserSettings";
 
 import { ChatSettingsPanel } from "@/components/ChatSettingsPanel";
 import { useChatStore } from "@/stores/chat-store";
 import type { ChatMessageRow } from "@/db/schema";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
+import { Streamdown } from "streamdown";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import { getActivePath, getSiblings } from "@/lib/st-core/chat-tree/tree";
 
@@ -52,11 +57,16 @@ interface PathEntry {
   isStreaming: boolean;
 }
 
+const TEXTAREA_MAX_HEIGHT = 160;
+
 function ChatPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const { data: chat, isLoading: chatLoading, error: chatError } = useChat(id);
   const { data: messages, isLoading: msgsLoading } = useChatMessages(id);
+  const { data: character } = useCharacter(chat?.characterId ?? "");
+  const { data: personas = [] } = usePersonas();
+  const { data: userSettings } = useUserSettings();
 
   const prepareStream = usePrepareStream();
   const finalizeStream = useFinalizeStream();
@@ -80,12 +90,23 @@ function ChatPage() {
   const recoveredFor = useChatStore((s) => s.recoveredFor);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showScrollFab, setShowScrollFab] = useState(false);
+  const isUserScrolledUpRef = useRef(false);
 
   const selectedProviderId = chat?.providerId ?? "";
   const selectedModel = chat?.selectedModel ?? "";
 
   const hasAi = selectedProviderId.length > 0 && selectedModel.length > 0;
   const canSend = activePlaceholderId === null;
+  const isStreaming = activePlaceholderId !== null;
+
+  const activePersona: PersonaListItem | undefined = useMemo(() => {
+    const id = userSettings?.defaultPersonaId;
+    if (!id) return undefined;
+    return personas.find((p) => p.id === id);
+  }, [userSettings?.defaultPersonaId, personas]);
 
   // Streaming connection — body reads from the store synchronously. No more
   // ref + useEffect sync race: getState() always returns the current value.
@@ -178,22 +199,54 @@ function ChatPage() {
       .map((msg) => {
         const siblings = getSiblings(tree, msg.id);
         const idx = siblings.findIndex((s) => s.id === msg.id);
-        const isStreaming = msg.id === activePlaceholderId;
+        const isStreamingLocal = msg.id === activePlaceholderId;
         const baseMessage =
-          isStreaming && liveAssistantText !== null ? { ...msg, content: liveAssistantText } : msg;
+          isStreamingLocal && liveAssistantText !== null
+            ? { ...msg, content: liveAssistantText }
+            : msg;
         return {
           message: baseMessage,
           siblingIndex: idx,
           siblingTotal: siblings.length,
           isDraft: (msg.extra?.isDraft ?? false) === true,
-          isStreaming,
+          isStreaming: isStreamingLocal,
         };
       });
   }, [messages, activePlaceholderId, liveAssistantText]);
 
+  // Auto-scroll to bottom on new messages, unless the user has scrolled up.
   useEffect(() => {
+    if (isUserScrolledUpRef.current && !isStreaming) return;
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [activePath, isStreaming]);
+
+  // Auto-grow composer textarea (cap at TEXTAREA_MAX_HEIGHT px).
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
+  }, [input]);
+
+  // Scroll listener — shows the jump-to-bottom FAB when the user is more
+  // than ~200px away from the bottom. Skipped during active streaming
+  // (we auto-scroll new tokens into view).
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const up = distance > 200;
+    isUserScrolledUpRef.current = up;
+    setShowScrollFab(up);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    isUserScrolledUpRef.current = false;
+    setShowScrollFab(false);
+  }, []);
 
   // Stale isStreaming recovery (B3). Runs once per chat id: on mount, if the
   // DB has any message with extra.isStreaming, mark it for cancellation.
@@ -202,27 +255,12 @@ function ChatPage() {
     if (!messages) return;
     const stale = messages.find((m) => (m.extra?.isStreaming ?? false) === true);
     if (!stale) {
-      // Nothing to recover, but mark this chat id as visited so we don't
-      // re-scan on every messages refetch.
       markRecovered(id, 0);
       return;
     }
     markRecovered(id, stale.localId);
     cancelStream.mutate({ chatId: id, messageLocalId: stale.localId });
-    // We intentionally do NOT set activePlaceholderId — the placeholder was
-    // never displayed in this session, so the user doesn't see a ghost.
   }, [messages, id, recoveredFor, cancelStream, markRecovered]);
-
-  // Clean up the recovered-marker when navigating to a different chat.
-  useEffect(() => {
-    return () => {
-      // On unmount, do not clear activePlaceholderId — the user might be
-      // navigating away mid-stream and we'd want the same behaviour as
-      // before (the DB stays dirty, next mount will recover it). Actually
-      // this is fine because on the next mount the new chat id will
-      // differ and the recovery effect will run for that new chat.
-    };
-  }, []);
 
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
@@ -243,9 +281,6 @@ function ChatPage() {
             placeholderId: result.assistantMessageLocalId,
             contentLen: trimmed.length,
           });
-          // Synchronous store update: the connection body reads
-          // getState().activePlaceholderId and will see this value when
-          // aiChat.sendMessage fires its fetch — no effect-lag race.
           setPlaceholder(result.assistantMessageLocalId);
           void aiChat.sendMessage(trimmed);
         },
@@ -292,10 +327,6 @@ function ChatPage() {
         swipeMutation.mutate({ chatId: id, messageLocalId, direction });
         return;
       }
-      // Next on assistant → cycle through existing siblings, regenerate only
-      // when at the last one. Greeting regenerate uses sendMessage(".") because
-      // aiChat.reload() silently no-ops without a prior user turn, and the
-      // client guards against whitespace-only content (see chat-client.js:548).
       const entry = activePath.find((p) => p.message.id === messageLocalId);
       if (entry) {
         console.log("[swipe] entry resolved", {
@@ -313,14 +344,11 @@ function ChatPage() {
         }
         if (!hasAi) {
           console.log("[swipe] → no-ai-fallback", { messageLocalId });
-          // No AI configured: fall back to default-reply sibling ("Make your
-          // own greeting!" for greetings, pickDefaultReply otherwise).
           swipeMutation.mutate({ chatId: id, messageLocalId, direction });
           return;
         }
         if (entry.siblingIndex < entry.siblingTotal - 1) {
           console.log("[swipe] → cycle", { messageLocalId });
-          // Cycle to existing next sibling instead of generating a new one.
           swipeMutation.mutate({ chatId: id, messageLocalId, direction });
           return;
         }
@@ -336,19 +364,9 @@ function ChatPage() {
                 isGreeting,
               });
               setPlaceholder(result.assistantMessageLocalId);
-              // Greeting = parent_id 0 = no preceding user message; reload()
-              // would no-op. sendMessage(".") triggers the stream (non-whitespace
-              // required to bypass chat-client.js:548 trim guard) and the server
-              // builds the greeting prompt from the root.
               if (isGreeting) {
-                console.log('[swipe] → aiChat.sendMessage(".")', {
-                  placeholderId: result.assistantMessageLocalId,
-                });
                 void aiChat.sendMessage(".");
               } else {
-                console.log("[swipe] → aiChat.reload()", {
-                  placeholderId: result.assistantMessageLocalId,
-                });
                 void aiChat.reload();
               }
             },
@@ -360,7 +378,6 @@ function ChatPage() {
         );
         return;
       }
-      // Next on user → default swipe (draft)
       console.log("[swipe] → user-draft", { messageLocalId });
       swipeMutation.mutate({ chatId: id, messageLocalId, direction });
     },
@@ -394,7 +411,7 @@ function ChatPage() {
   );
 
   const handleDeleteChat = useCallback(() => {
-    if (!window.confirm("Delete chat?")) return;
+    if (!window.confirm("Delete this chat?")) return;
     deleteChatMutation.mutate({ id }, { onSuccess: () => void navigate({ to: "/chats" }) });
   }, [id, deleteChatMutation, navigate]);
 
@@ -402,7 +419,7 @@ function ChatPage() {
 
   if (isLoading) {
     return (
-      <main className="mx-auto flex max-w-3xl items-center justify-center px-4 py-16">
+      <main className="flex h-dvh items-center justify-center">
         <p className="text-muted-foreground text-sm">Loading chat...</p>
       </main>
     );
@@ -410,7 +427,7 @@ function ChatPage() {
 
   if (chatError || !chat) {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-8">
+      <main className="mx-auto max-w-2xl px-4 py-8">
         <p className="text-destructive text-sm">{chatError?.message ?? "Chat not found"}</p>
         <Button asChild variant="ghost" className="mt-4">
           <Link to="/chats">← Back to chats</Link>
@@ -419,57 +436,75 @@ function ChatPage() {
     );
   }
 
+  const characterDescription = (character?.data?.description as string | undefined) ?? "";
+  const characterTags = (character?.data?.tags as string[] | undefined) ?? [];
+
   return (
-    <div className="flex h-dvh">
-      {/* Main chat area */}
-      <div className="mx-auto flex max-w-4xl flex-1 flex-col px-4">
-        {/* Header */}
-        <div className="flex shrink-0 items-center gap-3 border-b py-3">
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/chats">←</Link>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSettingsOpen(!settingsOpen)}
-            aria-label="Toggle settings panel"
-          >
-            {settingsOpen ? "✕ Settings" : "⚙ Settings"}
-          </Button>
-          <Avatar className="size-8">
-            {chat.characterImagePath ? (
-              <AvatarImage
-                src={`/api/characters/${chat.characterId}/avatar`}
-                alt={chat.characterName}
-              />
-            ) : null}
-            <AvatarFallback className="text-xs">{chat.characterName[0]}</AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{chat.title}</p>
-            <p className="text-muted-foreground truncate text-xs">with {chat.characterName}</p>
+    <div className="flex h-dvh flex-col bg-background">
+      {/* ── Fixed chat header ── */}
+      <header className="bg-background/80 border-border/60 sticky top-0 z-30 flex h-14 shrink-0 items-center border-b backdrop-blur">
+        <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center px-3">
+          <div className="flex items-center justify-start">
+            <Button asChild variant="ghost" size="icon" className="size-9" aria-label="Back to chats">
+              <Link to="/chats">
+                <ArrowLeft className="size-4" />
+              </Link>
+            </Button>
           </div>
-          <Button variant="destructive" size="sm" onClick={handleDeleteChat}>
-            Delete
-          </Button>
+          <div className="flex min-w-0 items-center gap-2">
+            <Avatar className="size-8 shrink-0">
+              {chat.characterImagePath ? (
+                <AvatarImage
+                  src={`/api/characters/${chat.characterId}/avatar`}
+                  alt={chat.characterName}
+                />
+              ) : null}
+              <AvatarFallback className="text-xs">{chat.characterName[0]}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 text-center">
+              <p className="truncate text-sm font-medium leading-tight">{chat.characterName}</p>
+              {selectedModel ? (
+                <p className="text-muted-foreground truncate text-[10px] leading-tight">
+                  {selectedModel}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex items-center justify-end">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9"
+              onClick={() => setSettingsOpen(!settingsOpen)}
+              aria-label="Toggle settings panel"
+            >
+              <Settings className="size-4" />
+            </Button>
+          </div>
         </div>
+      </header>
 
-        {!selectedProviderId && (
-          <div className="bg-muted/50 mx-2 mt-2 rounded-lg px-4 py-2 text-center text-xs">
-            Configure an AI provider in the{" "}
-            <button type="button" className="underline" onClick={() => setSettingsOpen(true)}>
-              settings panel
-            </button>{" "}
-            to start chatting.
-          </div>
-        )}
+      {/* ── Message column ── */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="relative flex-1 overflow-y-auto"
+      >
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-6">
+          {/* Character intro card (Chub-style first impression) */}
+          {(characterDescription || characterTags.length > 0) && (
+            <CharacterIntroCard
+              name={chat.characterName}
+              imagePath={chat.characterImagePath}
+              characterId={chat.characterId}
+              description={characterDescription}
+              tags={characterTags}
+            />
+          )}
 
-        <div className="flex-1 space-y-4 overflow-y-auto py-4">
           {activePath.length === 0 ? (
-            <div className="flex h-full items-center justify-center">
-              <p className="text-muted-foreground text-sm">
-                No messages yet. Start a conversation!
-              </p>
+            <div className="text-muted-foreground py-16 text-center text-sm">
+              No messages yet. Say hello!
             </div>
           ) : (
             activePath.map((entry) => (
@@ -479,6 +514,8 @@ function ChatPage() {
                 characterName={chat.characterName}
                 characterImagePath={chat.characterImagePath}
                 characterId={chat.characterId}
+                personaName={activePersona?.name}
+                personaIconPath={activePersona?.iconPath ?? null}
                 onSwipe={handleSwipe}
                 onDelete={handleDeleteMessage}
                 onEdit={handleEditMessage}
@@ -489,27 +526,116 @@ function ChatPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="flex shrink-0 items-end gap-2 border-t py-3">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              activePlaceholderId
-                ? "Waiting for response..."
-                : "Type a message... (Enter to send, Shift+Enter for newline)"
-            }
-            className="min-h-[40px] flex-1 resize-none"
-            rows={1}
-            disabled={!canSend}
-          />
-          <Button onClick={handleSend} disabled={!canSend || !input.trim()}>
-            {activePlaceholderId ? "..." : "Send"}
+        {/* Scroll-to-bottom FAB */}
+        {showScrollFab && (
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={scrollToBottom}
+            aria-label="Scroll to latest"
+            className={`bg-background/90 absolute right-4 bottom-4 z-20 size-9 rounded-full shadow-lg backdrop-blur ${
+              isStreaming ? "animate-pulse" : ""
+            }`}
+          >
+            <ArrowDown className="size-4" />
           </Button>
+        )}
+      </div>
+
+      {/* ── Composer + AI hint ── */}
+      <div className="bg-background/80 border-border/60 shrink-0 border-t px-4 pt-2 pb-4 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-2">
+          {!hasAi && (
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="text-muted-foreground hover:text-foreground self-start text-xs transition-colors"
+            >
+              No AI configured — open settings →
+            </button>
+          )}
+          <div className="border-border/60 bg-muted/30 flex items-end gap-2 rounded-2xl border px-3 py-2">
+            <Textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                activePlaceholderId
+                  ? "Waiting for response..."
+                  : activePersona
+                    ? `Message as ${activePersona.name}...`
+                    : "Type a message..."
+              }
+              className="min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-1 text-sm shadow-none focus-visible:ring-0"
+              rows={1}
+              disabled={!canSend}
+            />
+            <Button
+              size="icon"
+              onClick={handleSend}
+              disabled={!canSend || !input.trim()}
+              className="size-8 shrink-0 rounded-full"
+              aria-label="Send message"
+            >
+              <ArrowUp className="size-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      {settingsOpen && <ChatSettingsPanel chat={chat} onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <ChatSettingsPanel
+          chat={chat}
+          onClose={() => setSettingsOpen(false)}
+          onDeleteChat={handleDeleteChat}
+        />
+      )}
+    </div>
+  );
+}
+
+function CharacterIntroCard({
+  name,
+  imagePath,
+  characterId,
+  description,
+  tags,
+}: {
+  name: string;
+  imagePath: string | null;
+  characterId: string;
+  description: string;
+  tags: string[];
+}) {
+  return (
+    <div className="bg-muted/30 border-border/40 flex items-start gap-4 rounded-2xl border p-4">
+      <Avatar className="size-14 shrink-0">
+        {imagePath ? (
+          <AvatarImage src={`/api/characters/${characterId}/avatar`} alt={name} />
+        ) : null}
+        <AvatarFallback>{name[0]}</AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="text-sm font-semibold">{name}</p>
+        {description && (
+          <p className="text-muted-foreground line-clamp-3 text-xs leading-relaxed">
+            {description}
+          </p>
+        )}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-1">
+            {tags.slice(0, 6).map((t) => (
+              <span
+                key={t}
+                className="bg-background/60 text-muted-foreground rounded-full border px-2 py-0.5 text-[10px]"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -519,6 +645,8 @@ function MessageBubble({
   characterName,
   characterImagePath,
   characterId,
+  personaName,
+  personaIconPath,
   onSwipe,
   onDelete,
   onEdit,
@@ -528,6 +656,8 @@ function MessageBubble({
   characterName: string;
   characterImagePath: string | null;
   characterId: string;
+  personaName: string | undefined;
+  personaIconPath: string | null;
   onSwipe: (messageLocalId: number, direction: "next" | "prev") => void;
   onDelete: (messageLocalId: number) => void;
   onEdit: (messageLocalId: number, content: string) => void;
@@ -563,95 +693,135 @@ function MessageBubble({
     setIsEditing(false);
   };
 
+  const displayName = isUser ? personaName ?? "You" : characterName;
+  const initial = (displayName ?? "?").charAt(0).toUpperCase();
+
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div className={`flex max-w-[80%] gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
-        <Avatar className={`mt-1 size-8 shrink-0 ${isUser ? "hidden" : ""}`}>
-          {characterImagePath ? (
-            <AvatarImage src={`/api/characters/${characterId}/avatar`} alt={characterName} />
-          ) : null}
-          <AvatarFallback className="text-xs">{characterName[0]}</AvatarFallback>
-        </Avatar>
+    <div
+      className={`group flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}
+    >
+      <Avatar className="size-7 shrink-0">
+        {isUser ? (
+          personaIconPath ? (
+            <AvatarImage src={personaIconPath} alt={displayName} />
+          ) : null
+        ) : characterImagePath ? (
+          <AvatarImage src={`/api/characters/${characterId}/avatar`} alt={displayName} />
+        ) : null}
+        <AvatarFallback className="text-[10px]">{initial}</AvatarFallback>
+      </Avatar>
 
-        <div className="space-y-1">
-          <p className={`text-muted-foreground text-xs ${isUser ? "text-right" : ""}`}>
-            {isUser ? "You" : characterName}
-            {isStreaming && " ✦"}
-          </p>
-          <div
-            className={`rounded-2xl px-4 py-2.5 text-sm ${
-              isUser ? "bg-primary text-primary-foreground rounded-br-md" : "bg-muted rounded-bl-md"
-            } ${isDraft || isStreaming ? "opacity-50" : ""}`}
-          >
-            {isDraft ? (
-              <p className="italic">Type your message...</p>
-            ) : isEditing ? (
-              <div className="space-y-2">
-                <Textarea
-                  value={draftContent}
-                  onChange={(e) => setDraftContent(e.target.value)}
-                  className="min-h-[60px] resize-none text-sm"
-                  autoFocus
-                />
-                <div className="flex justify-end gap-2">
-                  <Button size="sm" variant="ghost" onClick={cancelEdit}>
-                    Cancel
-                  </Button>
-                  <Button size="sm" onClick={saveEdit}>
-                    Save
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <p className="whitespace-pre-wrap">
-                {message.content}
-                {isStreaming && <span className="animate-pulse">▌</span>}
-              </p>
-            )}
-          </div>
+      <div className={`flex min-w-0 max-w-[85%] flex-col gap-1 ${isUser ? "items-end" : ""}`}>
+        <p
+          className={`text-muted-foreground flex items-center gap-1 text-[11px] ${
+            isUser ? "justify-end" : ""
+          }`}
+        >
+          <span className="font-medium">{displayName}</span>
+          {isStreaming && <span aria-hidden>✦</span>}
+        </p>
 
-          {!isEditing && !isDraft && !isStreaming && !disabled ? (
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => onSwipe(message.id, "prev")}
-                disabled={siblingIndex === 0}
-                className={`text-muted-foreground hover:text-foreground text-xs transition-colors disabled:opacity-30 ${
-                  siblingIndex === 0 ? "cursor-not-allowed" : "cursor-pointer"
-                }`}
-                aria-label="Previous message"
-              >
-                ◀
-              </button>
-              <span className="text-muted-foreground text-xs">
-                {siblingIndex + 1}/{siblingTotal}
-              </span>
-              <button
-                type="button"
-                onClick={() => onSwipe(message.id, "next")}
-                className="text-muted-foreground hover:text-foreground cursor-pointer text-xs transition-colors"
-                aria-label="Next message"
-              >
-                ▶
-              </button>
-              <button
-                type="button"
-                onClick={beginEdit}
-                className="text-muted-foreground hover:text-foreground cursor-pointer text-xs transition-colors"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => onDelete(message.id)}
-                className="text-muted-foreground hover:text-destructive cursor-pointer text-xs transition-colors"
-              >
-                Delete
-              </button>
+        {isDraft ? (
+          <p className="text-muted-foreground text-sm italic">Type your message...</p>
+        ) : isEditing ? (
+          <div className="w-full space-y-2">
+            <Textarea
+              value={draftContent}
+              onChange={(e) => setDraftContent(e.target.value)}
+              className="min-h-[80px] resize-none text-sm"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={saveEdit}>
+                Save
+              </Button>
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : isStreaming && message.content === "" ? (
+          <ThinkingDots />
+        ) : (
+          <div
+            className={`prose prose-sm prose-invert max-w-none ${
+              isDraft || isStreaming ? "opacity-90" : ""
+            }`}
+          >
+            <Streamdown parseIncompleteMarkdown={isStreaming}>
+              {message.content}
+            </Streamdown>
+            {isStreaming && <StreamingCaret />}
+          </div>
+        )}
+
+        {!isEditing && !isDraft && !disabled && (
+          <div
+            className={`text-muted-foreground flex items-center gap-2 pt-0.5 text-[11px] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 ${
+              isUser ? "flex-row-reverse" : ""
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => onSwipe(message.id, "prev")}
+              disabled={siblingIndex === 0}
+              className="hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+              aria-label="Previous message"
+            >
+              ‹
+            </button>
+            <span aria-label={`Message ${siblingIndex + 1} of ${siblingTotal}`}>
+              {siblingIndex + 1}/{siblingTotal}
+            </span>
+            <button
+              type="button"
+              onClick={() => onSwipe(message.id, "next")}
+              className="hover:text-foreground"
+              aria-label="Next message"
+            >
+              ›
+            </button>
+            {!isUser && (
+              <>
+                <span aria-hidden>·</span>
+                <button
+                  type="button"
+                  onClick={beginEdit}
+                  className="hover:text-foreground"
+                >
+                  Edit
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => onDelete(message.id)}
+              className="hover:text-destructive"
+            >
+              Delete
+            </button>
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function ThinkingDots() {
+  return (
+    <div className="text-muted-foreground flex items-center gap-1 py-1" aria-label="Thinking">
+      <span className="bg-muted-foreground/70 size-1.5 animate-bounce rounded-full [animation-delay:-0.3s]" />
+      <span className="bg-muted-foreground/70 size-1.5 animate-bounce rounded-full [animation-delay:-0.15s]" />
+      <span className="bg-muted-foreground/70 size-1.5 animate-bounce rounded-full" />
+    </div>
+  );
+}
+
+function StreamingCaret() {
+  return (
+    <span
+      aria-hidden
+      className="bg-foreground/70 ml-0.5 inline-block h-3 w-[2px] translate-y-0.5 animate-pulse"
+    />
   );
 }
