@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,13 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAiProviders } from "@/hooks/useAiProviders";
-import { usePresets } from "@/hooks/usePresets";
+import {
+  usePresets,
+  useCreatePreset,
+  useUpdatePreset,
+  useDeletePreset,
+  type PresetListItem,
+} from "@/hooks/usePresets";
 import { useProviderModels } from "@/hooks/useProviderModels";
 import {
   useCreatePersona,
@@ -33,7 +39,18 @@ import {
   useUpdatePersona,
   type PersonaListItem,
 } from "@/hooks/usePersonas";
-import { useLorebooks, useToggleLorebook } from "@/hooks/useLorebooks";
+import {
+  useDeleteLorebookEntry,
+  useLorebookEntries,
+  useLorebooks,
+  useToggleLoreEntry,
+  useToggleLorebook,
+} from "@/hooks/useLorebooks";
+import { EntryEditorDialog } from "@/components/lorebook/EntryEditorDialog";
+import { ImportLorebookDialog } from "@/components/lorebook/ImportLorebookDialog";
+import { PresetDialog } from "@/components/preset/PresetDialog";
+import type { LoreEntry } from "@/db/schema";
+import type { LorebookListItem } from "@/server/fns/lorebooks";
 import { useUpdateChatSettings } from "@/hooks/useChats";
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import type { ChatDetail } from "@/server/fns/chats";
@@ -41,9 +58,10 @@ import type { ChatDetail } from "@/server/fns/chats";
 interface ChatSettingsPanelProps {
   chat: ChatDetail;
   onClose: () => void;
+  onDeleteChat?: () => void;
 }
 
-export function ChatSettingsPanel({ chat, onClose }: ChatSettingsPanelProps) {
+export function ChatSettingsPanel({ chat, onClose, onDeleteChat }: ChatSettingsPanelProps) {
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -103,6 +121,19 @@ export function ChatSettingsPanel({ chat, onClose }: ChatSettingsPanelProps) {
             </TabsContent>
           </Tabs>
         </div>
+
+        {onDeleteChat && (
+          <div className="shrink-0 border-t px-4 py-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive w-full justify-start"
+              onClick={onDeleteChat}
+            >
+              Delete this chat
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -121,6 +152,10 @@ function AiSection({ chat }: { chat: ChatDetail }) {
   const selectedModel = chat.selectedModel ?? "";
 
   const { data: models = [] } = useProviderModels(selectedProviderId);
+  const [editing, setEditing] = useState<PresetListItem | "new" | null>(null);
+  const createPreset = useCreatePreset();
+  const updatePreset = useUpdatePreset();
+  const deletePreset = useDeletePreset();
 
   const handleChangeProvider = useCallback(
     (providerId: string) => {
@@ -228,11 +263,75 @@ function AiSection({ chat }: { chat: ChatDetail }) {
             ))}
           </SelectContent>
         </Select>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setEditing("new")}>
+            + Add
+          </Button>
+          {selectedPresetId && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  const p = presets.find((x) => x.id === selectedPresetId);
+                  if (p) setEditing(p);
+                }}
+              >
+                Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  if (!window.confirm("Delete this preset?")) return;
+                  deletePreset.mutate(
+                    { id: selectedPresetId },
+                    {
+                      onSuccess: () => {
+                        toast.success("Preset deleted");
+                        handleChangePreset("");
+                      },
+                      onError: (e) => toast.error(`Delete failed: ${(e as Error).message}`),
+                    },
+                  );
+                }}
+              >
+                Delete
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <Button asChild variant="outline" size="sm" className="w-full">
         <Link to="/ai-playground">Configure providers</Link>
       </Button>
+
+      <PresetDialog
+        state={editing}
+        providers={providers}
+        models={models}
+        defaultModel={selectedModel}
+        onClose={() => setEditing(null)}
+        onCreate={(input) =>
+          createPreset.mutate(input, {
+            onSuccess: () => {
+              toast.success("Preset created");
+              setEditing(null);
+            },
+            onError: (e) => toast.error(`Create failed: ${(e as Error).message}`),
+          })
+        }
+        onUpdate={(input) =>
+          updatePreset.mutate(input, {
+            onSuccess: () => {
+              toast.success("Preset updated");
+              setEditing(null);
+            },
+            onError: (e) => toast.error(`Update failed: ${(e as Error).message}`),
+          })
+        }
+      />
     </div>
   );
 }
@@ -242,40 +341,302 @@ function AiSection({ chat }: { chat: ChatDetail }) {
 function LorebooksSection() {
   const { data: lorebooks = [], isLoading } = useLorebooks();
   const toggle = useToggleLorebook();
+  const [importOpen, setImportOpen] = useState(false);
+  const [editLorebookId, setEditLorebookId] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const enabled = lorebooks.filter((lb) => lb.enabled);
+  const disabled = lorebooks.filter((lb) => !lb.enabled);
 
   return (
-    <div className="space-y-2">
-      <p className="text-muted-foreground text-xs">
-        Per-user activation. Enabled lorebooks apply to all chats.
-      </p>
+    <div className="space-y-3">
       {isLoading ? (
         <p className="text-muted-foreground text-xs">Loading...</p>
-      ) : lorebooks.length === 0 ? (
-        <p className="text-muted-foreground text-xs">No lorebooks yet.</p>
+      ) : enabled.length === 0 ? (
+        <p className="text-muted-foreground text-xs">No active lorebooks.</p>
       ) : (
         <div className="space-y-1">
-          {lorebooks.map((lb) => (
-            <div
+          {enabled.map((lb) => (
+            <ExpandableLorebookRow
               key={lb.id}
-              className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm">{lb.name}</p>
-                <Badge variant="secondary" className="text-xs">
-                  {lb.entryCount} {lb.entryCount === 1 ? "entry" : "entries"}
-                </Badge>
-              </div>
-              <Switch
-                checked={lb.enabled}
-                disabled={toggle.isPending}
-                onCheckedChange={(checked) =>
-                  toggle.mutate({ lorebookId: lb.id, enabled: checked })
-                }
-                aria-label={`Toggle ${lb.name}`}
-              />
-            </div>
+              lorebook={lb}
+              expanded={expandedId === lb.id}
+              onToggleExpand={() => setExpandedId(expandedId === lb.id ? null : lb.id)}
+              onDoubleClick={() => {
+                setEditLorebookId(lb.id);
+                setExpandedId(null);
+              }}
+              onRemove={() => toggle.mutate({ lorebookId: lb.id, enabled: false })}
+              removePending={toggle.isPending}
+            />
           ))}
         </div>
+      )}
+
+      <div className="flex items-end gap-2">
+        {disabled.length > 0 && (
+          <div className="flex-1 space-y-1">
+            <Label className="text-xs">Add lorebook</Label>
+            <Select
+              value=""
+              onValueChange={(id) => toggle.mutate({ lorebookId: id, enabled: true })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="+ Add lorebook" />
+              </SelectTrigger>
+              <SelectContent>
+                {disabled.map((lb) => (
+                  <SelectItem key={lb.id} value={lb.id}>
+                    {lb.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+          Import
+        </Button>
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-xs">Edit lorebook</Label>
+        <Select value={editLorebookId} onValueChange={setEditLorebookId}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select lorebook to edit" />
+          </SelectTrigger>
+          <SelectContent>
+            {lorebooks.map((lb) => (
+              <SelectItem key={lb.id} value={lb.id}>
+                {lb.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {editLorebookId && <LorebookEditor key={editLorebookId} lorebookId={editLorebookId} />}
+
+      <ImportLorebookDialog open={importOpen} onOpenChange={setImportOpen} />
+    </div>
+  );
+}
+
+function ExpandableLorebookRow({
+  lorebook,
+  expanded,
+  onToggleExpand,
+  onDoubleClick,
+  onRemove,
+  removePending,
+}: {
+  lorebook: LorebookListItem;
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onDoubleClick: () => void;
+  onRemove: () => void;
+  removePending: boolean;
+}) {
+  const clickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleClick = () => {
+    if (clickRef.current) {
+      clearTimeout(clickRef.current);
+      clickRef.current = null;
+      return;
+    }
+    clickRef.current = setTimeout(() => {
+      clickRef.current = null;
+      onToggleExpand();
+    }, 250);
+  };
+
+  const handleDblClick = () => {
+    if (clickRef.current) {
+      clearTimeout(clickRef.current);
+      clickRef.current = null;
+    }
+    onDoubleClick();
+  };
+
+  return (
+    <div>
+      <div
+        className="flex cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50"
+        onClick={handleClick}
+        onDoubleClick={handleDblClick}
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="text-muted-foreground text-xs">{expanded ? "▾" : "▸"}</span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm">{lorebook.name}</p>
+            <Badge variant="secondary" className="text-xs">
+              {lorebook.entryCount} {lorebook.entryCount === 1 ? "entry" : "entries"}
+            </Badge>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={removePending}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          aria-label={`Remove ${lorebook.name}`}
+        >
+          ✕
+        </Button>
+      </div>
+      {expanded && <ExpandedDetails lorebookId={lorebook.id} />}
+    </div>
+  );
+}
+
+function ExpandedDetails({ lorebookId }: { lorebookId: string }) {
+  const { data: entries, isLoading } = useLorebookEntries(lorebookId);
+  const toggle = useToggleLoreEntry(lorebookId);
+
+  if (isLoading) {
+    return (
+      <p className="text-muted-foreground pl-6 py-1 text-xs">Loading entries...</p>
+    );
+  }
+  if (!entries || entries.length === 0) {
+    return (
+      <p className="text-muted-foreground pl-6 py-1 text-xs">No entries.</p>
+    );
+  }
+
+  return (
+    <div className="max-h-48 space-y-1 overflow-y-auto pl-6 py-1">
+      {entries.map((entry) => {
+        const authorDisabled = entry.data.disable === true;
+        const userDisabled = entry.userDisabled === true;
+        const effectiveOn = !authorDisabled && !userDisabled;
+
+        return (
+          <div
+            key={entry.id}
+            className="flex items-center justify-between gap-2 rounded-md px-2 py-1"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs">
+                {entry.data.comment || (
+                  <span className="text-muted-foreground italic">no comment</span>
+                )}
+              </p>
+              <p className="text-muted-foreground truncate text-xs">
+                {entry.data.key.join(", ") || "—"}
+              </p>
+            </div>
+            <Switch
+              checked={effectiveOn}
+              disabled={toggle.isPending || authorDisabled}
+              onCheckedChange={(checked) =>
+                toggle.mutate({ entryId: entry.id, disabled: !checked })
+              }
+              aria-label={`Toggle ${entry.data.comment || `entry ${entry.uid}`}`}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function LorebookEditor({ lorebookId }: { lorebookId: string }) {
+  const { data: entries, isLoading } = useLorebookEntries(lorebookId);
+  const deleteEntry = useDeleteLorebookEntry(lorebookId);
+  const toggle = useToggleLoreEntry(lorebookId);
+  const [dialog, setDialog] = useState<
+    { kind: "closed" } | { kind: "create" } | { kind: "edit"; entry: LoreEntry }
+  >({ kind: "closed" });
+
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium">Entries</p>
+        <Button size="sm" variant="outline" onClick={() => setDialog({ kind: "create" })}>
+          New Entry
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <p className="text-muted-foreground text-xs">Loading entries...</p>
+      ) : !entries || entries.length === 0 ? (
+        <p className="text-muted-foreground py-4 text-center text-xs">No entries yet.</p>
+      ) : (
+        <div className="space-y-1">
+          {entries.map((entry) => {
+            const authorDisabled = entry.data.disable === true;
+            const userDisabled = entry.userDisabled === true;
+            const effectiveOn = !authorDisabled && !userDisabled;
+
+            return (
+              <div
+                key={entry.id}
+                className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs">
+                    {entry.data.comment || (
+                      <span className="text-muted-foreground italic">no comment</span>
+                    )}
+                  </p>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {entry.data.key.join(", ") || "—"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Switch
+                    checked={effectiveOn}
+                    disabled={toggle.isPending || authorDisabled}
+                    onCheckedChange={(checked) =>
+                      toggle.mutate({ entryId: entry.id, disabled: !checked })
+                    }
+                    aria-label={`Toggle ${entry.data.comment || `entry ${entry.uid}`}`}
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setDialog({ kind: "edit", entry })}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={deleteEntry.isPending}
+                    onClick={() => {
+                      if (window.confirm("Delete this entry?")) {
+                        deleteEntry.mutate({ entryId: entry.id });
+                      }
+                    }}
+                  >
+                    Del
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {dialog.kind === "create" && (
+        <EntryEditorDialog
+          lorebookId={lorebookId}
+          mode="create"
+          onClose={() => setDialog({ kind: "closed" })}
+        />
+      )}
+      {dialog.kind === "edit" && (
+        <EntryEditorDialog
+          lorebookId={lorebookId}
+          mode="edit"
+          entry={dialog.entry}
+          onClose={() => setDialog({ kind: "closed" })}
+        />
       )}
     </div>
   );
@@ -478,6 +839,21 @@ function PersonaDialog({
   );
 }
 
+// ── Auto-resize hook ───────────────────────────────────────────────────────
+
+function useAutoResizeTextarea(value: string) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
+  return ref;
+}
+
 // ── Prompts section ────────────────────────────────────────────────────────
 
 function PromptsSection() {
@@ -511,6 +887,10 @@ function PromptsSection() {
     [updateUserDefaults],
   );
 
+  const systemRef = useAutoResizeTextarea(systemPrompt);
+  const postHistoryRef = useAutoResizeTextarea(postHistoryInstructions);
+  const impersonationRef = useAutoResizeTextarea(impersonationPrompt);
+
   return (
     <div className="space-y-3">
       <p className="text-muted-foreground text-xs">
@@ -520,6 +900,7 @@ function PromptsSection() {
         <div className="space-y-1">
           <Label className="text-xs">System prompt</Label>
           <Textarea
+            ref={systemRef}
             value={systemPrompt}
             onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setSystemPrompt(e.target.value)}
             onBlur={(e) => commit("systemPrompt", e.target.value)}
@@ -530,6 +911,7 @@ function PromptsSection() {
         <div className="space-y-1">
           <Label className="text-xs">Post-history instructions</Label>
           <Textarea
+            ref={postHistoryRef}
             value={postHistoryInstructions}
             onChange={(e) => setPostHistoryInstructions(e.target.value)}
             onBlur={(e) => commit("postHistoryInstructions", e.target.value)}
@@ -542,6 +924,7 @@ function PromptsSection() {
         <div className="space-y-1">
           <Label className="text-xs">Impersonation prompt</Label>
           <Textarea
+            ref={impersonationRef}
             value={impersonationPrompt}
             onChange={(e) => setImpersonationPrompt(e.target.value)}
             onBlur={(e) => commit("impersonationPrompt", e.target.value)}
