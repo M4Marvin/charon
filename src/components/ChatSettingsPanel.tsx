@@ -44,6 +44,14 @@ interface ChatSettingsPanelProps {
 }
 
 export function ChatSettingsPanel({ chat, onClose }: ChatSettingsPanelProps) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   return (
     <div className="fixed inset-0 z-40">
       {/* Backdrop */}
