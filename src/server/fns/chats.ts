@@ -106,6 +106,9 @@ export type ChatDetail = {
   characterName: string;
   characterImagePath: string | null;
   title: string;
+  providerId: string | null;
+  presetId: string | null;
+  selectedModel: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -145,6 +148,9 @@ export const getChat = createServerFn({ method: "GET", strict: { output: false }
       characterName: char.name,
       characterImagePath: char.imagePath,
       title: chat.title,
+      providerId: chat.providerId,
+      presetId: chat.presetId,
+      selectedModel: chat.selectedModel,
       createdAt: chat.createdAt,
       updatedAt: chat.updatedAt,
     };
@@ -230,6 +236,9 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
       characterName: char.name,
       characterImagePath: char.imagePath,
       title: chat.title,
+      providerId: chat.providerId,
+      presetId: chat.presetId,
+      selectedModel: chat.selectedModel,
       createdAt: chat.createdAt,
       updatedAt: chat.updatedAt,
     };
