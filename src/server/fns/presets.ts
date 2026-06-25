@@ -25,6 +25,9 @@ const PresetDataInput = type({
   "temperature?": "number",
   "maxTokens?": "number",
   "topP?": "number",
+  "contextSize?": "number",
+  "frequencyPenalty?": "number",
+  "presencePenalty?": "number",
 });
 
 const CreatePresetInput = type({

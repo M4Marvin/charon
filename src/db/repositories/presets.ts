@@ -7,6 +7,9 @@ export type PresetData = {
   temperature?: number;
   maxTokens?: number;
   topP?: number;
+  contextSize?: number;
+  frequencyPenalty?: number;
+  presencePenalty?: number;
 };
 
 export type CreatePresetInput = {

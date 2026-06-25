@@ -688,6 +688,9 @@ function PresetDialog({
   const [temperature, setTemperature] = useState("0.7");
   const [maxTokens, setMaxTokens] = useState("1024");
   const [topP, setTopP] = useState("1");
+  const [contextSize, setContextSize] = useState("");
+  const [frequencyPenalty, setFrequencyPenalty] = useState("0");
+  const [presencePenalty, setPresencePenalty] = useState("0");
 
   useEffect(() => {
     if (editing) {
@@ -699,6 +702,9 @@ function PresetDialog({
       setTemperature(d.temperature?.toString() ?? "0.7");
       setMaxTokens(d.maxTokens?.toString() ?? "1024");
       setTopP(d.topP?.toString() ?? "1");
+      setContextSize(d.contextSize?.toString() ?? "");
+      setFrequencyPenalty(d.frequencyPenalty?.toString() ?? "0");
+      setPresencePenalty(d.presencePenalty?.toString() ?? "0");
     } else {
       setName("");
       setProviderId("");
@@ -707,6 +713,9 @@ function PresetDialog({
       setTemperature("0.7");
       setMaxTokens("1024");
       setTopP("1");
+      setContextSize("");
+      setFrequencyPenalty("0");
+      setPresencePenalty("0");
     }
   }, [editing, open, defaultModel]);
 
@@ -765,6 +774,40 @@ function PresetDialog({
               <Input value={topP} onChange={(e) => setTopP(e.target.value)} />
             </div>
           </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-1">
+              <Label>Context size</Label>
+              <Input
+                value={contextSize}
+                onChange={(e) => setContextSize(e.target.value)}
+                placeholder="tokens"
+                type="number"
+                min="0"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Freq. penalty</Label>
+              <Input
+                value={frequencyPenalty}
+                onChange={(e) => setFrequencyPenalty(e.target.value)}
+                type="number"
+                step="0.1"
+                min="-2"
+                max="2"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Presence penalty</Label>
+              <Input
+                value={presencePenalty}
+                onChange={(e) => setPresencePenalty(e.target.value)}
+                type="number"
+                step="0.1"
+                min="-2"
+                max="2"
+              />
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
@@ -780,6 +823,12 @@ function PresetDialog({
               if (!Number.isNaN(m)) data.maxTokens = m;
               const p = parseFloat(topP);
               if (!Number.isNaN(p)) data.topP = p;
+              const cs = parseInt(contextSize, 10);
+              if (!Number.isNaN(cs) && cs > 0) data.contextSize = cs;
+              const fp = parseFloat(frequencyPenalty);
+              if (!Number.isNaN(fp)) data.frequencyPenalty = fp;
+              const pp = parseFloat(presencePenalty);
+              if (!Number.isNaN(pp)) data.presencePenalty = pp;
               if (editing) {
                 onUpdate({
                   id: editing.id,

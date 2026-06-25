@@ -45,7 +45,6 @@ export interface BuildChatPromptInput {
   chatHistory: ChatMessage[];
   preset: Partial<ChatCompletionPreset>;
   defaultPreset: ChatCompletionPreset;
-  userMessage: string;
   userName: string;
   userPersona?: string;
 }
@@ -61,7 +60,6 @@ export function buildChatPrompt(input: BuildChatPromptInput): BuildChatPromptRes
     chatHistory,
     preset: dbPreset,
     defaultPreset,
-    userMessage,
     userName,
     userPersona,
   } = input;
@@ -70,21 +68,7 @@ export function buildChatPrompt(input: BuildChatPromptInput): BuildChatPromptRes
   const pipelineChar = v2ToPipelineCharacter(v2);
   const preset = mergePresetIntoPreset(dbPreset)(defaultPreset);
 
-  // Build the prompt context (lorebook, character desc, history, etc.)
-  const allHistory: ChatMessage[] = [
-    ...chatHistory,
-    {
-      id: chatHistory.length + 1,
-      parent_id: chatHistory.length,
-      children: [],
-      selected_child_id: null,
-      role: "user",
-      content: userMessage,
-      is_user: true,
-    },
-  ];
-
-  const { messages: assembled } = buildMessages(pipelineChar, allHistory, preset, userName, userPersona);
+  const { messages: assembled } = buildMessages(pipelineChar, chatHistory, preset, userName, userPersona);
 
   // Pre-process
   let msgs = assembled;
