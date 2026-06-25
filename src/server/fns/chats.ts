@@ -10,6 +10,7 @@ import {
   insertMessage as repoInsertMessage,
   listChats as repoListChats,
   listMessages as repoListMessages,
+  updateChat as repoUpdateChat,
   updateMessage as repoUpdateMessage,
   type ChatWithCharacter,
 } from "@/db/repositories/chats";
@@ -507,6 +508,227 @@ export const editMessage = createServerFn({ method: "POST", strict: { output: fa
       return { messageLocalId: data.messageLocalId, content: data.content };
     },
   );
+
+export type StreamResult = {
+  assistantMessageLocalId: number;
+};
+
+export const prepareStreamMessage = createServerFn({
+  method: "POST",
+  strict: { output: false },
+})
+  .validator((data: unknown) => {
+    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
+    const d = data as Record<string, unknown>;
+    if (typeof d.chatId !== "string") throw new Error("chatId is required");
+    if (d.mode !== "send" && d.mode !== "regenerate") throw new Error("mode must be 'send' or 'regenerate'");
+    if (d.mode === "send" && typeof d.content !== "string") throw new Error("content is required for send");
+    if (d.mode === "regenerate" && typeof d.messageLocalId !== "number")
+      throw new Error("messageLocalId is required for regenerate");
+    return {
+      chatId: d.chatId as string,
+      mode: d.mode as "send" | "regenerate",
+      content: (d.content as string | undefined) ?? "",
+      messageLocalId: (d.messageLocalId as number | undefined) ?? 0,
+    };
+  })
+  .handler(
+    async ({
+      data,
+    }): Promise<StreamResult> => {
+      if (data.messageLocalId === 0 && data.mode === "regenerate")
+        throw new Error("Cannot regenerate the hidden root");
+      const { user } = await getSession();
+
+      const chat = repoGetChat(user.id, data.chatId);
+      const char: Character = repoGetChar(user.id, chat.characterId);
+      const rows = repoListMessages(user.id, data.chatId);
+      const tree = treeFromNodes(rows.map(rowToMessage));
+
+      let assistantMessageLocalId: number;
+
+      if (data.mode === "send") {
+        // Add user message as child of active leaf, then assistant placeholder
+        const activeLeafId = getActiveLeafId(tree);
+        if (activeLeafId === null) throw new Error("No active message to send from");
+        const activeLeaf = getNode(tree, activeLeafId);
+        const isDraft = (activeLeaf.extra?.isDraft ?? false) === true;
+
+        if (isDraft) {
+          // Populate draft, add placeholder as child
+          repoUpdateMessage(user.id, data.chatId, activeLeafId, {
+            content: data.content,
+            extra: null,
+          });
+          const placeholder: ChatMessage = {
+            id: getNextId(tree),
+            parent_id: null,
+            children: [],
+            selected_child_id: null,
+            role: "assistant",
+            name: char.data.name,
+            content: "",
+            is_user: false,
+            is_system: false,
+            extra: { isStreaming: true },
+          };
+          addChild(tree, activeLeafId, placeholder);
+          const updatedDraft = getNode(tree, activeLeafId);
+          repoUpdateMessage(user.id, data.chatId, activeLeafId, {
+            children: updatedDraft.children,
+            selectedChildLocalId: updatedDraft.selected_child_id,
+          });
+          repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, placeholder));
+          assistantMessageLocalId = placeholder.id;
+        } else {
+          // Normal case: user msg + assistant placeholder
+          const userMsg: ChatMessage = {
+            id: getNextId(tree),
+            parent_id: null,
+            children: [],
+            selected_child_id: null,
+            role: "user",
+            name: user.name,
+            content: data.content,
+            is_user: true,
+            is_system: false,
+          };
+          addChild(tree, activeLeafId, userMsg);
+          const placeholder: ChatMessage = {
+            id: getNextId(tree),
+            parent_id: null,
+            children: [],
+            selected_child_id: null,
+            role: "assistant",
+            name: char.data.name,
+            content: "",
+            is_user: false,
+            is_system: false,
+            extra: { isStreaming: true },
+          };
+          addChild(tree, userMsg.id, placeholder);
+
+          const updatedActiveLeaf = getNode(tree, activeLeafId);
+          repoUpdateMessage(user.id, data.chatId, activeLeafId, {
+            children: updatedActiveLeaf.children,
+            selectedChildLocalId: updatedActiveLeaf.selected_child_id,
+          });
+          repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, userMsg));
+          repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, placeholder));
+          assistantMessageLocalId = placeholder.id;
+        }
+      } else {
+        // Regenerate mode: create sibling of target assistant message
+        const target = getNode(tree, data.messageLocalId);
+        if (target.role !== "assistant")
+          throw new Error("Can only regenerate assistant messages");
+        if (target.is_system) throw new Error("Cannot regenerate system messages");
+        if (target.parent_id === null) throw new Error("Cannot regenerate root message");
+
+        const placeholder: ChatMessage = {
+          id: getNextId(tree),
+          parent_id: null,
+          children: [],
+          selected_child_id: null,
+          role: "assistant",
+          name: char.data.name,
+          content: "",
+          is_user: false,
+          is_system: false,
+          extra: { isStreaming: true },
+        };
+        addSibling(tree, data.messageLocalId, placeholder);
+        selectChild(tree, target.parent_id, placeholder.id);
+
+        const parent = getNode(tree, target.parent_id);
+        repoUpdateMessage(user.id, data.chatId, target.parent_id, {
+          children: parent.children,
+          selectedChildLocalId: parent.selected_child_id,
+        });
+        repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, placeholder));
+        assistantMessageLocalId = placeholder.id;
+      }
+
+      return { assistantMessageLocalId };
+    },
+  );
+
+export const finalizeStream = createServerFn({ method: "POST", strict: { output: false } })
+  .validator((data: unknown) => {
+    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
+    const d = data as Record<string, unknown>;
+    if (typeof d.chatId !== "string") throw new Error("chatId is required");
+    if (typeof d.messageLocalId !== "number") throw new Error("messageLocalId is required");
+    if (typeof d.content !== "string") throw new Error("content is required");
+    return { chatId: d.chatId as string, messageLocalId: d.messageLocalId as number, content: d.content as string };
+  })
+  .handler(async ({ data }): Promise<{ messageLocalId: number; content: string }> => {
+    if (data.messageLocalId === 0) throw new Error("Cannot finalize the hidden root");
+    const { user } = await getSession();
+    const rows = repoListMessages(user.id, data.chatId);
+    const existing = rows.find((r) => r.localId === data.messageLocalId);
+    if (!existing) throw new Error("Message not found");
+    if ((existing.extra?.isStreaming ?? false) !== true) {
+      throw new Error("Message is not a streaming placeholder");
+    }
+    repoUpdateMessage(user.id, data.chatId, data.messageLocalId, {
+      content: data.content,
+      extra: null,
+    });
+    return { messageLocalId: data.messageLocalId, content: data.content };
+  });
+
+export const cancelStream = createServerFn({ method: "POST", strict: { output: false } })
+  .validator((data: unknown) => {
+    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
+    const d = data as Record<string, unknown>;
+    if (typeof d.chatId !== "string") throw new Error("chatId is required");
+    if (typeof d.messageLocalId !== "number") throw new Error("messageLocalId is required");
+    return { chatId: d.chatId as string, messageLocalId: d.messageLocalId as number };
+  })
+  .handler(async ({ data }): Promise<{ deletedIds: number[] }> => {
+    if (data.messageLocalId === 0) throw new Error("Cannot cancel the hidden root");
+    const { user } = await getSession();
+    const rows = repoListMessages(user.id, data.chatId);
+    const tree = treeFromNodes(rows.map(rowToMessage));
+    const subtreeIds = collectSubtreeIds(tree, data.messageLocalId);
+    if (subtreeIds.length === 0) throw new Error("Message not found");
+    const target = getNode(tree, data.messageLocalId);
+    const parentId = target.parent_id;
+    if (parentId === null) throw new Error("Cannot cancel root message");
+    deleteSubtree(tree, data.messageLocalId);
+    repoDeleteMessages(user.id, data.chatId, subtreeIds);
+    const parent = getNode(tree, parentId);
+    repoUpdateMessage(user.id, data.chatId, parentId, {
+      children: parent.children,
+      selectedChildLocalId: parent.selected_child_id,
+    });
+    return { deletedIds: subtreeIds };
+  });
+
+const UpdateChatSettingsInput = (data: unknown) => {
+  if (typeof data !== "object" || data === null) throw new Error("Invalid input");
+  const d = data as Record<string, unknown>;
+  if (typeof d.id !== "string") throw new Error("id is required");
+  return {
+    id: d.id as string,
+    providerId: (d.providerId as string | undefined) ?? null,
+    presetId: (d.presetId as string | undefined) ?? null,
+    selectedModel: (d.selectedModel as string | undefined) ?? null,
+  };
+};
+
+export const updateChatSettings = createServerFn({ method: "POST", strict: { output: false } })
+  .validator(UpdateChatSettingsInput)
+  .handler(async ({ data }): Promise<{ id: string }> => {
+    const { user } = await getSession();
+    repoUpdateChat(user.id, data.id, {
+      providerId: data.providerId,
+      presetId: data.presetId,
+      selectedModel: data.selectedModel,
+    });
+    return { id: data.id };
+  });
 
 export const deleteChat = createServerFn({ method: "POST", strict: { output: false } })
   .validator((data: unknown) => {

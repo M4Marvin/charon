@@ -132,6 +132,28 @@ export function updateMessage(
     .run();
 }
 
+export function updateChat(
+  userId: string,
+  id: string,
+  patch: Partial<Pick<Chat, "providerId" | "presetId" | "selectedModel" | "title">>,
+  db: DB = defaultDb,
+): Chat {
+  const existing = getChat(userId, id, db);
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  if (patch.providerId !== undefined) updates.providerId = patch.providerId;
+  if (patch.presetId !== undefined) updates.presetId = patch.presetId;
+  if (patch.selectedModel !== undefined) updates.selectedModel = patch.selectedModel;
+  if (patch.title !== undefined) updates.title = patch.title;
+  const row = db
+    .update(chats)
+    .set(updates)
+    .where(and(eq(chats.id, existing.id), eq(chats.userId, userId)))
+    .returning()
+    .get();
+  if (!row) throw new Error("Chat not found");
+  return row;
+}
+
 export function deleteMessages(
   userId: string,
   chatId: string,
