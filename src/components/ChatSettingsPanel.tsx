@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "reac
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +68,7 @@ interface ChatSettingsPanelProps {
 }
 
 export function ChatSettingsPanel({ chat, onClose, onDeleteChat }: ChatSettingsPanelProps) {
+  const [activeTab, setActiveTab] = useState("ai");
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -98,7 +99,7 @@ export function ChatSettingsPanel({ chat, onClose, onDeleteChat }: ChatSettingsP
 
         {/* Tabbed body */}
         <div className="flex min-h-0 flex-1 flex-col">
-          <Tabs defaultValue="ai" className="flex min-h-0 flex-1 flex-col">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-1 flex-col">
             <TabsList className="mx-3 mt-2 w-auto shrink-0">
               <TabsTrigger value="ai" className="text-xs">
                 AI
@@ -113,18 +114,28 @@ export function ChatSettingsPanel({ chat, onClose, onDeleteChat }: ChatSettingsP
                 Prompts
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="ai" className="min-h-0 flex-1 overflow-y-auto p-4">
-              <AiSection chat={chat} />
-            </TabsContent>
-            <TabsContent value="lorebooks" className="min-h-0 flex-1 overflow-y-auto p-4">
-              <LorebooksSection />
-            </TabsContent>
-            <TabsContent value="persona" className="min-h-0 flex-1 overflow-y-auto p-4">
-              <PersonaSection />
-            </TabsContent>
-            <TabsContent value="prompts" className="min-h-0 flex-1 overflow-y-auto p-4">
-              <PromptsSection />
-            </TabsContent>
+            <div className="relative min-h-0 flex-1">
+              {activeTab === "ai" && (
+                <div className="absolute inset-0 overflow-y-auto p-4">
+                  <AiSection chat={chat} />
+                </div>
+              )}
+              {activeTab === "lorebooks" && (
+                <div className="absolute inset-0 overflow-y-auto p-4">
+                  <LorebooksSection />
+                </div>
+              )}
+              {activeTab === "persona" && (
+                <div className="absolute inset-0 overflow-y-auto p-4">
+                  <PersonaSection />
+                </div>
+              )}
+              {activeTab === "prompts" && (
+                <div className="absolute inset-0 overflow-y-auto p-4">
+                  <PromptsSection />
+                </div>
+              )}
+            </div>
           </Tabs>
         </div>
 
