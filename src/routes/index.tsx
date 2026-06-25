@@ -87,37 +87,37 @@ function Home() {
                       First Message
                     </h4>
                     <p className="text-xs text-muted-foreground line-clamp-2">
-                      {SAMPLE_CHARACTER.firstMes}
+                      {SAMPLE_CHARACTER.first_mes}
                     </p>
                   </div>
                   <div className="space-y-1">
                     <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Creator Notes
                     </h4>
-                    <p className="text-xs text-muted-foreground">{SAMPLE_CHARACTER.creatorNotes}</p>
+                    <p className="text-xs text-muted-foreground">{SAMPLE_CHARACTER.creator_notes}</p>
                   </div>
-                  {SAMPLE_CHARACTER.depthPrompt && (
+                  {SAMPLE_CHARACTER.depth_prompt && (
                     <div className="space-y-1">
                       <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Depth Prompt
                       </h4>
                       <p className="text-xs text-muted-foreground">
                         <Badge variant="outline" className="text-xs mr-1.5">
-                          d={SAMPLE_CHARACTER.depthPrompt.depth}
+                          d={SAMPLE_CHARACTER.depth_prompt.depth}
                         </Badge>
-                        {SAMPLE_CHARACTER.depthPrompt.role}
+                        {SAMPLE_CHARACTER.depth_prompt.role}
                       </p>
                       <p className="text-xs text-muted-foreground line-clamp-2">
-                        {SAMPLE_CHARACTER.depthPrompt.prompt}
+                        {SAMPLE_CHARACTER.depth_prompt.prompt}
                       </p>
                     </div>
                   )}
                   <div className="space-y-1">
                     <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      Character Book ({SAMPLE_CHARACTER.characterBook.entries.length} entries)
+                      Character Book ({SAMPLE_CHARACTER.character_book?.entries.length ?? 0} entries)
                     </h4>
                     <p className="text-xs text-muted-foreground">
-                      {SAMPLE_CHARACTER.characterBook.name}
+                      {SAMPLE_CHARACTER.character_book?.name}
                     </p>
                   </div>
                 </CardContent>

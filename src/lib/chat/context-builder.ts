@@ -5,22 +5,28 @@ import type { ChatMessage } from "@/lib/st-core/shared/types.js";
 import type { LoreGlobalData } from "@/lib/st-core/lorebook/types.js";
 import { convertBookEntries, scanLoreEntries, toLoreEntryView } from "./lorebook.js";
 import { toModelMessages } from "./pre-process.js";
-import type { ModelMessage, SampleCharacter, ChatCompletionPreset, LoreScanView } from "./types.js";
+import type {
+  ModelMessage,
+  PipelineCharacter,
+  ChatCompletionPreset,
+  LoreScanView,
+} from "./types.js";
 
 export function buildMessages(
-  character: SampleCharacter,
+  character: PipelineCharacter,
   chatHistory: ChatMessage[],
   preset: ChatCompletionPreset,
   userName: string,
+  userPersona?: string,
 ): { messages: ModelMessage[]; loreScan: LoreScanView } {
   const storyParams: StoryStringParams = {
     description: character.description,
     personality: character.personality,
     scenario: character.scenario,
-    system: character.systemPrompt,
+    system: character.system_prompt,
     char: character.name,
     user: userName,
-    mesExamples: character.mesExample,
+    mesExamples: character.mes_example,
   };
   const charDescription = renderStoryString(
     "{{#if system}}{{system}}\n{{/if}}{{#if description}}{{description}}\n{{/if}}{{#if personality}}{{char}}'s personality: {{personality}}\n{{/if}}",
@@ -32,7 +38,7 @@ export function buildMessages(
     storyParams,
   );
 
-  const exampleBlocks: string[] = character.mesExample
+  const exampleBlocks: string[] = character.mes_example
     .split(/<START>/gi)
     .map((b) => b.trim())
     .filter(Boolean);
@@ -62,16 +68,21 @@ export function buildMessages(
     return out;
   }
 
+  // Collect lore entries: first from embedded character_book, then standalone
+  const loreEntries: import("@/lib/st-core/lorebook/types").LoreEntry[] = [];
+  if (character.character_book?.entries) {
+    loreEntries.push(...convertBookEntries(character.character_book.entries));
+  }
+
   const globalData: LoreGlobalData = {
-    personaDescription: character.persona,
+    personaDescription: userPersona ?? "",
     characterDescription: character.description,
     characterPersonality: character.personality,
-    characterDepthPrompt: character.depthPrompt?.prompt ?? "",
+    characterDepthPrompt: character.depth_prompt?.prompt ?? "",
     scenario: character.scenario,
-    creatorNotes: character.creatorNotes,
+    creatorNotes: character.creator_notes,
     trigger: "",
   };
-  const loreEntries = convertBookEntries(character.characterBook.entries);
   const { activated, inactive } = scanLoreEntries(loreEntries, chatHistory, globalData);
   const loreScan: LoreScanView = {
     activated: activated.map(toLoreEntryView),
@@ -84,11 +95,11 @@ export function buildMessages(
 
   let historyMessages: ModelMessage[] = toModelMessages(chatHistory, character.name, userName);
 
-  if (character.depthPrompt) {
-    const insertIdx = Math.max(0, historyMessages.length - character.depthPrompt.depth);
+  if (character.depth_prompt) {
+    const insertIdx = Math.max(0, historyMessages.length - character.depth_prompt.depth);
     historyMessages = [
       ...historyMessages.slice(0, insertIdx),
-      { role: character.depthPrompt.role, content: character.depthPrompt.prompt },
+      { role: character.depth_prompt.role, content: character.depth_prompt.prompt },
       ...historyMessages.slice(insertIdx),
     ];
   }
@@ -111,8 +122,8 @@ export function buildMessages(
     messages.push({ role: "system", content: entry.content });
   }
 
-  if (character.persona) {
-    messages.push({ role: "system", content: character.persona });
+  if (userPersona) {
+    messages.push({ role: "system", content: userPersona });
   }
 
   if (charDescription) {
@@ -139,8 +150,8 @@ export function buildMessages(
 
   messages.push(...historyMessages);
 
-  if (character.postHistoryInstructions) {
-    messages.push({ role: "system", content: character.postHistoryInstructions });
+  if (character.post_history_instructions) {
+    messages.push({ role: "system", content: character.post_history_instructions });
   }
 
   return { messages, loreScan };
