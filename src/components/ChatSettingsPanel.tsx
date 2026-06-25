@@ -4,10 +4,11 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -167,12 +168,30 @@ export function ChatSettingsPanel({ chat, onClose }: ChatSettingsPanelProps) {
         </Button>
       </div>
 
-      {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        <AiSection chat={chat} />
-        <LorebooksSection />
-        <PersonaSection />
-        <PromptsSection />
+      {/* Tabbed body */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <Tabs defaultValue="ai" className="flex flex-1 flex-col">
+          <TabsList className="mx-3 mt-2 w-auto">
+            <TabsTrigger value="ai" className="text-xs">AI</TabsTrigger>
+            <TabsTrigger value="lorebooks" className="text-xs">Lorebooks</TabsTrigger>
+            <TabsTrigger value="persona" className="text-xs">Persona</TabsTrigger>
+            <TabsTrigger value="prompts" className="text-xs">Prompts</TabsTrigger>
+          </TabsList>
+          <div className="flex-1 overflow-y-auto p-4">
+            <TabsContent value="ai">
+              <AiSection chat={chat} />
+            </TabsContent>
+            <TabsContent value="lorebooks">
+              <LorebooksSection />
+            </TabsContent>
+            <TabsContent value="persona">
+              <PersonaSection />
+            </TabsContent>
+            <TabsContent value="prompts">
+              <PromptsSection />
+            </TabsContent>
+          </div>
+        </Tabs>
       </div>
     </div>
   );
@@ -229,89 +248,87 @@ function AiSection({ chat }: { chat: ChatDetail }) {
   );
 
   return (
-    <Section title="AI" defaultOpen>
-      <div className="space-y-3">
-        <div className="space-y-1">
-          <Label className="text-xs">Provider</Label>
-          <Select value={selectedProviderId} onValueChange={handleChangeProvider}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select provider" />
-            </SelectTrigger>
-            <SelectContent>
-              {providers.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-              {providers.length === 0 && (
-                <div className="text-muted-foreground px-3 py-2 text-xs">
-                  No providers configured
-                </div>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1">
-          <Label className="text-xs">Model</Label>
-          <Select
-            value={selectedModel}
-            onValueChange={handleChangeModel}
-            disabled={!selectedProviderId}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue
-                placeholder={
-                  selectedProviderId ? "Loading models..." : "Select a provider first"
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {models.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.id}
-                </SelectItem>
-              ))}
-              {models.length === 0 && selectedProviderId && (
-                <div className="text-muted-foreground px-3 py-2 text-xs">
-                  No models fetched
-                </div>
-              )}
-            </SelectContent>
-          </Select>
-          <Input
-            value={selectedModel}
-            onChange={(e) => handleChangeModel(e.target.value)}
-            placeholder="Or type model ID"
-            className="mt-1"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <Label className="text-xs">Preset</Label>
-          <Select
-            value={selectedPresetId || "_none"}
-            onValueChange={(v) => handleChangePreset(v === "_none" ? "" : v)}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select preset" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="_none">— None —</SelectItem>
-              {presets.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <Button asChild variant="outline" size="sm" className="w-full">
-          <Link to="/ai-playground">Configure providers</Link>
-        </Button>
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <Label className="text-xs">Provider</Label>
+        <Select value={selectedProviderId} onValueChange={handleChangeProvider}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select provider" />
+          </SelectTrigger>
+          <SelectContent>
+            {providers.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+            {providers.length === 0 && (
+              <div className="text-muted-foreground px-3 py-2 text-xs">
+                No providers configured
+              </div>
+            )}
+          </SelectContent>
+        </Select>
       </div>
-    </Section>
+
+      <div className="space-y-1">
+        <Label className="text-xs">Model</Label>
+        <Select
+          value={selectedModel}
+          onValueChange={handleChangeModel}
+          disabled={!selectedProviderId}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue
+              placeholder={
+                selectedProviderId ? "Loading models..." : "Select a provider first"
+              }
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {models.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.id}
+              </SelectItem>
+            ))}
+            {models.length === 0 && selectedProviderId && (
+              <div className="text-muted-foreground px-3 py-2 text-xs">
+                No models fetched
+              </div>
+            )}
+          </SelectContent>
+        </Select>
+        <Input
+          value={selectedModel}
+          onChange={(e) => handleChangeModel(e.target.value)}
+          placeholder="Or type model ID"
+          className="mt-1"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-xs">Preset</Label>
+        <Select
+          value={selectedPresetId || "_none"}
+          onValueChange={(v) => handleChangePreset(v === "_none" ? "" : v)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select preset" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_none">— None —</SelectItem>
+            {presets.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Button asChild variant="outline" size="sm" className="w-full">
+        <Link to="/ai-playground">Configure providers</Link>
+      </Button>
+    </div>
   );
 }
 
@@ -322,7 +339,7 @@ function LorebooksSection() {
   const toggle = useToggleLorebook();
 
   return (
-    <Section title="Lorebooks">
+    <div className="space-y-2">
       <p className="text-muted-foreground text-xs">
         Per-user activation. Enabled lorebooks apply to all chats.
       </p>
@@ -355,7 +372,7 @@ function LorebooksSection() {
           ))}
         </div>
       )}
-    </Section>
+    </div>
   );
 }
 
@@ -381,7 +398,7 @@ function PersonaSection() {
   );
 
   return (
-    <Section title="Persona">
+    <div className="space-y-2">
       <p className="text-muted-foreground text-xs">
         The active persona's description is injected into the prompt for all
         chats.
@@ -467,7 +484,7 @@ function PersonaSection() {
           })
         }
       />
-    </Section>
+    </div>
   );
 }
 
@@ -590,7 +607,7 @@ function PromptsSection() {
   );
 
   return (
-    <Section title="Prompts">
+    <div className="space-y-3">
       <p className="text-muted-foreground text-xs">
         Per-user prompt overrides. Changes save on blur.
       </p>
@@ -635,34 +652,8 @@ function PromptsSection() {
           </p>
         </div>
       </div>
-    </Section>
+    </div>
   );
 }
 
-// ── Collapsible section wrapper ───────────────────────────────────────────
 
-function Section({
-  title,
-  children,
-  defaultOpen = false,
-}: {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger asChild>
-        <button
-          type="button"
-          className="hover:bg-muted/50 flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-sm font-medium"
-        >
-          {title}
-          <span className="text-muted-foreground text-xs">{open ? "▾" : "▸"}</span>
-        </button>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-2 pt-2">{children}</CollapsibleContent>
-    </Collapsible>
-  );
-}
