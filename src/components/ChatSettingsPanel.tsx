@@ -524,7 +524,6 @@ function PromptsSection() {
             onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setSystemPrompt(e.target.value)}
             onBlur={(e) => commit("systemPrompt", e.target.value)}
             placeholder="You are a helpful assistant."
-            rows={4}
           />
           <p className="text-muted-foreground text-xs">Injected as the first system message.</p>
         </div>
@@ -535,7 +534,6 @@ function PromptsSection() {
             onChange={(e) => setPostHistoryInstructions(e.target.value)}
             onBlur={(e) => commit("postHistoryInstructions", e.target.value)}
             placeholder="[System note: ...]"
-            rows={3}
           />
           <p className="text-muted-foreground text-xs">
             Injected after the chat history. Overrides the character's.
@@ -548,7 +546,6 @@ function PromptsSection() {
             onChange={(e) => setImpersonationPrompt(e.target.value)}
             onBlur={(e) => commit("impersonationPrompt", e.target.value)}
             placeholder="Write the user's next message as: ..."
-            rows={3}
           />
           <p className="text-muted-foreground text-xs">
             Stored for the future impersonate feature. Not yet wired into generation.
