@@ -24,6 +24,12 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAiProviders } from "@/hooks/useAiProviders";
 import {
+  useCreateAiProvider,
+  useDeleteAiProvider,
+  type AiProviderListItem,
+  useUpdateAiProvider,
+} from "@/hooks/useAiProviders";
+import {
   usePresets,
   useCreatePreset,
   useUpdatePreset,
@@ -48,6 +54,7 @@ import {
 import { EntryEditorDialog } from "@/components/lorebook/EntryEditorDialog";
 import { ImportLorebookDialog } from "@/components/lorebook/ImportLorebookDialog";
 import { PresetDialog } from "@/components/preset/PresetDialog";
+import { ProviderDialog } from "@/components/ai/ProviderDialog";
 import type { LoreEntry } from "@/db/schema";
 import type { LorebookListItem } from "@/server/fns/lorebooks";
 import { useUpdateChatSettings } from "@/hooks/useChats";
@@ -152,9 +159,13 @@ function AiSection({ chat }: { chat: ChatDetail }) {
 
   const { data: models = [] } = useProviderModels(selectedProviderId);
   const [editing, setEditing] = useState<PresetListItem | "new" | null>(null);
+  const [editingProvider, setEditingProvider] = useState<AiProviderListItem | "new" | null>(null);
   const createPreset = useCreatePreset();
   const updatePreset = useUpdatePreset();
   const deletePreset = useDeletePreset();
+  const createProvider = useCreateAiProvider();
+  const updateProvider = useUpdateAiProvider();
+  const deleteProvider = useDeleteAiProvider();
 
   const handleChangeProvider = useCallback(
     (providerId: string) => {
@@ -211,6 +222,44 @@ function AiSection({ chat }: { chat: ChatDetail }) {
             )}
           </SelectContent>
         </Select>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setEditingProvider("new")}>
+            + Add
+          </Button>
+          {selectedProviderId && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  const p = providers.find((x) => x.id === selectedProviderId);
+                  if (p) setEditingProvider(p);
+                }}
+              >
+                Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  if (!window.confirm("Delete this provider?")) return;
+                  deleteProvider.mutate(
+                    { id: selectedProviderId },
+                    {
+                      onSuccess: () => {
+                        toast.success("Provider deleted");
+                        handleChangeProvider("");
+                      },
+                      onError: (e) => toast.error(`Delete failed: ${(e as Error).message}`),
+                    },
+                  );
+                }}
+              >
+                Delete
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="space-y-1">
@@ -322,6 +371,31 @@ function AiSection({ chat }: { chat: ChatDetail }) {
             onSuccess: () => {
               toast.success("Preset updated");
               setEditing(null);
+            },
+            onError: (e) => toast.error(`Update failed: ${(e as Error).message}`),
+          })
+        }
+      />
+
+      <ProviderDialog
+        state={editingProvider}
+        onClose={() => setEditingProvider(null)}
+        onCreate={(input) =>
+          createProvider.mutate(input, {
+            onSuccess: ({ id }) => {
+              toast.success("Provider created");
+              setEditingProvider(null);
+              // Auto-select the new provider on this chat and the user default.
+              handleChangeProvider(id);
+            },
+            onError: (e) => toast.error(`Create failed: ${(e as Error).message}`),
+          })
+        }
+        onUpdate={(input) =>
+          updateProvider.mutate(input, {
+            onSuccess: () => {
+              toast.success("Provider updated");
+              setEditingProvider(null);
             },
             onError: (e) => toast.error(`Update failed: ${(e as Error).message}`),
           })
