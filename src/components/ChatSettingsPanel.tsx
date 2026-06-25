@@ -67,7 +67,7 @@ export function ChatSettingsPanel({ chat, onClose }: ChatSettingsPanelProps) {
         {/* Tabbed body */}
         <div className="flex min-h-0 flex-1 flex-col">
           <Tabs defaultValue="ai" className="flex flex-1 flex-col">
-            <TabsList className="mx-3 mt-2 w-auto">
+            <TabsList className="mx-3 mt-2 w-auto shrink-0">
               <TabsTrigger value="ai" className="text-xs">
                 AI
               </TabsTrigger>
@@ -81,20 +81,18 @@ export function ChatSettingsPanel({ chat, onClose }: ChatSettingsPanelProps) {
                 Prompts
               </TabsTrigger>
             </TabsList>
-            <div className="flex-1 overflow-y-auto p-4">
-              <TabsContent value="ai">
-                <AiSection chat={chat} />
-              </TabsContent>
-              <TabsContent value="lorebooks">
-                <LorebooksSection />
-              </TabsContent>
-              <TabsContent value="persona">
-                <PersonaSection />
-              </TabsContent>
-              <TabsContent value="prompts">
-                <PromptsSection />
-              </TabsContent>
-            </div>
+            <TabsContent value="ai" className="flex-1 overflow-y-auto p-4">
+              <AiSection chat={chat} />
+            </TabsContent>
+            <TabsContent value="lorebooks" className="flex-1 overflow-y-auto p-4">
+              <LorebooksSection />
+            </TabsContent>
+            <TabsContent value="persona" className="flex-1 overflow-y-auto p-4">
+              <PersonaSection />
+            </TabsContent>
+            <TabsContent value="prompts" className="flex-1 overflow-y-auto p-4">
+              <PromptsSection />
+            </TabsContent>
           </Tabs>
         </div>
       </div>
