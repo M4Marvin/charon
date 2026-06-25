@@ -11,6 +11,7 @@ import {
   FinalizeStream,
   GetChat,
   GetChatMessages,
+  ImpersonateMessage,
   PrepareStream,
   SendMessage,
   Swipe,
@@ -30,8 +31,14 @@ import {
   type ChatWithCharacter,
 } from "@/db/repositories/chats";
 import { getCharacter as repoGetChar } from "@/db/repositories/characters";
+import { getAiProvider as repoGetProvider } from "@/db/repositories/aiProviders";
+import { getPreset as repoGetPreset } from "@/db/repositories/presets";
+import { getPersona as repoGetPersona } from "@/db/repositories/personas";
 import { getUserSettings as repoGetUserSettings } from "@/db/repositories/userSettings";
 import type { ChatMessage, ChatTree } from "@/lib/st-core/shared/types";
+import type { ChatCompletionPreset } from "@/lib/chat/types";
+import { buildChatPrompt } from "@/lib/chat/server-context";
+import { DEFAULT_PRESET } from "@/lib/chat/preset";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import {
   addChild,
@@ -488,6 +495,119 @@ export const editMessage = createServerFn({ method: "POST", strict: { output: fa
 
     repoUpdateMessage(user.id, data.chatId, data.messageLocalId, { content: data.content });
     return { messageLocalId: data.messageLocalId, content: data.content };
+  });
+
+export const impersonateMessage = createServerFn({ method: "POST", strict: { output: false } })
+  .validator((data) => Schema.decodeUnknownSync(ImpersonateMessage)(data))
+  .handler(async ({ data }): Promise<{ text: string }> => {
+    const { user } = await getSession();
+    const chat = repoGetChat(user.id, data.chatId);
+    const char: Character = repoGetChar(user.id, chat.characterId);
+    const rows = repoListMessages(user.id, data.chatId);
+
+    // Build the active path to the last message
+    const tree = treeFromNodes(rows.map(rowToMessage));
+    const activeLeafId = getActiveLeafId(tree);
+    if (activeLeafId === null) throw new Error("No active message");
+
+    const path: ChatMessage[] = [];
+    let cur = tree.get(activeLeafId);
+    while (cur) {
+      path.unshift(cur);
+      if (cur.parent_id === null) break;
+      cur = tree.get(cur.parent_id);
+    }
+    const historyMessages = path
+      .filter((m) => m.id !== 0)
+      .filter((m) => !(m.role === "system" && m.content.length === 0));
+
+    const providerId = chat.providerId;
+    if (!providerId) throw new Error("No provider configured for this chat");
+    const provider = repoGetProvider(user.id, providerId);
+    const model = chat.selectedModel ?? provider.defaultModel;
+    if (!model) throw new Error("No model configured");
+
+    let dbPresetRaw: { model?: string | null; data: unknown } | null = null;
+    if (chat.presetId) {
+      try { dbPresetRaw = repoGetPreset(user.id, chat.presetId); } catch { /* missing */ }
+    }
+
+    const presetPartial = dbPresetRaw
+      ? (() => {
+          const d = dbPresetRaw!.data as Record<string, unknown> | null;
+          if (!d) return {};
+          const p: Partial<ChatCompletionPreset> = {};
+          if (d.systemPrompt !== undefined) p.systemPrompt = d.systemPrompt as string;
+          if (d.temperature !== undefined) p.temperature = d.temperature as number;
+          if (d.maxTokens !== undefined) p.maxResponseLength = d.maxTokens as number;
+          if (d.topP !== undefined) p.topP = d.topP as number;
+          if (d.contextSize !== undefined) p.contextSize = d.contextSize as number;
+          if (d.frequencyPenalty !== undefined) p.frequencyPenalty = d.frequencyPenalty as number;
+          if (d.presencePenalty !== undefined) p.presencePenalty = d.presencePenalty as number;
+          return p;
+        })()
+      : {};
+
+    const userSettingsRow = repoGetUserSettings(user.id);
+    let userPersona: string | undefined;
+    if (userSettingsRow?.defaultPersonaId) {
+      try {
+        const persona = repoGetPersona(user.id, userSettingsRow.defaultPersonaId);
+        userPersona = persona.description ?? undefined;
+      } catch { /* ignore */ }
+    }
+
+    const promptResult = buildChatPrompt({
+      character: char.data,
+      chatHistory: historyMessages,
+      preset: presetPartial,
+      defaultPreset: { ...DEFAULT_PRESET },
+      userName: user.name,
+      userPersona,
+      userSystemPrompt: userSettingsRow?.systemPrompt ?? undefined,
+      userPostHistoryInstructions: userSettingsRow?.postHistoryInstructions ?? undefined,
+    });
+
+    const impersonationInstruction = (userSettingsRow?.impersonationPrompt
+      ?? "Continue the conversation from {{user}}'s perspective, writing the next message as {{user}} would.")
+      .replace(/\{\{user\}\}/gi, user.name);
+
+    const finalMessages = [
+      { role: "system" as const, content: impersonationInstruction },
+      ...promptResult.messages,
+    ];
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${provider.apiKey}`,
+    };
+    if (provider.defaultHeaders) {
+      for (const [k, v] of Object.entries(provider.defaultHeaders)) {
+        if (v) headers[k] = v;
+      }
+    }
+
+    const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model,
+        messages: finalMessages,
+        stream: false,
+        ...promptResult.modelOptions,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Provider returned ${response.status}: ${body}`);
+    }
+
+    const json = (await response.json()) as {
+      choices: Array<{ message: { content: string | null } }>;
+    };
+    const text = json.choices[0]?.message?.content ?? "";
+    return { text };
   });
 
 export type StreamResult = {

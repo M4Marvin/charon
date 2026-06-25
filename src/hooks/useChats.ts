@@ -8,6 +8,7 @@ import {
   finalizeStream,
   getChat,
   getChatMessages,
+  impersonateMessage,
   listChats,
   prepareStreamMessage,
   sendMessage,
@@ -168,6 +169,17 @@ export function useDeleteChat() {
     mutationFn: (input: { id: string }): Promise<{ id: string }> => deleteChat({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.all });
+    },
+  });
+}
+
+export function useImpersonateMessage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { chatId: string }): Promise<{ text: string }> =>
+      impersonateMessage({ data: input }),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
   });
 }

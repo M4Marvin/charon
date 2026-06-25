@@ -60,6 +60,12 @@ export const FinalizeStream = Schema.Struct({
 
 export const CancelStream = ChatIdAndLocalId;
 
+// ── Impersonation ────────────────────────────────────────────────────────────
+
+export const ImpersonateMessage = Schema.Struct({
+  chatId: Schema.String,
+});
+
 // ── Settings ────────────────────────────────────────────────────────────────
 
 export const UpdateChatSettings = Schema.Struct({

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useChat as useAiChat, fetchServerSentEvents } from "@tanstack/ai-react";
-import { ArrowDown, ArrowLeft, ArrowUp, Settings } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, Settings, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +12,7 @@ import {
   useDeleteChat,
   useDeleteMessage,
   useEditMessage,
+  useImpersonateMessage,
   usePrepareStream,
   useFinalizeStream,
   useCancelStream,
@@ -76,6 +77,7 @@ function ChatPage() {
   const editMessageMutation = useEditMessage();
   const deleteChatMutation = useDeleteChat();
   const swipeMutation = useSwipeMessage();
+  const impersonateMutation = useImpersonateMessage();
 
   // ── Chat store: replaces 5 useState + 3 useRef ──────────────────────
   const settingsOpen = useChatStore((s) => s.settingsOpen);
@@ -94,6 +96,7 @@ function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showScrollFab, setShowScrollFab] = useState(false);
   const isUserScrolledUpRef = useRef(false);
+  const [isImpersonating, setIsImpersonating] = useState(false);
 
   const selectedProviderId = chat?.providerId ?? "";
   const selectedModel = chat?.selectedModel ?? "";
@@ -329,6 +332,24 @@ function ChatPage() {
     setPlaceholder,
     clearInput,
   ]);
+
+  const handleImpersonate = useCallback(() => {
+    if (!canSend || isImpersonating || !hasAi || activePath.length === 0) return;
+    setIsImpersonating(true);
+    impersonateMutation.mutate(
+      { chatId: id },
+      {
+        onSuccess: (result) => {
+          setInput(result.text);
+          setIsImpersonating(false);
+        },
+        onError: (e) => {
+          toast.error(`Impersonation error: ${(e as Error).message}`);
+          setIsImpersonating(false);
+        },
+      },
+    );
+  }, [id, canSend, hasAi, activePath.length, impersonateMutation, setInput, isImpersonating]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -601,6 +622,20 @@ function ChatPage() {
             />
             <Button
               size="icon"
+              variant="ghost"
+              onClick={handleImpersonate}
+              disabled={!canSend || isImpersonating || !hasAi || activePath.length === 0}
+              className="size-8 shrink-0 rounded-full"
+              aria-label="Impersonate user"
+            >
+              {isImpersonating ? (
+                <div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <Sparkles className="size-4" />
+              )}
+            </Button>
+            <Button
+              size="icon"
               onClick={handleSend}
               disabled={!canSend || (!input.trim() && (!hasAi || activePath.length === 0))}
               className="size-8 shrink-0 rounded-full"
@@ -695,10 +730,19 @@ function MessageBubble({
   const isUser = message.is_user ?? message.role === "user";
   const [isEditing, setIsEditing] = useState(false);
   const [draftContent, setDraftContent] = useState(message.content);
+  const editRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!isEditing) setDraftContent(message.content);
   }, [message.content, isEditing]);
+
+  useLayoutEffect(() => {
+    const ta = editRef.current;
+    if (ta && isEditing) {
+      ta.style.height = "0px";
+      ta.style.height = `${Math.min(ta.scrollHeight, 400)}px`;
+    }
+  }, [draftContent, isEditing]);
 
   const beginEdit = () => {
     if (isDraft || disabled) return;
@@ -754,9 +798,10 @@ function MessageBubble({
         ) : isEditing ? (
           <div className="w-full space-y-2">
             <Textarea
+              ref={editRef}
               value={draftContent}
               onChange={(e) => setDraftContent(e.target.value)}
-              className="min-h-[80px] resize-none text-sm"
+              className="min-h-[40px] resize-none border-0 bg-transparent p-0 text-sm outline-none focus-visible:ring-0 prose prose-sm prose-invert max-w-none"
               autoFocus
             />
             <div className="flex justify-end gap-2">
