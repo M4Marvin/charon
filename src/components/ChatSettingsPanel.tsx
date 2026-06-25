@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -51,147 +51,62 @@ interface ChatSettingsPanelProps {
   onClose: () => void;
 }
 
-// ── Drag logic ─────────────────────────────────────────────────────────────
-
-interface Position {
-  x: number;
-  y: number;
-}
-
-function getInitialPosition(): Position {
-  // Right side of viewport, vertically centered. 24px from the right edge,
-  // accounting for the panel's width.
-  if (typeof window === "undefined") return { x: 0, y: 0 };
-  return {
-    x: Math.max(16, window.innerWidth - 440),
-    y: Math.max(16, Math.floor((window.innerHeight - 600) / 2)),
-  };
-}
-
 export function ChatSettingsPanel({ chat, onClose }: ChatSettingsPanelProps) {
-  const [pos, setPos] = useState<Position>(getInitialPosition);
-  const dragRef = useRef<{
-    startX: number;
-    startY: number;
-    startPosX: number;
-    startPosY: number;
-    pointerId: number;
-  } | null>(null);
-
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      // Only left button.
-      if (e.button !== 0) return;
-      e.preventDefault();
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
-      dragRef.current = {
-        startX: e.clientX,
-        startY: e.clientY,
-        startPosX: pos.x,
-        startPosY: pos.y,
-        pointerId: e.pointerId,
-      };
-    },
-    [pos],
-  );
-
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      const drag = dragRef.current;
-      if (!drag || drag.pointerId !== e.pointerId) return;
-      const dx = e.clientX - drag.startX;
-      const dy = e.clientY - drag.startY;
-      setPos({
-        x: Math.max(0, drag.startPosX + dx),
-        y: Math.max(0, drag.startPosY + dy),
-      });
-    },
-    [],
-  );
-
-  const handlePointerUp = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      const drag = dragRef.current;
-      if (drag && drag.pointerId === e.pointerId) {
-        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-        dragRef.current = null;
-      }
-    },
-    [],
-  );
-
-  // Clamp to viewport on resize.
-  useEffect(() => {
-    function handleResize() {
-      setPos((prev) => ({
-        x: Math.min(prev.x, Math.max(0, window.innerWidth - 420)),
-        y: Math.min(prev.y, Math.max(0, window.innerHeight - 100)),
-      }));
-    }
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
   return (
-    <div
-      style={{
-        position: "fixed",
-        left: pos.x,
-        top: pos.y,
-        zIndex: 50,
-        width: 420,
-        maxHeight: "80vh",
-      }}
-      className="bg-popover text-popover-foreground border-border/60 flex flex-col rounded-lg border shadow-2xl"
-    >
-      {/* Drag handle */}
+    <div className="fixed inset-0 z-40">
+      {/* Backdrop */}
       <div
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        className="flex cursor-grab items-center justify-between rounded-t-lg border-b px-4 py-2 active:cursor-grabbing select-none"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-xs" aria-hidden>
-            ⠿
-          </span>
-          <span className="text-sm font-semibold">Chat Settings</span>
-        </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={onClose}
-          aria-label="Close settings"
-        >
-          ✕
-        </Button>
-      </div>
+        className="absolute inset-0 bg-black/40"
+        onClick={onClose}
+      />
 
-      {/* Tabbed body */}
-      <div className="flex min-h-0 flex-1 flex-col">
-        <Tabs defaultValue="ai" className="flex flex-1 flex-col">
-          <TabsList className="mx-3 mt-2 w-auto">
-            <TabsTrigger value="ai" className="text-xs">AI</TabsTrigger>
-            <TabsTrigger value="lorebooks" className="text-xs">Lorebooks</TabsTrigger>
-            <TabsTrigger value="persona" className="text-xs">Persona</TabsTrigger>
-            <TabsTrigger value="prompts" className="text-xs">Prompts</TabsTrigger>
-          </TabsList>
-          <div className="flex-1 overflow-y-auto p-4">
-            <TabsContent value="ai">
-              <AiSection chat={chat} />
-            </TabsContent>
-            <TabsContent value="lorebooks">
-              <LorebooksSection />
-            </TabsContent>
-            <TabsContent value="persona">
-              <PersonaSection />
-            </TabsContent>
-            <TabsContent value="prompts">
-              <PromptsSection />
-            </TabsContent>
+      {/* Panel */}
+      <div
+        className="bg-popover text-popover-foreground border-border/60 absolute inset-[10vh_10vw] flex flex-col rounded-lg border shadow-2xl"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between rounded-t-lg border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground text-xs" aria-hidden>
+              ⠿
+            </span>
+            <span className="text-sm font-semibold">Chat Settings</span>
           </div>
-        </Tabs>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onClose}
+            aria-label="Close settings"
+          >
+            ✕
+          </Button>
+        </div>
+
+        {/* Tabbed body */}
+        <div className="flex min-h-0 flex-1 flex-col">
+          <Tabs defaultValue="ai" className="flex flex-1 flex-col">
+            <TabsList className="mx-3 mt-2 w-auto">
+              <TabsTrigger value="ai" className="text-xs">AI</TabsTrigger>
+              <TabsTrigger value="lorebooks" className="text-xs">Lorebooks</TabsTrigger>
+              <TabsTrigger value="persona" className="text-xs">Persona</TabsTrigger>
+              <TabsTrigger value="prompts" className="text-xs">Prompts</TabsTrigger>
+            </TabsList>
+            <div className="flex-1 overflow-y-auto p-4">
+              <TabsContent value="ai">
+                <AiSection chat={chat} />
+              </TabsContent>
+              <TabsContent value="lorebooks">
+                <LorebooksSection />
+              </TabsContent>
+              <TabsContent value="persona">
+                <PersonaSection />
+              </TabsContent>
+              <TabsContent value="prompts">
+                <PromptsSection />
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
