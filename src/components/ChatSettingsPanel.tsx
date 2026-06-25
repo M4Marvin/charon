@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -302,10 +301,6 @@ function AiSection({ chat }: { chat: ChatDetail }) {
           )}
         </div>
       </div>
-
-      <Button asChild variant="outline" size="sm" className="w-full">
-        <Link to="/ai-playground">Configure providers</Link>
-      </Button>
 
       <PresetDialog
         state={editing}

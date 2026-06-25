@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AiPlaygroundRouteImport } from './routes/ai-playground'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LorebooksIndexRouteImport } from './routes/lorebooks/index'
 import { Route as ChatsIndexRouteImport } from './routes/chats/index'
@@ -21,15 +20,9 @@ import { Route as ChatsIdRouteImport } from './routes/chats/$id'
 import { Route as CharactersNewRouteImport } from './routes/characters/new'
 import { Route as CharactersIdRouteImport } from './routes/characters/$id'
 import { Route as ApiChatGenerateRouteImport } from './routes/api/chat-generate'
-import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiCharactersIdAvatarRouteImport } from './routes/api/characters/$id/avatar'
 
-const AiPlaygroundRoute = AiPlaygroundRouteImport.update({
-  id: '/ai-playground',
-  path: '/ai-playground',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -85,11 +78,6 @@ const ApiChatGenerateRoute = ApiChatGenerateRouteImport.update({
   path: '/api/chat-generate',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiChatRoute = ApiChatRouteImport.update({
-  id: '/api/chat',
-  path: '/api/chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -103,8 +91,6 @@ const ApiCharactersIdAvatarRoute = ApiCharactersIdAvatarRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/ai-playground': typeof AiPlaygroundRoute
-  '/api/chat': typeof ApiChatRoute
   '/api/chat-generate': typeof ApiChatGenerateRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
@@ -120,8 +106,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/ai-playground': typeof AiPlaygroundRoute
-  '/api/chat': typeof ApiChatRoute
   '/api/chat-generate': typeof ApiChatGenerateRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
@@ -138,8 +122,6 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/ai-playground': typeof AiPlaygroundRoute
-  '/api/chat': typeof ApiChatRoute
   '/api/chat-generate': typeof ApiChatGenerateRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
@@ -157,8 +139,6 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/ai-playground'
-    | '/api/chat'
     | '/api/chat-generate'
     | '/characters/$id'
     | '/characters/new'
@@ -174,8 +154,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/ai-playground'
-    | '/api/chat'
     | '/api/chat-generate'
     | '/characters/$id'
     | '/characters/new'
@@ -191,8 +169,6 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/ai-playground'
-    | '/api/chat'
     | '/api/chat-generate'
     | '/characters/$id'
     | '/characters/new'
@@ -209,8 +185,6 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AiPlaygroundRoute: typeof AiPlaygroundRoute
-  ApiChatRoute: typeof ApiChatRoute
   ApiChatGenerateRoute: typeof ApiChatGenerateRoute
   CharactersIdRoute: typeof CharactersIdRoute
   CharactersNewRoute: typeof CharactersNewRoute
@@ -227,13 +201,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/ai-playground': {
-      id: '/ai-playground'
-      path: '/ai-playground'
-      fullPath: '/ai-playground'
-      preLoaderRoute: typeof AiPlaygroundRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -311,13 +278,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatGenerateRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/chat': {
-      id: '/api/chat'
-      path: '/api/chat'
-      fullPath: '/api/chat'
-      preLoaderRoute: typeof ApiChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -337,8 +297,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AiPlaygroundRoute: AiPlaygroundRoute,
-  ApiChatRoute: ApiChatRoute,
   ApiChatGenerateRoute: ApiChatGenerateRoute,
   CharactersIdRoute: CharactersIdRoute,
   CharactersNewRoute: CharactersNewRoute,
