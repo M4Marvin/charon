@@ -99,7 +99,11 @@ export function ChatSettingsPanel({ chat, onClose, onDeleteChat }: ChatSettingsP
 
         {/* Tabbed body */}
         <div className="flex min-h-0 flex-1 flex-col">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-1 flex-col">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="flex min-h-0 flex-1 flex-col"
+          >
             <TabsList className="mx-3 mt-2 w-auto shrink-0">
               <TabsTrigger value="ai" className="text-xs">
                 AI
@@ -577,14 +581,10 @@ function ExpandedDetails({ lorebookId }: { lorebookId: string }) {
   const toggle = useToggleLoreEntry(lorebookId);
 
   if (isLoading) {
-    return (
-      <p className="text-muted-foreground pl-6 py-1 text-xs">Loading entries...</p>
-    );
+    return <p className="text-muted-foreground pl-6 py-1 text-xs">Loading entries...</p>;
   }
   if (!entries || entries.length === 0) {
-    return (
-      <p className="text-muted-foreground pl-6 py-1 text-xs">No entries.</p>
-    );
+    return <p className="text-muted-foreground pl-6 py-1 text-xs">No entries.</p>;
   }
 
   return (

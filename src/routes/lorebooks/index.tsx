@@ -5,11 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { ImportLorebookDialog } from "@/components/lorebook/ImportLorebookDialog";
-import {
-  useDeleteLorebook,
-  useLorebooks,
-  useToggleLorebook,
-} from "@/hooks/useLorebooks";
+import { useDeleteLorebook, useLorebooks, useToggleLorebook } from "@/hooks/useLorebooks";
 
 export const Route = createFileRoute("/lorebooks/")({
   component: LorebooksPage,
@@ -110,5 +106,3 @@ function LorebooksPage() {
     </main>
   );
 }
-
-

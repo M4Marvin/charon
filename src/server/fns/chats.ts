@@ -529,7 +529,11 @@ export const impersonateMessage = createServerFn({ method: "POST", strict: { out
 
     let dbPresetRaw: { model?: string | null; data: unknown } | null = null;
     if (chat.presetId) {
-      try { dbPresetRaw = repoGetPreset(user.id, chat.presetId); } catch { /* missing */ }
+      try {
+        dbPresetRaw = repoGetPreset(user.id, chat.presetId);
+      } catch {
+        /* missing */
+      }
     }
 
     const presetPartial = dbPresetRaw
@@ -554,7 +558,9 @@ export const impersonateMessage = createServerFn({ method: "POST", strict: { out
       try {
         const persona = repoGetPersona(user.id, userSettingsRow.defaultPersonaId);
         userPersona = persona.description ?? undefined;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     const promptResult = buildChatPrompt({
@@ -568,9 +574,10 @@ export const impersonateMessage = createServerFn({ method: "POST", strict: { out
       userPostHistoryInstructions: userSettingsRow?.postHistoryInstructions ?? undefined,
     });
 
-    const impersonationInstruction = (userSettingsRow?.impersonationPrompt
-      ?? "Continue the conversation from {{user}}'s perspective, writing the next message as {{user}} would.")
-      .replace(/\{\{user\}\}/gi, user.name);
+    const impersonationInstruction = (
+      userSettingsRow?.impersonationPrompt ??
+      "Continue the conversation from {{user}}'s perspective, writing the next message as {{user}} would."
+    ).replace(/\{\{user\}\}/gi, user.name);
 
     const finalMessages = [
       { role: "system" as const, content: impersonationInstruction },

@@ -494,7 +494,13 @@ function ChatPage() {
       <header className="bg-background/80 border-border/60 sticky top-0 z-30 flex h-14 shrink-0 items-center border-b backdrop-blur">
         <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center px-3">
           <div className="flex items-center justify-start">
-            <Button asChild variant="ghost" size="icon" className="size-9" aria-label="Back to chats">
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="size-9"
+              aria-label="Back to chats"
+            >
               <Link to="/chats">
                 <ArrowLeft className="size-4" />
               </Link>
@@ -534,11 +540,7 @@ function ChatPage() {
       </header>
 
       {/* ── Message column ── */}
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="relative flex-1 overflow-y-auto"
-      >
+      <div ref={scrollRef} onScroll={handleScroll} className="relative flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-6">
           {/* Character intro card (Chub-style first impression) */}
           {(characterDescription || characterTags.length > 0) && (
@@ -765,13 +767,11 @@ function MessageBubble({
     setIsEditing(false);
   };
 
-  const displayName = isUser ? personaName ?? "You" : characterName;
+  const displayName = isUser ? (personaName ?? "You") : characterName;
   const initial = (displayName ?? "?").charAt(0).toUpperCase();
 
   return (
-    <div
-      className={`group flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}
-    >
+    <div className={`group flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
       <Avatar className="size-7 shrink-0">
         {isUser ? (
           personaIconPath ? (
@@ -821,9 +821,7 @@ function MessageBubble({
               isDraft || isStreaming ? "opacity-90" : ""
             }`}
           >
-            <Streamdown parseIncompleteMarkdown={isStreaming}>
-              {message.content}
-            </Streamdown>
+            <Streamdown parseIncompleteMarkdown={isStreaming}>{message.content}</Streamdown>
             {isStreaming && <StreamingCaret />}
           </div>
         )}
@@ -857,11 +855,7 @@ function MessageBubble({
             {!isUser && (
               <>
                 <span aria-hidden>·</span>
-                <button
-                  type="button"
-                  onClick={beginEdit}
-                  className="hover:text-foreground"
-                >
+                <button type="button" onClick={beginEdit} className="hover:text-foreground">
                   Edit
                 </button>
               </>

@@ -234,34 +234,12 @@ export const Route = createFileRoute("/api/chat-generate")({
 
           console.log("[chat-generate] prompt", {
             msgCount: promptResult.messages.length,
-            promptRoles: promptResult.messages.map((m) => m.role),
             hasUserMessage,
             sentinelInjected: !hasUserMessage,
             finalMsgCount: finalMessages.length,
-            finalRoles: finalMessages.map((m) => m.role),
-            finalContentLens: finalMessages.map(
-              (m) => (m as { content?: string }).content?.length ?? 0,
-            ),
             model,
             providerId,
           });
-
-          // Full final payload going to the LLM. Dump the actual message
-          // contents and the model options so we can inspect the prompt
-          // end-to-end from the server log.
-          console.log(
-            "[chat-generate] final-llm-payload",
-            JSON.stringify(
-              {
-                baseURL: provider.baseUrl,
-                model,
-                messages: finalMessages,
-                modelOptions: promptResult.modelOptions,
-              },
-              null,
-              2,
-            ),
-          );
 
           const stream = aiChat({
             adapter,

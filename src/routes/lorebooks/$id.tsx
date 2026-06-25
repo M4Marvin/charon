@@ -127,7 +127,11 @@ function LorebookDetailPage() {
       </Card>
 
       {dialog.kind === "create" ? (
-        <EntryEditorDialog lorebookId={id} mode="create" onClose={() => setDialog({ kind: "closed" })} />
+        <EntryEditorDialog
+          lorebookId={id}
+          mode="create"
+          onClose={() => setDialog({ kind: "closed" })}
+        />
       ) : null}
       {dialog.kind === "edit" ? (
         <EntryEditorDialog
@@ -158,7 +162,6 @@ function DeleteEntryButton({ lorebookId, entryId }: { lorebookId: string; entryI
     </Button>
   );
 }
-
 
 // Per-entry enable toggle. Effective on = !data.disable && !userDisabled.
 // AND semantics: if the author disabled the entry, the per-user switch is

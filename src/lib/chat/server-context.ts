@@ -80,7 +80,7 @@ export function buildChatPrompt(input: BuildChatPromptInput): BuildChatPromptRes
   const pipelineChar = v2ToPipelineCharacter(v2);
   const preset = mergePresetIntoPreset(dbPreset)(defaultPreset);
 
-  const { messages: assembled } = buildMessages(
+  const { messages: assembled, loreScan } = buildMessages(
     pipelineChar,
     chatHistory,
     preset,
@@ -91,14 +91,41 @@ export function buildChatPrompt(input: BuildChatPromptInput): BuildChatPromptRes
     userPostHistoryInstructions,
   );
 
+  console.log("[pipeline] context-assembly", {
+    msgCount: assembled.length,
+    systemPrompts: assembled.filter((m) => m.role === "system").map((m) => m.content),
+    activatedLore: loreScan.activated.map((e) => e.content),
+    postHistory: userPostHistoryInstructions ?? pipelineChar.post_history_instructions,
+  });
+
   // Pre-process
   let msgs = assembled;
-  if (preset.squashSystemMessages) msgs = squashSystemMessages(msgs);
+  if (preset.squashSystemMessages) {
+    const before = msgs.length;
+    msgs = squashSystemMessages(msgs);
+    console.log("[pipeline] squash-system-messages", {
+      before,
+      after: msgs.length,
+      merged: before - msgs.length,
+    });
+  }
   msgs = applyCharacterNames(msgs, preset.characterNamesBehavior, pipelineChar.name, userName);
+  console.log("[pipeline] character-names", { behavior: preset.characterNamesBehavior });
   if (preset.continuePostfix) msgs = applyContinuePostfix(msgs, preset.continuePostfix);
   if (preset.continuePrefill) msgs = applyContinuePrefill(msgs, preset.continuePrefill);
+  console.log("[pipeline] continue", {
+    postfix: !!preset.continuePostfix,
+    prefill: !!preset.continuePrefill,
+  });
+  const tokensBefore = msgs.reduce((n, m) => n + counter.count(m.content), 0);
   const trimmed = truncateToContext(msgs, preset.contextSize, (t) => counter.count(t));
   msgs = trimmed.messages;
+  console.log("[pipeline] truncate", {
+    budget: preset.contextSize,
+    tokensBefore,
+    tokensAfter: trimmed.tokens,
+    dropped: trimmed.dropped,
+  });
 
   const options = buildOptions(preset);
   const modelOptions = (options.modelOptions as Record<string, unknown>) ?? {};
