@@ -159,6 +159,55 @@ export const loreEntries = sqliteTable(
   ],
 );
 
+// Per-user lorebook activation overlay. Presence = enabled. Opt-in: no row
+// means the lorebook is disabled for this user.
+export const userLorebookSettings = sqliteTable(
+  "user_lorebook_settings",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    lorebookId: text("lorebook_id")
+      .notNull()
+      .references(() => lorebooks.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.lorebookId] }),
+    index("user_lorebook_settings_user_id_idx").on(table.userId),
+  ],
+);
+
+// Per-user entry disable overlay. Presence = user-disabled. AND semantics
+// with the entry's own data.disable: entry is active iff !data.disable
+// && !userOverlay.
+export const userLoreEntrySettings = sqliteTable(
+  "user_lore_entry_settings",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    entryId: text("entry_id")
+      .notNull()
+      .references(() => loreEntries.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.entryId] }),
+    index("user_lore_entry_settings_user_id_idx").on(table.userId),
+  ],
+);
+
 export const chats = sqliteTable(
   "chats",
   {
@@ -301,8 +350,10 @@ export const personas = sqliteTable(
   (table) => [index("personas_user_id_idx").on(table.userId)],
 );
 
-// One row per user; stores the AI defaults to seed new chats with.
-// Upserted on first use. All three columns nullable so partial defaults work.
+// One row per user; stores the AI defaults to seed new chats with, plus
+// per-user prompt overrides. Upserted on first use. All new columns
+// nullable so partial settings work — a user can fill in just the system
+// prompt and leave the rest blank.
 export const userSettings = sqliteTable("user_settings", {
   userId: text("user_id")
     .primaryKey()
@@ -314,6 +365,12 @@ export const userSettings = sqliteTable("user_settings", {
     onDelete: "set null",
   }),
   defaultSelectedModel: text("default_selected_model"),
+  defaultPersonaId: text("default_persona_id").references(() => personas.id, {
+    onDelete: "set null",
+  }),
+  systemPrompt: text("system_prompt"),
+  postHistoryInstructions: text("post_history_instructions"),
+  impersonationPrompt: text("impersonation_prompt"),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .$defaultFn(() => new Date()),
@@ -352,13 +409,15 @@ export const charactersRelations = relations(characters, ({ one, many }) => ({
 export const lorebooksRelations = relations(lorebooks, ({ one, many }) => ({
   user: one(user, { fields: [lorebooks.userId], references: [user.id] }),
   entries: many(loreEntries),
+  userSettings: many(userLorebookSettings),
 }));
 
-export const loreEntriesRelations = relations(loreEntries, ({ one }) => ({
+export const loreEntriesRelations = relations(loreEntries, ({ one, many }) => ({
   lorebook: one(lorebooks, {
     fields: [loreEntries.lorebookId],
     references: [lorebooks.id],
   }),
+  userSettings: many(userLoreEntrySettings),
 }));
 
 export const chatsRelations = relations(chats, ({ one, many }) => ({
@@ -402,6 +461,14 @@ export const personasRelations = relations(personas, ({ one }) => ({
   user: one(user, { fields: [personas.userId], references: [user.id] }),
 }));
 
+export const userSettingsRelations = relations(userSettings, ({ one }) => ({
+  user: one(user, { fields: [userSettings.userId], references: [user.id] }),
+  defaultPersona: one(personas, {
+    fields: [userSettings.defaultPersonaId],
+    references: [personas.id],
+  }),
+}));
+
 // ── Inferred types ──────────────────────────────────────────────────────────
 // Re-exported as the canonical row types. Use these in repos / server fns.
 
@@ -420,6 +487,10 @@ export type Lorebook = typeof lorebooks.$inferSelect;
 export type NewLorebook = typeof lorebooks.$inferInsert;
 export type LoreEntry = typeof loreEntries.$inferSelect;
 export type NewLoreEntry = typeof loreEntries.$inferInsert;
+export type UserLorebookSettings = typeof userLorebookSettings.$inferSelect;
+export type NewUserLorebookSettings = typeof userLorebookSettings.$inferInsert;
+export type UserLoreEntrySettings = typeof userLoreEntrySettings.$inferSelect;
+export type NewUserLoreEntrySettings = typeof userLoreEntrySettings.$inferInsert;
 export type Chat = typeof chats.$inferSelect;
 export type NewChat = typeof chats.$inferInsert;
 export type ChatMessageRow = typeof chatMessages.$inferSelect;

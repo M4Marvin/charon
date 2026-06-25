@@ -3,7 +3,16 @@ import { db as defaultDb, type DB } from "@/db";
 import { userSettings, type UserSettings } from "@/db/schema";
 
 export type UserSettingsPatch = Partial<
-  Pick<UserSettings, "defaultProviderId" | "defaultPresetId" | "defaultSelectedModel">
+  Pick<
+    UserSettings,
+    | "defaultProviderId"
+    | "defaultPresetId"
+    | "defaultSelectedModel"
+    | "defaultPersonaId"
+    | "systemPrompt"
+    | "postHistoryInstructions"
+    | "impersonationPrompt"
+  >
 >;
 
 export function getUserSettings(
@@ -19,7 +28,8 @@ export function getUserSettings(
 }
 
 // Insert on first call, then apply partial updates. Fields set to `undefined`
-// are left untouched (matches the partial-patch convention used by `updateChat`).
+// are left untouched; fields set to `null` clear the column. Matches the
+// partial-patch convention used by `updateChat`.
 export function upsertUserSettings(
   userId: string,
   patch: UserSettingsPatch,
@@ -34,6 +44,10 @@ export function upsertUserSettings(
         defaultProviderId: patch.defaultProviderId ?? null,
         defaultPresetId: patch.defaultPresetId ?? null,
         defaultSelectedModel: patch.defaultSelectedModel ?? null,
+        defaultPersonaId: patch.defaultPersonaId ?? null,
+        systemPrompt: patch.systemPrompt ?? null,
+        postHistoryInstructions: patch.postHistoryInstructions ?? null,
+        impersonationPrompt: patch.impersonationPrompt ?? null,
       })
       .returning()
       .get();
@@ -43,6 +57,10 @@ export function upsertUserSettings(
   if (patch.defaultProviderId !== undefined) updates.defaultProviderId = patch.defaultProviderId;
   if (patch.defaultPresetId !== undefined) updates.defaultPresetId = patch.defaultPresetId;
   if (patch.defaultSelectedModel !== undefined) updates.defaultSelectedModel = patch.defaultSelectedModel;
+  if (patch.defaultPersonaId !== undefined) updates.defaultPersonaId = patch.defaultPersonaId;
+  if (patch.systemPrompt !== undefined) updates.systemPrompt = patch.systemPrompt;
+  if (patch.postHistoryInstructions !== undefined) updates.postHistoryInstructions = patch.postHistoryInstructions;
+  if (patch.impersonationPrompt !== undefined) updates.impersonationPrompt = patch.impersonationPrompt;
   if (Object.keys(updates).length === 1) return existing;
   const row = db
     .update(userSettings)

@@ -4,17 +4,7 @@ import { toast } from "sonner";
 import { useChat as useAiChat, fetchServerSentEvents } from "@tanstack/ai-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   useChat,
   useChatMessages,
@@ -24,14 +14,12 @@ import {
   usePrepareStream,
   useFinalizeStream,
   useCancelStream,
-  useUpdateChatSettings,
   useSwipeMessage,
   useSendMessage,
 } from "@/hooks/useChats";
-import { useAiProviders } from "@/hooks/useAiProviders";
-import { usePresets } from "@/hooks/usePresets";
-import { useProviderModels } from "@/hooks/useProviderModels";
-import { useUpdateUserSettings } from "@/hooks/useUserSettings";
+
+
+import { ChatSettingsPanel } from "@/components/ChatSettingsPanel";
 import { useChatStore } from "@/stores/chat-store";
 import type { ChatMessageRow } from "@/db/schema";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
@@ -71,9 +59,6 @@ function ChatPage() {
   const { data: chat, isLoading: chatLoading, error: chatError } = useChat(id);
   const { data: messages, isLoading: msgsLoading } = useChatMessages(id);
 
-  const { data: providers = [] } = useAiProviders();
-  const { data: presets = [] } = usePresets();
-
   const prepareStream = usePrepareStream();
   const finalizeStream = useFinalizeStream();
   const cancelStream = useCancelStream();
@@ -82,14 +67,12 @@ function ChatPage() {
   const editMessageMutation = useEditMessage();
   const deleteChatMutation = useDeleteChat();
   const swipeMutation = useSwipeMessage();
-  const updateSettings = useUpdateChatSettings();
-  const updateUserDefaults = useUpdateUserSettings();
 
   // ── Chat store: replaces 5 useState + 3 useRef ──────────────────────
-  const sidebarOpen = useChatStore((s) => s.sidebarOpen);
+  const settingsOpen = useChatStore((s) => s.settingsOpen);
   const input = useChatStore((s) => s.input);
   const activePlaceholderId = useChatStore((s) => s.activePlaceholderId);
-  const setSidebarOpen = useChatStore((s) => s.setSidebarOpen);
+  const setSettingsOpen = useChatStore((s) => s.setSettingsOpen);
   const setInput = useChatStore((s) => s.setInput);
   const clearInput = useChatStore((s) => s.clearInput);
   const setPlaceholder = useChatStore((s) => s.setPlaceholder);
@@ -100,51 +83,7 @@ function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedProviderId = chat?.providerId ?? "";
-  const selectedPresetId = chat?.presetId ?? "";
   const selectedModel = chat?.selectedModel ?? "";
-
-  const { data: models = [] } = useProviderModels(selectedProviderId);
-
-  const handleChangeProvider = useCallback(
-    (providerId: string) => {
-      if (!chat) return;
-      // Changing the provider invalidates the previous model and preset.
-      // Mirror the same reset to user-level defaults so the next chat starts
-      // with the new provider and no stale model/preset.
-      updateSettings.mutate({
-        id: chat.id,
-        providerId,
-        selectedModel: null,
-        presetId: null,
-      });
-      updateUserDefaults.mutate({
-        defaultProviderId: providerId,
-        defaultSelectedModel: null,
-        defaultPresetId: null,
-      });
-    },
-    [chat, updateSettings, updateUserDefaults],
-  );
-
-  const handleChangePreset = useCallback(
-    (presetId: string) => {
-      if (!chat) return;
-      const value = presetId || null;
-      updateSettings.mutate({ id: chat.id, presetId: value });
-      updateUserDefaults.mutate({ defaultPresetId: value });
-    },
-    [chat, updateSettings, updateUserDefaults],
-  );
-
-  const handleChangeModel = useCallback(
-    (model: string) => {
-      if (!chat) return;
-      const value = model || null;
-      updateSettings.mutate({ id: chat.id, selectedModel: value });
-      updateUserDefaults.mutate({ defaultSelectedModel: value });
-    },
-    [chat, updateSettings, updateUserDefaults],
-  );
 
   const hasAi = selectedProviderId.length > 0 && selectedModel.length > 0;
   const canSend = activePlaceholderId === null;
@@ -467,104 +406,6 @@ function ChatPage() {
 
   return (
     <div className="flex h-dvh">
-      {/* Settings sidebar */}
-      {sidebarOpen && (
-        <aside className="w-72 shrink-0 overflow-y-auto border-r p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold">Chat Settings</h2>
-            <Button size="sm" variant="ghost" onClick={() => setSidebarOpen(false)}>
-              ✕
-            </Button>
-          </div>
-
-          <section className="space-y-2">
-            <Label className="text-xs">Provider</Label>
-            <Select value={selectedProviderId} onValueChange={handleChangeProvider}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select provider" />
-              </SelectTrigger>
-              <SelectContent>
-                {providers.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-                {providers.length === 0 && (
-                  <div className="text-muted-foreground px-3 py-2 text-xs">
-                    No providers configured
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
-          </section>
-
-          <Separator className="my-3" />
-
-          <section className="space-y-2">
-            <Label className="text-xs">Model</Label>
-            <Select
-              value={selectedModel}
-              onValueChange={handleChangeModel}
-              disabled={!selectedProviderId}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue
-                  placeholder={
-                    selectedProviderId ? "Loading models..." : "Select a provider first"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {models.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.id}
-                  </SelectItem>
-                ))}
-                {models.length === 0 && selectedProviderId && (
-                  <div className="text-muted-foreground px-3 py-2 text-xs">
-                    No models fetched
-                  </div>
-                )}
-              </SelectContent>
-            </Select>
-            <Input
-              value={selectedModel}
-              onChange={(e) => handleChangeModel(e.target.value)}
-              placeholder="Or type model ID"
-              className="mt-1"
-            />
-          </section>
-
-          <Separator className="my-3" />
-
-          <section className="space-y-2">
-            <Label className="text-xs">Preset</Label>
-            <Select
-              value={selectedPresetId || "_none"}
-              onValueChange={(v) => handleChangePreset(v === "_none" ? "" : v)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select preset" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_none">— None —</SelectItem>
-                {presets.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </section>
-
-          <Separator className="my-3" />
-
-          <Button asChild variant="outline" size="sm" className="w-full">
-            <Link to="/ai-playground">Configure providers</Link>
-          </Button>
-        </aside>
-      )}
-
       {/* Main chat area */}
       <div className="mx-auto flex max-w-4xl flex-1 flex-col px-4">
         {/* Header */}
@@ -572,8 +413,13 @@ function ChatPage() {
           <Button asChild variant="ghost" size="sm">
             <Link to="/chats">←</Link>
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)}>
-            {sidebarOpen ? "✕ Settings" : "☰ Settings"}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSettingsOpen(!settingsOpen)}
+            aria-label="Toggle settings panel"
+          >
+            {settingsOpen ? "✕ Settings" : "⚙ Settings"}
           </Button>
           <Avatar className="size-8">
             {chat.characterImagePath ? (
@@ -596,8 +442,8 @@ function ChatPage() {
         {!selectedProviderId && (
           <div className="bg-muted/50 mx-2 mt-2 rounded-lg px-4 py-2 text-center text-xs">
             Configure an AI provider in the{" "}
-            <button type="button" className="underline" onClick={() => setSidebarOpen(true)}>
-              settings sidebar
+            <button type="button" className="underline" onClick={() => setSettingsOpen(true)}>
+              settings panel
             </button>{" "}
             to start chatting.
           </div>
@@ -647,6 +493,10 @@ function ChatPage() {
           </Button>
         </div>
       </div>
+
+      {settingsOpen && (
+        <ChatSettingsPanel chat={chat} onClose={() => setSettingsOpen(false)} />
+      )}
     </div>
   );
 }
@@ -794,3 +644,4 @@ function MessageBubble({
     </div>
   );
 }
+

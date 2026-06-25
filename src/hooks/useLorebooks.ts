@@ -6,11 +6,16 @@ import {
   deleteLorebook,
   deleteLorebookEntry,
   getLorebook,
+  importLorebook,
   listLorebookEntries,
   listLorebooks,
   updateLorebook,
   updateLorebookEntry,
 } from "@/server/fns/lorebooks";
+import {
+  setLorebookEnabled,
+  setLoreEntryDisabled,
+} from "@/server/fns/userLorebookSettings";
 
 export const lorebookKeys = {
   all: ["lorebooks"] as const,
@@ -77,6 +82,21 @@ export function useDeleteLorebook() {
   });
 }
 
+export function useImportLorebook() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { content: string }): Promise<{
+      id: string;
+      name: string;
+      entriesInserted: number;
+      entriesSkipped: number;
+    }> => importLorebook({ data: input }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: lorebookKeys.list() });
+    },
+  });
+}
+
 export function useLorebookEntries(lorebookId: string) {
   return useQuery({
     queryKey: lorebookKeys.entries(lorebookId),
@@ -125,6 +145,32 @@ export function useDeleteLorebookEntry(lorebookId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: lorebookKeys.entries(lorebookId) });
       void queryClient.invalidateQueries({ queryKey: lorebookKeys.list() });
+    },
+  });
+}
+
+export function useToggleLorebook() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { lorebookId: string; enabled: boolean }): Promise<{
+      lorebookId: string;
+      enabled: boolean;
+    }> => setLorebookEnabled({ data: input }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: lorebookKeys.list() });
+    },
+  });
+}
+
+export function useToggleLoreEntry(lorebookId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { entryId: string; disabled: boolean }): Promise<{
+      entryId: string;
+      disabled: boolean;
+    }> => setLoreEntryDisabled({ data: { lorebookId, ...input } }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: lorebookKeys.entries(lorebookId) });
     },
   });
 }

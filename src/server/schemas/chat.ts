@@ -73,4 +73,8 @@ export const UpdateUserSettings = Schema.Struct({
   defaultProviderId: NullableOptionalString,
   defaultPresetId: NullableOptionalString,
   defaultSelectedModel: NullableOptionalString,
+  defaultPersonaId: NullableOptionalString,
+  systemPrompt: NullableOptionalString,
+  postHistoryInstructions: NullableOptionalString,
+  impersonationPrompt: NullableOptionalString,
 });

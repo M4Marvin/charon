@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -20,6 +21,7 @@ import {
   useDeleteLorebookEntry,
   useLorebook,
   useLorebookEntries,
+  useToggleLoreEntry,
   useUpdateLorebookEntry,
 } from "@/hooks/useLorebooks";
 import type { LoreEntry } from "@/db/schema";
@@ -91,7 +93,7 @@ function LorebookDetailPage() {
                   <TableHead>Comment</TableHead>
                   <TableHead>Keys</TableHead>
                   <TableHead className="w-16">Order</TableHead>
-                  <TableHead className="w-16">On</TableHead>
+                  <TableHead className="w-32">On</TableHead>
                   <TableHead className="w-32 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -111,11 +113,7 @@ function LorebookDetailPage() {
                     </TableCell>
                     <TableCell className="font-mono text-xs">{entry.data.order}</TableCell>
                     <TableCell>
-                      {entry.data.disable ? (
-                        <Badge variant="outline">off</Badge>
-                      ) : (
-                        <Badge>on</Badge>
-                      )}
+                      <EntryToggleCell lorebookId={id} entry={entry} />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -355,4 +353,45 @@ function parseKeys(text: string): string[] {
     .split(",")
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
+}
+
+// Per-entry enable toggle. Effective on = !data.disable && !userDisabled.
+// AND semantics: if the author disabled the entry, the per-user switch is
+// locked off (it can't re-enable a globally-disabled entry).
+function EntryToggleCell({
+  lorebookId,
+  entry,
+}: {
+  lorebookId: string;
+  entry: LoreEntry & { userDisabled: boolean };
+}) {
+  const toggle = useToggleLoreEntry(lorebookId);
+  const authorDisabled = entry.data.disable === true;
+  const userDisabled = entry.userDisabled === true;
+  const effectiveOn = !authorDisabled && !userDisabled;
+
+  if (authorDisabled) {
+    return (
+      <div className="flex items-center gap-2">
+        <Switch checked={false} disabled aria-label="Disabled by author" />
+        <span className="text-muted-foreground text-xs">author</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Switch
+        checked={effectiveOn}
+        disabled={toggle.isPending}
+        onCheckedChange={(checked) =>
+          toggle.mutate({ entryId: entry.id, disabled: !checked })
+        }
+        aria-label={`Toggle ${entry.data.comment || `entry ${entry.uid}`}`}
+      />
+      <span className="text-muted-foreground text-xs">
+        {userDisabled ? "you" : effectiveOn ? "on" : "off"}
+      </span>
+    </div>
+  );
 }

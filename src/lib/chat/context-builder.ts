@@ -18,6 +18,9 @@ export function buildMessages(
   preset: ChatCompletionPreset,
   userName: string,
   userPersona?: string,
+  extraLoreEntries: import("@/lib/st-core/lorebook/types").LoreEntry[] = [],
+  userSystemPrompt?: string,
+  userPostHistoryInstructions?: string,
 ): { messages: ModelMessage[]; loreScan: LoreScanView } {
   const storyParams: StoryStringParams = {
     description: character.description,
@@ -68,10 +71,19 @@ export function buildMessages(
     return out;
   }
 
-  // Collect lore entries: first from embedded character_book, then standalone
+  // Collect lore entries: first from embedded character_book, then
+  // caller-supplied extras (e.g. standalone lorebooks the user has
+  // enabled, with per-user entry disables already applied by the caller).
+  // Pre-filter `disable: true` on both sources so it takes effect in the
+  // initial scan (the scan only checks `disable` during recursion).
   const loreEntries: import("@/lib/st-core/lorebook/types").LoreEntry[] = [];
   if (character.character_book?.entries) {
-    loreEntries.push(...convertBookEntries(character.character_book.entries));
+    loreEntries.push(
+      ...convertBookEntries(character.character_book.entries).filter((e) => !e.disable),
+    );
+  }
+  if (extraLoreEntries.length > 0) {
+    loreEntries.push(...extraLoreEntries.filter((e) => !e.disable));
   }
 
   const globalData: LoreGlobalData = {
@@ -115,6 +127,9 @@ export function buildMessages(
 
   const messages: ModelMessage[] = [];
 
+  // User-level system prompt takes precedence as the first system message.
+  if (userSystemPrompt) messages.push({ role: "system", content: userSystemPrompt });
+
   const mainPrompt = preset.utilityPrompts.join("\n\n");
   if (mainPrompt) messages.push({ role: "system", content: mainPrompt });
 
@@ -150,7 +165,10 @@ export function buildMessages(
 
   messages.push(...historyMessages);
 
-  if (character.post_history_instructions) {
+  // User-level post-history instructions override the character's.
+  if (userPostHistoryInstructions) {
+    messages.push({ role: "system", content: userPostHistoryInstructions });
+  } else if (character.post_history_instructions) {
     messages.push({ role: "system", content: character.post_history_instructions });
   }
 

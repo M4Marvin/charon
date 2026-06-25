@@ -8,6 +8,7 @@ import {
   type LoreConfig,
   type LoreEntry as LoreEntryData,
 } from "@/lib/st-core/lorebook";
+import { parseWorldFile } from "@/lib/lorebook/world-file";
 import type { Lorebook, LoreEntry } from "@/db/schema";
 import {
   createEntry as repoCreateEntry,
@@ -29,7 +30,9 @@ export type LorebookListItem = LorebookWithCount;
 export type LoreEntryListItem = Pick<
   LoreEntry,
   "id" | "uid" | "data" | "lorebookId" | "createdAt" | "updatedAt"
->;
+> & {
+  userDisabled: boolean;
+};
 
 // ── Validators ──────────────────────────────────────────────────────────────
 
@@ -145,6 +148,16 @@ function validateCreateEntryInput(data: unknown): CreateEntryInput {
   return result;
 }
 
+const ImportLorebookInput = type({
+  content: "string > 0",
+});
+
+function validateImportLorebookInput(data: unknown): { content: string } {
+  const result = ImportLorebookInput(data);
+  if (result instanceof type.errors) throw new Error("Invalid import input");
+  return result;
+}
+
 function validateUpdateEntryInput(
   data: unknown,
 ): { lorebookId: string; entryId: string; uid?: number; data: LoreEntryData } {
@@ -216,6 +229,7 @@ export const listLorebookEntries = createServerFn({ method: "GET" })
       lorebookId: e.lorebookId,
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
+      userDisabled: e.userDisabled,
     }));
   });
 
@@ -291,3 +305,53 @@ export const deleteLorebookEntry = createServerFn({ method: "POST" })
     repoDeleteEntry(user.id, data.lorebookId, data.entryId);
     return { id: data.entryId };
   });
+
+// Import a SillyTavern world-info JSON file. Creates the lorebook (disabled
+// by default per the opt-in design) and inserts all valid entries. Returns
+// counts so the client can report skipped entries.
+export const importLorebook = createServerFn({ method: "POST" })
+  .validator(validateImportLorebookInput)
+  .handler(
+    async ({
+      data,
+    }): Promise<{
+      id: string;
+      name: string;
+      entriesInserted: number;
+      entriesSkipped: number;
+    }> => {
+      const { user } = await getSession();
+      const parsed = parseWorldFile(data.content);
+
+      const id = randomUUID();
+      repoCreate({
+        id,
+        userId: user.id,
+        name: parsed.name,
+        description: parsed.description,
+        config: parsed.config,
+      });
+
+      let entriesInserted = 0;
+      for (const entry of parsed.entries) {
+        try {
+          repoCreateEntry(user.id, {
+            id: randomUUID(),
+            lorebookId: id,
+            uid: entry.uid,
+            data: entry,
+          });
+          entriesInserted++;
+        } catch {
+          // (lorebookId, uid) collision — skip this entry.
+        }
+      }
+
+      return {
+        id,
+        name: parsed.name,
+        entriesInserted,
+        entriesSkipped: parsed.entriesSkipped,
+      };
+    },
+  );

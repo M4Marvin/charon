@@ -12,7 +12,7 @@ import { create } from "zustand";
 
 export interface ChatStoreState {
   // ── UI ────────────────────────────────────────────────────────────────
-  sidebarOpen: boolean;
+  settingsOpen: boolean;
   input: string;
 
   // ── Streaming ─────────────────────────────────────────────────────────
@@ -26,8 +26,8 @@ export interface ChatStoreState {
   recoveredFor: string | null;
 
   // ── Actions ──────────────────────────────────────────────────────────
-  setSidebarOpen: (open: boolean) => void;
-  toggleSidebar: () => void;
+  setSettingsOpen: (open: boolean) => void;
+  toggleSettings: () => void;
   setInput: (v: string) => void;
   clearInput: () => void;
 
@@ -41,14 +41,14 @@ export interface ChatStoreState {
 }
 
 export const useChatStore = create<ChatStoreState>((set) => ({
-  sidebarOpen: false,
+  settingsOpen: false,
   input: "",
   activePlaceholderId: null,
   recoveredStaleId: null,
   recoveredFor: null,
 
-  setSidebarOpen: (open) => set({ sidebarOpen: open }),
-  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  setSettingsOpen: (open) => set({ settingsOpen: open }),
+  toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
   setInput: (v) => set({ input: v }),
   clearInput: () => set({ input: "" }),
 
@@ -60,7 +60,7 @@ export const useChatStore = create<ChatStoreState>((set) => ({
 }));
 
 // Convenience selectors — components subscribe to narrow slices.
-export const selectSidebarOpen = (s: ChatStoreState) => s.sidebarOpen;
+export const selectSettingsOpen = (s: ChatStoreState) => s.settingsOpen;
 export const selectInput = (s: ChatStoreState) => s.input;
 export const selectActivePlaceholderId = (s: ChatStoreState) => s.activePlaceholderId;
 export const selectRecovered = (s: ChatStoreState) => ({

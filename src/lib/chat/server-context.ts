@@ -1,6 +1,6 @@
 import { ApproxTokenCounter } from "@/lib/st-core/shared/tokens.js";
 import type { CharacterDataV2 } from "@/lib/st-core/character/types.js";
-import type { LoreConfig } from "@/lib/st-core/lorebook/types.js";
+import type { LoreConfig, LoreEntry } from "@/lib/st-core/lorebook/types.js";
 import type { ChatMessage } from "@/lib/st-core/shared/types.js";
 import type { PipelineCharacter, ChatCompletionPreset, ModelMessage } from "./types.js";
 import { buildMessages } from "./context-builder.js";
@@ -47,6 +47,15 @@ export interface BuildChatPromptInput {
   defaultPreset: ChatCompletionPreset;
   userName: string;
   userPersona?: string;
+  // Caller-filtered lorebook entries to merge with the character's
+  // embedded book. Already filtered for: enabled lorebooks, per-user
+  // entry disables. `context-builder` also pre-filters data.disable.
+  extraLoreEntries?: LoreEntry[];
+  // Per-user prompt overrides from user_settings. The system prompt is
+  // injected as the first system message; post-history instructions
+  // replace the character's when set.
+  userSystemPrompt?: string;
+  userPostHistoryInstructions?: string;
 }
 
 export interface BuildChatPromptResult {
@@ -62,13 +71,25 @@ export function buildChatPrompt(input: BuildChatPromptInput): BuildChatPromptRes
     defaultPreset,
     userName,
     userPersona,
+    extraLoreEntries,
+    userSystemPrompt,
+    userPostHistoryInstructions,
   } = input;
   const counter = new ApproxTokenCounter();
 
   const pipelineChar = v2ToPipelineCharacter(v2);
   const preset = mergePresetIntoPreset(dbPreset)(defaultPreset);
 
-  const { messages: assembled } = buildMessages(pipelineChar, chatHistory, preset, userName, userPersona);
+  const { messages: assembled } = buildMessages(
+    pipelineChar,
+    chatHistory,
+    preset,
+    userName,
+    userPersona,
+    extraLoreEntries,
+    userSystemPrompt,
+    userPostHistoryInstructions,
+  );
 
   // Pre-process
   let msgs = assembled;

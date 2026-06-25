@@ -6,8 +6,16 @@ import { getChat as repoGetChat, listMessages as repoListMessages } from "@/db/r
 import { getCharacter as repoGetChar } from "@/db/repositories/characters";
 import { getAiProvider as repoGetProvider } from "@/db/repositories/aiProviders";
 import { getPreset as repoGetPreset } from "@/db/repositories/presets";
+import { listEntries as repoListEntries } from "@/db/repositories/lorebooks";
+import {
+  listEnabledLorebookIds,
+  listUserDisabledEntryIds,
+} from "@/db/repositories/userLorebookSettings";
+import { getUserSettings as repoGetUserSettings } from "@/db/repositories/userSettings";
+import { getPersona as repoGetPersona } from "@/db/repositories/personas";
 import type { ChatMessageRow, Character } from "@/db/schema";
 import type { ChatMessage, ChatTree } from "@/lib/st-core/shared/types";
+import type { LoreEntry as LoreEntryData } from "@/lib/st-core/lorebook";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import { getNode } from "@/lib/st-core/chat-tree/tree";
 import { buildChatPrompt } from "@/lib/chat/server-context";
@@ -165,12 +173,44 @@ export const Route = createFileRoute("/api/chat-generate")({
           const presetPartial = dbPresetToPartial(dbPresetRaw);
           const defaultPreset: ChatCompletionPreset = { ...DEFAULT_PRESET };
 
+          // Load per-user enabled lorebooks + their entries, filtered to
+          // skip entries the user has disabled in the overlay. The
+          // context-builder also pre-filters data.disable before scanning.
+          const enabledLorebookIds = listEnabledLorebookIds(user.id);
+          const userDisabledEntryIds = new Set(listUserDisabledEntryIds(user.id));
+          const extraLoreEntries: LoreEntryData[] = [];
+          for (const lbId of enabledLorebookIds) {
+            const rows = repoListEntries(user.id, lbId);
+            for (const row of rows) {
+              if (userDisabledEntryIds.has(row.id)) continue;
+              extraLoreEntries.push(row.data);
+            }
+          }
+
+          // Load per-user settings: default persona + prompt overrides.
+          // impersonationPrompt is stored but not yet wired into generation
+          // (no impersonate feature yet).
+          const userSettingsRow = repoGetUserSettings(user.id);
+          let userPersona: string | undefined;
+          if (userSettingsRow?.defaultPersonaId) {
+            try {
+              const persona = repoGetPersona(user.id, userSettingsRow.defaultPersonaId);
+              userPersona = persona.description ?? undefined;
+            } catch {
+              // Persona deleted out from under us — ignore, proceed without.
+            }
+          }
+
           const promptResult = buildChatPrompt({
             character: char.data,
             chatHistory: historyMessages,
             preset: presetPartial,
             defaultPreset,
             userName: user.name,
+            extraLoreEntries,
+            userPersona,
+            userSystemPrompt: userSettingsRow?.systemPrompt ?? undefined,
+            userPostHistoryInstructions: userSettingsRow?.postHistoryInstructions ?? undefined,
           });
 
           const adapter = openaiCompatibleText(model, {

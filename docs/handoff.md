@@ -9,10 +9,10 @@ Snapshot of what exists in the repo right now. Not a roadmap, not a plan.
 - **st-core** — 7 pure-logic modules in `src/lib/st-core/`. V2-only, do not edit.
 - **DB + auth** — Drizzle schema, better-auth adapter, `dev.db` with 13 tables. `getSession()` is a single-user stub until real auth UX lands.
 - **Characters slice** — repo + server fns + hooks + UI routes + 15 repo tests. V2 PNG import + rename + delete + read-only detail with embedded lorebook collapsible.
-- **Lorebooks slice** — repo + server fns + hooks + UI routes + 36 repo tests. `listLorebooks` includes `entryCount` via leftJoin + groupBy.
+- **Lorebooks slice** — repo + server fns + hooks + UI routes + 36 repo tests. `listLorebooks` includes `entryCount` + **`enabled`** via leftJoin + groupBy. **Per-user activation overlay** (`user_lorebook_settings` + `user_lore_entry_settings`) wired into `/api/chat-generate`; inline enable Switch on `/lorebooks`, per-entry Switch on `/lorebooks/$id` with AND-disable semantics. **Import** button on `/lorebooks` opens a Dialog for SillyTavern world-info JSON files; parsed via `parseWorldFile` and inserted as a disabled lorebook.
 - **Chats slice** — repo + server fns + hooks + UI routes + 16 repo tests. Hidden-root tree model: all greetings pre-loaded as children of a system root; swipe-on-all, draft messages, edit, delete, **streaming AI generation via SSE**.
 - **AI slice** — providers + presets + user-settings repos + server fns + hooks + UI. `/ai-playground` (provider/preset CRUD + streaming chat) and per-chat provider/model/preset sidebar on `/chats/$id`.
-- **Tests:** 156/156 pass (75 chat-tree + 9 normalize + 15 characters + 36 lorebooks + 16 chats + **5 userSettings**)
+- **Tests:** 193/193 pass (75 chat-tree + 9 normalize + 15 characters + 36 lorebooks + 16 chats + 5 userSettings + 15 userLorebookSettings + **22 world-file parser**)
 - **Typecheck:** clean (only 2 pre-existing errors: `drizzle.config.ts:6`, `transform/regex.ts:161`)
 - **Legacy migration** — `scripts/migrate-data.ts` imports `public/data/` (30 chars, 27 lorebooks, 1 persona). Idempotent.
 - **Upload normalization** — `src/lib/character/normalize.ts` shared by `importCharacter` and the migration. 9 unit tests.
@@ -45,7 +45,7 @@ TanStack Start rewrite of SillyTavern-style character chat. Single-character rol
 
 ### Schema
 
-**Migrations:** `0000` (initial 11 tables), `0001` (adds `ai_providers` + `presets.provider_id`/`model`), `0002` (adds `chats.provider_id`/`preset_id`/`selected_model`), `0003` (adds `user_settings`).
+**Migrations:** `0000` (initial 11 tables), `0001` (adds `ai_providers` + `presets.provider_id`/`model`), `0002` (adds `chats.provider_id`/`preset_id`/`selected_model`), `0003` (adds `user_settings`), `0004` (adds `user_lorebook_settings` + `user_lore_entry_settings`). 15 tables total.
 
 Auth tables (hand-written in same schema file): `user`, `session`, `account`, `verification`.
 
@@ -56,6 +56,8 @@ Domain tables (all user-scoped via `userId` fk):
 | `characters` | id (uuid text pk), userId fk, name, `data` text-json (`CharacterDataV2` via `$type<>`), spec, specVersion, imagePath | in use |
 | `lorebooks` | id pk, userId fk, name, description, imagePath, `config` text-json (`$type<LoreConfig>()`) | in use |
 | `lore_entries` | id pk, lorebookId fk, uid int, `data` text-json (`$type<LoreEntryData>()`) | in use |
+| `user_lorebook_settings` | composite pk (userId, lorebookId), fks cascade. **Presence = enabled (opt-in default).** | in use |
+| `user_lore_entry_settings` | composite pk (userId, entryId), fks cascade. **Presence = user-disabled (AND with `data.disable`).** | in use |
 | `chats` | id pk, userId fk, characterId fk, title, backgroundPath, **`providerId`**, **`presetId`**, **`selectedModel`**, `metadata` text-json | in use |
 | `chat_messages` | composite pk (chatId, localId int), parentLocalId, `children` (number[]), selectedChildLocalId, role, name, content, isUser, isSystem, `extra` (Record<string,unknown>) | in use |
 | `presets` | id pk, userId fk, name (unique per user), **`providerId` fk (nullable)**, **`model`**, `data` text-json (`PresetData`: systemPrompt/temperature/maxTokens/topP/contextSize/frequencyPenalty/presencePenalty) | in use |
@@ -88,16 +90,28 @@ V2 import flow: client `file.arrayBuffer()` → base64 → `importCharacter` ser
 
 ```
 src/db/
-  repositories/lorebooks.ts                  # lorebook + entry CRUD, listLorebooks w/ entryCount via leftJoin+groupBy
+  repositories/lorebooks.ts                  # lorebook + entry CRUD; listLorebooks joins entryCount + enabled; listEntries joins userDisabled; deleteLorebook/DeleteEntry cascade overlay rows
+  repositories/userLorebookSettings.ts        # opt-in enabled overlay + AND-disable entry overlay (presence = state, no boolean col)
   __tests__/lorebooks.repo.test.ts            # 36 tests
+  __tests__/userLorebookSettings.repo.test.ts # 15 tests
+src/lib/lorebook/
+  world-file.ts                              # parseWorldFile: SillyTavern world-info JSON -> normalized LoreEntry[] (insertion_order->order, enabled->disable, position string->0|1, extensions flattening, key/keysecondary as string or array)
+  world-file.test.ts                         # 22 tests
 src/server/
-  fns/lorebooks.ts                            # lorebook + entry server fns
+  fns/lorebooks.ts                            # lorebook + entry server fns (output includes enabled/userDisabled) + importLorebook
+  fns/userLorebookSettings.ts                 # setLorebookEnabled / setLoreEntryDisabled (arktype validators; ownership via getLorebook)
 src/routes/
-  lorebooks/{index,new,$id}.tsx               # list, new, detail with entry CRUD dialog
-src/hooks/useLorebooks.ts                     # TanStack Query hooks
+  lorebooks/{index,new,$id}.tsx               # list (enable Switch per card + Import Dialog), new, detail (per-entry Switch, author-disabled = locked off)
+src/hooks/useLorebooks.ts                     # TanStack Query hooks + useToggleLorebook + useToggleLoreEntry + useImportLorebook
 ```
 
 `nextEntryUid(userId, lorebookId)` fetches max+1 in the create-entry path. Entry ownership enforced transitively via `getLorebook(userId, lorebookId)` at the top of every entry repo fn (entries have no `userId` column).
+
+**Import flow** (`importLorebook` server fn + `parseWorldFile`). `/lorebooks` index has an "Import" button (next to "New Lorebook") that opens a Dialog with a JSON file picker. The server fn takes the raw JSON string, calls `parseWorldFile` to normalize the SillyTavern world-info format to the st-core `LoreEntry` shape, creates the lorebook (disabled by default per the opt-in design), and inserts all valid entries via `repoCreateEntry`. Returns `{ id, name, entriesInserted, entriesSkipped }` so the client can report skipped entries in a toast. Non-object entries (null, arrays, primitives) are skipped and counted. The migration (`scripts/migrate-data.ts`) still uses its own raw-entry insertion path — it could be refactored to share `parseWorldFile` as a follow-up (not done here to keep the migration behavior unchanged).
+
+**Per-user activation overlay** (`user_lorebook_settings` + `user_lore_entry_settings`). Both are presence-based join tables — no boolean column, no dead rows. **Opt-in default:** a lorebook with no `user_lorebook_settings` row is disabled for that user. An entry is active iff `!entry.data.disable && !userOverlay` (AND semantics — the author's `data.disable` still wins; per-user toggle can only further disable). The `setLorebookEnabled` / `setLoreEntryDisabled` fns verify lorebook ownership (and entry-belongs-to-lorebook for entries) before touching the overlay. `deleteLorebook` and `deleteEntry` cascade-clean overlay rows (manual, since FK enforcement is off in dev.db). `deleteLorebook` also now cleans up orphan entries (pre-existing bug, fixed here).
+
+**Pipeline integration.** `/api/chat-generate` loads the user's enabled lorebook ids, fetches their entries, filters out user-disabled entries, and passes the result as `extraLoreEntries` to `buildChatPrompt`. `context-builder.ts` accepts the new param, merges with the character's embedded book, and **pre-filters `disable: true` on both sources** so disabled entries don't activate during the initial scan (pre-existing bug: `scanLoreEntries` only checks `disable` in the recursion loop, not initial). The `/` (index) demo pipeline and `lib/chat/pipeline.ts` are unchanged — `extraLoreEntries` defaults to `[]`.
 
 ### Chats slice
 
@@ -243,6 +257,13 @@ Not migrated: presets, chats. V3 cards rejected. `normalizeCardData` is applied 
 | Empty content drop from prompt | Hidden system root + empty-content system messages filtered out | openai-compatible adapters reject empty user content with misleading error. |
 | Greeting regenerate sentinel | Inject "." user message when prompt has no user turn | openai-compatible APIs reject user-less prompts. `aiChat.sendMessage(".")` triggers the stream (non-whitespace required to bypass the `chat-client.js:548` trim guard); `aiChat.reload()` no-ops without a prior user turn. |
 | AI provider secret storage | Plain text in `ai_providers.api_key` for now | `docs/todos.md` tracks the encryption follow-up. |
+| Lorebook activation default | **Opt-in / disabled by default** | No `user_lorebook_settings` row = disabled. Matches SillyTavern; no surprise lore injections on new/imported lorebooks. |
+| Per-user entry disable semantics | **AND with `data.disable`** | `!data.disable && !userOverlay`. Author's global disable wins; per-user toggle can only further restrict, never re-enable. UI locks the switch off when `data.disable` is true. |
+| Overlay table shape | **Presence = state (no boolean column)** | `user_lorebook_settings` row present = enabled. `user_lore_entry_settings` row present = user-disabled. No dead rows; `setLorebookEnabled(_, _, true)` upserts, `setLorebookEnabled(_, _, false)` deletes. |
+| Standalone lorebooks in chat prompt | **Loaded by `/api/chat-generate` only** | Pipeline is character-chat-scoped. The `/` demo pipeline and `/api/chat` (playground) don't merge enabled lorebooks. |
+| Disabled-entry pre-filter | **Applied in `context-builder` before `scanLoreEntries`** | Filters `disable: true` from both embedded + extra entries so it takes effect in the *initial* scan (the scan's recursion check missed the initial pass). |
+| World-file import normalization | **Always normalize, never store raw** | `parseWorldFile` maps `insertion_order→order`, `enabled→disable` (inverted), `position` string→enum, flattens `extensions.*`, accepts `key`/`keysecondary` as array or comma-separated string, validates per-entry via `LoreEntrySchema`. Result: imported lorebooks are immediately usable by the chat pipeline. The one-time `scripts/migrate-data.ts` still uses raw insertion (storing entries without the `LoreEntry` shape) — its lorebooks are NOT usable in chats; refactor is a follow-up. |
+| Imported lorebook activation | **Disabled by default** | Matches the opt-in design. User must toggle on from the list page after import. |
 
 ---
 
@@ -274,16 +295,20 @@ Not migrated: presets, chats. V3 cards rejected. `normalizeCardData` is applied 
 
 ## Branch State
 
-On `feat/ai-chat-combined`, 6 commits past the `phase-3-chats` merge:
+`main` is at the merge of `feat/ai-chat-combined` (8 commits past the `phase-3-chats` merge):
 
-1. `0a27c8b` feat(schema): add providerId/presetId/selectedModel to chats table — schema-level wiring
-2. `705cb9b` feat(pipeline): refactor to real DB types (CharacterDataV2 + CharacterBookEntry) — pipeline now consumes DB types
-3. `3dfa80a` feat(chats): add prepareStream/finalizeStream/cancelStream/updateChatSettings server fns + hooks — streaming surface
-4. `1fa3d60` feat(ai): add AI playground with provider/preset CRUD and streaming chat — `/ai-playground` + repos + server fns
-5. `1013c90` feat(api): add /api/chat-generate streaming endpoint for chat-backed AI generation — SSE endpoint
-6. `3461a51` feat(chat): upgrade /chats/ with streaming AI generation + settings sidebar — chat UI rewrite
-7. `40b2512` fixup: add missing .tsx chat UI and regenerate routes — manual fix
+1. `0a27c8b` feat(schema): add providerId/presetId/selectedModel to chats table
+2. `705cb9b` feat(pipeline): refactor to real DB types
+3. `3dfa80a` feat(chats): add prepareStream/finalizeStream/cancelStream/updateChatSettings
+4. `1fa3d60` feat(ai): add AI playground with provider/preset CRUD
+5. `1013c90` feat(api): add /api/chat-generate streaming endpoint
+6. `3461a51` feat(chat): upgrade /chats/ with streaming + settings sidebar
+7. `40b2512` fixup: regenerate route tree
+8. `3f6c725` feat(chat): complete streaming UI with user-level AI defaults (user_settings + zustand)
+9. `7d070c7` docs(handoff): rewrite as current-state snapshot
 
-**Uncommitted in working tree** (in progress on this branch): `drizzle/0003_worthless_bastion.sql` (adds `user_settings` table) + `src/db/schema.ts` `userSettings` declaration + `src/db/repositories/userSettings.ts` + `src/db/__tests__/userSettings.repo.test.ts` + `src/server/fns/userSettings.ts` + `src/hooks/useUserSettings.ts` + `src/server/schemas/chat.ts` (consolidated validators) + `src/stores/chat-store.ts` (zustand) + `src/routes/api/chat-generate.ts` (overhaul) + `src/routes/chats/$id.tsx` (overhaul) + `src/server/fns/chats.ts` (prepares chat for streaming + `createChat` seeds user defaults) + `src/db/repositories/chats.ts` (createChat input + updateChat) + `src/lib/chat/lorebook.ts` (formatting) + `package.json` (adds `@tanstack/ai*`, `zustand`, `@tanstack/react-router-ssr-query`, `@tanstack/react-store`).
+**Latest uncommitted work in progress:** per-user lorebook activation overlay (`drizzle/0004_material_warlock.sql` + `user_lorebook_settings` + `user_lore_entry_settings` tables; new `userLorebookSettings` repo with 15 tests; new `userLorebookSettings` server fn; `useToggleLorebook`/`useToggleLoreEntry` hooks; inline Switch on `/lorebooks` index + per-entry Switch on `/lorebooks/$id`; `context-builder` + `server-context` accept `extraLoreEntries`; `/api/chat-generate` loads enabled lorebooks and filters user-disabled entries; `deleteLorebook`/`deleteEntry` cascade overlay rows; `deleteLorebook` now also cleans orphan entries — pre-existing bug fixed).
 
-Tests pass on the uncommitted state (156/156). `0003` migration is generated but not yet applied to `dev.db` — the app would crash on first user-settings read until `nub run db:migrate` is run.
+**Also uncommitted:** lorebook import flow (`src/lib/lorebook/world-file.ts` + `parseWorldFile` with 22 unit tests; `importLorebook` server fn; `useImportLorebook` hook; "Import" button + Dialog on `/lorebooks` index). Accepts SillyTavern world-info JSON; normalizes to the `LoreEntry` shape so imported lorebooks are immediately usable by the chat pipeline. Created lorebook is disabled by default (opt-in).
+
+Tests pass: **193/193**. `0004` migration is generated but not yet applied to `dev.db` — the app will crash on first lorebook-toggle read until `nub run db:migrate` is run.

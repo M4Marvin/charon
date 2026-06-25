@@ -29,6 +29,20 @@
       "when": 1782390714052,
       "tag": "0003_worthless_bastion",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1782401285608,
+      "tag": "0004_material_warlock",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1782405847417,
+      "tag": "0005_soft_cerise",
+      "breakpoints": true
     }
   ]
 }

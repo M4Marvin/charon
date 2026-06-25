@@ -12,16 +12,33 @@ export type UserSettingsView = {
   defaultProviderId: string | null;
   defaultPresetId: string | null;
   defaultSelectedModel: string | null;
+  defaultPersonaId: string | null;
+  systemPrompt: string | null;
+  postHistoryInstructions: string | null;
+  impersonationPrompt: string | null;
   updatedAt: Date;
 };
 
 function toView(
-  row: { defaultProviderId: string | null; defaultPresetId: string | null; defaultSelectedModel: string | null; updatedAt: Date } | null,
+  row: {
+    defaultProviderId: string | null;
+    defaultPresetId: string | null;
+    defaultSelectedModel: string | null;
+    defaultPersonaId: string | null;
+    systemPrompt: string | null;
+    postHistoryInstructions: string | null;
+    impersonationPrompt: string | null;
+    updatedAt: Date;
+  } | null,
 ): UserSettingsView {
   return {
     defaultProviderId: row?.defaultProviderId ?? null,
     defaultPresetId: row?.defaultPresetId ?? null,
     defaultSelectedModel: row?.defaultSelectedModel ?? null,
+    defaultPersonaId: row?.defaultPersonaId ?? null,
+    systemPrompt: row?.systemPrompt ?? null,
+    postHistoryInstructions: row?.postHistoryInstructions ?? null,
+    impersonationPrompt: row?.impersonationPrompt ?? null,
     updatedAt: row?.updatedAt ?? new Date(0),
   };
 }
@@ -41,6 +58,10 @@ export const updateUserSettings = createServerFn({ method: "POST", strict: { out
     if (data.defaultProviderId !== undefined) patch.defaultProviderId = data.defaultProviderId;
     if (data.defaultPresetId !== undefined) patch.defaultPresetId = data.defaultPresetId;
     if (data.defaultSelectedModel !== undefined) patch.defaultSelectedModel = data.defaultSelectedModel;
+    if (data.defaultPersonaId !== undefined) patch.defaultPersonaId = data.defaultPersonaId;
+    if (data.systemPrompt !== undefined) patch.systemPrompt = data.systemPrompt;
+    if (data.postHistoryInstructions !== undefined) patch.postHistoryInstructions = data.postHistoryInstructions;
+    if (data.impersonationPrompt !== undefined) patch.impersonationPrompt = data.impersonationPrompt;
     const row = repoUpsertUserSettings(user.id, patch);
     return toView(row);
   });

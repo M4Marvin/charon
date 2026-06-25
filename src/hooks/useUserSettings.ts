@@ -24,6 +24,10 @@ export function useUpdateUserSettings() {
       defaultProviderId?: string | null;
       defaultPresetId?: string | null;
       defaultSelectedModel?: string | null;
+      defaultPersonaId?: string | null;
+      systemPrompt?: string | null;
+      postHistoryInstructions?: string | null;
+      impersonationPrompt?: string | null;
     }): Promise<UserSettingsView> => updateUserSettings({ data: input }),
     onSuccess: (data) => {
       queryClient.setQueryData(userSettingsKeys.current(), data);
