@@ -1,6 +1,21 @@
 import { randomUUID } from "node:crypto";
+import { Schema } from "effect";
 import { createServerFn } from "@tanstack/react-start";
 import { getSession } from "@/server/session";
+import {
+  CancelStream,
+  CreateChat,
+  DeleteChat,
+  DeleteMessageBranch,
+  EditMessage,
+  FinalizeStream,
+  GetChat,
+  GetChatMessages,
+  PrepareStream,
+  SendMessage,
+  Swipe,
+  UpdateChatSettings,
+} from "@/server/schemas/chat";
 import type { ChatMessageRow, NewChatMessageRow, Character } from "@/db/schema";
 import {
   createChat as repoCreateChat,
@@ -15,6 +30,7 @@ import {
   type ChatWithCharacter,
 } from "@/db/repositories/chats";
 import { getCharacter as repoGetChar } from "@/db/repositories/characters";
+import { getUserSettings as repoGetUserSettings } from "@/db/repositories/userSettings";
 import type { ChatMessage, ChatTree } from "@/lib/st-core/shared/types";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import {
@@ -132,12 +148,7 @@ export const listChats = createServerFn({ method: "GET", strict: { output: false
 );
 
 export const getChat = createServerFn({ method: "GET", strict: { output: false } })
-  .validator((data: unknown) => {
-    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
-    const d = data as Record<string, unknown>;
-    if (typeof d.id !== "string") throw new Error("id is required");
-    return { id: d.id };
-  })
+  .validator((data) => Schema.decodeUnknownSync(GetChat)(data))
   .handler(async ({ data }): Promise<ChatDetail> => {
     const { user } = await getSession();
     const chat = repoGetChat(user.id, data.id);
@@ -157,27 +168,20 @@ export const getChat = createServerFn({ method: "GET", strict: { output: false }
   });
 
 export const getChatMessages = createServerFn({ method: "GET", strict: { output: false } })
-  .validator((data: unknown) => {
-    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
-    const d = data as Record<string, unknown>;
-    if (typeof d.id !== "string") throw new Error("id is required");
-    return { id: d.id };
-  })
+  .validator((data) => Schema.decodeUnknownSync(GetChatMessages)(data))
   .handler(async ({ data }): Promise<ChatMessageRow[]> => {
     const { user } = await getSession();
     return repoListMessages(user.id, data.id);
   });
 
 export const createChat = createServerFn({ method: "POST", strict: { output: false } })
-  .validator((data: unknown) => {
-    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
-    const d = data as Record<string, unknown>;
-    if (typeof d.characterId !== "string") throw new Error("characterId is required");
-    return { characterId: d.characterId };
-  })
+  .validator((data) => Schema.decodeUnknownSync(CreateChat)(data))
   .handler(async ({ data }): Promise<ChatDetail> => {
     const { user } = await getSession();
     const char: Character = repoGetChar(user.id, data.characterId);
+
+    // Seed AI settings from user-level defaults so new chats start pre-configured.
+    const defaults = repoGetUserSettings(user.id);
 
     const chatId = randomUUID();
     const chat = repoCreateChat({
@@ -185,6 +189,9 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
       userId: user.id,
       characterId: data.characterId,
       title: char.data.name,
+      providerId: defaults?.defaultProviderId ?? null,
+      presetId: defaults?.defaultPresetId ?? null,
+      selectedModel: defaults?.defaultSelectedModel ?? null,
     });
 
     // Collect all greetings: first_mes + every alternate_greeting.
@@ -245,13 +252,7 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
   });
 
 export const sendMessage = createServerFn({ method: "POST", strict: { output: false } })
-  .validator((data: unknown) => {
-    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
-    const d = data as Record<string, unknown>;
-    if (typeof d.chatId !== "string") throw new Error("chatId is required");
-    if (typeof d.content !== "string") throw new Error("content is required");
-    return { chatId: d.chatId, content: d.content };
-  })
+  .validator((data) => Schema.decodeUnknownSync(SendMessage)(data))
   .handler(async ({ data }): Promise<SendResult> => {
     const { user } = await getSession();
 
@@ -353,19 +354,7 @@ export const sendMessage = createServerFn({ method: "POST", strict: { output: fa
   });
 
 export const swipeMessage = createServerFn({ method: "POST", strict: { output: false } })
-  .validator((data: unknown) => {
-    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
-    const d = data as Record<string, unknown>;
-    if (typeof d.chatId !== "string") throw new Error("chatId is required");
-    if (typeof d.messageLocalId !== "number") throw new Error("messageLocalId is required");
-    if (d.direction !== "next" && d.direction !== "prev")
-      throw new Error("direction must be 'next' or 'prev'");
-    return {
-      chatId: d.chatId,
-      messageLocalId: d.messageLocalId,
-      direction: d.direction as "next" | "prev",
-    };
-  })
+  .validator((data) => Schema.decodeUnknownSync(Swipe)(data))
   .handler(async ({ data }): Promise<SwipeResult> => {
     if (data.messageLocalId === 0) throw new Error("Cannot swipe the hidden root");
     const { user } = await getSession();
@@ -452,13 +441,7 @@ export const swipeMessage = createServerFn({ method: "POST", strict: { output: f
   });
 
 export const deleteMessageBranch = createServerFn({ method: "POST", strict: { output: false } })
-  .validator((data: unknown) => {
-    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
-    const d = data as Record<string, unknown>;
-    if (typeof d.chatId !== "string") throw new Error("chatId is required");
-    if (typeof d.messageLocalId !== "number") throw new Error("messageLocalId is required");
-    return { chatId: d.chatId, messageLocalId: d.messageLocalId };
-  })
+  .validator((data) => Schema.decodeUnknownSync(DeleteMessageBranch)(data))
   .handler(async ({ data }): Promise<{ deletedIds: number[] }> => {
     if (data.messageLocalId === 0) throw new Error("Cannot delete the hidden root");
     const { user } = await getSession();
@@ -490,14 +473,7 @@ export const deleteMessageBranch = createServerFn({ method: "POST", strict: { ou
   });
 
 export const editMessage = createServerFn({ method: "POST", strict: { output: false } })
-  .validator((data: unknown) => {
-    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
-    const d = data as Record<string, unknown>;
-    if (typeof d.chatId !== "string") throw new Error("chatId is required");
-    if (typeof d.messageLocalId !== "number") throw new Error("messageLocalId is required");
-    if (typeof d.content !== "string") throw new Error("content is required");
-    return { chatId: d.chatId, messageLocalId: d.messageLocalId, content: d.content };
-  })
+  .validator((data) => Schema.decodeUnknownSync(EditMessage)(data))
   .handler(
     async ({ data }): Promise<{ messageLocalId: number; content: string }> => {
       if (data.messageLocalId === 0) throw new Error("Cannot edit the hidden root");
@@ -526,26 +502,16 @@ export const prepareStreamMessage = createServerFn({
   method: "POST",
   strict: { output: false },
 })
-  .validator((data: unknown) => {
-    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
-    const d = data as Record<string, unknown>;
-    if (typeof d.chatId !== "string") throw new Error("chatId is required");
-    if (d.mode !== "send" && d.mode !== "regenerate") throw new Error("mode must be 'send' or 'regenerate'");
-    if (d.mode === "send" && typeof d.content !== "string") throw new Error("content is required for send");
-    if (d.mode === "regenerate" && typeof d.messageLocalId !== "number")
-      throw new Error("messageLocalId is required for regenerate");
-    return {
-      chatId: d.chatId as string,
-      mode: d.mode as "send" | "regenerate",
-      content: (d.content as string | undefined) ?? "",
-      messageLocalId: (d.messageLocalId as number | undefined) ?? 0,
-    };
-  })
+  .validator((data) => Schema.decodeUnknownSync(PrepareStream)(data))
   .handler(
     async ({
       data,
     }): Promise<StreamResult> => {
-      if (data.messageLocalId === 0 && data.mode === "regenerate")
+      // The schema keeps `content` and `messageLocalId` optional; the handler
+      // treats them as mode-specific and normalizes up-front.
+      const content = data.content ?? "";
+      const messageLocalId = data.messageLocalId ?? 0;
+      if (messageLocalId === 0 && data.mode === "regenerate")
         throw new Error("Cannot regenerate the hidden root");
       const { user } = await getSession();
 
@@ -553,6 +519,13 @@ export const prepareStreamMessage = createServerFn({
       const char: Character = repoGetChar(user.id, chat.characterId);
       const rows = repoListMessages(user.id, data.chatId);
       const tree = treeFromNodes(rows.map(rowToMessage));
+
+      console.log("[prepareStream] start", {
+        mode: data.mode,
+        messageLocalId,
+        contentLen: content.length,
+        treeSize: tree.size,
+      });
 
       let assistantMessageLocalId: number;
 
@@ -566,7 +539,7 @@ export const prepareStreamMessage = createServerFn({
         if (isDraft) {
           // Populate draft, add placeholder as child
           repoUpdateMessage(user.id, data.chatId, activeLeafId, {
-            content: data.content,
+            content,
             extra: null,
           });
           const placeholder: ChatMessage = {
@@ -598,7 +571,7 @@ export const prepareStreamMessage = createServerFn({
             selected_child_id: null,
             role: "user",
             name: user.name,
-            content: data.content,
+            content,
             is_user: true,
             is_system: false,
           };
@@ -628,11 +601,19 @@ export const prepareStreamMessage = createServerFn({
         }
       } else {
         // Regenerate mode: create sibling of target assistant message
-        const target = getNode(tree, data.messageLocalId);
+        const target = getNode(tree, messageLocalId);
         if (target.role !== "assistant")
           throw new Error("Can only regenerate assistant messages");
         if (target.is_system) throw new Error("Cannot regenerate system messages");
         if (target.parent_id === null) throw new Error("Cannot regenerate root message");
+        if ((target.extra?.isStreaming ?? false) === true)
+          throw new Error("Cannot regenerate a message that is still streaming");
+
+        console.log("[prepareStream] regenerate target", {
+          targetRole: target.role,
+          targetParentId: target.parent_id,
+          targetExtraStreaming: (target.extra?.isStreaming ?? false) === true,
+        });
 
         const placeholder: ChatMessage = {
           id: getNextId(tree),
@@ -646,7 +627,7 @@ export const prepareStreamMessage = createServerFn({
           is_system: false,
           extra: { isStreaming: true },
         };
-        addSibling(tree, data.messageLocalId, placeholder);
+        addSibling(tree, messageLocalId, placeholder);
         selectChild(tree, target.parent_id, placeholder.id);
 
         const parent = getNode(tree, target.parent_id);
@@ -658,19 +639,13 @@ export const prepareStreamMessage = createServerFn({
         assistantMessageLocalId = placeholder.id;
       }
 
+      console.log("[prepareStream] done", { assistantMessageLocalId });
       return { assistantMessageLocalId };
     },
   );
 
 export const finalizeStream = createServerFn({ method: "POST", strict: { output: false } })
-  .validator((data: unknown) => {
-    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
-    const d = data as Record<string, unknown>;
-    if (typeof d.chatId !== "string") throw new Error("chatId is required");
-    if (typeof d.messageLocalId !== "number") throw new Error("messageLocalId is required");
-    if (typeof d.content !== "string") throw new Error("content is required");
-    return { chatId: d.chatId as string, messageLocalId: d.messageLocalId as number, content: d.content as string };
-  })
+  .validator((data) => Schema.decodeUnknownSync(FinalizeStream)(data))
   .handler(async ({ data }): Promise<{ messageLocalId: number; content: string }> => {
     if (data.messageLocalId === 0) throw new Error("Cannot finalize the hidden root");
     const { user } = await getSession();
@@ -688,13 +663,7 @@ export const finalizeStream = createServerFn({ method: "POST", strict: { output:
   });
 
 export const cancelStream = createServerFn({ method: "POST", strict: { output: false } })
-  .validator((data: unknown) => {
-    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
-    const d = data as Record<string, unknown>;
-    if (typeof d.chatId !== "string") throw new Error("chatId is required");
-    if (typeof d.messageLocalId !== "number") throw new Error("messageLocalId is required");
-    return { chatId: d.chatId as string, messageLocalId: d.messageLocalId as number };
-  })
+  .validator((data) => Schema.decodeUnknownSync(CancelStream)(data))
   .handler(async ({ data }): Promise<{ deletedIds: number[] }> => {
     if (data.messageLocalId === 0) throw new Error("Cannot cancel the hidden root");
     const { user } = await getSession();
@@ -715,37 +684,20 @@ export const cancelStream = createServerFn({ method: "POST", strict: { output: f
     return { deletedIds: subtreeIds };
   });
 
-const UpdateChatSettingsInput = (data: unknown) => {
-  if (typeof data !== "object" || data === null) throw new Error("Invalid input");
-  const d = data as Record<string, unknown>;
-  if (typeof d.id !== "string") throw new Error("id is required");
-  return {
-    id: d.id as string,
-    providerId: (d.providerId as string | undefined) ?? null,
-    presetId: (d.presetId as string | undefined) ?? null,
-    selectedModel: (d.selectedModel as string | undefined) ?? null,
-  };
-};
-
 export const updateChatSettings = createServerFn({ method: "POST", strict: { output: false } })
-  .validator(UpdateChatSettingsInput)
+  .validator((data) => Schema.decodeUnknownSync(UpdateChatSettings)(data))
   .handler(async ({ data }): Promise<{ id: string }> => {
     const { user } = await getSession();
-    repoUpdateChat(user.id, data.id, {
-      providerId: data.providerId,
-      presetId: data.presetId,
-      selectedModel: data.selectedModel,
-    });
+    const patch: Parameters<typeof repoUpdateChat>[2] = {};
+    if (data.providerId !== undefined) patch.providerId = data.providerId;
+    if (data.presetId !== undefined) patch.presetId = data.presetId;
+    if (data.selectedModel !== undefined) patch.selectedModel = data.selectedModel;
+    repoUpdateChat(user.id, data.id, patch);
     return { id: data.id };
   });
 
 export const deleteChat = createServerFn({ method: "POST", strict: { output: false } })
-  .validator((data: unknown) => {
-    if (typeof data !== "object" || data === null) throw new Error("Invalid input");
-    const d = data as Record<string, unknown>;
-    if (typeof d.id !== "string") throw new Error("id is required");
-    return { id: d.id };
-  })
+  .validator((data) => Schema.decodeUnknownSync(DeleteChat)(data))
   .handler(async ({ data }): Promise<{ id: string }> => {
     const { user } = await getSession();
     repoDeleteChat(user.id, data.id);

@@ -19,6 +19,9 @@ export type CreateChatInput = {
   userId: string;
   characterId: string;
   title: string;
+  providerId?: string | null;
+  presetId?: string | null;
+  selectedModel?: string | null;
 };
 
 export type MessagePatch = Partial<
@@ -63,6 +66,9 @@ export function createChat(input: CreateChatInput, db: DB = defaultDb): Chat {
       userId: input.userId,
       characterId: input.characterId,
       title: input.title,
+      providerId: input.providerId ?? null,
+      presetId: input.presetId ?? null,
+      selectedModel: input.selectedModel ?? null,
       createdAt: now,
       updatedAt: now,
     })

@@ -15,7 +15,7 @@ export function convertBookEntries(entries: CharacterBookEntry[]): LoreEntry[] {
     constant: e.constant ?? false,
     selective: e.selective ?? false,
     order: e.insertion_order,
-    position: (e.extensions?.position ?? e.position === "before_char" ? 0 : 1) as 0 | 1,
+    position: (e.extensions?.position ?? (e.position === "before_char" ? 0 : 1)) as 0 | 1,
     disable: !(e.enabled ?? true),
     excludeRecursion: e.extensions?.exclude_recursion ?? false,
     preventRecursion: e.extensions?.prevent_recursion ?? false,

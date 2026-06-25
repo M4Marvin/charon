@@ -26,10 +26,13 @@ import {
   useCancelStream,
   useUpdateChatSettings,
   useSwipeMessage,
+  useSendMessage,
 } from "@/hooks/useChats";
 import { useAiProviders } from "@/hooks/useAiProviders";
 import { usePresets } from "@/hooks/usePresets";
 import { useProviderModels } from "@/hooks/useProviderModels";
+import { useUpdateUserSettings } from "@/hooks/useUserSettings";
+import { useChatStore } from "@/stores/chat-store";
 import type { ChatMessageRow } from "@/db/schema";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
@@ -74,21 +77,27 @@ function ChatPage() {
   const prepareStream = usePrepareStream();
   const finalizeStream = useFinalizeStream();
   const cancelStream = useCancelStream();
+  const sendMessageMutation = useSendMessage();
   const deleteMessageMutation = useDeleteMessage();
   const editMessageMutation = useEditMessage();
   const deleteChatMutation = useDeleteChat();
   const swipeMutation = useSwipeMessage();
   const updateSettings = useUpdateChatSettings();
+  const updateUserDefaults = useUpdateUserSettings();
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [input, setInput] = useState("");
+  // ── Chat store: replaces 5 useState + 3 useRef ──────────────────────
+  const sidebarOpen = useChatStore((s) => s.sidebarOpen);
+  const input = useChatStore((s) => s.input);
+  const activePlaceholderId = useChatStore((s) => s.activePlaceholderId);
+  const setSidebarOpen = useChatStore((s) => s.setSidebarOpen);
+  const setInput = useChatStore((s) => s.setInput);
+  const clearInput = useChatStore((s) => s.clearInput);
+  const setPlaceholder = useChatStore((s) => s.setPlaceholder);
+  const clearPlaceholder = useChatStore((s) => s.clearPlaceholder);
+  const markRecovered = useChatStore((s) => s.markRecovered);
+  const recoveredFor = useChatStore((s) => s.recoveredFor);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const [activePlaceholderId, setActivePlaceholderId] = useState<number | null>(null);
-  const activePlaceholderRef = useRef<number | null>(null);
-  useEffect(() => {
-    activePlaceholderRef.current = activePlaceholderId;
-  }, [activePlaceholderId]);
 
   const selectedProviderId = chat?.providerId ?? "";
   const selectedPresetId = chat?.presetId ?? "";
@@ -99,28 +108,126 @@ function ChatPage() {
   const handleChangeProvider = useCallback(
     (providerId: string) => {
       if (!chat) return;
-      updateSettings.mutate({ id: chat.id, providerId, selectedModel: null, presetId: null });
+      // Changing the provider invalidates the previous model and preset.
+      // Mirror the same reset to user-level defaults so the next chat starts
+      // with the new provider and no stale model/preset.
+      updateSettings.mutate({
+        id: chat.id,
+        providerId,
+        selectedModel: null,
+        presetId: null,
+      });
+      updateUserDefaults.mutate({
+        defaultProviderId: providerId,
+        defaultSelectedModel: null,
+        defaultPresetId: null,
+      });
     },
-    [chat, updateSettings],
+    [chat, updateSettings, updateUserDefaults],
   );
 
   const handleChangePreset = useCallback(
     (presetId: string) => {
       if (!chat) return;
-      updateSettings.mutate({ id: chat.id, presetId: presetId || null });
+      const value = presetId || null;
+      updateSettings.mutate({ id: chat.id, presetId: value });
+      updateUserDefaults.mutate({ defaultPresetId: value });
     },
-    [chat, updateSettings],
+    [chat, updateSettings, updateUserDefaults],
   );
 
   const handleChangeModel = useCallback(
     (model: string) => {
       if (!chat) return;
-      updateSettings.mutate({ id: chat.id, selectedModel: model });
+      const value = model || null;
+      updateSettings.mutate({ id: chat.id, selectedModel: value });
+      updateUserDefaults.mutate({ defaultSelectedModel: value });
     },
-    [chat, updateSettings],
+    [chat, updateSettings, updateUserDefaults],
   );
 
-  const canSend = selectedProviderId.length > 0 && selectedModel.length > 0 && activePlaceholderId === null;
+  const hasAi = selectedProviderId.length > 0 && selectedModel.length > 0;
+  const canSend = activePlaceholderId === null;
+
+  // Streaming connection — body reads from the store synchronously. No more
+  // ref + useEffect sync race: getState() always returns the current value.
+  const connection = useMemo(
+    () =>
+      fetchServerSentEvents("/api/chat-generate", () => ({
+        body: { chatId: id, assistantMessageLocalId: useChatStore.getState().activePlaceholderId ?? 0 },
+      })),
+    [id],
+  );
+
+  const aiChat = useAiChat({
+    connection,
+    onFinish: () => {
+      const placeholderId = useChatStore.getState().activePlaceholderId;
+      const msgs = aiChat.messages;
+      const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant");
+      const content = lastAssistant
+        ? lastAssistant.parts.map((p) => (p.type === "text" ? p.content : "")).join("")
+        : "";
+      console.log("[stream][onFinish]", {
+        placeholderId,
+        msgsLen: msgs.length,
+        assistantContentLen: content.length,
+      });
+      if (!placeholderId) return;
+      if (content) {
+        finalizeStream.mutate(
+          { chatId: id, messageLocalId: placeholderId, content },
+          {
+            onSuccess: () => clearPlaceholder(),
+            onError: (e) => toast.error(`Save failed: ${(e as Error).message}`),
+          },
+        );
+      } else {
+        cancelStream.mutate(
+          { chatId: id, messageLocalId: placeholderId },
+          { onSuccess: () => clearPlaceholder() },
+        );
+      }
+    },
+    onError: (err) => {
+      console.error("[stream][onError]", {
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+        cause: (err as { cause?: unknown }).cause,
+      });
+      const causeStr = (() => {
+        const c = (err as { cause?: unknown }).cause;
+        if (!c) return "";
+        if (c instanceof Error) return ` — ${c.message}`;
+        return ` — ${JSON.stringify(c)}`;
+      })();
+      toast.error(`Stream error: ${err.message}${causeStr}`);
+      const placeholderId = useChatStore.getState().activePlaceholderId;
+      if (placeholderId) {
+        cancelStream.mutate(
+          { chatId: id, messageLocalId: placeholderId },
+          { onSuccess: () => clearPlaceholder() },
+        );
+      }
+    },
+  });
+
+  // Live in-flight assistant text. Drives B1 (visible streaming): shown in
+  // place of the (empty) DB content while the placeholder is active.
+  const liveAssistantText = useMemo(() => {
+    if (activePlaceholderId === null) return null;
+    const msgs = aiChat.messages;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i]!;
+      if (m.role !== "assistant") continue;
+      const text = m.parts
+        .map((p) => (p.type === "text" ? p.content : ""))
+        .join("");
+      if (text.length > 0) return text;
+    }
+    return null;
+  }, [aiChat.messages, activePlaceholderId]);
 
   // Active path
   const activePath: PathEntry[] = useMemo(() => {
@@ -132,87 +239,85 @@ function ChatPage() {
       .map((msg) => {
         const siblings = getSiblings(tree, msg.id);
         const idx = siblings.findIndex((s) => s.id === msg.id);
+        const isStreaming = msg.id === activePlaceholderId;
+        const baseMessage = isStreaming && liveAssistantText !== null
+          ? { ...msg, content: liveAssistantText }
+          : msg;
         return {
-          message: msg,
+          message: baseMessage,
           siblingIndex: idx,
           siblingTotal: siblings.length,
           isDraft: (msg.extra?.isDraft ?? false) === true,
-          isStreaming: msg.id === activePlaceholderId,
+          isStreaming,
         };
       });
-  }, [messages, activePlaceholderId]);
+  }, [messages, activePlaceholderId, liveAssistantText]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Streaming connection — ref-based body so it picks up the latest placeholder ID
-  const bodyRef = useRef<{ chatId: string; assistantMessageLocalId: number }>({
-    chatId: id,
-    assistantMessageLocalId: 0,
-  });
+  // Stale isStreaming recovery (B3). Runs once per chat id: on mount, if the
+  // DB has any message with extra.isStreaming, mark it for cancellation.
   useEffect(() => {
-    bodyRef.current.assistantMessageLocalId = activePlaceholderId ?? 0;
-  }, [activePlaceholderId]);
+    if (recoveredFor === id) return;
+    if (!messages) return;
+    const stale = messages.find((m) => (m.extra?.isStreaming ?? false) === true);
+    if (!stale) {
+      // Nothing to recover, but mark this chat id as visited so we don't
+      // re-scan on every messages refetch.
+      markRecovered(id, 0);
+      return;
+    }
+    markRecovered(id, stale.localId);
+    cancelStream.mutate({ chatId: id, messageLocalId: stale.localId });
+    // We intentionally do NOT set activePlaceholderId — the placeholder was
+    // never displayed in this session, so the user doesn't see a ghost.
+  }, [messages, id, recoveredFor, cancelStream, markRecovered]);
 
-  const connection = useMemo(
-    () =>
-      fetchServerSentEvents("/api/chat-generate", () => ({
-        body: { chatId: id, assistantMessageLocalId: bodyRef.current.assistantMessageLocalId },
-      })),
-    [id],
-  );
-
-  const aiChat = useAiChat({
-    connection,
-    onFinish: () => {
-      const placeholderId = activePlaceholderRef.current;
-      if (!placeholderId) return;
-      const msgs = aiChat.messages;
-      const lastAssistant = [...msgs].reverse().find((m) => m.role === "assistant");
-      const content = lastAssistant
-        ? lastAssistant.parts.map((p) => (p.type === "text" ? p.content : "")).join("")
-        : "";
-      if (content) {
-        finalizeStream.mutate(
-          { chatId: id, messageLocalId: placeholderId, content },
-          {
-            onSuccess: () => setActivePlaceholderId(null),
-            onError: (e) => toast.error(`Save failed: ${(e as Error).message}`),
-          },
-        );
-      } else {
-        setActivePlaceholderId(null);
-      }
-    },
-    onError: (err) => {
-      toast.error(`Stream error: ${err.message}`);
-      const placeholderId = activePlaceholderRef.current;
-      if (placeholderId) {
-        cancelStream.mutate(
-          { chatId: id, messageLocalId: placeholderId },
-          { onSuccess: () => setActivePlaceholderId(null) },
-        );
-      }
-    },
-  });
+  // Clean up the recovered-marker when navigating to a different chat.
+  useEffect(() => {
+    return () => {
+      // On unmount, do not clear activePlaceholderId — the user might be
+      // navigating away mid-stream and we'd want the same behaviour as
+      // before (the DB stays dirty, next mount will recover it). Actually
+      // this is fine because on the next mount the new chat id will
+      // differ and the recovery effect will run for that new chat.
+    };
+  }, []);
 
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
     if (!trimmed || !canSend) return;
-    setInput("");
+    clearInput();
+    if (!hasAi) {
+      sendMessageMutation.mutate(
+        { chatId: id, content: trimmed },
+        { onError: (e) => toast.error(`Send error: ${(e as Error).message}`) },
+      );
+      return;
+    }
     prepareStream.mutate(
       { chatId: id, mode: "send", content: trimmed },
       {
         onSuccess: (result) => {
-          setActivePlaceholderId(result.assistantMessageLocalId);
-          // Trigger the stream via useChat's sendMessage
+          console.log("[send] prepareStream success", {
+            placeholderId: result.assistantMessageLocalId,
+            contentLen: trimmed.length,
+          });
+          // Synchronous store update: the connection body reads
+          // getState().activePlaceholderId and will see this value when
+          // aiChat.sendMessage fires its fetch — no effect-lag race.
+          setPlaceholder(result.assistantMessageLocalId);
           void aiChat.sendMessage(trimmed);
         },
-        onError: (e) => toast.error(`Send error: ${(e as Error).message}`),
+        onError: (e) => {
+          console.error("[send] prepareStream error", e);
+          toast.error(`Send error: ${(e as Error).message}`);
+        },
       },
     );
-  }, [input, canSend, id, prepareStream, aiChat]);
+  }, [input, canSend, hasAi, id, prepareStream, sendMessageMutation, aiChat, setPlaceholder, clearInput]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -226,36 +331,97 @@ function ChatPage() {
 
   const handleSwipe = useCallback(
     (messageLocalId: number, direction: "next" | "prev") => {
-      if (activePlaceholderId) return;
+      console.log("[swipe] entry", {
+        id,
+        messageLocalId,
+        direction,
+        activePlaceholderId,
+        hasAi,
+      });
+      if (activePlaceholderId !== null) return;
       if (direction === "prev") {
+        console.log("[swipe] → prev", { messageLocalId });
         swipeMutation.mutate({ chatId: id, messageLocalId, direction });
         return;
       }
-      // Next on assistant → regenerate via streaming
+      // Next on assistant → cycle through existing siblings, regenerate only
+      // when at the last one. Greeting regenerate uses sendMessage(".") because
+      // aiChat.reload() silently no-ops without a prior user turn, and the
+      // client guards against whitespace-only content (see chat-client.js:548).
       const entry = activePath.find((p) => p.message.id === messageLocalId);
+      if (entry) {
+        console.log("[swipe] entry resolved", {
+          isUser: entry.message.is_user,
+          parentId: entry.message.parent_id,
+          siblingIndex: entry.siblingIndex,
+          siblingTotal: entry.siblingTotal,
+          isStreaming: entry.isStreaming,
+        });
+      }
       if (entry && !entry.message.is_user && messageLocalId !== 0) {
+        if (entry.isStreaming) {
+          toast.error("Wait for the current response to finish");
+          return;
+        }
+        if (!hasAi) {
+          console.log("[swipe] → no-ai-fallback", { messageLocalId });
+          // No AI configured: fall back to default-reply sibling ("Make your
+          // own greeting!" for greetings, pickDefaultReply otherwise).
+          swipeMutation.mutate({ chatId: id, messageLocalId, direction });
+          return;
+        }
+        if (entry.siblingIndex < entry.siblingTotal - 1) {
+          console.log("[swipe] → cycle", { messageLocalId });
+          // Cycle to existing next sibling instead of generating a new one.
+          swipeMutation.mutate({ chatId: id, messageLocalId, direction });
+          return;
+        }
+        const isGreeting = entry.message.parent_id === 0;
+        console.log("[swipe] → regen", { messageLocalId, isGreeting });
         prepareStream.mutate(
           { chatId: id, mode: "regenerate", messageLocalId },
           {
             onSuccess: (result) => {
-              setActivePlaceholderId(result.assistantMessageLocalId);
-              // Trigger the stream with an empty message (the endpoint reads from DB)
-              void aiChat.sendMessage("");
+              console.log("[swipe] prepareStream success", {
+                messageLocalId,
+                placeholderId: result.assistantMessageLocalId,
+                isGreeting,
+              });
+              setPlaceholder(result.assistantMessageLocalId);
+              // Greeting = parent_id 0 = no preceding user message; reload()
+              // would no-op. sendMessage(".") triggers the stream (non-whitespace
+              // required to bypass chat-client.js:548 trim guard) and the server
+              // builds the greeting prompt from the root.
+              if (isGreeting) {
+                console.log("[swipe] → aiChat.sendMessage(\".\")", {
+                  placeholderId: result.assistantMessageLocalId,
+                });
+                void aiChat.sendMessage(".");
+              } else {
+                console.log("[swipe] → aiChat.reload()", {
+                  placeholderId: result.assistantMessageLocalId,
+                });
+                void aiChat.reload();
+              }
             },
-            onError: (e) => toast.error(`Regenerate error: ${(e as Error).message}`),
+            onError: (e) => {
+              console.error("[swipe] prepareStream error", e);
+              toast.error(`Regenerate error: ${(e as Error).message}`);
+            },
           },
         );
         return;
       }
       // Next on user → default swipe (draft)
+      console.log("[swipe] → user-draft", { messageLocalId });
       swipeMutation.mutate({ chatId: id, messageLocalId, direction });
     },
-    [id, swipeMutation, prepareStream, activePlaceholderId, activePath, aiChat],
+    [id, swipeMutation, prepareStream, activePlaceholderId, activePath, aiChat, setPlaceholder, hasAi],
   );
 
   const handleDeleteMessage = useCallback(
     (messageLocalId: number) => {
-      if (activePlaceholderId) return;
+      if (activePlaceholderId !== null) return;
       if (!window.confirm("Delete this message and all replies below it?")) return;
       deleteMessageMutation.mutate({ chatId: id, messageLocalId });
     },
@@ -264,14 +430,14 @@ function ChatPage() {
 
   const handleEditMessage = useCallback(
     (messageLocalId: number, content: string) => {
-      if (activePlaceholderId) return;
+      if (activePlaceholderId !== null) return;
       editMessageMutation.mutate({ chatId: id, messageLocalId, content });
     },
     [id, editMessageMutation, activePlaceholderId],
   );
 
   const handleDeleteChat = useCallback(() => {
-    if (!window.confirm("Delete this chat?")) return;
+    if (!window.confirm("Delete chat?")) return;
     deleteChatMutation.mutate(
       { id },
       { onSuccess: () => void navigate({ to: "/chats" }) },
@@ -406,7 +572,7 @@ function ChatPage() {
           <Button asChild variant="ghost" size="sm">
             <Link to="/chats">←</Link>
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setSidebarOpen((o) => !o)}>
+          <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)}>
             {sidebarOpen ? "✕ Settings" : "☰ Settings"}
           </Button>
           <Avatar className="size-8">
@@ -468,11 +634,9 @@ function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              canSend
-                ? "Type a message... (Enter to send, Shift+Enter for newline)"
-                : activePlaceholderId
-                  ? "Waiting for response..."
-                  : "Configure a provider and model in the sidebar to start"
+              activePlaceholderId
+                ? "Waiting for response..."
+                : "Type a message... (Enter to send, Shift+Enter for newline)"
             }
             className="min-h-[40px] flex-1 resize-none"
             rows={1}

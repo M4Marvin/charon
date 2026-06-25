@@ -301,10 +301,31 @@ export const personas = sqliteTable(
   (table) => [index("personas_user_id_idx").on(table.userId)],
 );
 
+// One row per user; stores the AI defaults to seed new chats with.
+// Upserted on first use. All three columns nullable so partial defaults work.
+export const userSettings = sqliteTable("user_settings", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  defaultProviderId: text("default_provider_id").references(() => aiProviders.id, {
+    onDelete: "set null",
+  }),
+  defaultPresetId: text("default_preset_id").references(() => presets.id, {
+    onDelete: "set null",
+  }),
+  defaultSelectedModel: text("default_selected_model"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
 // ── Relations ────────────────────────────────────────────────────────────────
 // Optional but useful for typed `with: { ... }` joins. Kept minimal here.
 
-export const usersRelations = relations(user, ({ many }) => ({
+export const usersRelations = relations(user, ({ many, one }) => ({
   sessions: many(session),
   accounts: many(account),
   characters: many(characters),
@@ -312,6 +333,7 @@ export const usersRelations = relations(user, ({ many }) => ({
   chats: many(chats),
   presets: many(presets),
   personas: many(personas),
+  settings: one(userSettings, { fields: [user.id], references: [userSettings.userId] }),
 }));
 
 export const sessionsRelations = relations(session, ({ one }) => ({
@@ -407,4 +429,6 @@ export type NewPreset = typeof presets.$inferInsert;
 export type Persona = typeof personas.$inferSelect;
 export type NewPersona = typeof personas.$inferInsert;
 export type AiProvider = typeof aiProviders.$inferSelect;
+export type UserSettings = typeof userSettings.$inferSelect;
+export type NewUserSettings = typeof userSettings.$inferInsert;
 export type NewAiProvider = typeof aiProviders.$inferInsert;
