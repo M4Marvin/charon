@@ -2,7 +2,8 @@
 // Run with: nub scripts/migrate-data.ts
 //
 // Migrates: characters (PNG + embedded books), standalone lorebooks (worlds/*.json),
-// and personas (settings.json).
+// personas (settings.json), and user prompt settings (system prompt,
+// impersonation prompt, post-history instructions).
 // Presets and chats are NOT migrated (out of scope).
 //
 // Re-runnable: skips existing rows by (userId, name) so it is safe to re-run
@@ -21,6 +22,7 @@ import {
   lorebooks,
   loreEntries,
   personas,
+  userSettings,
 } from "@/db/schema";
 import {
   parseCharacterCard,
@@ -475,6 +477,59 @@ async function migratePersonas(userId: string): Promise<Counts> {
   return counts;
 }
 
+// ── User settings (prompts from settings.json) ───────────────────────────
+
+function migrateUserSettings(userId: string): void {
+  const settingsPath = join(DATA_ROOT, "settings.json");
+  if (!existsSync(settingsPath)) return;
+
+  let settings: Record<string, unknown>;
+  try {
+    settings = JSON.parse(readFileSync(settingsPath, "utf8")) as Record<string, unknown>;
+  } catch {
+    return;
+  }
+
+  const patch: Record<string, string | null> = {};
+
+  // systemPrompt — from power_user.sysprompt.content
+  const sysprompt = (settings as any).power_user?.sysprompt;
+  if (sysprompt?.content) {
+    patch.systemPrompt = String(sysprompt.content);
+  }
+
+  // impersonationPrompt — from oai_settings.impersonation_prompt
+  const oai = (settings as any).oai_settings;
+  if (oai?.impersonation_prompt) {
+    patch.impersonationPrompt = String(oai.impersonation_prompt);
+  }
+
+  // postHistoryInstructions — from extension_settings.note.default
+  const note = (settings as any).extension_settings?.note;
+  if (note?.default) {
+    patch.postHistoryInstructions = String(note.default);
+  }
+
+  const keys = Object.keys(patch);
+  if (keys.length === 0) return;
+
+  const now = new Date();
+  db.insert(userSettings)
+    .values({
+      userId,
+      ...patch,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: userSettings.userId,
+      set: { ...patch, updatedAt: now },
+    })
+    .run();
+
+  console.log(`  → migrated user settings: ${keys.join(", ")}`);
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────
 
 function printSummary(s: Summary) {
@@ -524,6 +579,9 @@ async function main() {
   console.log(
     `  → ${personaResult.inserted} inserted, ${personaResult.skipped} skipped, ${personaResult.failed} failed`,
   );
+
+  console.log("\n[5/5] Migrating user settings (prompts)...");
+  migrateUserSettings(userId);
 
   printSummary({
     characters: charResult.characters,

@@ -10,9 +10,10 @@ Snapshot of what exists in the repo right now. Not a roadmap, not a plan.
 - **DB + auth** — Drizzle schema, better-auth adapter, `dev.db` with 13 tables. `getSession()` is a single-user stub until real auth UX lands.
 - **Characters slice** — repo + server fns + hooks + UI routes + 15 repo tests. V2 PNG import + rename + delete + read-only detail with embedded lorebook collapsible.
 - **Lorebooks slice** — repo + server fns + hooks + UI routes + 36 repo tests. `listLorebooks` includes `entryCount` + **`enabled`** via leftJoin + groupBy. **Per-user activation overlay** (`user_lorebook_settings` + `user_lore_entry_settings`) wired into `/api/chat-generate`; inline enable Switch on `/lorebooks`, per-entry Switch on `/lorebooks/$id` with AND-disable semantics. **Import** button on `/lorebooks` opens a Dialog for SillyTavern world-info JSON files; parsed via `parseWorldFile` and inserted as a disabled lorebook.
+- **Personas slice** — repo + server fns + hooks (CRUD) + reusable `PersonaDialog` + 12 repo tests. User-settings-backed active persona selection. Auto-seed on create via `updateUserDefaults({ defaultPersonaId: res.id })`.
 - **Chats slice** — repo + server fns + hooks + UI routes + 16 repo tests. Hidden-root tree model: all greetings pre-loaded as children of a system root; swipe-on-all, draft messages, edit, delete, **streaming AI generation via SSE**.
-- **AI slice** — providers + presets + user-settings repos + server fns + hooks + UI. `/ai-playground` (provider/preset CRUD + streaming chat) and per-chat provider/model/preset sidebar on `/chats/$id`.
-- **Tests:** 193/193 pass (75 chat-tree + 9 normalize + 15 characters + 36 lorebooks + 16 chats + 5 userSettings + 15 userLorebookSettings + **22 world-file parser**)
+- **AI slice** — providers + presets + user-settings repos + server fns + hooks + UI. `/ai-playground` (provider/preset CRUD + streaming chat) and per-chat provider/model/preset in a **floating draggable settings panel** (`ChatSettingsPanel`) on `/chats/$id`.
+- **Tests:** 208/208 pass (75 chat-tree + 9 normalize + 15 characters + 36 lorebooks + 16 chats + 8 userSettings + 15 userLorebookSettings + **22 world-file parser** + **12 personas repository**)
 - **Typecheck:** clean (only 2 pre-existing errors: `drizzle.config.ts:6`, `transform/regex.ts:161`)
 - **Legacy migration** — `scripts/migrate-data.ts` imports `public/data/` (30 chars, 27 lorebooks, 1 persona). Idempotent.
 - **Upload normalization** — `src/lib/character/normalize.ts` shared by `importCharacter` and the migration. 9 unit tests.
@@ -45,7 +46,7 @@ TanStack Start rewrite of SillyTavern-style character chat. Single-character rol
 
 ### Schema
 
-**Migrations:** `0000` (initial 11 tables), `0001` (adds `ai_providers` + `presets.provider_id`/`model`), `0002` (adds `chats.provider_id`/`preset_id`/`selected_model`), `0003` (adds `user_settings`), `0004` (adds `user_lorebook_settings` + `user_lore_entry_settings`). 15 tables total.
+**Migrations:** `0000` (initial 11 tables), `0001` (adds `ai_providers` + `presets.provider_id`/`model`), `0002` (adds `chats.provider_id`/`preset_id`/`selected_model`), `0003` (adds `user_settings`), `0004` (adds `user_lorebook_settings` + `user_lore_entry_settings`), `0005` (adds `defaultPersonaId`, `systemPrompt`, `postHistoryInstructions`, `impersonationPrompt` to `user_settings`). 15 tables total.
 
 Auth tables (hand-written in same schema file): `user`, `session`, `account`, `verification`.
 
@@ -61,9 +62,9 @@ Domain tables (all user-scoped via `userId` fk):
 | `chats` | id pk, userId fk, characterId fk, title, backgroundPath, **`providerId`**, **`presetId`**, **`selectedModel`**, `metadata` text-json | in use |
 | `chat_messages` | composite pk (chatId, localId int), parentLocalId, `children` (number[]), selectedChildLocalId, role, name, content, isUser, isSystem, `extra` (Record<string,unknown>) | in use |
 | `presets` | id pk, userId fk, name (unique per user), **`providerId` fk (nullable)**, **`model`**, `data` text-json (`PresetData`: systemPrompt/temperature/maxTokens/topP/contextSize/frequencyPenalty/presencePenalty) | in use |
-| `personas` | id pk, userId fk, name, description, iconPath | migration populates; no CRUD UI |
+| `personas` | id pk, userId fk, name, description, iconPath | CRUD UI in ChatSettingsPanel + 12 repo tests |
 | `ai_providers` | id pk, userId fk, **name (unique per user)**, **baseUrl, apiKey**, defaultModel, defaultHeaders (Record<string,string>) | in use |
-| `user_settings` | userId pk, **defaultProviderId, defaultPresetId, defaultSelectedModel** (all nullable) | in use |
+| `user_settings` | userId pk, **defaultProviderId, defaultPresetId, defaultSelectedModel, defaultPersonaId, systemPrompt, postHistoryInstructions, impersonationPrompt** (all nullable) | in use |
 
 `$type<>` for known JSON shapes — `characters.data` (`CharacterDataV2`), `lorebooks.config` (`LoreConfig`), `lore_entries.data` (`LoreEntryData`). `presets.data` is the db-shape subset of the full `ChatCompletionPreset`; the server pipeline merges it on top of `DEFAULT_PRESET` at request time (see `lib/chat/server-context.ts`).
 
@@ -113,6 +114,19 @@ src/hooks/useLorebooks.ts                     # TanStack Query hooks + useToggle
 
 **Pipeline integration.** `/api/chat-generate` loads the user's enabled lorebook ids, fetches their entries, filters out user-disabled entries, and passes the result as `extraLoreEntries` to `buildChatPrompt`. `context-builder.ts` accepts the new param, merges with the character's embedded book, and **pre-filters `disable: true` on both sources** so disabled entries don't activate during the initial scan (pre-existing bug: `scanLoreEntries` only checks `disable` in the recursion loop, not initial). The `/` (index) demo pipeline and `lib/chat/pipeline.ts` are unchanged — `extraLoreEntries` defaults to `[]`.
 
+### Personas slice
+
+```
+src/db/
+  repositories/personas.ts                     # list, get, create, update, delete (all take userId)
+  __tests__/personas.repo.test.ts              # 12 tests
+src/server/
+  fns/personas.ts                              # list, get, create, update, delete (arktype validators)
+src/hooks/usePersonas.ts                       # TanStack Query hooks: usePersonas, useCreatePersona, useUpdatePersona, useDeletePersona (+ PersonaListItem type)
+```
+
+Persona is a simple name + description pair. No image handling yet (iconPath column is not wired in the UI). The `ChatSettingsPanel`'s Persona section provides a `<Select>` for the active persona (stored in `user_settings.defaultPersonaId`), plus Add/Edit/Delete buttons. The create dialog auto-sets the new persona as active on success. The description is injected into the chat prompt by the pipeline. The legacy migration (`scripts/migrate-data.ts` → `public/data/`) populates personas from `power_user.personas`; all rows have `iconPath` pointing to `data/personas/<uuid>.png` but the files are not copied by the CRUD UI.
+
 ### Chats slice
 
 ```
@@ -122,11 +136,13 @@ src/db/
 src/server/
   fns/chats.ts                                # list, get, getChatMessages, createChat, sendMessage, swipeMessage, deleteMessageBranch, editMessage, deleteChat, **prepareStreamMessage, finalizeStream, cancelStream, updateChatSettings**
   schemas/chat.ts                             # effect Schema validators for all of the above (grouped: CRUD, messages, streaming, settings)
+src/components/
+  ChatSettingsPanel.tsx                       # **Floating draggable settings modal: AI provider/model/preset, lorebooks, persona CRUD, prompt overrides**
 src/routes/
-  chats/{index,new,$id}.tsx                   # list, new (character grid), chat UI **with streaming + settings sidebar**
+  chats/{index,new,$id}.tsx                   # list, new (character grid), chat UI **with streaming + floating SettingsPanel**
   api/chat-generate.ts                        # **SSE endpoint for chat-backed generation**
 src/hooks/useChats.ts                         # TanStack Query hooks **+ usePrepareStream/useFinalizeStream/useCancelStream/useUpdateChatSettings**
-src/stores/chat-store.ts                      # **zustand: sidebarOpen, input, activePlaceholderId, recoveredFor**
+src/stores/chat-store.ts                      # **zustand: settingsOpen, input, activePlaceholderId, recoveredFor**
 ```
 
 **Hidden-root tree model.** Every chat starts with a `role: "system", isSystem: true, parentLocalId: null, content: ""` row at `localId = 0`, plus every greeting (`first_mes` + each `alternate_greetings[i]`) as its children at `localId = 1..N`. `root.selectedChildLocalId = 1` (first_mes is the default). The UI filters out `role === "system"` so the root is never rendered. All other server fns reject `messageLocalId === 0`.
@@ -162,7 +178,13 @@ src/stores/chat-store.ts                      # **zustand: sidebarOpen, input, a
 5. `onError` → toast + `cancelStream` (deletes the placeholder subtree via `deleteSubtree`).
 6. **Stale-stream recovery on mount.** If a DB row still has `extra.isStreaming` (interrupted page reload, etc.), the page-effect cancels it once per chat id. `recoveredFor` in the zustand store gates this so it doesn't re-run on every refetch.
 
-**UI** (`/chats/$id`): two-column flex — left is a 72-wide settings sidebar (Provider / Model / Preset selectors + link to `/ai-playground`), right is the chat. Active path filtered to skip system root. Swipe arrows on **every** message (`◀ 1/N ▶`): left disabled at `siblingIndex === 0`, right always enabled. Edit button (inline `<Textarea>` with Save/Cancel, opens per-message). Delete button (per-message, `window.confirm`). Drafts render as a faint bubble with placeholder "Type your message..." and hide all controls. Streaming placeholder renders with `✦` next to the name and an animated `▌` caret; live text from `aiChat.messages` overrides DB content while streaming. Input box at the bottom: Enter sends, Shift+Enter newline, auto-scroll on message changes. Sidebar changes to provider/model/preset persist to **both** the chat row and `user_settings` defaults (so the next new chat inherits them).
+**UI** (`/chats/$id`): single-column chat layout. A settings `⚙` button in the header toggles a **floating draggable `ChatSettingsPanel`** (`position: fixed, z-index: 50, 420px wide`). The panel has collapsible sections:
+- **AI** (Provider/Model/Preset selectors + link to `/ai-playground`) — changes persist to **both** the chat row and `user_settings` defaults.
+- **Lorebooks** — per-user activation Switch (opt-in, AND-disables with entry `data.disable`).
+- **Persona** — active persona selector + Add/Edit/Delete (`PersonaDialog`). New persona auto-seeds as active.
+- **Prompts** — per-user system prompt, post-history instructions, impersonation prompt (save on blur).
+
+Active path filtered to skip system root. Swipe arrows on **every** message (`◀ 1/N ▶`): left disabled at `siblingIndex === 0`, right always enabled. Edit button (inline `<Textarea>` with Save/Cancel, opens per-message). Delete button (per-message, `window.confirm`). Drafts render as a faint bubble with placeholder "Type your message..." and hide all controls. Streaming placeholder renders with `✦` next to the name and an animated `▌` caret; live text from `aiChat.messages` overrides DB content while streaming. Input box at the bottom: Enter sends, Shift+Enter newline, auto-scroll on message changes.
 
 ### AI slice (`/ai-playground` + provider/preset CRUD)
 
@@ -193,7 +215,7 @@ src/hooks/
 
 `/api/chat-generate` (chat-backed): reads `chatId` + `assistantMessageLocalId`, loads chat + character + active path messages from DB, drops system root and empty-content system messages, fetches the chat's provider/model/preset, calls `buildChatPrompt({ character, chatHistory, preset: presetPartial, defaultPreset: DEFAULT_PRESET, userName })` from `lib/chat/server-context.ts` (full pipeline: buildMessages → squashSystemMessages → applyCharacterNames → applyContinuePostfix → applyContinuePrefill → truncateToContext → buildOptions). For greeting regenerate (no user in prompt) injects a `"."` sentinel. Streams via openai-compatible adapter.
 
-`user_settings` is one row per user holding the AI defaults that seed new chats. `upsertUserSettings(userId, patch)` inserts on first call, then applies partial updates. `updateUserSettings` is partial-patch (undefined = leave alone, null = clear). The chat sidebar's provider/model/preset handlers mirror their changes into `user_settings` so new chats inherit them. Switching provider resets model + preset on both the chat and the user default.
+`user_settings` is one row per user holding the AI defaults that seed new chats, the active persona id, and prompt overrides. `upsertUserSettings(userId, patch)` inserts on first call, then applies partial updates. `updateUserSettings` is partial-patch (undefined = leave alone, null = clear). The ChatSettingsPanel's provider/model/preset handlers mirror their changes into `user_settings` so new chats inherit them. Switching provider resets model + preset on both the chat and the user default.
 
 ### Legacy migration (`scripts/migrate-data.ts`)
 
@@ -295,20 +317,17 @@ Not migrated: presets, chats. V3 cards rejected. `normalizeCardData` is applied 
 
 ## Branch State
 
-`main` is at the merge of `feat/ai-chat-combined` (8 commits past the `phase-3-chats` merge):
+```
+ce7502e chore: consolidate chat settings into floating draggable modal
+0430928 Merge feat/ai-chat-combined: AI playground + streaming chat generation
+7d070c7 docs(handoff): rewrite as current-state snapshot
+3f6c725 feat(chat): complete streaming UI with user-level AI defaults
+40b2512 fixup: regenerate route tree
+3461a51 feat(chat): upgrade /chats/ with streaming + settings sidebar
+1013c90 feat(api): add /api/chat-generate streaming endpoint
+1fa3d60 feat(ai): add AI playground with provider/preset CRUD
+```
 
-1. `0a27c8b` feat(schema): add providerId/presetId/selectedModel to chats table
-2. `705cb9b` feat(pipeline): refactor to real DB types
-3. `3dfa80a` feat(chats): add prepareStream/finalizeStream/cancelStream/updateChatSettings
-4. `1fa3d60` feat(ai): add AI playground with provider/preset CRUD
-5. `1013c90` feat(api): add /api/chat-generate streaming endpoint
-6. `3461a51` feat(chat): upgrade /chats/ with streaming + settings sidebar
-7. `40b2512` fixup: regenerate route tree
-8. `3f6c725` feat(chat): complete streaming UI with user-level AI defaults (user_settings + zustand)
-9. `7d070c7` docs(handoff): rewrite as current-state snapshot
+Everything above is committed to `main`. All migrations (`0000` through `0005`) are generated. `dev.db` must have them applied (`nub run db:migrate`).
 
-**Latest uncommitted work in progress:** per-user lorebook activation overlay (`drizzle/0004_material_warlock.sql` + `user_lorebook_settings` + `user_lore_entry_settings` tables; new `userLorebookSettings` repo with 15 tests; new `userLorebookSettings` server fn; `useToggleLorebook`/`useToggleLoreEntry` hooks; inline Switch on `/lorebooks` index + per-entry Switch on `/lorebooks/$id`; `context-builder` + `server-context` accept `extraLoreEntries`; `/api/chat-generate` loads enabled lorebooks and filters user-disabled entries; `deleteLorebook`/`deleteEntry` cascade overlay rows; `deleteLorebook` now also cleans orphan entries — pre-existing bug fixed).
-
-**Also uncommitted:** lorebook import flow (`src/lib/lorebook/world-file.ts` + `parseWorldFile` with 22 unit tests; `importLorebook` server fn; `useImportLorebook` hook; "Import" button + Dialog on `/lorebooks` index). Accepts SillyTavern world-info JSON; normalizes to the `LoreEntry` shape so imported lorebooks are immediately usable by the chat pipeline. Created lorebook is disabled by default (opt-in).
-
-Tests pass: **193/193**. `0004` migration is generated but not yet applied to `dev.db` — the app will crash on first lorebook-toggle read until `nub run db:migrate` is run.
+Tests pass: **208/208**. Typecheck clean (only 2 pre-existing errors: `drizzle.config.ts`, `transform/regex.ts`).
