@@ -1,11 +1,31 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useChat as useAiChat, fetchServerSentEvents } from "@tanstack/ai-react";
-import { ArrowDown, ArrowLeft, ArrowUp, Settings, Sparkles } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+  Settings,
+  Sparkles,
+  Square,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   useChat,
   useChatMessages,
@@ -27,7 +47,8 @@ import { ChatSettingsPanel } from "@/components/ChatSettingsPanel";
 import { useChatStore } from "@/stores/chat-store";
 import type { ChatMessageRow } from "@/db/schema";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
-import { Streamdown } from "streamdown";
+import { RichText } from "@/components/RichText";
+import { balanceMarkdown } from "@/lib/markdown";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import { getActivePath, getSiblings } from "@/lib/st-core/chat-tree/tree";
 
@@ -91,12 +112,12 @@ function ChatPage() {
   const markRecovered = useChatStore((s) => s.markRecovered);
   const recoveredFor = useChatStore((s) => s.recoveredFor);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showScrollFab, setShowScrollFab] = useState(false);
-  const isUserScrolledUpRef = useRef(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
+  const [deleteMessageTarget, setDeleteMessageTarget] = useState<number | null>(null);
+  const [deleteChatOpen, setDeleteChatOpen] = useState(false);
 
   const selectedProviderId = chat?.providerId ?? "";
   const selectedModel = chat?.selectedModel ?? "";
@@ -217,11 +238,24 @@ function ChatPage() {
       });
   }, [messages, activePlaceholderId, liveAssistantText]);
 
-  // Auto-scroll to bottom on new messages, unless the user has scrolled up.
-  useEffect(() => {
-    if (isUserScrolledUpRef.current && !isStreaming) return;
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activePath, isStreaming]);
+  // ── Virtualizer ──────────────────────────────────────────────────────
+  const virtualizer = useVirtualizer({
+    count: activePath.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 72,
+    getItemKey: (index) => activePath[index]!.message.id,
+    anchorTo: "end",
+    followOnAppend: true,
+    scrollEndThreshold: 80,
+    overscan: 6,
+  });
+
+  // Initial scroll to end once messages load.
+  useLayoutEffect(() => {
+    if (activePath.length > 0) {
+      virtualizer.scrollToEnd();
+    }
+  }, [virtualizer, activePath.length]);
 
   // Auto-grow composer textarea (cap at TEXTAREA_MAX_HEIGHT px).
   useLayoutEffect(() => {
@@ -231,25 +265,19 @@ function ChatPage() {
     el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
   }, [input]);
 
-  // Scroll listener — shows the jump-to-bottom FAB when the user is more
-  // than ~200px away from the bottom. Skipped during active streaming
-  // (we auto-scroll new tokens into view).
+  // Scroll listener — shows the jump-to-bottom FAB when more than 80px
+  // from the end (matches scrollEndThreshold).
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-    const up = distance > 200;
-    isUserScrolledUpRef.current = up;
-    setShowScrollFab(up);
+    setShowScrollFab(distance > 80);
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    isUserScrolledUpRef.current = false;
+    virtualizer.scrollToEnd({ behavior: "smooth" });
     setShowScrollFab(false);
-  }, []);
+  }, [virtualizer]);
 
   // Stale isStreaming recovery (B3). Runs once per chat id: on mount, if the
   // DB has any message with extra.isStreaming, mark it for cancellation.
@@ -351,6 +379,15 @@ function ChatPage() {
     );
   }, [id, canSend, hasAi, activePath.length, impersonateMutation, setInput, isImpersonating]);
 
+  const handleStop = useCallback(() => {
+    const placeholderId = useChatStore.getState().activePlaceholderId;
+    if (!placeholderId) return;
+    cancelStream.mutate(
+      { chatId: id, messageLocalId: placeholderId },
+      { onSuccess: () => clearPlaceholder() },
+    );
+  }, [id, cancelStream, clearPlaceholder]);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -445,11 +482,16 @@ function ChatPage() {
   const handleDeleteMessage = useCallback(
     (messageLocalId: number) => {
       if (activePlaceholderId !== null) return;
-      if (!window.confirm("Delete this message and all replies below it?")) return;
-      deleteMessageMutation.mutate({ chatId: id, messageLocalId });
+      setDeleteMessageTarget(messageLocalId);
     },
-    [id, deleteMessageMutation, activePlaceholderId],
+    [activePlaceholderId],
   );
+
+  const handleConfirmDeleteMessage = useCallback(() => {
+    if (deleteMessageTarget === null) return;
+    deleteMessageMutation.mutate({ chatId: id, messageLocalId: deleteMessageTarget });
+    setDeleteMessageTarget(null);
+  }, [id, deleteMessageMutation, deleteMessageTarget]);
 
   const handleEditMessage = useCallback(
     (messageLocalId: number, content: string) => {
@@ -460,8 +502,12 @@ function ChatPage() {
   );
 
   const handleDeleteChat = useCallback(() => {
-    if (!window.confirm("Delete this chat?")) return;
+    setDeleteChatOpen(true);
+  }, []);
+
+  const handleConfirmDeleteChat = useCallback(() => {
     deleteChatMutation.mutate({ id }, { onSuccess: () => void navigate({ to: "/chats" }) });
+    setDeleteChatOpen(false);
   }, [id, deleteChatMutation, navigate]);
 
   const isLoading = chatLoading || msgsLoading;
@@ -487,18 +533,36 @@ function ChatPage() {
 
   const characterDescription = (character?.data?.description as string | undefined) ?? "";
   const characterTags = (character?.data?.tags as string[] | undefined) ?? [];
+  const backgroundUrl = chat.backgroundPath
+    ? `/api/backgrounds/${chat.backgroundPath}/image`
+    : null;
+  const ambientUrl =
+    backgroundUrl ??
+    (chat.characterImagePath ? `/api/characters/${chat.characterId}/avatar` : null);
 
   return (
-    <div className="flex h-dvh flex-col bg-background">
+    <div className="relative flex h-dvh flex-col overflow-hidden">
+      {/* ── Background layer ── */}
+      {ambientUrl && (
+        <div className="fixed inset-0 z-0">
+          <img
+            src={ambientUrl}
+            className="size-full object-cover blur-sm brightness-[0.4]"
+            alt=""
+          />
+          <div className="vn-vignette absolute inset-0" />
+        </div>
+      )}
+
       {/* ── Fixed chat header ── */}
-      <header className="bg-background/80 border-border/60 sticky top-0 z-30 flex h-14 shrink-0 items-center border-b backdrop-blur">
+      <header className="glass sticky top-0 z-30 flex h-12 shrink-0 items-center border-b border-white/5">
         <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center px-3">
           <div className="flex items-center justify-start">
             <Button
               asChild
               variant="ghost"
               size="icon"
-              className="size-9"
+              className="size-8"
               aria-label="Back to chats"
             >
               <Link to="/chats">
@@ -507,29 +571,22 @@ function ChatPage() {
             </Button>
           </div>
           <div className="flex min-w-0 items-center gap-2">
-            <Avatar className="size-8 shrink-0">
+            <Avatar className="size-8 shrink-0 ring-1 ring-[var(--lagoon)]/20">
               {chat.characterImagePath ? (
                 <AvatarImage
                   src={`/api/characters/${chat.characterId}/avatar`}
                   alt={chat.characterName}
                 />
               ) : null}
-              <AvatarFallback className="text-xs">{chat.characterName[0]}</AvatarFallback>
+              <AvatarFallback className="text-[10px]">{chat.characterName[0]}</AvatarFallback>
             </Avatar>
-            <div className="min-w-0 text-center">
-              <p className="truncate text-sm font-medium leading-tight">{chat.characterName}</p>
-              {selectedModel ? (
-                <p className="text-muted-foreground truncate text-[10px] leading-tight">
-                  {selectedModel}
-                </p>
-              ) : null}
-            </div>
+            <p className="truncate text-sm font-heading leading-tight">{chat.characterName}</p>
           </div>
           <div className="flex items-center justify-end">
             <Button
               variant="ghost"
               size="icon"
-              className="size-9"
+              className="size-8"
               onClick={() => setSettingsOpen(!settingsOpen)}
               aria-label="Toggle settings panel"
             >
@@ -540,9 +597,13 @@ function ChatPage() {
       </header>
 
       {/* ── Message column ── */}
-      <div ref={scrollRef} onScroll={handleScroll} className="relative flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 px-4 py-6">
-          {/* Character intro card (Chub-style first impression) */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="scrollbar-thin relative z-20 flex-1 overflow-y-auto"
+      >
+        <div className="mx-auto w-full max-w-3xl space-y-7 px-4 py-4 min-h-full">
+          {/* Character intro card (outside virtualizer) */}
           {(characterDescription || characterTags.length > 0) && (
             <CharacterIntroCard
               name={chat.characterName}
@@ -554,37 +615,56 @@ function ChatPage() {
           )}
 
           {activePath.length === 0 ? (
-            <div className="text-muted-foreground py-16 text-center text-sm">
+            <div className="text-muted-foreground py-4 text-center text-sm">
               No messages yet. Say hello!
             </div>
           ) : (
-            activePath.map((entry) => (
-              <MessageBubble
-                key={entry.message.id}
-                entry={entry}
-                characterName={chat.characterName}
-                characterImagePath={chat.characterImagePath}
-                characterId={chat.characterId}
-                personaName={activePersona?.name}
-                personaIconPath={activePersona?.iconPath ?? null}
-                onSwipe={handleSwipe}
-                onDelete={handleDeleteMessage}
-                onEdit={handleEditMessage}
-                disabled={activePlaceholderId !== null}
-              />
-            ))
+            <div
+              style={{
+                position: "relative",
+                height: `${virtualizer.getTotalSize()}px`,
+                width: "100%",
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualItem) => (
+                <div
+                  key={virtualItem.key}
+                  ref={virtualizer.measureElement}
+                  data-index={virtualItem.index}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    transform: `translateY(${virtualItem.start}px)`,
+                    width: "100%",
+                  }}
+                >
+                  <MessageBubble
+                    entry={activePath[virtualItem.index]!}
+                    isNewest={virtualItem.index === activePath.length - 1}
+                    characterName={chat.characterName}
+                    characterImagePath={chat.characterImagePath}
+                    characterId={chat.characterId}
+                    personaName={activePersona?.name}
+                    personaIconPath={activePersona?.iconPath ?? null}
+                    onSwipe={handleSwipe}
+                    onDelete={handleDeleteMessage}
+                    onEdit={handleEditMessage}
+                    disabled={activePlaceholderId !== null}
+                  />
+                </div>
+              ))}
+            </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Scroll-to-bottom FAB */}
         {showScrollFab && (
           <Button
             size="icon"
-            variant="outline"
+            variant="ghost"
             onClick={scrollToBottom}
             aria-label="Scroll to latest"
-            className={`bg-background/90 absolute right-4 bottom-4 z-20 size-9 rounded-full shadow-lg backdrop-blur ${
+            className={`glass absolute right-4 bottom-4 z-20 size-10 rounded-full ${
               isStreaming ? "animate-pulse" : ""
             }`}
           >
@@ -594,8 +674,8 @@ function ChatPage() {
       </div>
 
       {/* ── Composer + AI hint ── */}
-      <div className="bg-background/80 border-border/60 shrink-0 border-t px-4 pt-2 pb-4 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-2xl flex-col gap-2">
+      <div className="glass-strong z-30 shrink-0 border-t border-white/5 px-4 py-2.5">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-1.5">
           {!hasAi && (
             <button
               type="button"
@@ -605,7 +685,7 @@ function ChatPage() {
               No AI configured — open settings →
             </button>
           )}
-          <div className="border-border/60 bg-muted/30 flex items-end gap-2 rounded-2xl border px-3 py-2">
+          <div className="glass flex items-end gap-2 rounded-2xl px-3 py-1.5">
             <Textarea
               ref={textareaRef}
               value={input}
@@ -618,44 +698,94 @@ function ChatPage() {
                     ? `Message as ${activePersona.name}...`
                     : "Type a message..."
               }
-              className="min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-1 text-sm shadow-none focus-visible:ring-0"
+              className="min-h-[32px] flex-1 resize-none border-0 bg-transparent px-1 py-0.5 text-sm shadow-none focus-visible:ring-0"
               rows={1}
               disabled={!canSend}
             />
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={handleImpersonate}
-              disabled={!canSend || isImpersonating || !hasAi || activePath.length === 0}
-              className="size-8 shrink-0 rounded-full"
-              aria-label="Impersonate user"
-            >
-              {isImpersonating ? (
-                <div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                <Sparkles className="size-4" />
-              )}
-            </Button>
-            <Button
-              size="icon"
-              onClick={handleSend}
-              disabled={!canSend || (!input.trim() && (!hasAi || activePath.length === 0))}
-              className="size-8 shrink-0 rounded-full"
-              aria-label="Send message"
-            >
-              <ArrowUp className="size-4" />
-            </Button>
+            {isStreaming ? (
+              <Button
+                size="icon"
+                variant="destructive"
+                onClick={handleStop}
+                className="size-8 shrink-0 rounded-full"
+                aria-label="Stop generating"
+              >
+                <Square className="size-3.5 fill-current" />
+              </Button>
+            ) : (
+              <>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleImpersonate}
+                  disabled={!canSend || isImpersonating || !hasAi || activePath.length === 0}
+                  className="size-8 shrink-0 rounded-full"
+                  aria-label="Impersonate user"
+                >
+                  {isImpersonating ? (
+                    <div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <Sparkles className="size-4" />
+                  )}
+                </Button>
+                <Button
+                  size="icon"
+                  onClick={handleSend}
+                  disabled={!canSend || (!input.trim() && (!hasAi || activePath.length === 0))}
+                  className="size-8 shrink-0 rounded-full"
+                  aria-label="Send message"
+                >
+                  <ArrowUp className="size-4" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {settingsOpen && (
-        <ChatSettingsPanel
-          chat={chat}
-          onClose={() => setSettingsOpen(false)}
-          onDeleteChat={handleDeleteChat}
-        />
-      )}
+      <ChatSettingsPanel
+        chat={chat}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        onDeleteChat={handleDeleteChat}
+      />
+
+      <AlertDialog
+        open={deleteMessageTarget !== null}
+        onOpenChange={(open) => !open && setDeleteMessageTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete message?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete this message and all replies below it. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleConfirmDeleteMessage}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteChatOpen} onOpenChange={setDeleteChatOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this entire conversation. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleConfirmDeleteChat}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -674,7 +804,7 @@ function CharacterIntroCard({
   tags: string[];
 }) {
   return (
-    <div className="bg-muted/30 border-border/40 flex items-start gap-4 rounded-2xl border p-4">
+    <div className="glass flex items-start gap-4 rounded-2xl p-4">
       <Avatar className="size-14 shrink-0">
         {imagePath ? (
           <AvatarImage src={`/api/characters/${characterId}/avatar`} alt={name} />
@@ -682,7 +812,7 @@ function CharacterIntroCard({
         <AvatarFallback>{name[0]}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1 space-y-1">
-        <p className="text-sm font-semibold">{name}</p>
+        <p className="text-base font-heading">{name}</p>
         {description && (
           <p className="text-muted-foreground line-clamp-3 text-xs leading-relaxed">
             {description}
@@ -693,7 +823,7 @@ function CharacterIntroCard({
             {tags.slice(0, 6).map((t) => (
               <span
                 key={t}
-                className="bg-background/60 text-muted-foreground rounded-full border px-2 py-0.5 text-[10px]"
+                className="rounded-full border border-white/10 bg-(--lagoon)/10 px-2 py-0.5 text-[10px] text-(--lagoon-deep)"
               >
                 {t}
               </span>
@@ -707,17 +837,19 @@ function CharacterIntroCard({
 
 function MessageBubble({
   entry,
+  isNewest = false,
   characterName,
-  characterImagePath,
-  characterId,
+  characterImagePath: _characterImagePath,
+  characterId: _characterId,
   personaName,
-  personaIconPath,
+  personaIconPath: _personaIconPath,
   onSwipe,
   onDelete,
   onEdit,
   disabled,
 }: {
   entry: PathEntry;
+  isNewest?: boolean;
   characterName: string;
   characterImagePath: string | null;
   characterId: string;
@@ -768,31 +900,46 @@ function MessageBubble({
   };
 
   const displayName = isUser ? (personaName ?? "You") : characterName;
-  const initial = (displayName ?? "?").charAt(0).toUpperCase();
+  const showFooter = !isEditing && !isDraft && !disabled;
 
   return (
-    <div className={`group flex gap-3 ${isUser ? "flex-row-reverse" : ""}`}>
-      <Avatar className="size-7 shrink-0">
-        {isUser ? (
-          personaIconPath ? (
-            <AvatarImage src={personaIconPath} alt={displayName} />
-          ) : null
-        ) : characterImagePath ? (
-          <AvatarImage src={`/api/characters/${characterId}/avatar`} alt={displayName} />
-        ) : null}
-        <AvatarFallback className="text-[10px]">{initial}</AvatarFallback>
-      </Avatar>
+    <div className={`flex flex-col gap-0.5 ${isNewest ? "animate-msg-in" : ""}`}>
+      {/* Nameplate — display name + Edit/Delete on same level */}
+      <div
+        className={`flex items-center justify-between gap-2 rounded-t-lg px-3 py-1 text-sm font-heading mt-4 ${
+          isUser ? "bg-primary/25 text-muted-foreground" : "bg-(--lagoon)/20 text-(--lagoon-deep)"
+        }`}
+      >
+        <span className="inline-flex items-center gap-1.5">
+          {isStreaming && (
+            <span aria-hidden className="text-[10px] text-(--lagoon)">
+              ✦
+            </span>
+          )}
+          {displayName}
+        </span>
+        {!isEditing && !isDraft && !disabled && (
+          <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+            <button type="button" onClick={beginEdit} className="hover:text-foreground">
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(message.id)}
+              className="hover:text-destructive"
+            >
+              Delete
+            </button>
+          </span>
+        )}
+      </div>
 
-      <div className={`flex min-w-0 max-w-[85%] flex-col gap-1 ${isUser ? "items-end" : ""}`}>
-        <p
-          className={`text-muted-foreground flex items-center gap-1 text-[11px] ${
-            isUser ? "justify-end" : ""
-          }`}
-        >
-          <span className="font-medium">{displayName}</span>
-          {isStreaming && <span aria-hidden>✦</span>}
-        </p>
-
+      {/* Content panel */}
+      <div
+        className={`relative min-w-0 rounded-lg p-4 ${showFooter ? "pr-16" : ""} ${
+          isUser ? "bg-primary/25 border border-primary/20" : "glass-strong"
+        } ${isDraft || isStreaming ? "opacity-90" : ""}`}
+      >
         {isDraft ? (
           <p className="text-muted-foreground text-sm italic">Type your message...</p>
         ) : isEditing ? (
@@ -801,7 +948,7 @@ function MessageBubble({
               ref={editRef}
               value={draftContent}
               onChange={(e) => setDraftContent(e.target.value)}
-              className="min-h-[40px] resize-none border-0 bg-transparent p-0 text-sm outline-none focus-visible:ring-0 prose prose-sm prose-invert max-w-none"
+              className="min-h-10 resize-none border-0 bg-transparent p-0 text-sm outline-none focus-visible:ring-0 prose prose-sm prose-invert max-w-none prose-headings:font-heading prose-code:font-mono prose-pre:font-mono"
               autoFocus
             />
             <div className="flex justify-end gap-2">
@@ -816,56 +963,36 @@ function MessageBubble({
         ) : isStreaming && message.content === "" ? (
           <ThinkingDots />
         ) : (
-          <div
-            className={`prose prose-sm prose-invert max-w-none ${
-              isDraft || isStreaming ? "opacity-90" : ""
-            }`}
-          >
-            <Streamdown parseIncompleteMarkdown={isStreaming}>{message.content}</Streamdown>
+          <div className="prose prose-sm prose-invert max-w-none prose-headings:font-heading prose-code:font-mono prose-pre:font-mono">
+            <RichText
+              content={isStreaming ? balanceMarkdown(message.content, false) : message.content}
+            />
             {isStreaming && <StreamingCaret />}
           </div>
         )}
 
-        {!isEditing && !isDraft && !disabled && (
-          <div
-            className={`text-muted-foreground flex items-center gap-2 pt-0.5 text-[11px] opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 ${
-              isUser ? "flex-row-reverse" : ""
-            }`}
-          >
+        {/* Swipe arrows inside bubble */}
+        {showFooter && (
+          <div className="absolute bottom-1.5 right-2 flex items-center gap-1">
             <button
               type="button"
               onClick={() => onSwipe(message.id, "prev")}
               disabled={siblingIndex === 0}
-              className="hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+              className="hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 rounded-full p-0.5"
               aria-label="Previous message"
             >
-              ‹
+              <ChevronLeft className="size-4" />
             </button>
-            <span aria-label={`Message ${siblingIndex + 1} of ${siblingTotal}`}>
+            <span className="text-muted-foreground tabular-nums text-[11px]">
               {siblingIndex + 1}/{siblingTotal}
             </span>
             <button
               type="button"
               onClick={() => onSwipe(message.id, "next")}
-              className="hover:text-foreground"
+              className="hover:text-foreground rounded-full p-0.5"
               aria-label="Next message"
             >
-              ›
-            </button>
-            {!isUser && (
-              <>
-                <span aria-hidden>·</span>
-                <button type="button" onClick={beginEdit} className="hover:text-foreground">
-                  Edit
-                </button>
-              </>
-            )}
-            <button
-              type="button"
-              onClick={() => onDelete(message.id)}
-              className="hover:text-destructive"
-            >
-              Delete
+              <ChevronRight className="size-4" />
             </button>
           </div>
         )}
@@ -876,10 +1003,19 @@ function MessageBubble({
 
 function ThinkingDots() {
   return (
-    <div className="text-muted-foreground flex items-center gap-1 py-1" aria-label="Thinking">
-      <span className="bg-muted-foreground/70 size-1.5 animate-bounce rounded-full [animation-delay:-0.3s]" />
-      <span className="bg-muted-foreground/70 size-1.5 animate-bounce rounded-full [animation-delay:-0.15s]" />
-      <span className="bg-muted-foreground/70 size-1.5 animate-bounce rounded-full" />
+    <div className="flex items-center gap-1 py-1" aria-label="Thinking">
+      <span
+        className="w-1 rounded-full bg-[var(--lagoon)]/70 animate-pulse"
+        style={{ height: "12px", animationDelay: "0s", animationDuration: "0.6s" }}
+      />
+      <span
+        className="w-1 rounded-full bg-[var(--lagoon)]/70 animate-pulse"
+        style={{ height: "16px", animationDelay: "0.15s", animationDuration: "0.6s" }}
+      />
+      <span
+        className="w-1 rounded-full bg-[var(--lagoon)]/70 animate-pulse"
+        style={{ height: "12px", animationDelay: "0.3s", animationDuration: "0.6s" }}
+      />
     </div>
   );
 }
