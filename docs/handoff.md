@@ -11,9 +11,9 @@ Snapshot of what exists in the repo right now. Not a roadmap, not a plan.
 - **Characters slice** — repo + server fns + hooks + UI routes + 15 repo tests. V2 PNG import + rename + delete + read-only detail with embedded lorebook collapsible.
 - **Lorebooks slice** — repo + server fns + hooks + UI routes + 36 repo tests. `listLorebooks` includes `entryCount` + **`enabled`** via leftJoin + groupBy. **Per-user activation overlay** (`user_lorebook_settings` + `user_lore_entry_settings`) wired into `/api/chat-generate`; inline enable Switch on `/lorebooks`, per-entry Switch on `/lorebooks/$id` with AND-disable semantics. **Import** button on `/lorebooks` opens a Dialog for SillyTavern world-info JSON files; parsed via `parseWorldFile` and inserted as a disabled lorebook.
 - **Personas slice** — repo + server fns + hooks (CRUD) + reusable `PersonaDialog` + 12 repo tests. User-settings-backed active persona selection. Auto-seed on create via `updateUserDefaults({ defaultPersonaId: res.id })`.
-- **Chats slice** — repo + server fns + hooks + UI routes + 16 repo tests. Hidden-root tree model: all greetings pre-loaded as children of a system root; swipe-on-all, draft messages, edit, delete, **streaming AI generation via SSE**.
+- **Chats slice** — repo + server fns + hooks + UI routes + 16 repo tests. Hidden-root tree model: all greetings pre-loaded as children of a system root; swipe-on-all, draft messages, edit, delete, **streaming AI generation via SSE**. **Left/right side panels** (CSS grid 15/70/15 on md+): character portrait panel with streaming glow + lightbox, temporary per-chat custom image panel with upload/remove. **{{char}}/{{user}} macro substitution** on all persisted message content (createChat greetings, sendMessage, prepareStream, editMessage, finalizeStream) resolving `{{user}}` to the active persona name via `resolveUserName()`.
 - **AI slice** — providers + presets + user-settings repos + server fns + hooks + UI. `/ai-playground` (provider/preset CRUD + streaming chat) and per-chat provider/model/preset in a **floating draggable settings panel** (`ChatSettingsPanel`) on `/chats/$id`.
-- **Tests:** 208/208 pass (75 chat-tree + 9 normalize + 15 characters + 36 lorebooks + 16 chats + 8 userSettings + 15 userLorebookSettings + **22 world-file parser** + **12 personas repository**)
+- **Tests:** 222/222 pass (75 chat-tree + 9 normalize + 15 characters + 36 lorebooks + 16 chats + 8 userSettings + 15 userLorebookSettings + 22 world-file parser + 12 personas repository + **8 substitute-message-macros** + **6 characters.repo**)
 - **Typecheck:** clean (only 2 pre-existing errors: `drizzle.config.ts:6`, `transform/regex.ts:161`)
 - **Legacy migration** — `scripts/migrate-data.ts` imports `public/data/` (30 chars, 27 lorebooks, 1 persona). Idempotent.
 - **Upload normalization** — `src/lib/character/normalize.ts` shared by `importCharacter` and the migration. 9 unit tests.
@@ -138,11 +138,15 @@ src/server/
   schemas/chat.ts                             # effect Schema validators for all of the above (grouped: CRUD, messages, streaming, settings)
 src/components/
   ChatSettingsPanel.tsx                       # **Floating draggable settings modal: AI provider/model/preset, lorebooks, persona CRUD, prompt overrides**
+  chat/
+    CharacterPortraitPanel.tsx                # Character portrait with streaming glow ring, upload button, click-to-lightbox
+    CustomImagePanel.tsx                      # Temporary per-chat image: upload zone (dashed border + file input), preview, remove, lightbox
+    ImageLightbox.tsx                         # Shared Dialog lightbox for portrait or custom image
 src/routes/
   chats/{index,new,$id}.tsx                   # list, new (character grid), chat UI **with streaming + floating SettingsPanel**
   api/chat-generate.ts                        # **SSE endpoint for chat-backed generation**
 src/hooks/useChats.ts                         # TanStack Query hooks **+ usePrepareStream/useFinalizeStream/useCancelStream/useUpdateChatSettings**
-src/stores/chat-store.ts                      # **zustand: settingsOpen, input, activePlaceholderId, recoveredFor**
+src/stores/chat-store.ts                      # **zustand: settingsOpen, input, activePlaceholderId, recoveredFor, chatImages (per-chat temporary base64)**
 ```
 
 **Hidden-root tree model.** Every chat starts with a `role: "system", isSystem: true, parentLocalId: null, content: ""` row at `localId = 0`, plus every greeting (`first_mes` + each `alternate_greetings[i]`) as its children at `localId = 1..N`. `root.selectedChildLocalId = 1` (first_mes is the default). The UI filters out `role === "system"` so the root is never rendered. All other server fns reject `messageLocalId === 0`.
@@ -178,7 +182,7 @@ src/stores/chat-store.ts                      # **zustand: settingsOpen, input, 
 5. `onError` → toast + `cancelStream` (deletes the placeholder subtree via `deleteSubtree`).
 6. **Stale-stream recovery on mount.** If a DB row still has `extra.isStreaming` (interrupted page reload, etc.), the page-effect cancels it once per chat id. `recoveredFor` in the zustand store gates this so it doesn't re-run on every refetch.
 
-**UI** (`/chats/$id`): single-column chat layout. A settings `⚙` button in the header toggles a **floating draggable `ChatSettingsPanel`** (`position: fixed, z-index: 50, 420px wide`). The panel has collapsible sections:
+**UI** (`/chats/$id`): **CSS grid layout** (`md:grid-cols-[15%_70%_15%]`) with three columns always in the DOM — no layout shift. On mobile (`<md`) collapses to single column. Left column: character portrait panel (toggled by clicking header avatar). Right column: temporary custom image panel (toggled by header image icon). Both columns always have the grid track reserved; toggle only shows/hides inner content. Portrait panel shows streaming glow ring while AI generates; both panels click-to-lightbox. A settings `⚙` button in the header toggles a **floating draggable `ChatSettingsPanel`** (`position: fixed, z-index: 50, 420px wide`). The panel has collapsible sections:
 - **AI** (Provider/Model/Preset selectors + link to `/ai-playground`) — changes persist to **both** the chat row and `user_settings` defaults.
 - **Lorebooks** — per-user activation Switch (opt-in, AND-disables with entry `data.disable`).
 - **Persona** — active persona selector + Add/Edit/Delete (`PersonaDialog`). New persona auto-seeds as active.
@@ -229,6 +233,7 @@ Not migrated: presets, chats. V3 cards rejected. `normalizeCardData` is applied 
 
 - `pipeline.ts`, `preset.ts`, `pre-process.ts`, `context-builder.ts`, `lorebook.ts`, `types.ts`, `sample-data.ts` — client-side pipeline demo used by the `/` (index) route. `sample-data.ts` + `SAMPLE_CHARACTER`/`SAMPLE_CHAT_HISTORY` feed the demo.
 - `server-context.ts` — the **production** bridge from DB types (`CharacterDataV2`, `LoreConfig`, `ChatMessage`) into the same pipeline. Used by `/api/chat-generate`.
+- `substitute-message-macros.ts` — replaces `{{char}}`/`{{user}}` in message content (case-insensitive). 8 unit tests.
 - `types.ts` defines the canonical `ChatCompletionPreset` (full preset shape) and the `PresetData` subset stored in the `presets.data` column. Server merges db preset on top of `DEFAULT_PRESET` via `mergePresetIntoPreset`.
 
 ---
@@ -286,6 +291,9 @@ Not migrated: presets, chats. V3 cards rejected. `normalizeCardData` is applied 
 | Disabled-entry pre-filter | **Applied in `context-builder` before `scanLoreEntries`** | Filters `disable: true` from both embedded + extra entries so it takes effect in the *initial* scan (the scan's recursion check missed the initial pass). |
 | World-file import normalization | **Always normalize, never store raw** | `parseWorldFile` maps `insertion_order→order`, `enabled→disable` (inverted), `position` string→enum, flattens `extensions.*`, accepts `key`/`keysecondary` as array or comma-separated string, validates per-entry via `LoreEntrySchema`. Result: imported lorebooks are immediately usable by the chat pipeline. The one-time `scripts/migrate-data.ts` still uses raw insertion (storing entries without the `LoreEntry` shape) — its lorebooks are NOT usable in chats; refactor is a follow-up. |
 | Imported lorebook activation | **Disabled by default** | Matches the opt-in design. User must toggle on from the list page after import. |
+| Message macro substitution | **{{user}}→persona name, {{char}}→character name** on all stored messages | `resolveUserName()` looks up active persona via `user_settings.defaultPersonaId`, falls back to `user.name`. Substitution applied server-side at every persistence point: `createChat` (greetings), `sendMessage`, `prepareStream`, `editMessage`, `finalizeStream`. |
+| Chat side panels | **CSS grid 15/70/15 (md+), always in DOM** | Side columns always have the grid track (no layout shift). Toggle only shows/hides inner content. Columns have no background — single background image extends across all three columns. Below md: single column, side divs hidden. |
+| Custom chat images | **Temporary, per-chat, base64 in zustand** | Store: `useChatStore.chatImages[chatId]`. Gone on reload. No DB, no file storage, no server fns. Left panel also has upload button that stores to same key (appears in right panel). |
 
 ---
 
@@ -318,16 +326,20 @@ Not migrated: presets, chats. V3 cards rejected. `normalizeCardData` is applied 
 ## Branch State
 
 ```
-ce7502e chore: consolidate chat settings into floating draggable modal
-0430928 Merge feat/ai-chat-combined: AI playground + streaming chat generation
-7d070c7 docs(handoff): rewrite as current-state snapshot
-3f6c725 feat(chat): complete streaming UI with user-level AI defaults
-40b2512 fixup: regenerate route tree
-3461a51 feat(chat): upgrade /chats/ with streaming + settings sidebar
-1013c90 feat(api): add /api/chat-generate streaming endpoint
-1fa3d60 feat(ai): add AI playground with provider/preset CRUD
+e5027de fix(chat): resolve {{user}} to active persona name instead of user.name
+58621ba feat(chat): substitute {{char}} and {{user}} in all persisted message content
+80648ae feat(markdown): showdown+DOMPurify renderer, CSS sandboxing, dialogue highlighting, morphdom streaming
+2b5615d feat(chat): improve layout, scrolling, bubble opacity; replace streamdown with showdown+dompurify
+c562c87 feat(characters): restructure detail page, add tagline, clickable cards with tag filtering
+565fc28 feat(backgrounds): add background image CRUD and scene customization
+c8044bc refactor(logging): replace full LLM payload dump with step-by-step pipeline logs
+8e66bbf feat(chat): AI impersonation writes user's next message into input box
+6461761 feat(chat): empty Send generates AI response from active leaf
+9662fef fix(chat): constrain ChatSettingsPanel content within panel bounds
 ```
 
 Everything above is committed to `main`. All migrations (`0000` through `0005`) are generated. `dev.db` must have them applied (`nub run db:migrate`).
 
-Tests pass: **208/208**. Typecheck clean (only 2 pre-existing errors: `drizzle.config.ts`, `transform/regex.ts`).
+**Uncommitted:** side panels (CSS grid layout, CharacterPortraitPanel, CustomImagePanel, ImageLightbox, chat-store chatImages), upload button on left panel, docs update.
+
+Tests pass: **222/222**. Typecheck clean (only 2 pre-existing errors: `drizzle.config.ts`, `transform/regex.ts`).

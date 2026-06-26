@@ -15,6 +15,9 @@ export interface ChatStoreState {
   settingsOpen: boolean;
   input: string;
 
+  // ── Custom images (per-chat, temporary, base64 data URLs) ──────────
+  chatImages: Record<string, string>;
+
   // ── Streaming ─────────────────────────────────────────────────────────
   // The placeholder id the API should stream into. null when no stream active.
   // Read synchronously by fetchServerSentEvents's body getter.
@@ -38,11 +41,16 @@ export interface ChatStoreState {
   clearPlaceholder: () => void;
   markRecovered: (chatId: string, placeholderId: number) => void;
   clearRecovered: () => void;
+
+  // ── Custom images ─────────────────────────────────────────────────
+  setChatImage: (chatId: string, base64: string) => void;
+  clearChatImage: (chatId: string) => void;
 }
 
 export const useChatStore = create<ChatStoreState>((set) => ({
   settingsOpen: false,
   input: "",
+  chatImages: {},
   activePlaceholderId: null,
   recoveredStaleId: null,
   recoveredFor: null,
@@ -57,6 +65,15 @@ export const useChatStore = create<ChatStoreState>((set) => ({
   markRecovered: (chatId, placeholderId) =>
     set({ recoveredStaleId: placeholderId, recoveredFor: chatId }),
   clearRecovered: () => set({ recoveredStaleId: null, recoveredFor: null }),
+
+  setChatImage: (chatId, base64) =>
+    set((s) => ({ chatImages: { ...s.chatImages, [chatId]: base64 } })),
+  clearChatImage: (chatId) =>
+    set((s) => {
+      const next = { ...s.chatImages };
+      delete next[chatId];
+      return { chatImages: next };
+    }),
 }));
 
 // Convenience selectors — components subscribe to narrow slices.
