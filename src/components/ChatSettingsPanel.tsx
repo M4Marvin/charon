@@ -69,6 +69,7 @@ import { useUpdateChatSettings } from "@/hooks/useChats";
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import type { ChatDetail } from "@/server/fns/chats";
 import { useBackgrounds, useUploadBackground, useDeleteBackground } from "@/hooks/useBackgrounds";
+import { useRichTextSettings } from "@/lib/richtext-settings";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -124,6 +125,9 @@ export function ChatSettingsPanel({
             <TabsTrigger value="scene" className="text-xs flex-1">
               Scene
             </TabsTrigger>
+            <TabsTrigger value="display" className="text-xs flex-1">
+              Display
+            </TabsTrigger>
           </TabsList>
           <div className="relative min-h-0 flex-1">
             {activeTab === "ai" && (
@@ -151,6 +155,11 @@ export function ChatSettingsPanel({
                 <SceneSection chat={chat} />
               </div>
             )}
+            {activeTab === "display" && (
+              <div className="absolute inset-0 overflow-y-auto p-4">
+                <DisplaySection />
+              </div>
+            )}
           </div>
         </Tabs>
 
@@ -168,6 +177,35 @@ export function ChatSettingsPanel({
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+// ── Display section ────────────────────────────────────────────────────────
+
+function DisplaySection() {
+  const { blockExternalMedia, setBlockExternalMedia, highlightDialogue, setHighlightDialogue } =
+    useRichTextSettings();
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium">Highlight dialogue</p>
+          <p className="text-muted-foreground text-xs">
+            Highlight quoted dialogue in a distinct colour for VN-style reading.
+          </p>
+        </div>
+        <Switch checked={highlightDialogue} onCheckedChange={setHighlightDialogue} />
+      </div>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium">Block external media</p>
+          <p className="text-muted-foreground text-xs">
+            Prevent images, videos and embeds from loading from external URLs.
+          </p>
+        </div>
+        <Switch checked={blockExternalMedia} onCheckedChange={setBlockExternalMedia} />
+      </div>
+    </div>
   );
 }
 

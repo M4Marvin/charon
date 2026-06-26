@@ -15,6 +15,7 @@ import { Toaster } from "@/components/ui/sonner";
 import appCss from "@/styles.css?url";
 
 import type { QueryClient } from "@tanstack/react-query";
+import { RichTextSettingsProvider } from "@/lib/richtext-settings";
 
 interface MyRouterContext {
   queryClient: QueryClient;
@@ -57,7 +58,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {!hideGlobalHeader && <Header />}
-        <TanstackQueryProvider queryClient={queryClient}>{children}</TanstackQueryProvider>
+        <RichTextSettingsProvider>
+          <TanstackQueryProvider queryClient={queryClient}>{children}</TanstackQueryProvider>
+        </RichTextSettingsProvider>
         <Toaster />
         <TanStackDevtools
           config={{

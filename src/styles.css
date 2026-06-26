@@ -41,6 +41,14 @@
   --animate-msg-in: msg-in 0.3s ease-out;
 }
 
+.rt-msg-in {
+  animation: var(--animate-msg-in);
+}
+
+.rt-dialogue {
+  color: var(--dialogue);
+}
+
 @custom-variant data-open {
   &:where([data-state="open"]),
   &:where([data-open]:not([data-open="false"])) {
@@ -168,6 +176,7 @@
   --line: rgba(141, 229, 219, 0.18);
   --inset-glint: rgba(194, 247, 238, 0.14);
   --kicker: #b8efe5;
+  --dialogue: oklch(0.85 0.06 75);
   --bg-base: #0a1418;
   --header-bg: rgba(10, 20, 24, 0.8);
   --chip-bg: rgba(13, 28, 32, 0.9);
@@ -223,6 +232,7 @@
   --line: rgba(141, 229, 219, 0.18);
   --inset-glint: rgba(194, 247, 238, 0.14);
   --kicker: #b8efe5;
+  --dialogue: oklch(0.85 0.06 75);
   --bg-base: #0a1418;
   --header-bg: rgba(10, 20, 24, 0.8);
   --chip-bg: rgba(13, 28, 32, 0.9);
