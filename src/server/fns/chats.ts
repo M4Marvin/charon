@@ -72,6 +72,22 @@ function pickDefaultReply(messageCount: number): string {
   return DEFAULT_REPLIES[messageCount % DEFAULT_REPLIES.length] ?? DEFAULT_REPLIES[0]!;
 }
 
+function resolveUserName(user: { id: string; name: string }): string {
+  try {
+    const settings = repoGetUserSettings(user.id);
+    if (settings?.defaultPersonaId) {
+      try {
+        return repoGetPersona(user.id, settings.defaultPersonaId).name;
+      } catch {
+        // Persona deleted — fall through to user.name
+      }
+    }
+  } catch {
+    // Settings not found — fall through to user.name
+  }
+  return user.name;
+}
+
 // ── Mapping helpers (DB row ↔ st-core ChatMessage) ───────────────────────────
 // IMPORTANT: st-core ChatMessage uses snake_case (parent_id, selected_child_id,
 // is_user, is_system); DB rows use camelCase. Always go through these helpers.
@@ -230,7 +246,7 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
     });
 
     // Insert every greeting as a child of the hidden root.
-    const macroEnv = { char: char.data.name, user: user.name };
+    const macroEnv = { char: char.data.name, user: resolveUserName(user) };
     greetingTexts.forEach((text, i) => {
       const localId = i + 1;
       repoInsertMessage(user.id, chatId, {
@@ -279,7 +295,7 @@ export const sendMessage = createServerFn({ method: "POST", strict: { output: fa
     const activeLeaf = getNode(tree, activeLeafId);
     const isDraft = (activeLeaf.extra?.isDraft ?? false) === true;
 
-    const macroEnv = { char: char.data.name, user: user.name };
+    const macroEnv = { char: char.data.name, user: resolveUserName(user) };
 
     if (isDraft) {
       // Draft case: populate the existing draft user message in place.
@@ -502,7 +518,7 @@ export const editMessage = createServerFn({ method: "POST", strict: { output: fa
 
     const chat = repoGetChat(user.id, data.chatId);
     const char: Character = repoGetChar(user.id, chat.characterId);
-    const macroEnv = { char: char.data.name, user: user.name };
+    const macroEnv = { char: char.data.name, user: resolveUserName(user) };
     const content = substituteMessageMacros(data.content, macroEnv);
 
     repoUpdateMessage(user.id, data.chatId, data.messageLocalId, { content });
@@ -651,7 +667,7 @@ export const prepareStreamMessage = createServerFn({
     const char: Character = repoGetChar(user.id, chat.characterId);
     const rows = repoListMessages(user.id, data.chatId);
     const tree = treeFromNodes(rows.map(rowToMessage));
-    const macroEnv = { char: char.data.name, user: user.name };
+    const macroEnv = { char: char.data.name, user: resolveUserName(user) };
 
     console.log("[prepareStream] start", {
       mode: data.mode,
@@ -838,7 +854,7 @@ export const finalizeStream = createServerFn({ method: "POST", strict: { output:
 
     const chat = repoGetChat(user.id, data.chatId);
     const char: Character = repoGetChar(user.id, chat.characterId);
-    const macroEnv = { char: char.data.name, user: user.name };
+    const macroEnv = { char: char.data.name, user: resolveUserName(user) };
     const content = substituteMessageMacros(data.content, macroEnv);
 
     repoUpdateMessage(user.id, data.chatId, data.messageLocalId, {
