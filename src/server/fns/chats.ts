@@ -39,6 +39,7 @@ import type { ChatMessage, ChatTree } from "@/lib/st-core/shared/types";
 import type { ChatCompletionPreset } from "@/lib/chat/types";
 import { buildChatPrompt } from "@/lib/chat/server-context";
 import { DEFAULT_PRESET } from "@/lib/chat/preset";
+import { substituteMessageMacros } from "@/lib/chat/substitute-message-macros";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import {
   addChild,
@@ -229,6 +230,7 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
     });
 
     // Insert every greeting as a child of the hidden root.
+    const macroEnv = { char: char.data.name, user: user.name };
     greetingTexts.forEach((text, i) => {
       const localId = i + 1;
       repoInsertMessage(user.id, chatId, {
@@ -239,7 +241,7 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
         selectedChildLocalId: null,
         role: "assistant",
         name: char.data.name,
-        content: text,
+        content: substituteMessageMacros(text, macroEnv),
         isUser: false,
         isSystem: false,
         extra: null,
@@ -277,6 +279,8 @@ export const sendMessage = createServerFn({ method: "POST", strict: { output: fa
     const activeLeaf = getNode(tree, activeLeafId);
     const isDraft = (activeLeaf.extra?.isDraft ?? false) === true;
 
+    const macroEnv = { char: char.data.name, user: user.name };
+
     if (isDraft) {
       // Draft case: populate the existing draft user message in place.
       // Build the reply first — the draft already exists in the tree, so
@@ -294,7 +298,7 @@ export const sendMessage = createServerFn({ method: "POST", strict: { output: fa
       };
       // 1) Set draft content + clear isDraft flag.
       repoUpdateMessage(user.id, data.chatId, activeLeafId, {
-        content: data.content,
+        content: substituteMessageMacros(data.content, macroEnv),
         extra: null,
       });
       // 2) Attach the reply as its child (auto-selects the reply).
@@ -329,7 +333,7 @@ export const sendMessage = createServerFn({ method: "POST", strict: { output: fa
       selected_child_id: null,
       role: "user",
       name: user.name,
-      content: data.content,
+      content: substituteMessageMacros(data.content, macroEnv),
       is_user: true,
       is_system: false,
     };
@@ -496,8 +500,13 @@ export const editMessage = createServerFn({ method: "POST", strict: { output: fa
       throw new Error("Cannot edit a draft message; send to populate it instead");
     }
 
-    repoUpdateMessage(user.id, data.chatId, data.messageLocalId, { content: data.content });
-    return { messageLocalId: data.messageLocalId, content: data.content };
+    const chat = repoGetChat(user.id, data.chatId);
+    const char: Character = repoGetChar(user.id, chat.characterId);
+    const macroEnv = { char: char.data.name, user: user.name };
+    const content = substituteMessageMacros(data.content, macroEnv);
+
+    repoUpdateMessage(user.id, data.chatId, data.messageLocalId, { content });
+    return { messageLocalId: data.messageLocalId, content };
   });
 
 export const impersonateMessage = createServerFn({ method: "POST", strict: { output: false } })
@@ -642,6 +651,7 @@ export const prepareStreamMessage = createServerFn({
     const char: Character = repoGetChar(user.id, chat.characterId);
     const rows = repoListMessages(user.id, data.chatId);
     const tree = treeFromNodes(rows.map(rowToMessage));
+    const macroEnv = { char: char.data.name, user: user.name };
 
     console.log("[prepareStream] start", {
       mode: data.mode,
@@ -662,7 +672,7 @@ export const prepareStreamMessage = createServerFn({
       if (isDraft) {
         // Populate draft, add placeholder as child
         repoUpdateMessage(user.id, data.chatId, activeLeafId, {
-          content,
+          content: substituteMessageMacros(content, macroEnv),
           extra: null,
         });
         const placeholder: ChatMessage = {
@@ -694,7 +704,7 @@ export const prepareStreamMessage = createServerFn({
           selected_child_id: null,
           role: "user",
           name: user.name,
-          content,
+          content: substituteMessageMacros(content, macroEnv),
           is_user: true,
           is_system: false,
         };
@@ -825,11 +835,17 @@ export const finalizeStream = createServerFn({ method: "POST", strict: { output:
     if ((existing.extra?.isStreaming ?? false) !== true) {
       throw new Error("Message is not a streaming placeholder");
     }
+
+    const chat = repoGetChat(user.id, data.chatId);
+    const char: Character = repoGetChar(user.id, chat.characterId);
+    const macroEnv = { char: char.data.name, user: user.name };
+    const content = substituteMessageMacros(data.content, macroEnv);
+
     repoUpdateMessage(user.id, data.chatId, data.messageLocalId, {
-      content: data.content,
+      content,
       extra: null,
     });
-    return { messageLocalId: data.messageLocalId, content: data.content };
+    return { messageLocalId: data.messageLocalId, content };
   });
 
 export const cancelStream = createServerFn({ method: "POST", strict: { output: false } })
