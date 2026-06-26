@@ -8,8 +8,10 @@ import {
   createCharacter as repoCreate,
   deleteCharacter as repoDelete,
   getCharacter as repoGet,
-  listCharacters as repoList,
+  getCharacterDetail as repoGetDetail,
+  listCharacterCards as repoListCards,
   updateCharacter as repoUpdate,
+  type CharacterDetail,
 } from "@/db/repositories/characters";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import { parseCharacterCard, validateCharacterCard } from "@/lib/st-core/character";
@@ -31,8 +33,13 @@ export type ImportResult =
 
 export type CharacterListItem = Pick<
   Character,
-  "id" | "name" | "spec" | "specVersion" | "imagePath" | "createdAt" | "updatedAt"
->;
+  "id" | "name" | "spec" | "specVersion" | "imagePath" | "tagline" | "createdAt" | "updatedAt"
+> & {
+  tags: string[];
+  creatorNotes: string;
+  creator: string;
+  chatCount: number;
+};
 
 // ── Validators (clean signatures, arktype under the hood) ───────────────────
 
@@ -69,15 +76,15 @@ function validateUpdateInput(data: unknown): { id: string; name: string } {
 export const listCharacters = createServerFn({ method: "GET" }).handler(
   async (): Promise<CharacterListItem[]> => {
     const { user } = await getSession();
-    return repoList(user.id).map(({ data: _data, ...rest }) => rest);
+    return repoListCards(user.id);
   },
 );
 
 export const getCharacter = createServerFn({ method: "GET", strict: { output: false } })
   .validator(validateIdInput)
-  .handler(async ({ data }): Promise<Character> => {
+  .handler(async ({ data }): Promise<CharacterDetail> => {
     const { user } = await getSession();
-    return repoGet(user.id, data.id);
+    return repoGetDetail(user.id, data.id);
   });
 
 export const importCharacter = createServerFn({ method: "POST" })

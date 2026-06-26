@@ -48,9 +48,10 @@ export function useUpdateCharacter() {
   return useMutation({
     mutationFn: (input: { id: string; name: string }): Promise<Character> =>
       updateCharacter({ data: input }),
-    onSuccess: (character) => {
+    onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: characterKeys.all });
-      queryClient.setQueryData<Character>(characterKeys.detail(character.id), character);
+      // Refetch the detail to get fresh stats (chatCount, messageCount)
+      void queryClient.invalidateQueries({ queryKey: characterKeys.detail(variables.id) });
     },
   });
 }

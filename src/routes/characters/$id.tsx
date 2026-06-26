@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Copy, MessageSquareText, Telescope } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -14,17 +13,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MarkdownContent } from "@/components/MarkdownContent";
+import { CharacterActions } from "@/components/character/CharacterActions";
+import { CharacterHero } from "@/components/character/CharacterHero";
+import { EmbeddedLorebookPanel } from "@/components/character/EmbeddedLorebookPanel";
+import type { CharacterDetail } from "@/db/repositories/characters";
 import { useCharacter, useDeleteCharacter, useUpdateCharacter } from "@/hooks/useCharacters";
-import type { Character } from "@/db/schema";
-import type { CharacterDataV2 } from "@/lib/st-core/character";
+import { useCreateChat } from "@/hooks/useChats";
 
 export const Route = createFileRoute("/characters/$id")({
   component: CharacterDetailPage,
@@ -35,7 +32,14 @@ function CharacterDetailPage() {
   const navigate = useNavigate();
   const { data: character, isLoading, error } = useCharacter(id);
   const deleteMutation = useDeleteCharacter();
+  const createChatMutation = useCreateChat();
   const [renameOpen, setRenameOpen] = useState(false);
+
+  const handleStartChat = async () => {
+    if (!character || createChatMutation.isPending) return;
+    const result = await createChatMutation.mutateAsync({ characterId: character.id });
+    void navigate({ to: "/chats/$id", params: { id: result.id } });
+  };
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
@@ -45,279 +49,329 @@ function CharacterDetailPage() {
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
-        <aside className="lg:sticky lg:top-20 lg:self-start">
-          {isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading...</p>
-          ) : error ? (
-            <p className="text-destructive text-sm">Failed to load: {error.message}</p>
-          ) : character ? (
-            <CharacterSidebar
-              character={character}
-              onRename={() => setRenameOpen(true)}
-              onDelete={() => {
-                if (window.confirm(`Delete character "${character.name}"?`)) {
-                  deleteMutation.mutate(
-                    { id: character.id },
-                    {
-                      onSuccess: () => void navigate({ to: "/characters" }),
-                    },
-                  );
-                }
-              }}
-              deletePending={deleteMutation.isPending}
-            />
-          ) : null}
-        </aside>
-
-        <div className="space-y-4">
-          {character ? <CharacterFields character={character} /> : null}
+      {isLoading ? (
+        <LoadingSkeleton />
+      ) : error ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3">
+          <p className="text-destructive text-sm">Failed to load: {error.message}</p>
         </div>
-      </div>
+      ) : character ? (
+        <div className="space-y-6">
+          <CharacterHero character={character} />
 
-      {character ? (
-        <RenameDialog
-          character={character}
-          open={renameOpen}
-          onClose={() => setRenameOpen(false)}
-        />
+          <CharacterActions
+            onStartChat={handleStartChat}
+            onRename={() => setRenameOpen(true)}
+            onDelete={() => {
+              if (window.confirm(`Delete character "${character.name}"?`)) {
+                deleteMutation.mutate(
+                  { id: character.id },
+                  { onSuccess: () => void navigate({ to: "/characters" }) },
+                );
+              }
+            }}
+            deletePending={deleteMutation.isPending}
+          />
+
+          <Separator />
+
+          <CharacterTabs character={character} />
+
+          <RenameDialog
+            character={character}
+            open={renameOpen}
+            onClose={() => setRenameOpen(false)}
+          />
+        </div>
       ) : null}
     </main>
   );
 }
 
-function CharacterSidebar({
-  character,
-  onRename,
-  onDelete,
-  deletePending,
-}: {
-  character: Character;
-  onRename: () => void;
-  onDelete: () => void;
-  deletePending: boolean;
-}) {
+function CharacterTabs({ character }: { character: CharacterDetail }) {
   const data = character.data;
-  const hasAvatar = Boolean(character.imagePath);
+  const tabs = buildTabs(data);
 
   return (
-    <div className="space-y-4">
-      {hasAvatar ? (
-        <img
-          src={`/api/characters/${character.id}/avatar`}
-          alt={character.name}
-          className="aspect-square w-full rounded-lg object-cover"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-          }}
-        />
-      ) : (
-        <div className="bg-muted aspect-square w-full rounded-lg" />
-      )}
+    <Tabs defaultValue="overview">
+      <TabsList variant="line" className="w-full justify-start gap-0 overflow-x-auto">
+        {tabs.map((tab) => (
+          <TabsTrigger key={tab.id} value={tab.id} disabled={tab.disabled}>
+            {tab.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
 
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{character.name}</h1>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <Badge variant="secondary">{character.spec}</Badge>
-          <Badge variant="outline">v{character.specVersion}</Badge>
-          {data.character_version ? (
-            <Badge variant="outline">card {data.character_version}</Badge>
+      <TabsContent value="overview" className="mt-6">
+        <div className="space-y-6">
+          <SectionWithCopy title="Description">
+            <MarkdownContent content={data.description} />
+          </SectionWithCopy>
+
+          {data.creator_notes ? (
+            <SectionWithCopy title="Creator Notes">
+              <MarkdownContent content={data.creator_notes} />
+            </SectionWithCopy>
           ) : null}
-          {data.creator ? <Badge variant="outline">by {data.creator}</Badge> : null}
+
+          {data.extensions.depth_prompt ? (
+            <SectionWithCopy title="Depth Prompt">
+              <div className="flex items-center gap-2 mb-3">
+                <Badge variant="secondary" className="text-xs font-normal">
+                  role: {data.extensions.depth_prompt.role}
+                </Badge>
+                <Badge variant="outline" className="text-xs font-normal">
+                  depth: {data.extensions.depth_prompt.depth}
+                </Badge>
+              </div>
+              <MarkdownContent content={data.extensions.depth_prompt.prompt} />
+            </SectionWithCopy>
+          ) : null}
+
+          <MetadataGrid character={character} />
         </div>
-        {data.tags.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {data.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="text-xs">
-                {tag}
-              </Badge>
-            ))}
+      </TabsContent>
+
+      <TabsContent value="personality" className="mt-6">
+        <SectionWithCopy title="Personality">
+          <MarkdownContent content={data.personality} />
+        </SectionWithCopy>
+      </TabsContent>
+
+      <TabsContent value="scenario" className="mt-6">
+        <SectionWithCopy title="Scenario">
+          <MarkdownContent content={data.scenario} />
+        </SectionWithCopy>
+      </TabsContent>
+
+      <TabsContent value="first-message" className="mt-6">
+        <div className="space-y-6">
+          <SectionWithCopy title="First Message">
+            <MarkdownContent content={data.first_mes} />
+          </SectionWithCopy>
+
+          {data.alternate_greetings.length > 0 ? (
+            <SectionWithCopy
+              title="Alternate Greetings"
+              showCount={data.alternate_greetings.length}
+            >
+              <div className="space-y-3">
+                {data.alternate_greetings.map((greeting, i) => (
+                  <div key={i} className="bg-muted/40 rounded-md border p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge variant="secondary" className="text-[11px] font-normal">
+                        #{i + 1}
+                      </Badge>
+                      <CopyButton text={greeting} />
+                    </div>
+                    <MarkdownContent content={greeting} />
+                  </div>
+                ))}
+              </div>
+            </SectionWithCopy>
+          ) : null}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="example-messages" className="mt-6">
+        <SectionWithCopy title="Example Messages">
+          <MarkdownContent content={data.mes_example} />
+        </SectionWithCopy>
+      </TabsContent>
+
+      <TabsContent value="prompts" className="mt-6">
+        <div className="space-y-6">
+          <SectionWithCopy title="System Prompt">
+            <MarkdownContent content={data.system_prompt} />
+          </SectionWithCopy>
+          <SectionWithCopy title="Post-History Instructions">
+            <MarkdownContent content={data.post_history_instructions} />
+          </SectionWithCopy>
+        </div>
+      </TabsContent>
+
+      <TabsContent value="lorebook" className="mt-6">
+        {data.character_book ? (
+          <EmbeddedLorebookPanel book={data.character_book} />
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            This character card has no embedded lorebook.
+          </p>
+        )}
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+interface TabDef {
+  id: string;
+  label: string;
+  disabled: boolean;
+}
+
+function buildTabs(data: CharacterDetail["data"]): TabDef[] {
+  return [
+    { id: "overview", label: "Overview", disabled: !data.description && !data.creator_notes },
+    { id: "personality", label: "Personality", disabled: !data.personality },
+    { id: "scenario", label: "Scenario", disabled: !data.scenario },
+    {
+      id: "first-message",
+      label: "First Message",
+      disabled: !data.first_mes && data.alternate_greetings.length === 0,
+    },
+    { id: "example-messages", label: "Example Messages", disabled: !data.mes_example },
+    {
+      id: "prompts",
+      label: "Prompts",
+      disabled: !data.system_prompt && !data.post_history_instructions,
+    },
+    { id: "lorebook", label: "Lorebook", disabled: !data.character_book },
+  ];
+}
+
+function SectionWithCopy({
+  title,
+  children,
+  showCount,
+}: {
+  title: string;
+  children: React.ReactNode;
+  showCount?: number;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-base font-semibold">
+          {title}
+          {showCount !== undefined ? (
+            <span className="text-muted-foreground font-normal text-sm ml-2">({showCount})</span>
+          ) : null}
+        </h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="size-7"
+      onClick={handleCopy}
+      aria-label={copied ? "Copied" : "Copy to clipboard"}
+    >
+      {copied ? (
+        <span className="text-green-500 text-[10px] font-medium">✓</span>
+      ) : (
+        <Copy className="size-3.5" />
+      )}
+    </Button>
+  );
+}
+
+function MetadataGrid({ character }: { character: CharacterDetail }) {
+  const data = character.data;
+
+  const rows: { label: string; value: string; icon?: React.ReactNode }[] = [
+    { label: "Spec", value: `${character.spec} v${character.specVersion}` },
+    ...(data.creator ? [{ label: "Creator", value: data.creator }] : []),
+    ...(data.character_version ? [{ label: "Card Version", value: data.character_version }] : []),
+    ...(data.extensions.world
+      ? [{ label: "World", value: data.extensions.world, icon: <Telescope className="size-3.5" /> }]
+      : []),
+    ...(data.extensions.talkativeness !== undefined
+      ? [
+          {
+            label: "Talkativeness",
+            value: String(data.extensions.talkativeness),
+            icon: <MessageSquareText className="size-3.5" />,
+          },
+        ]
+      : []),
+    {
+      label: "Created",
+      value: character.createdAt.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    },
+    {
+      label: "Updated",
+      value: character.updatedAt.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    },
+    ...(data.tags.length > 0
+      ? [{ label: "Tags", value: data.tags.map((t) => `#${t}`).join(", ") }]
+      : []),
+  ];
+
+  return (
+    <div className="rounded-lg border bg-muted/30">
+      <div className="px-4 py-3 border-b">
+        <h3 className="text-base font-semibold">Metadata</h3>
+      </div>
+      <div className="divide-y">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-baseline gap-3 px-4 py-2.5 text-sm">
+            <span className="text-muted-foreground shrink-0 w-28 flex items-center gap-1.5">
+              {row.icon}
+              {row.label}
+            </span>
+            <span className="text-foreground break-all">{row.value}</span>
           </div>
-        ) : null}
-        {data.extensions.world ? (
-          <p className="text-muted-foreground mt-3 text-xs">
-            World: <span className="text-foreground">{data.extensions.world}</span>
-          </p>
-        ) : null}
-        {data.extensions.talkativeness !== undefined ? (
-          <p className="text-muted-foreground text-xs">
-            Talkativeness: <span className="text-foreground">{data.extensions.talkativeness}</span>
-          </p>
-        ) : null}
-      </div>
-
-      <div className="text-muted-foreground space-y-0.5 text-xs">
-        <p>
-          Created: <span className="text-foreground">{formatDate(character.createdAt)}</span>
-        </p>
-        <p>
-          Updated: <span className="text-foreground">{formatDate(character.updatedAt)}</span>
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <Button onClick={onRename} variant="outline" size="sm">
-          Rename
-        </Button>
-        <Button onClick={onDelete} variant="destructive" size="sm" disabled={deletePending}>
-          {deletePending ? "Deleting..." : "Delete"}
-        </Button>
+        ))}
       </div>
     </div>
   );
 }
 
-function CharacterFields({ character }: { character: Character }) {
-  const data = character.data;
-
+function LoadingSkeleton() {
   return (
-    <>
-      <TextFieldCard title="Description" content={data.description} />
-      <TextFieldCard title="Personality" content={data.personality} />
-      <TextFieldCard title="Scenario" content={data.scenario} />
-      <TextFieldCard title="First Message" content={data.first_mes} />
-
-      {data.alternate_greetings.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Alternate Greetings</CardTitle>
-            <CardDescription>
-              {data.alternate_greetings.length} alternative opener
-              {data.alternate_greetings.length === 1 ? "" : "s"}.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {data.alternate_greetings.map((greeting, i) => (
-              <div
-                key={i}
-                className="bg-muted/40 rounded-md border p-3 text-sm whitespace-pre-wrap"
-              >
-                <p className="text-muted-foreground mb-1 text-xs">#{i + 1}</p>
-                {greeting}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <TextFieldCard title="Example Messages" content={data.mes_example} />
-      <TextFieldCard title="Creator Notes" content={data.creator_notes} />
-      <TextFieldCard title="System Prompt" content={data.system_prompt} />
-      <TextFieldCard title="Post-History Instructions" content={data.post_history_instructions} />
-
-      {data.extensions.depth_prompt ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Depth Prompt</CardTitle>
-            <CardDescription>
-              role: {data.extensions.depth_prompt.role} · depth:{" "}
-              {data.extensions.depth_prompt.depth}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <pre className="text-sm whitespace-pre-wrap">{data.extensions.depth_prompt.prompt}</pre>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {data.character_book ? <EmbeddedLorebookCard book={data.character_book} /> : null}
-    </>
-  );
-}
-
-function TextFieldCard({ title, content }: { title: string; content: string }) {
-  if (!content) return null;
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm whitespace-pre-wrap">{content}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function EmbeddedLorebookCard({ book }: { book: NonNullable<CharacterDataV2["character_book"]> }) {
-  const entries = book.entries ?? [];
-
-  return (
-    <Card>
-      <Collapsible>
-        <CardHeader>
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="hover:bg-muted/40 -mx-2 flex w-[calc(100%+1rem)] items-center justify-between rounded-md px-2 py-1 text-left transition-colors"
-            >
-              <div>
-                <CardTitle>{book.name || "Embedded Lorebook"}</CardTitle>
-                {book.description ? (
-                  <CardDescription className="line-clamp-1">{book.description}</CardDescription>
-                ) : null}
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">
-                  {entries.length} {entries.length === 1 ? "entry" : "entries"}
-                </Badge>
-                {book.scan_depth !== undefined ? (
-                  <Badge variant="outline">scan {book.scan_depth}</Badge>
-                ) : null}
-                {book.recursive_scanning ? <Badge variant="outline">recursive</Badge> : null}
-                <span className="text-muted-foreground text-xs">▾</span>
-              </div>
-            </button>
-          </CollapsibleTrigger>
-        </CardHeader>
-        <CollapsibleContent>
-          <CardContent>
-            {entries.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No entries in this embedded book.</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Comment</TableHead>
-                    <TableHead>Keys</TableHead>
-                    <TableHead>Content</TableHead>
-                    <TableHead className="w-20">Pos</TableHead>
-                    <TableHead className="w-16">On</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {entries.map((entry, i) => (
-                    <TableRow key={entry.id ?? i}>
-                      <TableCell className="line-clamp-1 max-w-xs">
-                        {entry.comment || entry.name || (
-                          <span className="text-muted-foreground italic">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {entry.keys.join(", ") || (
-                          <span className="text-muted-foreground italic">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground line-clamp-2 max-w-md text-xs">
-                        {entry.content}
-                      </TableCell>
-                      <TableCell className="text-xs">{entry.position ?? "—"}</TableCell>
-                      <TableCell>
-                        {entry.enabled === false ? (
-                          <Badge variant="outline">off</Badge>
-                        ) : (
-                          <Badge>on</Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+    <div className="space-y-6 animate-pulse">
+      <div className="flex flex-col sm:flex-row gap-6">
+        <div className="w-60 aspect-[3/4] rounded-xl bg-muted shrink-0" />
+        <div className="flex-1 space-y-4 py-2">
+          <div className="h-8 bg-muted rounded w-48" />
+          <div className="h-4 bg-muted rounded w-72" />
+          <div className="flex gap-2">
+            <div className="h-5 bg-muted rounded w-16" />
+            <div className="h-5 bg-muted rounded w-16" />
+            <div className="h-5 bg-muted rounded w-16" />
+          </div>
+          <div className="h-4 bg-muted rounded w-40" />
+        </div>
+      </div>
+      <div className="h-px bg-border" />
+      <div className="flex gap-3">
+        <div className="h-9 bg-muted rounded w-28" />
+        <div className="h-9 bg-muted rounded w-20" />
+        <div className="h-9 bg-muted rounded w-20" />
+      </div>
+      <div className="h-px bg-border" />
+      <div className="space-y-4">
+        <div className="h-6 bg-muted rounded w-40" />
+        <div className="space-y-2">
+          <div className="h-4 bg-muted rounded w-full" />
+          <div className="h-4 bg-muted rounded w-3/4" />
+          <div className="h-4 bg-muted rounded w-5/6" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -326,7 +380,7 @@ function RenameDialog({
   open,
   onClose,
 }: {
-  character: Character;
+  character: CharacterDetail;
   open: boolean;
   onClose: () => void;
 }) {
@@ -396,12 +450,4 @@ function RenameDialog({
       </DialogContent>
     </Dialog>
   );
-}
-
-function formatDate(d: Date): string {
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }

@@ -1,7 +1,22 @@
-import { and, eq } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 import { db as defaultDb, type DB } from "@/db";
-import { characters, type Character, type NewCharacter } from "@/db/schema";
+import { characters, chatMessages, chats, type Character, type NewCharacter } from "@/db/schema";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
+
+export type CharacterCardItem = Pick<
+  Character,
+  "id" | "name" | "spec" | "specVersion" | "imagePath" | "tagline" | "createdAt" | "updatedAt"
+> & {
+  tags: string[];
+  creatorNotes: string;
+  creator: string;
+  chatCount: number;
+};
+
+export type CharacterDetail = Character & {
+  chatCount: number;
+  totalMessageCount: number;
+};
 
 export type CreateCharacterInput = {
   id: string;
@@ -9,10 +24,39 @@ export type CreateCharacterInput = {
   name: string;
   data: CharacterDataV2;
   imagePath?: string | null;
+  tagline?: string | null;
 };
 
 export function listCharacters(userId: string, db: DB = defaultDb): Character[] {
   return db.select().from(characters).where(eq(characters.userId, userId)).all();
+}
+
+export function listCharacterCards(userId: string, db: DB = defaultDb): CharacterCardItem[] {
+  const rows = db
+    .select({
+      character: characters,
+      chatCount: count(chats.id),
+    })
+    .from(characters)
+    .leftJoin(chats, eq(chats.characterId, characters.id))
+    .where(eq(characters.userId, userId))
+    .groupBy(characters.id)
+    .orderBy(desc(characters.updatedAt))
+    .all();
+  return rows.map((r) => ({
+    id: r.character.id,
+    name: r.character.name,
+    spec: r.character.spec,
+    specVersion: r.character.specVersion,
+    imagePath: r.character.imagePath,
+    tagline: r.character.tagline,
+    createdAt: r.character.createdAt,
+    updatedAt: r.character.updatedAt,
+    tags: r.character.data.tags,
+    creatorNotes: r.character.data.creator_notes,
+    creator: r.character.data.creator,
+    chatCount: r.chatCount,
+  }));
 }
 
 export function getCharacter(userId: string, id: string, db: DB = defaultDb): Character {
@@ -25,6 +69,28 @@ export function getCharacter(userId: string, id: string, db: DB = defaultDb): Ch
   return row;
 }
 
+export function getCharacterDetail(
+  userId: string,
+  id: string,
+  db: DB = defaultDb,
+): CharacterDetail {
+  const row = db
+    .select({
+      character: characters,
+      chatCount: sql<number>`count(distinct ${chats.id})`.as("chatCount"),
+      totalMessageCount: sql<number>`count(${chatMessages.localId})`.as("totalMessageCount"),
+    })
+    .from(characters)
+    .leftJoin(chats, eq(chats.characterId, characters.id))
+    .leftJoin(chatMessages, eq(chatMessages.chatId, chats.id))
+    .where(and(eq(characters.id, id), eq(characters.userId, userId)))
+    .groupBy(characters.id)
+    .get();
+
+  if (!row) throw new Error("Character not found");
+  return { ...row.character, chatCount: row.chatCount, totalMessageCount: row.totalMessageCount };
+}
+
 export function createCharacter(input: CreateCharacterInput, db: DB = defaultDb): Character {
   const now = new Date();
   const row = db
@@ -35,6 +101,7 @@ export function createCharacter(input: CreateCharacterInput, db: DB = defaultDb)
       name: input.name,
       data: input.data,
       imagePath: input.imagePath ?? null,
+      tagline: input.tagline ?? null,
       createdAt: now,
       updatedAt: now,
     })
@@ -47,7 +114,9 @@ export function createCharacter(input: CreateCharacterInput, db: DB = defaultDb)
 export function updateCharacter(
   userId: string,
   id: string,
-  patch: Partial<Pick<NewCharacter, "name" | "data" | "spec" | "specVersion" | "imagePath">>,
+  patch: Partial<
+    Pick<NewCharacter, "name" | "data" | "spec" | "specVersion" | "imagePath" | "tagline">
+  >,
   db: DB = defaultDb,
 ): Character {
   const row = db
