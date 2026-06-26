@@ -132,6 +132,7 @@ export type ChatDetail = {
   providerId: string | null;
   presetId: string | null;
   selectedModel: string | null;
+  backgroundPath: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -169,6 +170,7 @@ export const getChat = createServerFn({ method: "GET", strict: { output: false }
       providerId: chat.providerId,
       presetId: chat.presetId,
       selectedModel: chat.selectedModel,
+      backgroundPath: chat.backgroundPath ?? null,
       createdAt: chat.createdAt,
       updatedAt: chat.updatedAt,
     };
@@ -253,6 +255,7 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
       providerId: chat.providerId,
       presetId: chat.presetId,
       selectedModel: chat.selectedModel,
+      backgroundPath: chat.backgroundPath ?? null,
       createdAt: chat.createdAt,
       updatedAt: chat.updatedAt,
     };
@@ -859,6 +862,7 @@ export const updateChatSettings = createServerFn({ method: "POST", strict: { out
     if (data.providerId !== undefined) patch.providerId = data.providerId;
     if (data.presetId !== undefined) patch.presetId = data.presetId;
     if (data.selectedModel !== undefined) patch.selectedModel = data.selectedModel;
+    if (data.backgroundPath !== undefined) patch.backgroundPath = data.backgroundPath;
     repoUpdateChat(user.id, data.id, patch);
     return { id: data.id };
   });

@@ -73,6 +73,7 @@ export const UpdateChatSettings = Schema.Struct({
   providerId: NullableOptionalString,
   presetId: NullableOptionalString,
   selectedModel: NullableOptionalString,
+  backgroundPath: NullableOptionalString,
 });
 
 export const UpdateUserSettings = Schema.Struct({

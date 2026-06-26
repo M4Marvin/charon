@@ -141,7 +141,9 @@ export function updateMessage(
 export function updateChat(
   userId: string,
   id: string,
-  patch: Partial<Pick<Chat, "providerId" | "presetId" | "selectedModel" | "title">>,
+  patch: Partial<
+    Pick<Chat, "providerId" | "presetId" | "selectedModel" | "title" | "backgroundPath">
+  >,
   db: DB = defaultDb,
 ): Chat {
   const existing = getChat(userId, id, db);
@@ -150,6 +152,7 @@ export function updateChat(
   if (patch.presetId !== undefined) updates.presetId = patch.presetId;
   if (patch.selectedModel !== undefined) updates.selectedModel = patch.selectedModel;
   if (patch.title !== undefined) updates.title = patch.title;
+  if (patch.backgroundPath !== undefined) updates.backgroundPath = patch.backgroundPath;
   const row = db
     .update(chats)
     .set(updates)

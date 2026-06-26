@@ -20,6 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAiProviders } from "@/hooks/useAiProviders";
@@ -60,91 +68,94 @@ import type { LorebookListItem } from "@/server/fns/lorebooks";
 import { useUpdateChatSettings } from "@/hooks/useChats";
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import type { ChatDetail } from "@/server/fns/chats";
+import { useBackgrounds, useUploadBackground, useDeleteBackground } from "@/hooks/useBackgrounds";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ChatSettingsPanelProps {
   chat: ChatDetail;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onDeleteChat?: () => void;
 }
 
-export function ChatSettingsPanel({ chat, onClose, onDeleteChat }: ChatSettingsPanelProps) {
+export function ChatSettingsPanel({
+  chat,
+  open,
+  onOpenChange,
+  onDeleteChat,
+}: ChatSettingsPanelProps) {
   const [activeTab, setActiveTab] = useState("ai");
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
 
   return (
-    <div className="fixed inset-0 z-40">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="flex flex-col sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Chat Settings</SheetTitle>
+          <SheetDescription>Configure AI, lorebooks, persona, and prompts.</SheetDescription>
+        </SheetHeader>
 
-      {/* Panel */}
-      <div className="bg-popover text-popover-foreground border-border/60 absolute inset-[10vh_10vw] flex flex-col rounded-lg border shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between rounded-t-lg border-b px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-xs" aria-hidden>
-              ⠿
-            </span>
-            <span className="text-sm font-semibold">Chat Settings</span>
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex min-h-0 flex-1 flex-col pt-4"
+        >
+          <TabsList className="w-full shrink-0">
+            <TabsTrigger value="ai" className="text-xs flex-1">
+              AI
+            </TabsTrigger>
+            <TabsTrigger value="lorebooks" className="text-xs flex-1">
+              Lorebooks
+            </TabsTrigger>
+            <TabsTrigger value="persona" className="text-xs flex-1">
+              Persona
+            </TabsTrigger>
+            <TabsTrigger value="prompts" className="text-xs flex-1">
+              Prompts
+            </TabsTrigger>
+            <TabsTrigger value="scene" className="text-xs flex-1">
+              Scene
+            </TabsTrigger>
+          </TabsList>
+          <div className="relative min-h-0 flex-1">
+            {activeTab === "ai" && (
+              <div className="absolute inset-0 overflow-y-auto p-4">
+                <AiSection chat={chat} />
+              </div>
+            )}
+            {activeTab === "lorebooks" && (
+              <div className="absolute inset-0 overflow-y-auto p-4">
+                <LorebooksSection />
+              </div>
+            )}
+            {activeTab === "persona" && (
+              <div className="absolute inset-0 overflow-y-auto p-4">
+                <PersonaSection />
+              </div>
+            )}
+            {activeTab === "prompts" && (
+              <div className="absolute inset-0 overflow-y-auto p-4">
+                <PromptsSection />
+              </div>
+            )}
+            {activeTab === "scene" && (
+              <div className="absolute inset-0 overflow-y-auto p-4">
+                <SceneSection chat={chat} />
+              </div>
+            )}
           </div>
-          <Button size="sm" variant="ghost" onClick={onClose} aria-label="Close settings">
-            ✕
-          </Button>
-        </div>
-
-        {/* Tabbed body */}
-        <div className="flex min-h-0 flex-1 flex-col">
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            <TabsList className="mx-3 mt-2 w-auto shrink-0">
-              <TabsTrigger value="ai" className="text-xs">
-                AI
-              </TabsTrigger>
-              <TabsTrigger value="lorebooks" className="text-xs">
-                Lorebooks
-              </TabsTrigger>
-              <TabsTrigger value="persona" className="text-xs">
-                Persona
-              </TabsTrigger>
-              <TabsTrigger value="prompts" className="text-xs">
-                Prompts
-              </TabsTrigger>
-            </TabsList>
-            <div className="relative min-h-0 flex-1">
-              {activeTab === "ai" && (
-                <div className="absolute inset-0 overflow-y-auto p-4">
-                  <AiSection chat={chat} />
-                </div>
-              )}
-              {activeTab === "lorebooks" && (
-                <div className="absolute inset-0 overflow-y-auto p-4">
-                  <LorebooksSection />
-                </div>
-              )}
-              {activeTab === "persona" && (
-                <div className="absolute inset-0 overflow-y-auto p-4">
-                  <PersonaSection />
-                </div>
-              )}
-              {activeTab === "prompts" && (
-                <div className="absolute inset-0 overflow-y-auto p-4">
-                  <PromptsSection />
-                </div>
-              )}
-            </div>
-          </Tabs>
-        </div>
+        </Tabs>
 
         {onDeleteChat && (
-          <div className="shrink-0 border-t px-4 py-3">
+          <SheetFooter>
             <Button
               variant="ghost"
               size="sm"
@@ -153,9 +164,129 @@ export function ChatSettingsPanel({ chat, onClose, onDeleteChat }: ChatSettingsP
             >
               Delete this chat
             </Button>
-          </div>
+          </SheetFooter>
         )}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ── Scene section ───────────────────────────────────────────────────────────
+
+function SceneSection({ chat }: { chat: ChatDetail }) {
+  const { data: backgrounds = [] } = useBackgrounds();
+  const updateSettings = useUpdateChatSettings();
+  const upload = useUploadBackground();
+  const deleteBg = useDeleteBackground();
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const selectedId = chat.backgroundPath ?? "";
+  const handleSelect = (id: string | null) => {
+    updateSettings.mutate({ id: chat.id, backgroundPath: id });
+  };
+
+  const handleUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1] ?? "";
+      upload.mutate({ name: file.name, fileBase64: base64 });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-muted-foreground text-xs">Set a background scene for this chat.</p>
+
+      {selectedId ? (
+        <Button variant="outline" size="sm" className="w-full" onClick={() => handleSelect(null)}>
+          Clear background
+        </Button>
+      ) : (
+        <p className="text-muted-foreground text-xs text-center">No background set</p>
+      )}
+
+      {backgrounds.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {backgrounds.map((bg) => (
+            <div key={bg.id} className="group relative">
+              <img
+                src={`/api/backgrounds/${bg.id}/image`}
+                alt={bg.name}
+                className={`aspect-video w-full rounded-lg object-cover cursor-pointer border-2 transition-all ${
+                  selectedId === bg.id
+                    ? "border-[var(--lagoon)] ring-1 ring-[var(--lagoon)]"
+                    : "border-transparent hover:border-white/20"
+                }`}
+                onClick={() => handleSelect(selectedId === bg.id ? null : bg.id)}
+              />
+              <button
+                className="absolute top-0.5 right-0.5 size-5 rounded-full bg-background/80 flex items-center justify-center text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteTarget(bg.id);
+                }}
+                aria-label={`Delete ${bg.name}`}
+              >
+                ✕
+              </button>
+              <p className="text-muted-foreground mt-0.5 truncate text-[10px]">{bg.name}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleUpload}
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          disabled={upload.isPending}
+          onClick={() => fileRef.current?.click()}
+        >
+          {upload.isPending ? "Uploading..." : "Upload background"}
+        </Button>
       </div>
+
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete background?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this background. Chats using it will revert to the
+              default look.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (deleteTarget) {
+                  deleteBg.mutate({ id: deleteTarget });
+                  setDeleteTarget(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -156,6 +156,7 @@ export function useUpdateChatSettings() {
       providerId?: string | null;
       presetId?: string | null;
       selectedModel?: string | null;
+      backgroundPath?: string | null;
     }): Promise<{ id: string }> => updateChatSettings({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.detail(variables.id) });

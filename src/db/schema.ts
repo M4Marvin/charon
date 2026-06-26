@@ -102,6 +102,7 @@ export const characters = sqliteTable(
     spec: text("spec").notNull().default("chara_card_v2"),
     specVersion: text("spec_version").notNull().default("2.0"),
     imagePath: text("image_path"),
+    tagline: text("tagline"),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -269,6 +270,24 @@ export const chatMessages = sqliteTable(
     primaryKey({ columns: [table.chatId, table.localId] }),
     index("chat_messages_chat_id_idx").on(table.chatId),
   ],
+);
+
+export const backgrounds = sqliteTable(
+  "backgrounds",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    path: text("path").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [index("backgrounds_user_id_idx").on(table.userId)],
 );
 
 export const aiProviders = sqliteTable(
@@ -502,3 +521,5 @@ export type AiProvider = typeof aiProviders.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type NewUserSettings = typeof userSettings.$inferInsert;
 export type NewAiProvider = typeof aiProviders.$inferInsert;
+export type Background = typeof backgrounds.$inferSelect;
+export type NewBackground = typeof backgrounds.$inferInsert;
