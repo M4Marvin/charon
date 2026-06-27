@@ -45,9 +45,131 @@
   animation: var(--animate-msg-in);
 }
 
-.rt-dialogue {
+/* ── Message text (parity with SillyTavern .mes_text) ── */
+
+.rt-mes-text p {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.rt-mes-text p:last-child {
+  margin-bottom: 0;
+}
+
+.rt-mes-text li tt {
+  display: inline-block;
+}
+
+.rt-mes-text ol,
+.rt-mes-text ul {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+.rt-mes-text br {
+  content: " ";
+}
+
+.rt-mes-text i,
+.rt-mes-text em {
+  color: var(--rt-em-color);
+}
+
+.rt-mes-text q i,
+.rt-mes-text q em {
+  color: inherit;
+}
+
+.rt-mes-text u {
+  color: var(--rt-underline-color);
+}
+
+.rt-mes-text q {
   color: var(--dialogue);
 }
+
+.rt-mes-text q::before,
+.rt-mes-text q::after {
+  content: none;
+}
+
+.rt-mes-text font[color] em,
+.rt-mes-text font[color] i,
+.rt-mes-text font[color] u,
+.rt-mes-text font[color] q {
+  color: inherit;
+}
+
+.rt-mes-text rp {
+  display: block;
+}
+
+.rt-mes-text blockquote {
+  border-left: 3px solid var(--dialogue);
+  padding-left: 10px;
+  background-color: oklch(0 0 0 / 0.3);
+  margin: 0;
+}
+
+.rt-mes-text strong em,
+.rt-mes-text strong,
+.rt-mes-text h2,
+.rt-mes-text h1 {
+  font-weight: bold;
+}
+
+.rt-mes-text pre code {
+  position: relative;
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+}
+
+.rt-mes-text img:not(.mes_img) {
+  max-width: 100%;
+  max-height: 70vh;
+}
+
+.rt-mes-text table {
+  border-spacing: 0;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+.rt-mes-text td,
+.rt-mes-text th {
+  border: 1px solid;
+  border-collapse: collapse;
+  padding: 0.25em;
+}
+
+/* ── Code copy button ── */
+
+.code-copy-wrapper {
+  position: relative;
+}
+
+.code-copy-button {
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
+  padding: 0.25em 0.5em;
+  font-size: 0.75em;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.code-copy-wrapper:hover .code-copy-button,
+.code-copy-button:focus-visible {
+  opacity: 1;
+}
+
+/* ── Custom variants ── */
 
 @custom-variant data-open {
   &:where([data-state="open"]),
@@ -177,6 +299,8 @@
   --inset-glint: rgba(194, 247, 238, 0.14);
   --kicker: #b8efe5;
   --dialogue: oklch(0.85 0.06 75);
+  --rt-em-color: oklch(0.73 0.14 65);
+  --rt-underline-color: oklch(0.72 0.06 190);
   --bg-base: #0a1418;
   --header-bg: rgba(10, 20, 24, 0.8);
   --chip-bg: rgba(13, 28, 32, 0.9);
@@ -233,6 +357,8 @@
   --inset-glint: rgba(194, 247, 238, 0.14);
   --kicker: #b8efe5;
   --dialogue: oklch(0.85 0.06 75);
+  --rt-em-color: oklch(0.73 0.14 65);
+  --rt-underline-color: oklch(0.72 0.06 190);
   --bg-base: #0a1418;
   --header-bg: rgba(10, 20, 24, 0.8);
   --chip-bg: rgba(13, 28, 32, 0.9);

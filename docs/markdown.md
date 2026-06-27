@@ -1,6 +1,6 @@
 # Markdown Rendering System
 
-Full-stack markdown + HTML rendering pipeline for chat messages and character content. Replaces the original streamdown renderer with showdown + DOMPurify, adds VN-style dialogue highlighting, CSS sandboxing, streaming-safe DOM patching via morphdom, and a per-user settings panel.
+Full-stack markdown + HTML rendering pipeline for chat messages and character content. Uses showdown + DOMPurify with pre-showdown `<q>` quote wrapping (ported from SillyTavern), `fixMarkdown` auto-repair, CSS sandboxing with `custom-` class namespacing, streaming-safe DOM patching via morphdom, code copy buttons, and a per-user settings panel.
 
 ---
 
@@ -9,33 +9,37 @@ Full-stack markdown + HTML rendering pipeline for chat messages and character co
 ```
 Raw markdown string
   │
-  ├─ balanceMarkdown()      — streams: close unpaired **, `, ```, ~~~
+  ├─ fixMarkdown()            — repair broken **/__ spacing + unpaired * / "
+  │
+  ├─ wrapQuotes()             — wrap "…" / “…” / «…» / 「…」 / 『…』 / ＂…＂ in <q>
+  │                             (pre-showdown — protects code blocks + <style>)
   │
   ▼
-showdown.Converter          — GFM, emoji, tables, line breaks
+showdown.Converter            — GFM, emoji, tables, line breaks, underscore ext
+  │
+  ├─ Firefox <br> fix         — stash/restore \n inside <code> via \x00 pass
   │
   ▼
-<style> extraction          — scopeCss() via @adobe/css-tools
+<style> extraction            — scopeCss() via @adobe/css-tools
+  │  ▲ (class selectors namespaced to custom-*)
   │
   ▼
-DOMPurify.sanitize()        — blocks XSS, forbids tags per settings
+DOMPurify.sanitize()          — MESSAGE_SANITIZE: class→custom-*, XSS harden, br in unknown els
+  │
+  ├─ element-level media block — removes nodes with external src/srcset/data (not just attrs)
   │
   ▼
-highlightDialogue()         — DOM walk, wraps "..." in <span>
+addCopyToCodeBlocks()         — injects hover-reveal "Copy" button on <pre><code>
   │
   ▼
-<style> re-injection        — scoped CSS prepended (after sanitize)
-  │         ▲
-  │   scopeCss() ───────────────── scoped to .rt-<useId>
+<style> re-injection          — scoped, namespaced CSS prepended (after sanitize)
   │
   ▼
-RichText — morphdom patch   — childrenOnly, fade-in, isEqualNode skip
+RichText — morphdom patch     — childrenOnly, fade-in, isEqualNode skip
   │
   ▼
-DOM in bubble / detail page
+DOM in bubble / detail page   — .rt-mes-text class provides ST-parity styling
 ```
-
-**Key invariant:** CSS is extracted *before* sanitize, scoped via a full AST parse+stringify pass, and re-injected *after* sanitize. The resulting `<style>` tag contains only parser-normalized, selector-scoped CSS — never raw user input.
 
 ---
 
@@ -43,18 +47,17 @@ DOM in bubble / detail page
 
 | File | Role |
 |---|---|
-| `src/lib/markdown.ts` | showdown converter, DOMPurify hooks, CSS scoping, dialogue highlighting, `renderMarkdown()`, `balanceMarkdown()` |
-| `src/components/RichText.tsx` | React shell: mount guard, morphdom effect, fade-in, settings consumption |
-| `src/components/MarkdownContent.tsx` | Thin wrapper: `RichText` inside Tailwind prose |
-| `src/lib/richtext-settings.tsx` | React context + localStorage persistence for toggles |
-| `src/components/ChatSettingsPanel.tsx` | Display tab with Highlight dialogue + Block external media switches |
-| `src/styles.css` | `.rt-msg-in` (fade-in), `.rt-dialogue` + `--dialogue` token |
+| `src/lib/markdown.ts` | showdown converter (+underscore ext + unhashHTMLSpans patch), DOMPurify hooks (class rewrite, element media block, unknown-el br), CSS scoping with custom- namespacing, wrapQuotes, fixMarkdown, code copy button injection, `renderMarkdown()`, `balanceMarkdown()` |
+| `src/components/RichText.tsx` | React shell: mount guard, morphdom effect, fade-in, settings consumption, `rt-mes-text` class |
+| `src/components/MarkdownContent.tsx` | Thin wrapper: `RichText` inside Tailwind prose (character detail) |
+| `src/lib/richtext-settings.tsx` | React context + localStorage persistence for blockExternalMedia, highlightDialogue, autoFixMarkdown |
+| `src/styles.css` | `.rt-mes-text` stylesheet (ST message-text parity), `.code-copy-wrapper`/`.code-copy-button`, theme tokens `--rt-em-color` / `--rt-underline-color` / `--dialogue` |
 
 ---
 
 ## Core: `renderMarkdown()`
 
-`src/lib/markdown.ts:120`
+`src/lib/markdown.ts`
 
 ```ts
 function renderMarkdown(content: string, opts?: RenderMarkdownOpts): string
@@ -65,8 +68,9 @@ function renderMarkdown(content: string, opts?: RenderMarkdownOpts): string
 ```ts
 interface RenderMarkdownOpts {
   scopeId?: string;            // CSS scope class (e.g. "rt-r0")
-  blockExternalMedia?: boolean; // strip http(s):// src/srcset; forbid video/audio/embed
-  highlightDialogue?: boolean;  // wrap "..." in <span class="rt-dialogue">
+  blockExternalMedia?: boolean; // remove nodes with external src/srcset/data
+  highlightDialogue?: boolean;  // wrap quotes in <q> tags (pre-showdown)
+  autoFixMarkdown?: boolean;    // repair broken * _ spacing + close unpaired tokens
 }
 ```
 
@@ -74,28 +78,33 @@ interface RenderMarkdownOpts {
 
 1. **SSR guard** — returns `""` on server (no `window`).
 
-2. **Showdown** — single instance, configured identically to SillyTavern:
-   ```
-   emoji, tables, strikethrough, underline, simpleLineBreaks,
-   literalMidWordUnderscores, parseImgDimensions,
-   disableForced4SpacesIndentedSublists
-   ```
+2. **`fixMarkdown`** — if `autoFixMarkdown` is true:
+   - Finds `**…**` / `*…*` / `__…__` / `_…_` pairs and strips adjacent whitespace from the delimiters (e.g. `* bold *` → `*bold*`).
+   - Closes unpaired `*` and `"` per line to prevent runaway formatting.
 
-3. **`<style>` extraction** — if `scopeId` provided, each `<style>…</style>` block is removed from the HTML body and sent through `scopeCss()` (see below). Empty/failed scopes are dropped. Uses `String.prototype.replace()` with callback — handles multiple blocks correctly.
+3. **`wrapQuotes`** — if `highlightDialogue` is true:
+   - Stashes `"` inside HTML tags (`\ufffe` sentinel) to prevent false matches.
+   - Wraps six quote styles in `<q>`: straight `"…"`, curly `""…""`, guillemets `«…»`, corner brackets `「…」`/`『…』`, fullwidth `＂…＂`.
+   - `<style>`, fenced code, and inline code are protected from matching.
+   - Restores stashed quotes in tags after wrapping.
 
-4. **DOMPurify config** — built per call:
-   - Default: safe tags + attributes, `FORBID_TAGS: none`.
-   - When `blockExternalMedia`: `FORBID_TAGS: ["video","audio","source","embed","iframe","object"]`.
+4. **Showdown** — single instance with extensions:
+   - Options: `emoji`, `tables`, `strikethrough`, `underline`, `simpleLineBreaks`, `literalMidWordUnderscores`, `parseImgDimensions`, `disableForced4SpacesIndentedSublists`.
+   - Extension `markdownUnderscoreExt`: single `_word_` → `<em>` with negative-lookbehind (skips code/style tags). Falls back gracefully if browser lacks lookbehind support.
+   - `addShowdownPatch`: recursive `unhashHTMLSpans` fix for nested inline HTML spans. No-op if API incompatible.
 
-5. **DOMPurify sanitize** — runs the global hooks (see "Security Hooks" below).
+5. **Code-block `<br>` fix** — replaces `\n` inside `<code>` with `\x00`, then restores after. Prevents Firefox from injecting extra `<br>` elements in code blocks.
 
-6. **Dialogue highlighting** — if `highlightDialogue` is true, walks the sanitized DOM and wraps `"…"` segments in `<span class="rt-dialogue">` (see below).
+6. **`<style>` extraction** — each `<style>…</style>` block removed from body, passed through `scopeCss()`. Class selectors (`\.foo`) are namespaced to `\.custom-foo` (except `fa-*`, `note-*`, `monospace`, `rt-*`, `custom-*`). Selectors are scoped under `.rt-<id>`.
 
-7. **CSS re-injection** — if scoped blocks exist, escapes `</style>`/`</script>` and prepends:
-   ```html
-   <style class="rt-scoped">…</style>
-   ```
-   The `<style>` tag is appended *after* sanitize, so it is never scrubbed by DOMPurify.
+7. **DOMPurify sanitize** — `MESSAGE_SANITIZE: true`:
+   - **Class rewriting**: `class="foo bar"` → `class="custom-foo custom-bar"` (except allowlisted `fa-*`, `note-*`, `monospace`, `rt-*`, `custom-*`).
+   - **Unknown element `<br>`**: in `HTMLUnknownElement` nodes, `\n` → `<br>` (unless inside `<pre>`).
+   - **Element-level media blocking** (when `blockExternalMedia`): removes `<img>`, `<audio>`, `<video>`, `<source>`, `<track>`, `<embed>`, `<object>` nodes whose `src`, `srcset`, or `data` attributes point to external URLs. `data:` URIs and relative paths survive.
+
+8. **Code copy buttons** — injects `<div class="code-copy-wrapper">` around each `<pre>`, with a hover-reveal `<button class="code-copy-button">Copy</button>` that uses `navigator.clipboard.writeText`.
+
+9. **CSS re-injection** — scoped + namespaced blocks prepended as `<style class="rt-scoped">…</style>`.
 
 ---
 
@@ -135,64 +144,62 @@ All registered once at module load (`registerDOHooks()`), guarded by `_hooksRegi
 
 `afterSanitizeAttributes` hook sets `target="_blank"` and `rel="noopener noreferrer nofollow"` on every `<a>` element. No opt-out — applies globally.
 
-### External media blocking (attribute-level)
+### `MESSAGE_SANITIZE` class rewriting
 
-`uponSanitizeAttribute` hook reads the module-level `_blockExternalMedia` flag (set per-call in `renderMarkdown` before `sanitize()`). When active:
+`uponSanitizeAttribute` hook: when `config.MESSAGE_SANITIZE` is true and `data.attrName === "class"`, each class token is prefixed with `custom-` unless it matches the allowlist: `fa-*`, `note-*`, `monospace`, `rt-*`, or already `custom-*`. Prevents user-authored CSS classes from colliding with application classes.
 
-- Strips `src` and `srcset` attributes whose value starts with `http://` or `https://`.
-- `data:` URIs, relative paths, and root-relative paths are **preserved**.
-- `<img>` tags remain in the DOM (shows alt text or broken icon).
+### Unknown-element `<br>` conversion
 
-Combined with `FORBID_TAGS` for `<video>`, `<audio>`, `<source>`, `<embed>`, `<iframe>`, `<object>`, this provides comprehensive *privacy-first* external resource blocking while keeping inline base64 images visible.
+`uponSanitizeElement` hook (when `MESSAGE_SANITIZE`): for `HTMLUnknownElement` nodes, splits text content on `\n` and replaces with `<br>` elements (unless inside `<pre>`). Ensures newlines in custom/unknown tags render as line breaks.
+
+### External media blocking (element-level)
+
+`uponSanitizeElement` hook (when `MESSAGE_SANITIZE` and `_blockExternalMedia`): removes `<img>`, `<audio>`, `<video>`, `<source>`, `<track>`, `<embed>`, `<object>` nodes whose `src`, `srcset`, or `data` attributes point to external URLs (checking each URL in `srcset` separately). `data:` URIs and relative/root-relative paths are preserved. `<HTMLMediaElement>` instances have autoplay disabled and are paused before removal.
 
 ---
 
-## Dialogue Highlighting
+## Quote Wrapping (Pre-Showdown `<q>`)
 
-`src/lib/markdown.ts:158`
+Runs on raw markdown text **before** showdown, ported from SillyTavern's `messageFormatting` (`script.js:1854-1886`).
 
 ### Detection
 
-Regex: `"[^"]*"/g` — matches straight double-quote segments including the quotes.
+A single regex handles six quote styles with code/style protection:
+```
+<style>…</style> | ```…``` | ~~~…~~~ | ``…`` | `…` | "…" | "…" | «…» | 「…」 | 『…』 | ＂…＂
+```
+Non-quoted alternatives (style, code) are matched but returned unchanged. Matched quotes are wrapped in `<q>…</q>` tags.
 
-### DOM walk
+### Quote stash/restore
 
-Recursively walks sanitized HTML using `document.createElement("template")`. Skips subtrees rooted at `<code>`, `<pre>`, `<style>`, `<script>` (the `SKIP_TAGS` set).
+Before the regex, `"` characters inside HTML tags (`<tag attr="val">`) are replaced with the sentinel `\ufffe` to prevent false matches. After the regex, sentinels are restored to `"`.
 
-For each text node:
+### Why pre-showdown
 
-1. Run `DIALOGUE_RE.exec(text)` — if no match, skip.
-2. Build a `DocumentFragment`:
-   - Text before match → `document.createTextNode()`.
-   - Matched segment → `<span class="rt-dialogue">` with `textContent` set to the full match (including quotes).
-   - Text after match → appended after the loop.
-3. Replace the original text node with the fragment via `parentNode.replaceChild()`.
+By wrapping before showdown, the `<q>` tag is treated as raw inline HTML passthrough. The quoted content is NOT processed by markdown — dialogue stays verbatim. Post-showdown DOM walking (the old approach) broke whenever inline formatting split the text node between opening and closing `"`. The pre-showdown approach avoids this entirely.
 
 ### Edge cases handled
 
 | Input | Behaviour |
 |---|---|
-| `Mei: "Come sit, come sit~"` | `Mei: <span>"Come sit, come sit~"</span>` |
-| `"She said 'hello' to me."` | Outer double-quoted segment wrapped; inner single quotes untouched |
-| `It's worth it.` | Apostrophe does not match |
-| `5'10" tall` | Stray `"` at end — matches if paired with earlier opening `"` in same text node; rare |
-| `"Hello` (unclosed) | No match, left as plain text |
-| Code block: `` `<p>"hi"</p>` `` | Showdown escapes `"` to `&quot;` inside code, so no match |
-| Inline code: `` `"hi"` `` | Same — escaped by showdown |
+| `Mei: "Come sit, come sit~"` | `Mei: <q>"Come sit, come sit~"</q>` |
+| `"this *bold* text"` | `<q>"this *bold* text"</q>` — markdown inside quote NOT processed |
+| `` `"code"` `` | Protected as inline code — no `<q>` wrapping |
+| ```` ```\n"fenced"\n``` ```` | Protected as fenced code |
+| `<img title="tooltip">` | `"` in title stashed as `\ufffe`, restored after wrapping |
+| `""She said hello""` (curly) | `<q>""She said hello""</q>` |
+| `「こんにちは」` (corner brackets) | `<q>「こんにちは」</q>` |
+| `"Hello` (unclosed) | Not matched by `".*?"` — left as plain text |
+| `"first" and "second"` | Both matched independently: `<q>"first"</q> and <q>"second"</q>` |
 
 ### Styling
 
 ```css
-/* styles.css:48 */
-.rt-dialogue {
-  color: var(--dialogue);
-}
-
-/* Theme token (both :root and .dark) */
---dialogue: oklch(0.85 0.06 75);  /* warm cream-gold */
+/* .rt-mes-text q { color: var(--dialogue); } */
+/* .rt-mes-text q i, .rt-mes-text q em { color: inherit; } */
 ```
 
-Matches the existing sea-teal palette (complements `--primary` amber and contrasts with `--foreground` white).
+The `color: inherit` override on `<q>` descendants ensures inline formatting inside dialogue uses the quote color — a key SillyTavern visual convention.
 
 ---
 
@@ -271,6 +278,7 @@ Persisted to `localStorage["stv.richtext"]` as JSON. Defaults:
 |---|---|
 | `blockExternalMedia` | `false` |
 | `highlightDialogue` | `true` |
+| `autoFixMarkdown` | `true` |
 
 ### Display tab
 
@@ -371,10 +379,16 @@ All ship ESM-compatible builds; all have built-in TypeScript declarations.
 Smoke tests (run with `nub run dev`):
 
 1. **Links** — send `[test](https://example.com)` → inspect DOM for `target="_blank" rel="noopener noreferrer nofollow"`.
-2. **CSS scoping** — send `<style>body{background:red}</style><p>hi</p>` → red background only inside the bubble, not the page.
+2. **CSS scoping** — send `<style>body{background:red}</style><p>hi</p>` → red background only inside the bubble, not the page. Class selectors inside the `<style>` should be namespaced to `custom-` (e.g. `.foo` → `.custom-foo`).
 3. **Multiple `<style>` blocks** — send `<style>p{color:red}</style><style>em{color:blue}</style>` → both are scoped and applied.
-4. **Dialogue highlighting** — send `Mei: "Come sit, come sit~"` → `"Come sit, come sit~"` renders in warm cream-gold.
-5. **External media toggle** — place `<img src="https://example.com/a.png">` in a message, toggle on in Display tab → img src stripped (alt text shown). `data:` images preserved.
-6. **Streaming fade-in** — start streaming a long message → new paragraphs fade in with 0.3s ease-out.
-7. **Code blocks untouched** — send `` `"hello"` `` → no dialogue highlighting inside inline code.
-8. **Block external media + data:img** — `<img src="data:image/png;base64,...">` survives the toggle.
+4. **Dialogue highlighting (ST parity)** — send `Mei: "Come sit, come sit~"` → `"Come sit, come sit~"` renders as `<q>` tag in dialogue cream-gold. `"this *bold* text"` → entire quote wrapped in `<q>`, bold NOT processed (verbatim dialogue).
+5. **Smart / curly quotes** — send `""Bonsoir, monsieur""` or `「こんにちは」` → wrapped in `<q>` with dialogue color.
+6. **Code blocks protected from quotes** — send `` `"hello"` `` → no `<q>` wrapping inside inline code. Send a fenced code block containing `"` → protected.
+7. **External media toggle** — place `<img src="https://example.com/a.png">` in a message, toggle on → entire `<img>` node removed. `data:` images preserved. `<img src="local.png">` preserved.
+8. **Streaming fade-in** — start streaming a long message → new paragraphs fade in with 0.3s ease-out.
+9. **`fixMarkdown` auto-repair** — send `* bold *` → renders as `<em>bold</em>` (spaces stripped from around `*` delimiters). Send a line with unpaired `*` → auto-closed at end of line.
+10. **Code copy button** — any `<pre><code>` block → hover reveals "Copy" button in top-right corner. Click copies to clipboard, button briefly shows "Copied!".
+11. **`<font color>` support** — send `<font color="red">text</font>` → preserves tag and attribute; text renders in red via CSS.
+12. **`q i` / `q em` color inherit** — italic inside dialogue quotes inherits the dialogue color, not the em accent color.
+13. **Custom class namespacing** — a message `<span class="myclass">text</span>` → DOM shows `class="custom-myclass"`.
+14. **Unknown element newlines** — a custom/unknown tag containing `\n` → newlines converted to `<br>`.

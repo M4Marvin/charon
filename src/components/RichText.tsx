@@ -31,12 +31,12 @@ export function RichText({ content }: { content: string }) {
 
   const scopeId = `rt-${useId().replace(/:/g, "")}`;
   const ref = useRef<HTMLDivElement>(null);
-  const { blockExternalMedia, highlightDialogue } = useRichTextSettings();
+  const { blockExternalMedia, highlightDialogue, autoFixMarkdown } = useRichTextSettings();
 
   const html = useMemo(
     () =>
-      mounted ? renderMarkdown(content, { scopeId, blockExternalMedia, highlightDialogue }) : "",
-    [content, mounted, scopeId, blockExternalMedia, highlightDialogue],
+      mounted ? renderMarkdown(content, { scopeId, blockExternalMedia, highlightDialogue, autoFixMarkdown }) : "",
+    [content, mounted, scopeId, blockExternalMedia, highlightDialogue, autoFixMarkdown],
   );
 
   const onNodeAdded = useCallback((node: Node) => {
@@ -61,5 +61,5 @@ export function RichText({ content }: { content: string }) {
 
   if (!mounted || !html) return null;
 
-  return <div ref={ref} className={scopeId} />;
+  return <div ref={ref} className={`${scopeId} rt-mes-text`} />;
 }

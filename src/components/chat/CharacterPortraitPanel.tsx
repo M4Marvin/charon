@@ -38,15 +38,15 @@ export function CharacterPortraitPanel({
   );
 
   return (
-    <div className="flex flex-col items-center gap-3 px-2 py-4">
+    <div className="flex flex-col items-center gap-3 py-4 px-0.5">
       <button
         type="button"
         onClick={onClick}
         className={cn(
           "relative shrink-0 overflow-hidden rounded-xl transition-shadow",
           isStreaming
-            ? "ring-2 ring-[var(--lagoon)]/60 animate-pulse shadow-lg shadow-[var(--lagoon)]/20"
-            : "ring-1 ring-border hover:ring-2 hover:ring-[var(--lagoon)]/30",
+            ? "ring-2 ring-(--lagoon)/60 animate-pulse shadow-lg shadow-(--lagoon)/20"
+            : "ring-1 ring-border hover:ring-2 hover:ring-(--lagoon)/30",
         )}
         aria-label={`View ${characterName} portrait`}
       >
@@ -54,7 +54,7 @@ export function CharacterPortraitPanel({
           <img
             src={src}
             alt={characterName}
-            className="aspect-[3/4] w-full object-cover"
+            className="aspect-3/4 w-full object-cover"
             onError={(e) => {
               e.currentTarget.style.display = "none";
               e.currentTarget.nextElementSibling?.classList.remove("hidden");
@@ -63,7 +63,7 @@ export function CharacterPortraitPanel({
         ) : null}
         <div
           className={cn(
-            "flex aspect-[3/4] w-full items-center justify-center bg-muted",
+            "flex aspect-3/4 w-full items-center justify-center bg-muted",
             src ? "hidden" : "",
           )}
         >

@@ -118,14 +118,26 @@ export const Route = createFileRoute("/api/chat-generate")({
 
           const activePath = getPathToNode(tree, parentId);
           // Drop the hidden system root (localId 0) and any empty-content
-          // system message. The root is our app's bookkeeping node and must
-          // never reach the AI; the openai-base adapter rejects empty-content
-          // messages (with a misleading "User message" error) and would abort
-          // the stream. Keeping it also let the bug hide behind
-          // squashSystemMessages on longer chats.
+          // message regardless of role. The root is our app's bookkeeping
+          // node and must never reach the AI; the openai-base adapter rejects
+          // empty-content messages (with a misleading "User message" error)
+          // for all roles and would abort the stream.
           const historyMessages: import("@/lib/st-core/shared/types").ChatMessage[] = activePath
             .filter((m) => m.id !== 0)
-            .filter((m) => !(m.role === "system" && m.content.length === 0))
+            .filter((m) => {
+              if (m.content.length === 0) {
+                console.log("[chat-generate] dropping empty-content message", {
+                  id: m.id,
+                  role: m.role,
+                  name: m.name,
+                  parent_id: m.parent_id,
+                  is_user: m.is_user,
+                  is_system: m.is_system,
+                });
+                return false;
+              }
+              return true;
+            })
             .map((m) => ({
               id: m.id,
               parent_id: m.parent_id,

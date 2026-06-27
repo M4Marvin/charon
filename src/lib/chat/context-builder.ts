@@ -172,5 +172,19 @@ export function buildMessages(
     messages.push({ role: "system", content: character.post_history_instructions });
   }
 
-  return { messages, loreScan };
+  // Filter out any messages with empty content. Depth prompts,
+  // at-depth lore inserts, and character fields can produce empty
+  // message content when the character card has blank fields.
+  // OpenAI-compatible adapters reject empty-content messages for
+  // all roles with a misleading "User message" error.
+  const filtered = messages.filter((m) => m.content.length > 0);
+  if (filtered.length < messages.length) {
+    console.log("[context-builder] dropped empty-content messages", {
+      before: messages.length,
+      after: filtered.length,
+      dropped: messages.length - filtered.length,
+    });
+  }
+
+  return { messages: filtered, loreScan };
 }
