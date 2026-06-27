@@ -14,7 +14,7 @@ export function CharacterHero({ character }: { character: CharacterDetail }) {
           <img
             src={`/api/characters/${character.id}/avatar`}
             alt={character.name}
-            className="w-60 sm:w-60 rounded-xl object-cover aspect-[3/4] shadow-lg border border-border"
+            className="w-60 sm:w-60 rounded-xl object-cover aspect-3/4 shadow-lg border border-border"
             onError={(e) => {
               e.currentTarget.style.display = "none";
               e.currentTarget.nextElementSibling?.classList.remove("hidden");
@@ -22,7 +22,7 @@ export function CharacterHero({ character }: { character: CharacterDetail }) {
           />
         ) : null}
         <div
-          className={`${hasAvatar ? "hidden" : ""} w-60 aspect-[3/4] rounded-xl bg-muted flex items-center justify-center shadow-lg border border-border`}
+          className={`${hasAvatar ? "hidden" : ""} w-60 aspect-3/4 rounded-xl bg-muted flex items-center justify-center shadow-lg border border-border`}
         >
           <User className="size-12 text-muted-foreground/40" />
         </div>

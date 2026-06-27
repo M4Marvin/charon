@@ -1097,15 +1097,15 @@ function ThinkingDots() {
   return (
     <div className="flex items-center gap-1 py-1" aria-label="Thinking">
       <span
-        className="w-1 rounded-full bg-[var(--lagoon)]/70 animate-pulse"
+        className="w-1 rounded-full bg-(--lagoon)/70 animate-pulse"
         style={{ height: "12px", animationDelay: "0s", animationDuration: "0.6s" }}
       />
       <span
-        className="w-1 rounded-full bg-[var(--lagoon)]/70 animate-pulse"
+        className="w-1 rounded-full bg-(--lagoon)/70 animate-pulse"
         style={{ height: "16px", animationDelay: "0.15s", animationDuration: "0.6s" }}
       />
       <span
-        className="w-1 rounded-full bg-[var(--lagoon)]/70 animate-pulse"
+        className="w-1 rounded-full bg-(--lagoon)/70 animate-pulse"
         style={{ height: "12px", animationDelay: "0.3s", animationDuration: "0.6s" }}
       />
     </div>

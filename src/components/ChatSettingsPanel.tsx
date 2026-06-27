@@ -257,7 +257,7 @@ function SceneSection({ chat }: { chat: ChatDetail }) {
                 alt={bg.name}
                 className={`aspect-video w-full rounded-lg object-cover cursor-pointer border-2 transition-all ${
                   selectedId === bg.id
-                    ? "border-[var(--lagoon)] ring-1 ring-[var(--lagoon)]"
+                    ? "border-(--lagoon) ring-1 ring-(--lagoon)"
                     : "border-transparent hover:border-white/20"
                 }`}
                 onClick={() => handleSelect(selectedId === bg.id ? null : bg.id)}
