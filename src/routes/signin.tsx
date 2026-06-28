@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,21 +38,26 @@ function SigninPage() {
     defaultValues: { username: "", password: "" },
     validators: { onSubmit: signinSchema },
     onSubmit: async ({ value }) => {
-      const { error } = await authClient.signIn.username({
+      const result = await authClient.signIn.username({
         username: value.username,
         password: value.password,
       });
-      if (error) throw error;
+      console.error("[signin] result:", result);
+      if (result.error) throw new Error(result.error.message || result.error.statusText || "Sign in failed");
       await navigate({ to: "/chats" });
     },
   });
 
   const handleDemoLogin = useCallback(async () => {
-    const { error } = await authClient.signIn.username({
+    const result = await authClient.signIn.username({
       username: "demo",
       password: "demo123",
     });
-    if (error) throw error;
+    console.error("[signin] demo login result:", result);
+    if (result.error) {
+      toast.error(result.error.message || "Demo login failed");
+      return;
+    }
     await navigate({ to: "/chats" });
   }, [navigate]);
 
@@ -139,8 +145,10 @@ function SigninPage() {
                   })}
                   children={({ isSubmitting, error }) => (
                     <>
-                      {error && typeof error === "string" ? (
-                        <p className="text-sm text-destructive">{error}</p>
+                      {error ? (
+                        <p className="text-sm text-destructive">
+                          {error instanceof Error ? error.message : String(error)}
+                        </p>
                       ) : null}
                       <Field>
                         <Button type="submit" disabled={isSubmitting}>
