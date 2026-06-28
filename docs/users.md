@@ -3,7 +3,7 @@
 There are two types of users: **admins** and **demo users**.
 
 | Capability | Admin (`marv`) | Demo users (everyone else) |
-|---|---|---|
+|---|---|---|---|
 | **Import characters** (PNG upload) | ✅ | ❌ |
 | **Edit character card data** | ✅ | ❌ |
 | **Rename characters** | ✅ | ❌ |
@@ -11,7 +11,8 @@ There are two types of users: **admins** and **demo users**.
 | **Start chats** | ✅ | ✅ |
 | **Manage AI providers & presets** | ✅ | ❌ — use the shared global provider |
 | **Manage lorebooks** | ✅ | ❌ |
-| **View character list** | ✅ | ✅ (only 2 demo characters) |
+| **Upload / delete background scenes** | ✅ | ❌ — can view and select only |
+| **View character list** | ✅ | ✅ (2 pre-seeded demo characters) |
 | **View character detail** | ✅ | ✅ |
 | **Edit user settings** (persona, prompts) | ✅ | ✅ |
 

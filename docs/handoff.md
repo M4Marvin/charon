@@ -13,7 +13,7 @@ Snapshot of what exists in the repo right now. Not a roadmap, not a plan.
 - **Personas slice** — repo + server fns + hooks (CRUD) + reusable `PersonaDialog` + 12 repo tests. User-settings-backed active persona selection. Auto-seed on create via `updateUserDefaults({ defaultPersonaId: res.id })`.
 - **Chats slice** — repo + server fns + hooks + UI routes + 16 repo tests. Hidden-root tree model: all greetings pre-loaded as children of a system root; swipe-on-all, draft messages, edit, delete, **streaming AI generation via SSE**. **Left/right side panels** (CSS grid 15/70/15 on md+): character portrait panel with streaming glow + lightbox, temporary per-chat custom image panel with upload/remove. **{{char}}/{{user}} macro substitution** on all persisted message content (createChat greetings, sendMessage, prepareStream, editMessage, finalizeStream) resolving `{{user}}` to the active persona name via `resolveUserName()`.
 - **AI slice** — providers + presets + user-settings repos + server fns + hooks + UI. `/ai-playground` (provider/preset CRUD + streaming chat) and per-chat provider/model/preset in a **floating draggable settings panel** (`ChatSettingsPanel`) on `/chats/$id`.
-- **Tests:** 222/222 pass (75 chat-tree + 9 normalize + 15 characters + 36 lorebooks + 16 chats + 8 userSettings + 15 userLorebookSettings + 22 world-file parser + 12 personas repository + **8 substitute-message-macros** + **6 characters.repo**)
+- **Tests:** 222/222 pass (75 chat-tree + 9 normalize + 21 characters + 36 lorebooks + 16 chats + 8 userSettings + 15 userLorebookSettings + 22 world-file parser + 12 personas repository + **8 substitute-message-macros**)
 - **Typecheck:** clean (only 2 pre-existing errors: `drizzle.config.ts:6`, `transform/regex.ts:161`)
 - **Legacy migration** — `scripts/migrate-data.ts` imports `public/data/` (30 chars, 27 lorebooks, 1 persona). Idempotent.
 - **Upload normalization** — `src/lib/character/normalize.ts` shared by `importCharacter` and the migration. 9 unit tests.
@@ -46,15 +46,15 @@ TanStack Start rewrite of SillyTavern-style character chat. Single-character rol
 
 ### Schema
 
-**Migrations:** `0000` (initial 11 tables), `0001` (adds `ai_providers` + `presets.provider_id`/`model`), `0002` (adds `chats.provider_id`/`preset_id`/`selected_model`), `0003` (adds `user_settings`), `0004` (adds `user_lorebook_settings` + `user_lore_entry_settings`), `0005` (adds `defaultPersonaId`, `systemPrompt`, `postHistoryInstructions`, `impersonationPrompt` to `user_settings`). 15 tables total.
+**Migrations:** `0000` (initial 11 tables), `0001` (adds `ai_providers` + `presets.provider_id`/`model`), `0002` (adds `chats.provider_id`/`preset_id`/`selected_model`), `0003` (adds `user_settings`), `0004` (adds `user_lorebook_settings` + `user_lore_entry_settings`), `0005` (adds `defaultPersonaId`, `systemPrompt`, `postHistoryInstructions`, `impersonationPrompt` to `user_settings`), `0006` (adds `backgrounds`), `0007` (adds `characters.tagline`), `0008` (removes `backgrounds.user_id`, makes `ai_providers.user_id` nullable, adds `user.username`/`display_username`). 15 tables.
 
 Auth tables (hand-written in same schema file): `user`, `session`, `account`, `verification`.
 
-Domain tables (all user-scoped via `userId` fk):
+Domain tables (most user-scoped via `userId` fk; `backgrounds` and the global AI provider row are shared):
 
 | Table | Key columns | Status |
 |---|---|---|
-| `characters` | id (uuid text pk), userId fk, name, `data` text-json (`CharacterDataV2` via `$type<>`), spec, specVersion, imagePath | in use |
+| `characters` | id (uuid text pk), userId fk, name, `data` text-json (`CharacterDataV2` via `$type<>`), spec, specVersion, imagePath, tagline | in use |
 | `lorebooks` | id pk, userId fk, name, description, imagePath, `config` text-json (`$type<LoreConfig>()`) | in use |
 | `lore_entries` | id pk, lorebookId fk, uid int, `data` text-json (`$type<LoreEntryData>()`) | in use |
 | `user_lorebook_settings` | composite pk (userId, lorebookId), fks cascade. **Presence = enabled (opt-in default).** | in use |
@@ -63,8 +63,9 @@ Domain tables (all user-scoped via `userId` fk):
 | `chat_messages` | composite pk (chatId, localId int), parentLocalId, `children` (number[]), selectedChildLocalId, role, name, content, isUser, isSystem, `extra` (Record<string,unknown>) | in use |
 | `presets` | id pk, userId fk, name (unique per user), **`providerId` fk (nullable)**, **`model`**, `data` text-json (`PresetData`: systemPrompt/temperature/maxTokens/topP/contextSize/frequencyPenalty/presencePenalty) | in use |
 | `personas` | id pk, userId fk, name, description, iconPath | CRUD UI in ChatSettingsPanel + 12 repo tests |
-| `ai_providers` | id pk, userId fk, **name (unique per user)**, **baseUrl, apiKey**, defaultModel, defaultHeaders (Record<string,string>) | in use |
+| `ai_providers` | id pk, **userId fk (nullable)**, **name (unique per user)**, **baseUrl, apiKey** (encrypted), defaultModel, defaultHeaders (Record<string,string>) | in use — null userId = shared global provider |
 | `user_settings` | userId pk, **defaultProviderId, defaultPresetId, defaultSelectedModel, defaultPersonaId, systemPrompt, postHistoryInstructions, impersonationPrompt** (all nullable) | in use |
+| `backgrounds` | id pk, name, path, createdAt | shared (no userId — app-wide) |
 
 `$type<>` for known JSON shapes — `characters.data` (`CharacterDataV2`), `lorebooks.config` (`LoreConfig`), `lore_entries.data` (`LoreEntryData`). `presets.data` is the db-shape subset of the full `ChatCompletionPreset`; the server pipeline merges it on top of `DEFAULT_PRESET` at request time (see `lib/chat/server-context.ts`).
 
@@ -73,10 +74,10 @@ Domain tables (all user-scoped via `userId` fk):
 ```
 src/db/
   repositories/characters.ts                 # list, get, create, update, delete (all take userId)
-  __tests__/characters.repo.test.ts           # 15 tests
+  __tests__/characters.repo.test.ts           # 21 tests
 src/server/
-  fns/characters.ts                           # list, get, import, update, delete
-  session.ts                                  # getSession() stub
+  fns/characters.ts                           # list, get, import, update, delete; demo-restricted mutations
+  session.ts                                  # getSession() + isDemoUsername()
 src/routes/
   characters/{index,new,$id}.tsx              # list, import form, detail (read-only + rename + delete)
   api/characters/$id/avatar.ts                # GET PNG bytes from data/avatars/
@@ -86,6 +87,8 @@ src/lib/character/normalize.test.ts           # 9 tests
 ```
 
 V2 import flow: client `file.arrayBuffer()` → base64 → `importCharacter` server fn → `parseCharacterCard` → `normalizeCardData` → `validateCharacterCard` (strict arktype) → write PNG to `data/avatars/<uuid>.png` → insert row. On DB failure: `rm(imagePath)` orphan cleanup.
+
+**Demo restrictions:** All mutation server fns (`importCharacter`, `updateCharacter`, `updateCharacterData`, `deleteCharacter`) check `isDemoUsername()` and either return an error or throw. The UI hides import/edit/rename/delete buttons for demo users (components `CharacterCard`, `CharacterActions` pass an `isDemo` prop). Demo users are seeded with 2 rich characters on account creation and on server boot (if missing). See `src/server/seed.ts`.
 
 ### Lorebooks slice
 
@@ -113,6 +116,27 @@ src/hooks/useLorebooks.ts                     # TanStack Query hooks + useToggle
 **Per-user activation overlay** (`user_lorebook_settings` + `user_lore_entry_settings`). Both are presence-based join tables — no boolean column, no dead rows. **Opt-in default:** a lorebook with no `user_lorebook_settings` row is disabled for that user. An entry is active iff `!entry.data.disable && !userOverlay` (AND semantics — the author's `data.disable` still wins; per-user toggle can only further disable). The `setLorebookEnabled` / `setLoreEntryDisabled` fns verify lorebook ownership (and entry-belongs-to-lorebook for entries) before touching the overlay. `deleteLorebook` and `deleteEntry` cascade-clean overlay rows (manual, since FK enforcement is off in dev.db). `deleteLorebook` also now cleans up orphan entries (pre-existing bug, fixed here).
 
 **Pipeline integration.** `/api/chat-generate` loads the user's enabled lorebook ids, fetches their entries, filters out user-disabled entries, and passes the result as `extraLoreEntries` to `buildChatPrompt`. `context-builder.ts` accepts the new param, merges with the character's embedded book, and **pre-filters `disable: true` on both sources** so disabled entries don't activate during the initial scan (pre-existing bug: `scanLoreEntries` only checks `disable` in the recursion loop, not initial). The `/` (index) demo pipeline and `lib/chat/pipeline.ts` are unchanged — `extraLoreEntries` defaults to `[]`.
+
+### Backgrounds (scenes) slice
+
+```
+src/db/
+  repositories/backgrounds.ts                 # list, get, create, delete (no userId — app-wide)
+src/server/
+  fns/backgrounds.ts                          # list, get, upload, delete; demo-restricted mutations
+  schemas/background.ts                       # arktype validators
+src/routes/
+  api/backgrounds/$id/image.ts               # GET image bytes from disk
+src/hooks/useBackgrounds.ts                   # TanStack Query hooks: useBackgrounds, useUploadBackground, useDeleteBackground
+src/components/
+  ChatSettingsPanel.tsx                       # SceneSection: grid of backgrounds, upload, delete, select
+```
+
+Backgrounds are **app-wide** (no `userId` column). The table stores a name and file path; images live on disk at `data/backgrounds/<uuid>.png`. The `ChatSettingsPanel`'s Scene tab shows a 3-column grid of available backgrounds — clicking one sets it as the chat's `backgroundPath`.
+
+**Seed:** On first boot with an empty `backgrounds` table, `seedDefaultBackgrounds()` copies 20 images from `public/data/backgrounds/` (SillyTavern's shipped scenes) to `data/backgrounds/<uuid>.ext` and inserts corresponding DB rows. Utility files starting with `_` are skipped.
+
+**Demo restrictions:** `uploadBackground` and `deleteBackground` check `isDemoUsername()` and throw. The `SceneSection` component hides the upload button and per-card delete (✕) buttons when `isDemo === true`. Demo users can still view and select any background for their chats.
 
 ### Personas slice
 
