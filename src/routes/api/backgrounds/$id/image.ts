@@ -7,16 +7,15 @@ export const Route = createFileRoute("/api/backgrounds/$id/image")({
   server: {
     handlers: {
       GET: async ({ params }) => {
-        let session: Awaited<ReturnType<typeof getSession>>;
         try {
-          session = await getSession();
+          await getSession();
         } catch {
           return new Response("Unauthorized", { status: 401 });
         }
 
         let bg: ReturnType<typeof getBackground>;
         try {
-          bg = getBackground(session.user.id, params.id);
+          bg = getBackground(params.id);
         } catch {
           return new Response("Not found", { status: 404 });
         }

@@ -9,7 +9,7 @@ import {
   getBackground as repoGet,
   listBackgrounds as repoList,
 } from "@/db/repositories/backgrounds";
-import { getSession } from "@/server/session";
+import { getSession, isDemoUsername } from "@/server/session";
 import {
   GetBackgroundInput,
   DeleteBackgroundInput,
@@ -26,22 +26,23 @@ function ensureDir() {
 
 export const listBackgrounds = createServerFn({ method: "GET" }).handler(
   async (): Promise<BackgroundListItem[]> => {
-    const { user } = await getSession();
-    return repoList(user.id);
+    await getSession();
+    return repoList();
   },
 );
 
 export const getBackground = createServerFn({ method: "GET" })
   .validator(GetBackgroundInput)
   .handler(async ({ data }): Promise<Background> => {
-    const { user } = await getSession();
-    return repoGet(user.id, data.id);
+    await getSession();
+    return repoGet(data.id);
   });
 
 export const uploadBackground = createServerFn({ method: "POST" })
   .validator(UploadBackgroundInput)
   .handler(async ({ data }): Promise<Background> => {
     const { user } = await getSession();
+    if (isDemoUsername(user.username ?? "")) throw new Error("Demo users cannot upload backgrounds.");
 
     await ensureDir();
     const filename = `${randomUUID()}.png`;
@@ -50,14 +51,16 @@ export const uploadBackground = createServerFn({ method: "POST" })
     const bytes = Buffer.from(data.fileBase64, "base64");
     await writeFile(filepath, bytes);
 
-    return repoCreate(user.id, { name: data.name, path: filepath });
+    return repoCreate({ name: data.name, path: filepath });
   });
 
 export const deleteBackground = createServerFn({ method: "POST" })
   .validator(DeleteBackgroundInput)
   .handler(async ({ data }): Promise<void> => {
     const { user } = await getSession();
-    const bg = repoGet(user.id, data.id);
+    if (isDemoUsername(user.username ?? "")) throw new Error("Demo users cannot delete backgrounds.");
+
+    const bg = repoGet(data.id);
 
     try {
       await rm(bg.path, { force: true });
@@ -65,5 +68,5 @@ export const deleteBackground = createServerFn({ method: "POST" })
       // File might already be gone; that's fine.
     }
 
-    repoDelete(user.id, data.id);
+    repoDelete(data.id);
   });

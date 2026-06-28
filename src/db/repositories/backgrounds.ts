@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db as defaultDb, type DB } from "@/db";
 import { backgrounds, type Background } from "@/db/schema";
 
@@ -7,22 +7,21 @@ export type CreateBackgroundInput = {
   path: string;
 };
 
-export function listBackgrounds(userId: string, db: DB = defaultDb): Background[] {
-  return db.select().from(backgrounds).where(eq(backgrounds.userId, userId)).all();
+export function listBackgrounds(db: DB = defaultDb): Background[] {
+  return db.select().from(backgrounds).all();
 }
 
-export function getBackground(userId: string, id: string, db: DB = defaultDb): Background {
+export function getBackground(id: string, db: DB = defaultDb): Background {
   const row = db
     .select()
     .from(backgrounds)
-    .where(and(eq(backgrounds.id, id), eq(backgrounds.userId, userId)))
+    .where(eq(backgrounds.id, id))
     .get();
   if (!row) throw new Error("Background not found");
   return row;
 }
 
 export function createBackground(
-  userId: string,
   input: CreateBackgroundInput,
   db: DB = defaultDb,
 ): Background {
@@ -30,7 +29,6 @@ export function createBackground(
   const row = db
     .insert(backgrounds)
     .values({
-      userId,
       name: input.name,
       path: input.path,
       createdAt: now,
@@ -41,10 +39,10 @@ export function createBackground(
   return row;
 }
 
-export function deleteBackground(userId: string, id: string, db: DB = defaultDb): void {
+export function deleteBackground(id: string, db: DB = defaultDb): void {
   const result = db
     .delete(backgrounds)
-    .where(and(eq(backgrounds.id, id), eq(backgrounds.userId, userId)))
+    .where(eq(backgrounds.id, id))
     .run();
   if (result.changes === 0) throw new Error("Background not found");
 }
