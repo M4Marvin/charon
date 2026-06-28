@@ -50,19 +50,6 @@ function SigninPage() {
     },
   });
 
-  const handleDemoLogin = useCallback(async () => {
-    const result = await authClient.signIn.username({
-      username: "demo",
-      password: "demo123",
-    });
-    console.error("[signin] demo login result:", result);
-    if (result.error) {
-      toast.error(result.error.message || "Demo login failed");
-      return;
-    }
-    await navigate({ to: "/chats" });
-  }, [navigate]);
-
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -144,16 +131,8 @@ function SigninPage() {
                   selector={(state) => ({ isSubmitting: state.isSubmitting })}
                   children={({ isSubmitting }) => (
                     <Field>
-                      <Button type="submit" disabled={isSubmitting}>
+                      <Button type="submit" disabled={isSubmitting} className="w-full">
                         {isSubmitting ? "Signing in..." : "Sign In"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={isSubmitting}
-                        onClick={handleDemoLogin}
-                      >
-                        Demo Login
                       </Button>
                       <FieldDescription className="text-center">
                         Don&apos;t have an account?{" "}
