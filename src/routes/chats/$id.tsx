@@ -24,8 +24,11 @@ import {
   Square,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -137,6 +140,7 @@ function ChatPage() {
   const [customImageOpen, setCustomImageOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [lightboxAlt, setLightboxAlt] = useState("");
+  const [settingsTab, setSettingsTab] = useState("ai");
 
   const selectedProviderId = chat?.providerId ?? "";
   const selectedModel = chat?.selectedModel ?? "";
@@ -540,303 +544,364 @@ function ChatPage() {
   );
 
   return (
-    <div className="relative flex h-dvh flex-col overflow-hidden">
-      {/* ── Background layer ── */}
-      {ambientUrl && (
-        <div className="fixed inset-0 z-0">
-          <img
-            src={ambientUrl}
-            className="size-full object-cover blur-sm brightness-[0.4]"
-            alt=""
-          />
-          <div className="vn-vignette absolute inset-0" />
-        </div>
-      )}
+    <TooltipProvider delayDuration={200}>
+      <div className="relative flex h-dvh flex-col overflow-hidden">
+        {/* ── Background layer ── */}
+        {ambientUrl && (
+          <div className="fixed inset-0 z-0">
+            <img
+              src={ambientUrl}
+              className="size-full object-cover blur-sm brightness-[0.4]"
+              alt=""
+            />
+            <div className="vn-vignette absolute inset-0" />
+          </div>
+        )}
 
-      {/* ── Fixed chat header ── */}
-      <header className="glass sticky top-0 z-30 flex h-12 shrink-0 items-center border-b border-white/5">
-        <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center px-3">
-          <div className="flex items-center justify-start">
-            <Button
-              asChild
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              aria-label="Back to chats"
-            >
-              <Link to="/chats">
-                <ArrowLeft className="size-4" />
-              </Link>
-            </Button>
-          </div>
-          <div className="flex min-w-0 items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 rounded-full p-0 hidden md:inline-flex"
-              onClick={() => setPortraitOpen(!portraitOpen)}
-              aria-label={portraitOpen ? "Hide character portrait" : "Show character portrait"}
-            >
-              {avatarNode}
-            </Button>
-            <div className="md:hidden">{avatarNode}</div>
-            <p className="truncate text-sm font-heading leading-tight">{chat.characterName}</p>
-          </div>
-          <div className="flex items-center justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 hidden md:inline-flex"
-              onClick={() => setCustomImageOpen(!customImageOpen)}
-              aria-label={customImageOpen ? "Hide custom image" : "Show custom image"}
-            >
-              <Image className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              onClick={() => setSettingsOpen(!settingsOpen)}
-              aria-label="Toggle settings panel"
-            >
-              <Settings className="size-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* ── Three-column body: portrait | messages | custom image ── */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="grid flex-1 overflow-hidden grid-cols-1 md:grid-cols-[15fr_70fr_15fr]">
-          {/* Left: Character portrait column — always in grid, content conditional */}
-          <div className="hidden md:flex flex-col overflow-y-auto z-10">
-            {portraitOpen && (
-              <CharacterPortraitPanel
-                characterId={chat.characterId}
-                characterName={chat.characterName}
-                imagePath={chat.characterImagePath}
-                isStreaming={activePlaceholderId !== null}
-                onClick={() => {
-                  setLightboxAlt(chat.characterName);
-                  setLightboxSrc(
-                    chat.characterImagePath ? `/api/characters/${chat.characterId}/avatar` : null,
-                  );
-                }}
-                onUpload={(base64) => setChatImage(chat.id, base64)}
-              />
-            )}
-          </div>
-
-          {/* Center: Messages only */}
-          <div className="flex flex-col overflow-hidden">
-            <MessageScrollerProvider
-              autoScroll={true}
-              defaultScrollPosition="last-anchor"
-              scrollEdgeThreshold={80}
-              scrollPreviousItemPeek={64}
-            >
-              <MessageScroller className="flex-1">
-                <MessageScrollerViewport>
-                  <MessageScrollerContent
-                    className="mx-auto w-full px-4 py-2 gap-1"
-                    aria-busy={activePlaceholderId !== null}
+        {/* ── Fixed chat header ── */}
+        <header className="glass sticky top-0 z-30 flex h-12 shrink-0 items-center border-b border-white/5">
+          <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center px-3">
+            <div className="flex items-center justify-start">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="icon"
+                    className="size-8"
+                    aria-label="Back to chats"
                   >
-                    {/* Character intro card */}
-                    {(characterDescription || characterTags.length > 0) && (
-                      <MessageScrollerItem>
-                        <CharacterIntroCard
-                          name={chat.characterName}
-                          imagePath={chat.characterImagePath}
-                          characterId={chat.characterId}
-                          description={characterDescription}
-                          tags={characterTags}
-                        />
-                      </MessageScrollerItem>
-                    )}
+                    <Link to="/chats">
+                      <ArrowLeft className="size-4" />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Back to chats</TooltipContent>
+              </Tooltip>
+            </div>
+            <div className="flex min-w-0 items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 rounded-full p-0 hidden md:inline-flex"
+                    onClick={() => setPortraitOpen(!portraitOpen)}
+                    aria-label={
+                      portraitOpen ? "Hide character portrait" : "Show character portrait"
+                    }
+                  >
+                    {avatarNode}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{portraitOpen ? "Hide portrait" : "Show portrait"}</TooltipContent>
+              </Tooltip>
+              <div className="md:hidden">{avatarNode}</div>
+              <p className="truncate text-sm font-heading leading-tight">{chat.characterName}</p>
+              {selectedModel && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSettingsTab("ai");
+                        setSettingsOpen(true);
+                      }}
+                      className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                      aria-label={`Model: ${selectedModel}. Open AI settings.`}
+                    >
+                      <Badge
+                        variant="outline"
+                        className="max-w-[8rem] truncate font-mono text-[10px] text-muted-foreground"
+                      >
+                        {selectedModel}
+                      </Badge>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>Open AI settings</TooltipContent>
+                </Tooltip>
+              )}
+              {isStreaming && (
+                <Badge
+                  variant="secondary"
+                  className="shimmer gap-1 text-[10px] text-muted-foreground"
+                >
+                  <Spinner className="size-2.5" />
+                  Generating
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 hidden md:inline-flex"
+                    onClick={() => setCustomImageOpen(!customImageOpen)}
+                    aria-label={customImageOpen ? "Hide custom image" : "Show custom image"}
+                  >
+                    <Image className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {customImageOpen ? "Hide custom image" : "Show custom image"}
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8"
+                    onClick={() => setSettingsOpen(!settingsOpen)}
+                    aria-label="Toggle settings panel"
+                  >
+                    <Settings className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Chat settings</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+        </header>
 
-                    {activePath.length === 0 ? (
-                      <MessageScrollerItem>
-                        <Marker variant="default" className="justify-center">
-                          <MarkerContent>No messages yet. Say hello!</MarkerContent>
-                        </Marker>
-                      </MessageScrollerItem>
-                    ) : (
-                      activePath.map((entry, index) => (
-                        <MessageScrollerItem
-                          key={entry.message.id}
-                          messageId={entry.message.id.toString()}
-                          scrollAnchor={entry.message.is_user ?? entry.message.role === "user"}
-                        >
-                          <ChatMessage
-                            entry={entry}
-                            isNewest={index === activePath.length - 1}
-                            characterName={chat.characterName}
-                            characterImagePath={chat.characterImagePath}
+        {/* ── Three-column body: portrait | messages | custom image ── */}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="grid flex-1 overflow-hidden grid-cols-1 md:grid-cols-[15fr_70fr_15fr]">
+            {/* Left: Character portrait column — always in grid, content conditional */}
+            <div className="hidden md:flex flex-col overflow-y-auto z-10">
+              {portraitOpen && (
+                <CharacterPortraitPanel
+                  characterId={chat.characterId}
+                  characterName={chat.characterName}
+                  imagePath={chat.characterImagePath}
+                  isStreaming={activePlaceholderId !== null}
+                  onClick={() => {
+                    setLightboxAlt(chat.characterName);
+                    setLightboxSrc(
+                      chat.characterImagePath ? `/api/characters/${chat.characterId}/avatar` : null,
+                    );
+                  }}
+                  onUpload={(base64) => setChatImage(chat.id, base64)}
+                />
+              )}
+            </div>
+
+            {/* Center: Messages only */}
+            <div className="flex flex-col overflow-hidden">
+              <MessageScrollerProvider
+                autoScroll={true}
+                defaultScrollPosition="last-anchor"
+                scrollEdgeThreshold={80}
+                scrollPreviousItemPeek={64}
+              >
+                <MessageScroller className="flex-1">
+                  <MessageScrollerViewport>
+                    <MessageScrollerContent
+                      className="mx-auto w-full px-4 py-2 gap-1"
+                      aria-busy={activePlaceholderId !== null}
+                    >
+                      {/* Character intro card */}
+                      {(characterDescription || characterTags.length > 0) && (
+                        <MessageScrollerItem>
+                          <CharacterIntroCard
+                            name={chat.characterName}
+                            imagePath={chat.characterImagePath}
                             characterId={chat.characterId}
-                            personaName={activePersona?.name}
-                            personaIconPath={activePersona?.iconPath ?? null}
-                            onSwipe={handleSwipe}
-                            onDelete={handleDeleteMessage}
-                            onEdit={handleEditMessage}
-                            disabled={activePlaceholderId !== null}
+                            description={characterDescription}
+                            tags={characterTags}
                           />
                         </MessageScrollerItem>
-                      ))
-                    )}
-                  </MessageScrollerContent>
-                </MessageScrollerViewport>
-                <MessageScrollerButton direction="end" />
-              </MessageScroller>
-            </MessageScrollerProvider>
-          </div>
+                      )}
 
-          {/* Right: Custom image column — always in grid, content conditional */}
-          <div className="hidden md:flex flex-col overflow-y-auto z-10">
-            {customImageOpen && (
-              <CustomImagePanel
-                imageBase64={customImage ?? null}
-                onUpload={(base64) => setChatImage(chat.id, base64)}
-                onRemove={() => clearChatImage(chat.id)}
-                onClick={() => {
-                  const img = useChatStore.getState().chatImages[chat.id];
-                  if (img) {
-                    setLightboxAlt("Custom image");
-                    setLightboxSrc(img);
-                  }
-                }}
-              />
-            )}
-          </div>
-        </div>
+                      {activePath.length === 0 ? (
+                        <MessageScrollerItem>
+                          <Marker variant="default" className="justify-center">
+                            <MarkerContent>No messages yet. Say hello!</MarkerContent>
+                          </Marker>
+                        </MessageScrollerItem>
+                      ) : (
+                        activePath.map((entry, index) => (
+                          <MessageScrollerItem
+                            key={entry.message.id}
+                            messageId={entry.message.id.toString()}
+                            scrollAnchor={entry.message.is_user ?? entry.message.role === "user"}
+                          >
+                            <ChatMessage
+                              entry={entry}
+                              isNewest={index === activePath.length - 1}
+                              characterName={chat.characterName}
+                              characterImagePath={chat.characterImagePath}
+                              characterId={chat.characterId}
+                              personaName={activePersona?.name}
+                              personaIconPath={activePersona?.iconPath ?? null}
+                              onSwipe={handleSwipe}
+                              onDelete={handleDeleteMessage}
+                              onEdit={handleEditMessage}
+                              disabled={activePlaceholderId !== null}
+                            />
+                          </MessageScrollerItem>
+                        ))
+                      )}
+                    </MessageScrollerContent>
+                  </MessageScrollerViewport>
+                  <MessageScrollerButton direction="end" />
+                </MessageScroller>
+              </MessageScrollerProvider>
+            </div>
 
-        {/* ── Composer + AI hint ── */}
-        <div className="glass-strong z-10 shrink-0 border-t border-white/5 px-4 py-2.5">
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-1.5">
-            {!hasAi && (
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(true)}
-                className="text-muted-foreground hover:text-foreground self-start text-xs transition-colors"
-              >
-                No AI configured — open settings →
-              </button>
-            )}
-            <div className="glass flex items-end gap-2 rounded-2xl px-3 py-1.5">
-              <Textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={
-                  activePlaceholderId
-                    ? "Waiting for response..."
-                    : activePersona
-                      ? `Message as ${activePersona.name}...`
-                      : "Type a message..."
-                }
-                className="min-h-8 flex-1 resize-none border-0 bg-transparent px-1 py-0.5 text-sm shadow-none focus-visible:ring-0"
-                rows={1}
-                disabled={!canSend}
-              />
-              {isStreaming ? (
-                <Button
-                  size="icon"
-                  variant="destructive"
-                  onClick={handleStop}
-                  className="size-8 shrink-0 rounded-full"
-                  aria-label="Stop generating"
-                >
-                  <Square className="size-3.5 fill-current" />
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={handleImpersonate}
-                    disabled={!canSend || isImpersonating || !hasAi || activePath.length === 0}
-                    className="size-8 shrink-0 rounded-full"
-                    aria-label="Impersonate user"
-                  >
-                    {isImpersonating ? (
-                      <div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : (
-                      <Sparkles className="size-4" />
-                    )}
-                  </Button>
-                  <Button
-                    size="icon"
-                    onClick={handleSend}
-                    disabled={!canSend || (!input.trim() && (!hasAi || activePath.length === 0))}
-                    className="size-8 shrink-0 rounded-full"
-                    aria-label="Send message"
-                  >
-                    <ArrowUp className="size-4" />
-                  </Button>
-                </>
+            {/* Right: Custom image column — always in grid, content conditional */}
+            <div className="hidden md:flex flex-col overflow-y-auto z-10">
+              {customImageOpen && (
+                <CustomImagePanel
+                  imageBase64={customImage ?? null}
+                  onUpload={(base64) => setChatImage(chat.id, base64)}
+                  onRemove={() => clearChatImage(chat.id)}
+                  onClick={() => {
+                    const img = useChatStore.getState().chatImages[chat.id];
+                    if (img) {
+                      setLightboxAlt("Custom image");
+                      setLightboxSrc(img);
+                    }
+                  }}
+                />
               )}
             </div>
           </div>
+
+          {/* ── Composer + AI hint ── */}
+          <div className="glass-strong z-10 shrink-0 border-t border-white/5 px-4 py-2.5">
+            <div className="mx-auto flex w-full max-w-3xl flex-col gap-1.5">
+              {!hasAi && (
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(true)}
+                  className="text-muted-foreground hover:text-foreground self-start text-xs transition-colors"
+                >
+                  No AI configured — open settings →
+                </button>
+              )}
+              <div className="glass flex items-end gap-2 rounded-2xl px-3 py-1.5">
+                <Textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    activePlaceholderId
+                      ? "Waiting for response..."
+                      : activePersona
+                        ? `Message as ${activePersona.name}...`
+                        : "Type a message..."
+                  }
+                  className="min-h-8 flex-1 resize-none border-0 bg-transparent px-1 py-0.5 text-sm shadow-none focus-visible:ring-0"
+                  rows={1}
+                  disabled={!canSend}
+                />
+                {isStreaming ? (
+                  <Button
+                    size="icon"
+                    variant="destructive"
+                    onClick={handleStop}
+                    className="size-8 shrink-0 rounded-full"
+                    aria-label="Stop generating"
+                  >
+                    <Square className="size-3.5 fill-current" />
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={handleImpersonate}
+                      disabled={!canSend || isImpersonating || !hasAi || activePath.length === 0}
+                      className="size-8 shrink-0 rounded-full"
+                      aria-label="Impersonate user"
+                    >
+                      {isImpersonating ? (
+                        <div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <Sparkles className="size-4" />
+                      )}
+                    </Button>
+                    <Button
+                      size="icon"
+                      onClick={handleSend}
+                      disabled={!canSend || (!input.trim() && (!hasAi || activePath.length === 0))}
+                      className="size-8 shrink-0 rounded-full"
+                      aria-label="Send message"
+                    >
+                      <ArrowUp className="size-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
+
+        <ChatSettingsPanel
+          chat={chat}
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          onDeleteChat={handleDeleteChat}
+          isStreaming={activePlaceholderId !== null}
+          activeTab={settingsTab}
+          onActiveTabChange={setSettingsTab}
+        />
+
+        <ImageLightbox
+          open={lightboxSrc !== null}
+          src={lightboxSrc}
+          alt={lightboxAlt}
+          onOpenChange={(open) => {
+            if (!open) {
+              setLightboxSrc(null);
+              setLightboxAlt("");
+            }
+          }}
+        />
+
+        <AlertDialog
+          open={deleteMessageTarget !== null}
+          onOpenChange={(open) => !open && setDeleteMessageTarget(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete message?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will delete this message and all replies below it. This action cannot be
+                undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={handleConfirmDeleteMessage}>
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={deleteChatOpen} onOpenChange={setDeleteChatOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete chat?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete this entire conversation. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={handleConfirmDeleteChat}>
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-
-      <ChatSettingsPanel
-        chat={chat}
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        onDeleteChat={handleDeleteChat}
-        isStreaming={activePlaceholderId !== null}
-      />
-
-      <ImageLightbox
-        open={lightboxSrc !== null}
-        src={lightboxSrc}
-        alt={lightboxAlt}
-        onOpenChange={(open) => {
-          if (!open) {
-            setLightboxSrc(null);
-            setLightboxAlt("");
-          }
-        }}
-      />
-
-      <AlertDialog
-        open={deleteMessageTarget !== null}
-        onOpenChange={(open) => !open && setDeleteMessageTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete message?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will delete this message and all replies below it. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleConfirmDeleteMessage}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={deleteChatOpen} onOpenChange={setDeleteChatOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete chat?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this entire conversation. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={handleConfirmDeleteChat}>
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+    </TooltipProvider>
   );
 }
 

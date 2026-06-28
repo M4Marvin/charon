@@ -90,6 +90,8 @@ interface ChatSettingsPanelProps {
   onOpenChange: (open: boolean) => void;
   onDeleteChat?: () => void;
   isStreaming?: boolean;
+  activeTab: string;
+  onActiveTabChange: (tab: string) => void;
 }
 
 export function ChatSettingsPanel({
@@ -98,9 +100,9 @@ export function ChatSettingsPanel({
   onOpenChange,
   onDeleteChat,
   isStreaming = false,
+  activeTab,
+  onActiveTabChange,
 }: ChatSettingsPanelProps) {
-  const [activeTab, setActiveTab] = useState("ai");
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="flex flex-col sm:max-w-md">
@@ -111,7 +113,7 @@ export function ChatSettingsPanel({
 
         <Tabs
           value={activeTab}
-          onValueChange={setActiveTab}
+          onValueChange={onActiveTabChange}
           className="flex min-h-0 flex-1 flex-col pt-4"
         >
           <TabsList className="w-full shrink-0">
