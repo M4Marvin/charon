@@ -19,6 +19,7 @@ import { MarkdownContent } from "@/components/MarkdownContent";
 import { CharacterActions } from "@/components/character/CharacterActions";
 import { CharacterHero } from "@/components/character/CharacterHero";
 import { EmbeddedLorebookPanel } from "@/components/character/EmbeddedLorebookPanel";
+import { authClient } from "@/lib/auth-client";
 import type { CharacterDetail } from "@/db/repositories/characters";
 import { useCharacter, useDeleteCharacter, useUpdateCharacter } from "@/hooks/useCharacters";
 import { useCreateChat } from "@/hooks/useChats";
@@ -30,6 +31,8 @@ export const Route = createFileRoute("/characters/$id")({
 function CharacterDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const { data: session } = authClient.useSession();
+  const isDemo = session?.user?.username !== "marv";
   const { data: character, isLoading, error } = useCharacter(id);
   const deleteMutation = useDeleteCharacter();
   const createChatMutation = useCreateChat();
@@ -72,6 +75,7 @@ function CharacterDetailPage() {
               }
             }}
             deletePending={deleteMutation.isPending}
+            isDemo={isDemo}
           />
 
           <Separator />

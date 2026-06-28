@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { authClient } from "@/lib/auth-client";
 import { useCharacter, useUpdateCharacterData } from "@/hooks/useCharacters";
 
 const editSchema = z.object({
@@ -43,8 +44,17 @@ export const Route = createFileRoute("/characters/$id_/edit")({
 function CharacterEditPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
+  const { data: session } = authClient.useSession();
+  const isDemo = session?.user?.username !== "marv";
   const { data: character, isLoading, error } = useCharacter(id);
   const updateMutation = useUpdateCharacterData();
+
+  useEffect(() => {
+    if (session && isDemo) {
+      toast.error("Demo users cannot edit characters.");
+      void navigate({ to: "/characters/$id", params: { id } });
+    }
+  }, [session, isDemo, id, navigate]);
 
   const form = useForm({
     defaultValues: {

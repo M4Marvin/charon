@@ -71,6 +71,7 @@ import type { LorebookListItem } from "@/server/fns/lorebooks";
 import { useUpdateChatSettings } from "@/hooks/useChats";
 import { useUpdateUserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import type { ChatDetail } from "@/server/fns/chats";
+import { authClient } from "@/lib/auth-client";
 import { useBackgrounds, useUploadBackground, useDeleteBackground } from "@/hooks/useBackgrounds";
 import { useRichTextSettings } from "@/lib/richtext-settings";
 import {
@@ -103,6 +104,9 @@ export function ChatSettingsPanel({
   activeTab,
   onActiveTabChange,
 }: ChatSettingsPanelProps) {
+  const { data: session } = authClient.useSession();
+  const isMarv = session?.user?.username === "marv";
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="flex flex-col sm:max-w-md">
@@ -117,9 +121,16 @@ export function ChatSettingsPanel({
           className="flex min-h-0 flex-1 flex-col pt-4"
         >
           <TabsList className="w-full shrink-0">
-            <TabsTrigger value="ai" className="text-xs flex-1">
-              AI
-            </TabsTrigger>
+            {isMarv && (
+              <TabsTrigger value="ai" className="text-xs flex-1">
+                AI
+              </TabsTrigger>
+            )}
+            {isMarv && (
+              <TabsTrigger value="demo-ai" className="text-xs flex-1">
+                Demo AI
+              </TabsTrigger>
+            )}
             <TabsTrigger value="lorebooks" className="text-xs flex-1">
               Lorebooks
             </TabsTrigger>
@@ -137,9 +148,14 @@ export function ChatSettingsPanel({
             </TabsTrigger>
           </TabsList>
           <div className="relative min-h-0 flex-1">
-            {activeTab === "ai" && (
+            {activeTab === "ai" && isMarv && (
               <div className="absolute inset-0 overflow-y-auto p-4">
                 <AiSection chat={chat} isStreaming={isStreaming} />
+              </div>
+            )}
+            {activeTab === "demo-ai" && isMarv && (
+              <div className="absolute inset-0 overflow-y-auto p-4">
+                <DemoAiConfigSection />
               </div>
             )}
             {activeTab === "lorebooks" && (
@@ -159,7 +175,7 @@ export function ChatSettingsPanel({
             )}
             {activeTab === "scene" && (
               <div className="absolute inset-0 overflow-y-auto p-4">
-                <SceneSection chat={chat} />
+                <SceneSection chat={chat} isDemo={!isMarv} />
               </div>
             )}
             {activeTab === "display" && (
@@ -218,7 +234,7 @@ function DisplaySection() {
 
 // ── Scene section ───────────────────────────────────────────────────────────
 
-function SceneSection({ chat }: { chat: ChatDetail }) {
+function SceneSection({ chat, isDemo }: { chat: ChatDetail; isDemo: boolean }) {
   const { data: backgrounds = [] } = useBackgrounds();
   const updateSettings = useUpdateChatSettings();
   const upload = useUploadBackground();
@@ -269,48 +285,52 @@ function SceneSection({ chat }: { chat: ChatDetail }) {
                 }`}
                 onClick={() => handleSelect(selectedId === bg.id ? null : bg.id)}
               />
-              <button
-                className="absolute top-0.5 right-0.5 size-5 rounded-full bg-background/80 flex items-center justify-center text-[10px] text-muted-foreground hover:text-destructive transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDeleteTarget(bg.id);
-                }}
-                aria-label={`Delete ${bg.name}`}
-              >
-                ✕
-              </button>
+              {!isDemo && (
+                <button
+                  className="absolute top-0.5 right-0.5 size-5 rounded-full bg-background/80 flex items-center justify-center text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteTarget(bg.id);
+                  }}
+                  aria-label={`Delete ${bg.name}`}
+                >
+                  ✕
+                </button>
+              )}
               <p className="text-muted-foreground mt-0.5 truncate text-[10px]">{bg.name}</p>
             </div>
           ))}
         </div>
       )}
 
-      <div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleUpload}
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          disabled={upload.isPending}
-          onClick={() => fileRef.current?.click()}
-        >
-          {upload.isPending ? "Uploading..." : "Upload background"}
-        </Button>
-      </div>
+      {!isDemo && (
+        <div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleUpload}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            disabled={upload.isPending}
+            onClick={() => fileRef.current?.click()}
+          >
+            {upload.isPending ? "Uploading..." : "Upload background"}
+          </Button>
+        </div>
+      )}
 
       <AlertDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete background?</AlertDialogTitle>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete background?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently remove this background. Chats using it will revert to the
               default look.
@@ -1298,6 +1318,94 @@ function PromptsSection() {
             Stored for the future impersonate feature. Not yet wired into generation.
           </p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Demo AI config section (marv only) ──────────────────────────────────────
+
+function DemoAiConfigSection() {
+  const [baseUrl, setBaseUrl] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [defaultModel, setDefaultModel] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { getGlobalAiConfig } = await import("@/server/fns/admin");
+        const config = await getGlobalAiConfig();
+        setBaseUrl(config.baseUrl);
+        setApiKey(config.apiKey);
+        setDefaultModel(config.defaultModel ?? "");
+      } catch {
+        // Global provider not yet created
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    try {
+      const { updateGlobalAiConfig } = await import("@/server/fns/admin");
+      await updateGlobalAiConfig({ data: { baseUrl, apiKey, defaultModel } });
+      toast.success("Demo AI provider updated");
+    } catch {
+      toast.error("Failed to update");
+    } finally {
+      setSaving(false);
+    }
+  }, [baseUrl, apiKey, defaultModel]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Spinner />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-sm font-medium">Demo AI Provider</p>
+        <p className="text-muted-foreground text-xs">
+          All demo users share this provider. Changes take effect immediately.
+        </p>
+      </div>
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Base URL</Label>
+          <Input
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+            placeholder="https://api.openai.com/v1"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">API Key</Label>
+          <Input
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="sk-..."
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Default Model</Label>
+          <Input
+            value={defaultModel}
+            onChange={(e) => setDefaultModel(e.target.value)}
+            placeholder="gpt-4o-mini"
+          />
+        </div>
+        <Button onClick={handleSave} disabled={saving} className="w-full">
+          {saving ? "Saving..." : "Save"}
+        </Button>
       </div>
     </div>
   );

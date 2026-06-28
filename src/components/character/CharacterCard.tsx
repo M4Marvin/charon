@@ -11,11 +11,13 @@ export function CharacterCard({
   onDelete,
   isDeleting,
   onTagClick,
+  isDemo,
 }: {
   character: CharacterListItem;
   onDelete: (id: string, name: string) => void;
   isDeleting: boolean;
   onTagClick?: (tag: string) => void;
+  isDemo?: boolean;
 }) {
   const navigate = useNavigate();
 
@@ -100,21 +102,23 @@ export function CharacterCard({
             {formatDistanceToNow(character.updatedAt, { addSuffix: true })}
           </span>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-5 w-5 text-muted-foreground hover:text-destructive"
-            disabled={isDeleting}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(character.id, character.name);
-            }}
-            aria-label={`Delete ${character.name}`}
-          >
-            <Trash2 className="size-3" />
-          </Button>
-        </div>
+        {!isDemo && (
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 text-muted-foreground hover:text-destructive"
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(character.id, character.name);
+              }}
+              aria-label={`Delete ${character.name}`}
+            >
+              <Trash2 className="size-3" />
+            </Button>
+          </div>
+        )}
       </div>
     </Card>
   );

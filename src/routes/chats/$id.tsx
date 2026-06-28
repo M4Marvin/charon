@@ -57,6 +57,7 @@ import { usePersonas, type PersonaListItem } from "@/hooks/usePersonas";
 import { useUserSettings } from "@/hooks/useUserSettings";
 
 import { ChatSettingsPanel } from "@/components/ChatSettingsPanel";
+import { authClient } from "@/lib/auth-client";
 import { useChatStore } from "@/stores/chat-store";
 import { ImageLightbox } from "@/components/chat/ImageLightbox";
 import { CharacterPortraitPanel } from "@/components/chat/CharacterPortraitPanel";
@@ -105,6 +106,8 @@ function ChatPage() {
   const { data: character } = useCharacter(chat?.characterId ?? "");
   const { data: personas = [] } = usePersonas();
   const { data: userSettings } = useUserSettings();
+  const { data: session } = authClient.useSession();
+  const isMarv = session?.user?.username === "marv";
 
   const prepareStream = usePrepareStream();
   const finalizeStream = useFinalizeStream();
@@ -140,7 +143,7 @@ function ChatPage() {
   const [customImageOpen, setCustomImageOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [lightboxAlt, setLightboxAlt] = useState("");
-  const [settingsTab, setSettingsTab] = useState("ai");
+  const [settingsTab, setSettingsTab] = useState(isMarv ? "ai" : "lorebooks");
 
   const selectedProviderId = chat?.providerId ?? "";
   const selectedModel = chat?.selectedModel ?? "";
@@ -598,7 +601,7 @@ function ChatPage() {
               </Tooltip>
               <div className="md:hidden">{avatarNode}</div>
               <p className="truncate text-sm font-heading leading-tight">{chat.characterName}</p>
-              {selectedModel && (
+              {selectedModel && isMarv && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -773,7 +776,7 @@ function ChatPage() {
           {/* ── Composer + AI hint ── */}
           <div className="glass-strong z-10 shrink-0 border-t border-white/5 px-4 py-2.5">
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-1.5">
-              {!hasAi && (
+              {!hasAi && isMarv && (
                 <button
                   type="button"
                   onClick={() => setSettingsOpen(true)}

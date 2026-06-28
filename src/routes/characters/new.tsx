@@ -1,7 +1,8 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { authClient } from "@/lib/auth-client";
 import { fileToBase64, useImportCharacter } from "@/hooks/useCharacters";
 
 export const Route = createFileRoute("/characters/new")({
@@ -10,6 +11,14 @@ export const Route = createFileRoute("/characters/new")({
 
 function NewCharacterPage() {
   const navigate = useNavigate();
+  const { data: session } = authClient.useSession();
+  const isDemo = session?.user?.username !== "marv";
+
+  useEffect(() => {
+    if (session && isDemo) {
+      void navigate({ to: "/characters" });
+    }
+  }, [session, isDemo, navigate]);
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ field: string; message: string }[]>([]);

@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { CharacterCard } from "@/components/character/CharacterCard";
 import { useCharacters, useDeleteCharacter } from "@/hooks/useCharacters";
+import { authClient } from "@/lib/auth-client";
 import type { CharacterListItem } from "@/server/fns/characters";
 
 export const Route = createFileRoute("/characters/")({
@@ -70,6 +71,8 @@ function filterCharacters(
 }
 
 function CharactersPage() {
+  const { data: session } = authClient.useSession();
+  const isDemo = session?.user?.username !== "marv";
   const { data, isLoading, error } = useCharacters();
   const deleteMutation = useDeleteCharacter();
 
@@ -117,9 +120,11 @@ function CharactersPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Characters</h1>
           <p className="text-muted-foreground text-sm">Import and manage your character cards.</p>
         </div>
-        <Button asChild>
-          <Link to="/characters/new">Import PNG</Link>
-        </Button>
+        {!isDemo && (
+          <Button asChild>
+            <Link to="/characters/new">Import PNG</Link>
+          </Button>
+        )}
       </div>
 
       {!isLoading && !error && data && data.length > 0 ? (
@@ -224,6 +229,7 @@ function CharactersPage() {
                 <CharacterCard
                   key={char.id}
                   character={char}
+                  isDemo={isDemo}
                   isDeleting={deleteMutation.isPending}
                   onTagClick={addTag}
                   onDelete={(id, name) => {
