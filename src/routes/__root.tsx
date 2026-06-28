@@ -2,6 +2,7 @@ import {
   HeadContent,
   Scripts,
   createRootRouteWithContext,
+  redirect,
   useLocation,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
@@ -16,12 +17,25 @@ import appCss from "@/styles.css?url";
 
 import type { QueryClient } from "@tanstack/react-query";
 import { RichTextSettingsProvider } from "@/lib/richtext-settings";
+import { getSession } from "@/lib/auth.functions";
 
 interface MyRouterContext {
   queryClient: QueryClient;
+  user?: { id: string; name: string; email: string };
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
+  beforeLoad: async ({ location }) => {
+    const publicPaths = ["/", "/signin", "/signup"];
+    const isApiRoute = location.pathname.startsWith("/api/");
+    if (publicPaths.includes(location.pathname) || isApiRoute) return;
+
+    const session = await getSession();
+    if (!session) {
+      throw redirect({ to: "/signin" });
+    }
+    return { user: session.user as { id: string; name: string; email: string } };
+  },
   head: () => ({
     meta: [
       {

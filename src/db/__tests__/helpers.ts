@@ -22,6 +22,8 @@ export function seedTestUser(db: TestDb, id = "user-1"): string {
       id,
       name: "Test User",
       email: `${id}@test.local`,
+      username: id,
+      displayUsername: id,
       createdAt: now,
       updatedAt: now,
     })
@@ -36,6 +38,8 @@ export function seedSecondUser(db: TestDb, id = "user-2"): string {
       id,
       name: "Other User",
       email: `${id}@test.local`,
+      username: id,
+      displayUsername: id,
       createdAt: now,
       updatedAt: now,
     })

@@ -118,6 +118,8 @@ function ensureDefaultUser(): void {
       id: DEFAULT_USER_ID,
       name: "Default User",
       email: "default@st-v2.local",
+      username: "default",
+      displayUsername: "default",
       createdAt: now,
       updatedAt: now,
     })
