@@ -6,11 +6,18 @@ let didBootstrap = false;
 async function bootstrap() {
   if (didBootstrap) return;
   didBootstrap = true;
-  const { ensureUsers } = await import("@/server/bootstrap");
-  await ensureUsers();
+  const { ensureGlobalProvider } = await import("@/server/bootstrap");
+  await ensureGlobalProvider();
 }
 
 void bootstrap();
+
+/**
+ * Returns true for non-marv users — demo users have restricted capabilities.
+ */
+export function isDemoUsername(username: string): boolean {
+  return username !== "marv";
+}
 
 /**
  * Resolve the current session inside a server function / loader.

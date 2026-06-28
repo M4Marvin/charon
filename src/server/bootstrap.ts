@@ -1,44 +1,48 @@
-import { randomUUID } from "node:crypto";
-import { hashPassword } from "better-auth/crypto";
-import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { account, user } from "@/db/schema";
-import { seedSampleData } from "@/server/seed";
+import { upsertGlobalAiProvider } from "@/db/repositories/aiProviders";
+import { characters as charactersTable, user, userSettings } from "@/db/schema";
+import { eq, and, not, like } from "drizzle-orm";
+import { seedDefaultBackgrounds, seedDemoCharactersForExistingUser } from "@/server/seed";
+import { upsertUserSettings } from "@/db/repositories/userSettings";
 
-const DEMO_USERS = [
-  { username: "marv", password: "marv123", name: "Marv" },
-  { username: "demo", password: "demo123", name: "Demo" },
-];
+export async function ensureGlobalProvider(): Promise<void> {
+  await upsertGlobalAiProvider({
+    name: "Built-in",
+    baseUrl: process.env.AI_BASE_URL ?? "http://localhost:11434/v1",
+    apiKey: process.env.AI_API_KEY ?? "",
+    defaultModel: process.env.AI_DEFAULT_MODEL ?? "llama3.2",
+  });
 
-export async function ensureUsers(): Promise<void> {
-  for (const u of DEMO_USERS) {
-    const existing = db.select().from(user).where(eq(user.username, u.username)).get();
-    if (existing) continue;
+  await seedExistingDemoUsers();
+  await seedDefaultBackgrounds();
+}
 
-    const userId = randomUUID();
-    const passwordHash = await hashPassword(u.password);
+async function seedExistingDemoUsers(): Promise<void> {
+  const demoUsers = db.select({ id: user.id }).from(user).where(not(eq(user.username, "marv"))).all();
 
-    db.insert(user).values({
-      id: userId,
-      name: u.name,
-      email: `${u.username}@demo.local`,
-      emailVerified: true,
-      username: u.username,
-      displayUsername: u.username,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }).run();
+  for (const u of demoUsers) {
+    const hasDemoChar = db
+      .select({ id: charactersTable.id })
+      .from(charactersTable)
+      .where(
+        and(
+          eq(charactersTable.userId, u.id),
+          like(charactersTable.name, "Captain Jack%"),
+        ),
+      )
+      .get();
 
-    db.insert(account).values({
-      id: randomUUID(),
-      accountId: `${u.username}@demo.local`,
-      providerId: "email",
-      userId,
-      password: passwordHash,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }).run();
+    if (!hasDemoChar) {
+      seedDemoCharactersForExistingUser(u.id);
+    }
 
-    await seedSampleData(userId);
+    const settings = db.select().from(userSettings).where(eq(userSettings.userId, u.id)).get();
+    if (settings && (settings.systemPrompt === null || settings.postHistoryInstructions === null || settings.impersonationPrompt === null)) {
+      upsertUserSettings(u.id, {
+        systemPrompt: settings.systemPrompt ?? "You are a helpful AI assistant. Roleplay as {{char}} according to their character description, staying in character at all times. Write responses from {{char}}'s perspective in a narrative style, using *asterisks* for actions and descriptions.",
+        postHistoryInstructions: settings.postHistoryInstructions ?? "Stay in character and continue the scene naturally. React to {{user}}'s latest message and move the conversation forward.",
+        impersonationPrompt: settings.impersonationPrompt ?? "You are {{user}} for a single message only. Write a response as if you were {{user}} speaking to {{char}}. Stay in character for {{user}} based on the conversation so far.",
+      });
+    }
   }
 }
