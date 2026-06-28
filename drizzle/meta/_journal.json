@@ -57,6 +57,13 @@
       "when": 1782493673279,
       "tag": "0007_safe_iron_patriot",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1782999999999,
+      "tag": "0008_tidy_shape",
+      "breakpoints": true
     }
   ]
 }

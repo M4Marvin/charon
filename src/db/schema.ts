@@ -280,16 +280,12 @@ export const backgrounds = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     path: text("path").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
   },
-  (table) => [index("backgrounds_user_id_idx").on(table.userId)],
 );
 
 export const aiProviders = sqliteTable(
@@ -299,7 +295,6 @@ export const aiProviders = sqliteTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     userId: text("user_id")
-      .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     baseUrl: text("base_url").notNull(),
