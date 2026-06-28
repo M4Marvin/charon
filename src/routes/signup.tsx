@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -55,7 +56,10 @@ function SignupPage() {
         name: value.username,
         username: value.username,
       });
-      if (error) throw error;
+      if (error) {
+        toast.error(error.message || "Sign up failed");
+        return;
+      }
       await navigate({ to: "/chats" });
     },
   });
@@ -170,32 +174,24 @@ function SignupPage() {
                   }}
                 />
                 <form.Subscribe
-                  selector={(state) => ({
-                    isSubmitting: state.isSubmitting,
-                    error: state.errorMap?.onSubmit,
-                  })}
-                  children={({ isSubmitting, error }) => (
-                    <>
-                      {error && typeof error === "string" ? (
-                        <p className="text-sm text-destructive">{error}</p>
-                      ) : null}
-                      <Field>
-                        <Button type="submit" disabled={isSubmitting}>
-                          {isSubmitting
-                            ? "Creating account..."
-                            : "Create Account"}
-                        </Button>
-                        <FieldDescription className="text-center">
-                          Already have an account?{" "}
-                          <Link
-                            to="/signin"
-                            className="underline underline-offset-4 hover:text-primary"
-                          >
-                            Sign in
-                          </Link>
-                        </FieldDescription>
-                      </Field>
-                    </>
+                  selector={(state) => ({ isSubmitting: state.isSubmitting })}
+                  children={({ isSubmitting }) => (
+                    <Field>
+                      <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting
+                          ? "Creating account..."
+                          : "Create Account"}
+                      </Button>
+                      <FieldDescription className="text-center">
+                        Already have an account?{" "}
+                        <Link
+                          to="/signin"
+                          className="underline underline-offset-4 hover:text-primary"
+                        >
+                          Sign in
+                        </Link>
+                      </FieldDescription>
+                    </Field>
                   )}
                 />
               </FieldGroup>

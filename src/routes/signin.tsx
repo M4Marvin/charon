@@ -38,12 +38,14 @@ function SigninPage() {
     defaultValues: { username: "", password: "" },
     validators: { onSubmit: signinSchema },
     onSubmit: async ({ value }) => {
-      const result = await authClient.signIn.username({
+      const { error } = await authClient.signIn.username({
         username: value.username,
         password: value.password,
       });
-      console.error("[signin] result:", result);
-      if (result.error) throw new Error(result.error.message || result.error.statusText || "Sign in failed");
+      if (error) {
+        toast.error(error.message || error.statusText || "Sign in failed");
+        return;
+      }
       await navigate({ to: "/chats" });
     },
   });
@@ -139,40 +141,30 @@ function SigninPage() {
                   }}
                 />
                 <form.Subscribe
-                  selector={(state) => ({
-                    isSubmitting: state.isSubmitting,
-                    error: state.errorMap?.onSubmit,
-                  })}
-                  children={({ isSubmitting, error }) => (
-                    <>
-                      {error ? (
-                        <p className="text-sm text-destructive">
-                          {error instanceof Error ? error.message : String(error)}
-                        </p>
-                      ) : null}
-                      <Field>
-                        <Button type="submit" disabled={isSubmitting}>
-                          {isSubmitting ? "Signing in..." : "Sign In"}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={isSubmitting}
-                          onClick={handleDemoLogin}
+                  selector={(state) => ({ isSubmitting: state.isSubmitting })}
+                  children={({ isSubmitting }) => (
+                    <Field>
+                      <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? "Signing in..." : "Sign In"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isSubmitting}
+                        onClick={handleDemoLogin}
+                      >
+                        Demo Login
+                      </Button>
+                      <FieldDescription className="text-center">
+                        Don&apos;t have an account?{" "}
+                        <Link
+                          to="/signup"
+                          className="underline underline-offset-4 hover:text-primary"
                         >
-                          Demo Login
-                        </Button>
-                        <FieldDescription className="text-center">
-                          Don&apos;t have an account?{" "}
-                          <Link
-                            to="/signup"
-                            className="underline underline-offset-4 hover:text-primary"
-                          >
-                            Sign up
-                          </Link>
-                        </FieldDescription>
-                      </Field>
-                    </>
+                          Sign up
+                        </Link>
+                      </FieldDescription>
+                    </Field>
                   )}
                 />
               </FieldGroup>
