@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { type } from "arktype";
 import { getSession } from "@/server/session";
-import { getAiProvider as repoGet } from "@/db/repositories/aiProviders";
+import { getAiProviderWithGlobalFallback as repoGet } from "@/db/repositories/aiProviders";
 
 export type ProviderModel = { id: string };
 
@@ -99,7 +99,7 @@ export const listProviderModels = createServerFn({ method: "GET", strict: { outp
   .validator(validateIdInput)
   .handler(async ({ data }): Promise<ProviderModel[]> => {
     const { user } = await getSession();
-    const provider = repoGet(user.id, data.id);
+    const provider = await repoGet(user.id, data.id);
 
     const PROBE = await probeProviderModels(provider);
     if (PROBE.ok) return PROBE.models;
@@ -115,6 +115,6 @@ export const testProviderConnection = createServerFn({ method: "GET" })
   .validator(validateIdInput)
   .handler(async ({ data }): Promise<ProbeResult> => {
     const { user } = await getSession();
-    const provider = repoGet(user.id, data.id);
+    const provider = await repoGet(user.id, data.id);
     return probeProviderModels(provider);
   });

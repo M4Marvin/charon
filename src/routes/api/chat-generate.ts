@@ -4,7 +4,7 @@ import { openaiCompatibleText } from "@tanstack/ai-openai/compatible";
 import { getSession } from "@/server/session";
 import { getChat as repoGetChat, listMessages as repoListMessages } from "@/db/repositories/chats";
 import { getCharacter as repoGetChar } from "@/db/repositories/characters";
-import { getAiProvider as repoGetProvider } from "@/db/repositories/aiProviders";
+import { getAiProviderWithGlobalFallback as repoGetProvider } from "@/db/repositories/aiProviders";
 import { getPreset as repoGetPreset } from "@/db/repositories/presets";
 import { listEntries as repoListEntries } from "@/db/repositories/lorebooks";
 import {
@@ -164,7 +164,7 @@ export const Route = createFileRoute("/api/chat-generate")({
               headers: { "Content-Type": "application/json" },
             });
           }
-          const provider = repoGetProvider(user.id, providerId);
+          const provider = await repoGetProvider(user.id, providerId);
           const model = chatRow.selectedModel ?? provider.defaultModel;
           if (!model) {
             return new Response(JSON.stringify({ error: "No model configured for this chat" }), {

@@ -31,7 +31,7 @@ import {
   type ChatWithCharacter,
 } from "@/db/repositories/chats";
 import { getCharacter as repoGetChar } from "@/db/repositories/characters";
-import { getAiProvider as repoGetProvider } from "@/db/repositories/aiProviders";
+import { getAiProviderWithGlobalFallback as repoGetProvider } from "@/db/repositories/aiProviders";
 import { getPreset as repoGetPreset } from "@/db/repositories/presets";
 import { getPersona as repoGetPersona } from "@/db/repositories/personas";
 import { getUserSettings as repoGetUserSettings } from "@/db/repositories/userSettings";
@@ -551,7 +551,7 @@ export const impersonateMessage = createServerFn({ method: "POST", strict: { out
 
     const providerId = chat.providerId;
     if (!providerId) throw new Error("No provider configured for this chat");
-    const provider = repoGetProvider(user.id, providerId);
+    const provider = await repoGetProvider(user.id, providerId);
     const model = chat.selectedModel ?? provider.defaultModel;
     if (!model) throw new Error("No model configured");
 

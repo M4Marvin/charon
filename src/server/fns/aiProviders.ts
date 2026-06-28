@@ -101,7 +101,7 @@ function validateUpdateInput(data: unknown): {
 export const listAiProviders = createServerFn({ method: "GET" }).handler(
   async (): Promise<AiProviderListItem[]> => {
     const { user } = await getSession();
-    return repoList(user.id);
+    return await repoList(user.id);
   },
 );
 
@@ -109,7 +109,7 @@ export const getAiProvider = createServerFn({ method: "GET", strict: { output: f
   .validator(validateIdInput)
   .handler(async ({ data }): Promise<AiProvider> => {
     const { user } = await getSession();
-    return repoGet(user.id, data.id);
+    return await repoGet(user.id, data.id);
   });
 
 export const createAiProvider = createServerFn({ method: "POST" })
@@ -126,7 +126,7 @@ export const createAiProvider = createServerFn({ method: "POST" })
       defaultModel: data.defaultModel ?? null,
       defaultHeaders: (data.defaultHeaders as Record<string, string> | undefined) ?? null,
     };
-    repoCreate(input);
+    await repoCreate(input);
     return { id };
   });
 
@@ -142,7 +142,7 @@ export const updateAiProvider = createServerFn({ method: "POST", strict: { outpu
     if (data.defaultHeaders !== undefined) {
       patch.defaultHeaders = data.defaultHeaders as Record<string, string> | null;
     }
-    repoUpdate(user.id, data.id, patch);
+    await repoUpdate(user.id, data.id, patch);
     return { id: data.id };
   });
 
@@ -150,6 +150,6 @@ export const deleteAiProvider = createServerFn({ method: "POST" })
   .validator(validateIdInput)
   .handler(async ({ data }): Promise<{ id: string }> => {
     const { user } = await getSession();
-    repoDelete(user.id, data.id);
+    await repoDelete(user.id, data.id);
     return { id: data.id };
   });
