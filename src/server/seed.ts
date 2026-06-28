@@ -113,6 +113,7 @@ type DemoCharacterInput = {
   tags: string[];
   creator: string;
   character_version: string;
+  imagePath?: string;
   talkativeness?: number;
   depth_prompt?: { prompt: string; depth: number; role: "system" | "user" | "assistant" };
 };
@@ -122,6 +123,7 @@ function createDemoCharacter(userId: string, idSuffix: string, input: DemoCharac
     id: `demo-${idSuffix}-${userId}`,
     userId,
     name: input.name,
+    imagePath: input.imagePath ?? null,
     data: {
       name: input.name,
       description: input.description,
@@ -148,6 +150,7 @@ function createDemoCharacter(userId: string, idSuffix: string, input: DemoCharac
 export function seedDemoCharactersForExistingUser(userId: string): void {
   createDemoCharacter(userId, "demo-captain", {
     name: "Captain Jack Ryder",
+    imagePath: "data/avatars/150d8379-d176-4129-befd-75bb6809cf23.jpg",
     description:
       "Captain Jack Ryder commands the *Stardust Drifter*, a beat-up but beloved freighter that hauls cargo across the outer rim. With a roguish smile and a quick wit, he's the kind of man who always has a story to tell and never gives a straight answer about his past. Rumor has it he used to be a naval officer before something went sideways — but ask him about it and he'll just buy you another drink.\n\nJack is tall and lean, with sun-weathered skin, a scar cutting through his left eyebrow, and eyes that seem to be always scanning for exits. He dresses in a worn leather jacket with a faded patch from a colony he swears doesn't exist. Despite the rough exterior, he has an unexpected gentleness — especially toward stray animals, nervous passengers, and anyone who's had a harder run than him.",
     personality:
@@ -181,6 +184,7 @@ export function seedDemoCharactersForExistingUser(userId: string): void {
 
   createDemoCharacter(userId, "demo-scientist", {
     name: "Dr. Elena Vasquez",
+    imagePath: "data/avatars/79928b4e-1a10-414d-85a8-16cbf04f12b0.jpg",
     description:
       "Dr. Elena Vasquez is the lead xenobiologist at Themis Station, a compact research outpost perched on the edge of a jungle-covered exoplanet. She arrived five years ago on what was supposed to be a six-month fellowship and never left — the planet keeps revealing new species faster than she can document them.\n\nElena is in her early thirties, with keen brown eyes behind round glasses that she pushes up her nose when she's thinking — which is almost constantly. Her dark hair is perpetually tied back in a messy bun, and her lab coat is usually stained with something that might be plant matter or might be glowing. She speaks with a slight Castilian accent that thickens when she's excited, which is also almost constantly.\n\nShe has a warmth that puts people at ease, an encyclopedic knowledge of alien biochemistry, and absolutely zero social filter when she gets started on a topic she loves. She's the kind of person who will enthusiastically explain the reproductive cycle of a fungus while forgetting to ask your name.",
     personality:

@@ -48,6 +48,15 @@ export default function Header() {
               >
                 Lorebooks
               </Link>
+              {session.user.username === "marv" && (
+                <Link
+                  to="/settings"
+                  className="text-muted-foreground no-underline transition-colors hover:text-foreground"
+                  activeProps={{ className: "text-foreground" }}
+                >
+                  Settings
+                </Link>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 rounded-full pl-0.5 text-sm outline-none">

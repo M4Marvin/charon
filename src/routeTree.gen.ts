@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as LorebooksIndexRouteImport } from './routes/lorebooks/index'
 import { Route as ChatsIndexRouteImport } from './routes/chats/index'
 import { Route as CharactersIndexRouteImport } from './routes/characters/index'
@@ -40,6 +41,11 @@ const SigninRoute = SigninRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LorebooksIndexRoute = LorebooksIndexRouteImport.update({
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/characters/': typeof CharactersIndexRoute
   '/chats/': typeof ChatsIndexRoute
   '/lorebooks/': typeof LorebooksIndexRoute
+  '/settings/': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/characters/$id/edit': typeof CharactersIdEditRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/characters': typeof CharactersIndexRoute
   '/chats': typeof ChatsIndexRoute
   '/lorebooks': typeof LorebooksIndexRoute
+  '/settings': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/characters/$id/edit': typeof CharactersIdEditRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/characters/': typeof CharactersIndexRoute
   '/chats/': typeof ChatsIndexRoute
   '/lorebooks/': typeof LorebooksIndexRoute
+  '/settings/': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/characters/$id_/edit': typeof CharactersIdEditRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/characters/'
     | '/chats/'
     | '/lorebooks/'
+    | '/settings/'
     | '/api/auth/$'
     | '/characters/$id/edit'
     | '/api/backgrounds/$id/image'
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/characters'
     | '/chats'
     | '/lorebooks'
+    | '/settings'
     | '/api/auth/$'
     | '/characters/$id/edit'
     | '/api/backgrounds/$id/image'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/characters/'
     | '/chats/'
     | '/lorebooks/'
+    | '/settings/'
     | '/api/auth/$'
     | '/characters/$id_/edit'
     | '/api/backgrounds/$id/image'
@@ -245,6 +257,7 @@ export interface RootRouteChildren {
   CharactersIndexRoute: typeof CharactersIndexRoute
   ChatsIndexRoute: typeof ChatsIndexRoute
   LorebooksIndexRoute: typeof LorebooksIndexRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   CharactersIdEditRoute: typeof CharactersIdEditRoute
   ApiBackgroundsIdImageRoute: typeof ApiBackgroundsIdImageRoute
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/': {
+      id: '/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lorebooks/': {
@@ -389,6 +409,7 @@ const rootRouteChildren: RootRouteChildren = {
   CharactersIndexRoute: CharactersIndexRoute,
   ChatsIndexRoute: ChatsIndexRoute,
   LorebooksIndexRoute: LorebooksIndexRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   CharactersIdEditRoute: CharactersIdEditRoute,
   ApiBackgroundsIdImageRoute: ApiBackgroundsIdImageRoute,
