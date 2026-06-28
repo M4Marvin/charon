@@ -46,6 +46,11 @@ export type CharacterListItem = Pick<
 const ImportInput = type({ pngBase64: "string > 0" });
 const IdInput = type({ id: "string > 0" });
 const UpdateInput = type({ id: "string > 0", name: "string > 0" });
+const UpdateDataInput = type({
+  id: "string > 0",
+  data: "unknown",
+  tagline: "string | null | undefined",
+});
 
 function validateImportInput(data: unknown): { pngBase64: string } {
   const result = ImportInput(data);
@@ -69,6 +74,18 @@ function validateUpdateInput(data: unknown): { id: string; name: string } {
     throw new Error("Invalid update input");
   }
   return result;
+}
+
+function validateUpdateDataInput(data: unknown): {
+  id: string;
+  data: CharacterDataV2;
+  tagline?: string | null;
+} {
+  const result = UpdateDataInput(data);
+  if (result instanceof type.errors) {
+    throw new Error("Invalid update data input");
+  }
+  return result as { id: string; data: CharacterDataV2; tagline?: string | null };
 }
 
 // ── Server functions ────────────────────────────────────────────────────────
@@ -173,6 +190,13 @@ export const updateCharacter = createServerFn({ method: "POST", strict: { output
   .handler(async ({ data }): Promise<Character> => {
     const { user } = await getSession();
     return repoUpdate(user.id, data.id, { name: data.name });
+  });
+
+export const updateCharacterData = createServerFn({ method: "POST", strict: { output: false } })
+  .validator(validateUpdateDataInput)
+  .handler(async ({ data }): Promise<Character> => {
+    const { user } = await getSession();
+    return repoUpdate(user.id, data.id, { name: data.data.name, data: data.data, tagline: data.tagline ?? null });
   });
 
 export const deleteCharacter = createServerFn({ method: "POST" })

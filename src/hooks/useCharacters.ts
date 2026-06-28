@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Character } from "@/db/schema";
+import type { CharacterDataV2 } from "@/lib/st-core/character";
 import {
   deleteCharacter,
   getCharacter,
   importCharacter,
   listCharacters,
   updateCharacter,
+  updateCharacterData,
   type ImportResult,
 } from "@/server/fns/characters";
 
@@ -51,6 +53,21 @@ export function useUpdateCharacter() {
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: characterKeys.all });
       // Refetch the detail to get fresh stats (chatCount, messageCount)
+      void queryClient.invalidateQueries({ queryKey: characterKeys.detail(variables.id) });
+    },
+  });
+}
+
+export function useUpdateCharacterData() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      id: string;
+      data: CharacterDataV2;
+      tagline?: string | null;
+    }): Promise<Character> => updateCharacterData({ data: input }),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: characterKeys.all });
       void queryClient.invalidateQueries({ queryKey: characterKeys.detail(variables.id) });
     },
   });

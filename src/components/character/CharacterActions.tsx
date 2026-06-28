@@ -1,13 +1,15 @@
-import { MessageCircle, Pencil, Trash2 } from "lucide-react";
+import { Edit, MessageCircle, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function CharacterActions({
   onStartChat,
+  onEdit,
   onRename,
   onDelete,
   deletePending,
 }: {
   onStartChat: () => void;
+  onEdit: () => void;
   onRename: () => void;
   onDelete: () => void;
   deletePending: boolean;
@@ -17,6 +19,10 @@ export function CharacterActions({
       <Button onClick={onStartChat}>
         <MessageCircle className="size-4" />
         Start Chat
+      </Button>
+      <Button onClick={onEdit} variant="outline" size="sm">
+        <Edit className="size-4" />
+        Edit
       </Button>
       <Button onClick={onRename} variant="outline" size="sm">
         <Pencil className="size-4" />

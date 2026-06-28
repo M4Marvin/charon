@@ -61,6 +61,7 @@ function CharacterDetailPage() {
 
           <CharacterActions
             onStartChat={handleStartChat}
+            onEdit={() => void navigate({ to: "/characters/$id/edit", params: { id } })}
             onRename={() => setRenameOpen(true)}
             onDelete={() => {
               if (window.confirm(`Delete character "${character.name}"?`)) {
