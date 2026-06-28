@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { toast } from "sonner";
+import { AlertTriangle, Check, RotateCw, Zap } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,6 +37,7 @@ import {
   useCreateAiProvider,
   useDeleteAiProvider,
   type AiProviderListItem,
+  useTestProviderConnection,
   useUpdateAiProvider,
 } from "@/hooks/useAiProviders";
 import {
@@ -86,6 +89,7 @@ interface ChatSettingsPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDeleteChat?: () => void;
+  isStreaming?: boolean;
 }
 
 export function ChatSettingsPanel({
@@ -93,6 +97,7 @@ export function ChatSettingsPanel({
   open,
   onOpenChange,
   onDeleteChat,
+  isStreaming = false,
 }: ChatSettingsPanelProps) {
   const [activeTab, setActiveTab] = useState("ai");
 
@@ -132,7 +137,7 @@ export function ChatSettingsPanel({
           <div className="relative min-h-0 flex-1">
             {activeTab === "ai" && (
               <div className="absolute inset-0 overflow-y-auto p-4">
-                <AiSection chat={chat} />
+                <AiSection chat={chat} isStreaming={isStreaming} />
               </div>
             )}
             {activeTab === "lorebooks" && (
@@ -331,7 +336,7 @@ function SceneSection({ chat }: { chat: ChatDetail }) {
 
 // ── AI section ─────────────────────────────────────────────────────────────
 
-function AiSection({ chat }: { chat: ChatDetail }) {
+function AiSection({ chat, isStreaming }: { chat: ChatDetail; isStreaming: boolean }) {
   const { data: providers = [] } = useAiProviders();
   const { data: presets = [] } = usePresets();
   const updateSettings = useUpdateChatSettings();
@@ -341,7 +346,12 @@ function AiSection({ chat }: { chat: ChatDetail }) {
   const selectedPresetId = chat.presetId ?? "";
   const selectedModel = chat.selectedModel ?? "";
 
-  const { data: models = [] } = useProviderModels(selectedProviderId);
+  const {
+    data: models = [],
+    isLoading: modelsLoading,
+    error: modelsError,
+    refetch: refetchModels,
+  } = useProviderModels(selectedProviderId);
   const [editing, setEditing] = useState<PresetListItem | "new" | null>(null);
   const [editingProvider, setEditingProvider] = useState<AiProviderListItem | "new" | null>(null);
   const createPreset = useCreatePreset();
@@ -351,9 +361,12 @@ function AiSection({ chat }: { chat: ChatDetail }) {
   const updateProvider = useUpdateAiProvider();
   const deleteProvider = useDeleteAiProvider();
 
+  const testConnection = useTestProviderConnection();
+
+  const isLocked = isStreaming;
+
   const handleChangeProvider = useCallback(
     (providerId: string) => {
-      // Changing the provider invalidates the previous model and preset.
       updateSettings.mutate({
         id: chat.id,
         providerId,
@@ -391,23 +404,82 @@ function AiSection({ chat }: { chat: ChatDetail }) {
     <div className="space-y-3">
       <div className="space-y-1">
         <Label className="text-xs">Provider</Label>
-        <Select value={selectedProviderId} onValueChange={handleChangeProvider}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select provider" />
-          </SelectTrigger>
-          <SelectContent>
-            {providers.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-            {providers.length === 0 && (
-              <div className="text-muted-foreground px-3 py-2 text-xs">No providers configured</div>
+        <div className="flex gap-1.5">
+          <div className="flex-1">
+            <Select value={selectedProviderId} onValueChange={handleChangeProvider}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select provider" />
+              </SelectTrigger>
+              <SelectContent>
+                {providers.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+                {providers.length === 0 && (
+                  <div className="text-muted-foreground px-3 py-2 text-xs">
+                    No providers configured
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          {selectedProviderId && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-8 shrink-0"
+              disabled={isLocked || testConnection.isPending}
+              onClick={() => testConnection.mutate(selectedProviderId)}
+              aria-label="Test connection"
+            >
+              {testConnection.isPending ? <Spinner /> : <Zap className="size-3.5" />}
+            </Button>
+          )}
+        </div>
+
+        {/* Test result */}
+        {testConnection.data && (
+          <div
+            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs ${
+              testConnection.data.ok
+                ? "bg-emerald-500/10 text-emerald-400"
+                : "bg-destructive/10 text-destructive"
+            }`}
+          >
+            {testConnection.data.ok ? (
+              <>
+                <Check className="size-3 shrink-0" />
+                <span>
+                  {testConnection.data.latencyMs}ms &middot; {testConnection.data.modelCount} models
+                </span>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="size-3 shrink-0" />
+                <span className="min-w-0 break-all">
+                  {testConnection.data.error ?? "Unknown error"}
+                </span>
+                <Button
+                  size="sm"
+                  variant="link"
+                  className="ml-auto h-auto shrink-0 px-1 py-0 text-xs"
+                  onClick={() => testConnection.mutate(selectedProviderId)}
+                >
+                  Retry
+                </Button>
+              </>
             )}
-          </SelectContent>
-        </Select>
+          </div>
+        )}
+
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setEditingProvider("new")}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isLocked}
+            onClick={() => setEditingProvider("new")}
+          >
             + Add
           </Button>
           {selectedProviderId && (
@@ -415,6 +487,7 @@ function AiSection({ chat }: { chat: ChatDetail }) {
               <Button
                 size="sm"
                 variant="ghost"
+                disabled={isLocked}
                 onClick={() => {
                   const p = providers.find((x) => x.id === selectedProviderId);
                   if (p) setEditingProvider(p);
@@ -425,6 +498,7 @@ function AiSection({ chat }: { chat: ChatDetail }) {
               <Button
                 size="sm"
                 variant="ghost"
+                disabled={isLocked}
                 onClick={() => {
                   if (!window.confirm("Delete this provider?")) return;
                   deleteProvider.mutate(
@@ -432,6 +506,7 @@ function AiSection({ chat }: { chat: ChatDetail }) {
                     {
                       onSuccess: () => {
                         toast.success("Provider deleted");
+                        testConnection.reset();
                         handleChangeProvider("");
                       },
                       onError: (e) => toast.error(`Delete failed: ${(e as Error).message}`),
@@ -448,33 +523,71 @@ function AiSection({ chat }: { chat: ChatDetail }) {
 
       <div className="space-y-1">
         <Label className="text-xs">Model</Label>
-        <Select
-          value={selectedModel}
-          onValueChange={handleChangeModel}
-          disabled={!selectedProviderId}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue
-              placeholder={selectedProviderId ? "Loading models..." : "Select a provider first"}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {models.map((m) => (
-              <SelectItem key={m.id} value={m.id}>
-                {m.id}
-              </SelectItem>
-            ))}
-            {models.length === 0 && selectedProviderId && (
-              <div className="text-muted-foreground px-3 py-2 text-xs">No models fetched</div>
-            )}
-          </SelectContent>
-        </Select>
+        <div className="flex gap-1.5">
+          <div className="flex-1">
+            <Select
+              value={selectedModel}
+              onValueChange={handleChangeModel}
+              disabled={!selectedProviderId}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue
+                  placeholder={
+                    !selectedProviderId
+                      ? "Select a provider first"
+                      : modelsLoading && models.length === 0
+                        ? "Loading models..."
+                        : "Select model"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {models.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.id}
+                  </SelectItem>
+                ))}
+                {models.length === 0 && selectedProviderId && !modelsLoading && !modelsError && (
+                  <div className="text-muted-foreground px-3 py-2 text-xs">No models found</div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          {selectedProviderId && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-8 shrink-0"
+              disabled={isLocked || modelsLoading}
+              onClick={() => refetchModels()}
+              aria-label="Reload models"
+            >
+              <RotateCw className={`size-3.5 ${modelsLoading ? "animate-spin" : ""}`} />
+            </Button>
+          )}
+        </div>
         <Input
           value={selectedModel}
           onChange={(e) => handleChangeModel(e.target.value)}
           placeholder="Or type model ID"
           className="mt-1"
         />
+        {modelsError && !modelsLoading && (
+          <div className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
+            <AlertTriangle className="size-3 shrink-0" />
+            <span className="min-w-0 break-all">
+              {modelsError instanceof Error ? modelsError.message : "Failed to load models"}
+            </span>
+            <Button
+              size="sm"
+              variant="link"
+              className="ml-auto h-auto shrink-0 px-1 py-0 text-xs"
+              onClick={() => refetchModels()}
+            >
+              Retry
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="space-y-1">
@@ -496,7 +609,7 @@ function AiSection({ chat }: { chat: ChatDetail }) {
           </SelectContent>
         </Select>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setEditing("new")}>
+          <Button size="sm" variant="outline" disabled={isLocked} onClick={() => setEditing("new")}>
             + Add
           </Button>
           {selectedPresetId && (
@@ -504,6 +617,7 @@ function AiSection({ chat }: { chat: ChatDetail }) {
               <Button
                 size="sm"
                 variant="ghost"
+                disabled={isLocked}
                 onClick={() => {
                   const p = presets.find((x) => x.id === selectedPresetId);
                   if (p) setEditing(p);
@@ -514,6 +628,7 @@ function AiSection({ chat }: { chat: ChatDetail }) {
               <Button
                 size="sm"
                 variant="ghost"
+                disabled={isLocked}
                 onClick={() => {
                   if (!window.confirm("Delete this preset?")) return;
                   deletePreset.mutate(
@@ -568,7 +683,6 @@ function AiSection({ chat }: { chat: ChatDetail }) {
             onSuccess: ({ id }) => {
               toast.success("Provider created");
               setEditingProvider(null);
-              // Auto-select the new provider on this chat and the user default.
               handleChangeProvider(id);
             },
             onError: (e) => toast.error(`Create failed: ${(e as Error).message}`),

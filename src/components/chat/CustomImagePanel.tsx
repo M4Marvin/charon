@@ -34,9 +34,6 @@ export function CustomImagePanel({
 
   return (
     <div className="flex flex-col items-center gap-3 py-4 px-0.5">
-      <p className="text-(--lagoon-deep)/60 text-[10px] font-medium uppercase tracking-wider">
-        Custom image
-      </p>
       {imageBase64 ? (
         <div className="relative shrink-0">
           <button

@@ -9,7 +9,8 @@ interface StoredSettings {
 }
 
 function readStored(): StoredSettings {
-  if (typeof window === "undefined") return { blockExternalMedia: false, highlightDialogue: true, autoFixMarkdown: true };
+  if (typeof window === "undefined")
+    return { blockExternalMedia: false, highlightDialogue: true, autoFixMarkdown: true };
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
@@ -79,7 +80,14 @@ export function RichTextSettingsProvider({ children }: { children: React.ReactNo
       autoFixMarkdown: stored.autoFixMarkdown,
       setAutoFixMarkdown,
     }),
-    [stored.blockExternalMedia, stored.highlightDialogue, stored.autoFixMarkdown, setBlockExternalMedia, setHighlightDialogue, setAutoFixMarkdown],
+    [
+      stored.blockExternalMedia,
+      stored.highlightDialogue,
+      stored.autoFixMarkdown,
+      setBlockExternalMedia,
+      setHighlightDialogue,
+      setAutoFixMarkdown,
+    ],
   );
 
   return <RichTextSettingsCtx.Provider value={value}>{children}</RichTextSettingsCtx.Provider>;

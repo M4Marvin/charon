@@ -7,29 +7,8 @@ Use the fff MCP tools for all file search operations instead of default tools.
 # Project state
 See `docs/handoff.md` for current state, architecture, locked decisions, schema, roadmap, and how to pick up. Read it after this file.
 
-# NubJS
-All-in-one Rust toolkit for Node.js — replaces `node`, `npm`/`pnpm`, `npx`, `nvm` with one binary.
-
-## CLI cheatsheet
-
-| Command | What it does |
-|---|---|
-| `nub index.ts` | Run TS/JSX file directly (oxc transpiler, no tsc needed) |
-| `nub install` | Install deps (pnpm-compatible, reads existing lockfile) |
-| `nub add -E -D react` | Add dep (exact pin, devDeps — pnpm flags) |
-| `nub run dev` | Run package.json script (24× faster than pnpm) |
-| `nub run -r --filter "@scope/*" build` | Run script across workspace packages |
-| `nubx eslint .` | Run local bin from node_modules/.bin (19× faster than npx) |
-| `nub watch src/server.ts` | Graph-aware file watching |
-| `nub node install 22` | Provision a Node version |
-| `nub node pin 22` | Write .node-version |
-
-## Key conventions
-- **TypeScript:** runs directly, no build step. Types stripped, not checked. Keep `tsc --noEmit` for type checking.
-- **Imports:** extensionless works (`./foo` → `./foo.ts`); `.js`→`.ts` swap works; tsconfig `paths`/`baseUrl` resolve at runtime.
-- **Env files:** auto-loaded from nearest package.json dir (`.env.[NODE_ENV].local > .env.local > .env.[NODE_ENV] > .env`). `${VAR}` expansion works. Shell env always wins.
-- **Security:** deny-by-default install. Use `nub approve-builds` to allow build scripts.
-- **Node version:** resolved from `.node-version` > `.nvmrc` > `engines.node`. Auto-fetched if missing.
+# pnpm
+Package manager used for all Node.js operations. Path: `/Users/marvinprakash/Library/pnpm/bin/pnpm`
 
 # TanStack Start
 Full-stack React framework: TanStack Router + Vite.
@@ -66,16 +45,16 @@ The `character` module (`parser.ts`, `png-encode.ts`, `serializer.ts`) uses `Buf
 
 | Task | Command |
 |---|---|
-| Install deps | `nub install` |
-| Add dev dep | `nub add -D <pkg>` |
-| Add runtime dep | `nub add <pkg>` |
-| Dev server | `nub run dev` |
-| **Run tests** | `nub run test` |
-| **Run legacy migration** | `nub run migrate` |
-| Lint | `nubx oxlint src/` |
-| Format | `nubx oxfmt src/` |
-| Typecheck | `npx tsc --noEmit` |
-| Drizzle studio | `nub run db:studio` |
+| Install deps | `pnpm install` |
+| Add dev dep | `pnpm add -D <pkg>` |
+| Add runtime dep | `pnpm add <pkg>` |
+| Dev server | `pnpm run dev` |
+| **Run tests** | `pnpm run test` |
+| **Run legacy migration** | `pnpm run migrate` |
+| Lint | `pnpm run lint` |
+| Format | `pnpm run format` |
+| Typecheck | `pnpm exec tsc --noEmit` |
+| Drizzle studio | `pnpm run db:studio` |
 
 # Known typecheck noise
 Pre-existing and expected — do not fix unless asked:

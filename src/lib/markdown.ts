@@ -3,7 +3,12 @@ import type { ShowdownExtension } from "showdown";
 import DOMPurify from "dompurify";
 import type { Config as DOMPurifyConfig } from "dompurify";
 import { parse, stringify } from "@adobe/css-tools";
-import type { CssAtRuleAST, CssDeclarationAST, CssRuleAST, CssStylesheetAST } from "@adobe/css-tools";
+import type {
+  CssAtRuleAST,
+  CssDeclarationAST,
+  CssRuleAST,
+  CssStylesheetAST,
+} from "@adobe/css-tools";
 
 let _hooksRegistered = false;
 let _blockExternalMedia = false;
@@ -21,11 +26,21 @@ function registerDOHooks() {
   });
 
   DOMPurify.addHook("uponSanitizeAttribute", (_node, data, config) => {
-    if ((config as Record<string, unknown> | undefined)?.MESSAGE_SANITIZE && data.attrName === "class" && data.attrValue) {
+    if (
+      (config as Record<string, unknown> | undefined)?.MESSAGE_SANITIZE &&
+      data.attrName === "class" &&
+      data.attrValue
+    ) {
       data.attrValue = data.attrValue
         .split(" ")
         .map((v) => {
-          if (v.startsWith("fa-") || v.startsWith("note-") || v === "monospace" || v.startsWith("rt-") || v.startsWith("custom-")) {
+          if (
+            v.startsWith("fa-") ||
+            v.startsWith("note-") ||
+            v === "monospace" ||
+            v.startsWith("rt-") ||
+            v.startsWith("custom-")
+          ) {
             return v;
           }
           return "custom-" + v;
@@ -78,7 +93,8 @@ function registerDOHooks() {
       case "OBJECT":
       case "IMG": {
         const isExternalUrl = (url: string) =>
-          (url.indexOf("://") > 0 || url.indexOf("//") === 0) && !url.startsWith(window.location.origin);
+          (url.indexOf("://") > 0 || url.indexOf("//") === 0) &&
+          !url.startsWith(window.location.origin);
         const src = node.getAttribute("src");
         const dataAttr = node.getAttribute("data");
         const srcset = node.getAttribute("srcset");
@@ -147,26 +163,29 @@ function markdownUnderscoreExt(): ShowdownExtension[] {
 function addShowdownPatch(converter: Converter) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (converter as any).subParser("unhashHTMLSpans", function (this: any, text: string, _options: unknown, globals: any) {
-      "use strict";
-      text = globals.converter._dispatch("unhashHTMLSpans.before", text, {}, globals);
+    (converter as any).subParser(
+      "unhashHTMLSpans",
+      function (this: any, text: string, _options: unknown, globals: any) {
+        "use strict";
+        text = globals.converter._dispatch("unhashHTMLSpans.before", text, {}, globals);
 
-      for (let i = 0; i < globals.gHtmlSpans.length; ++i) {
-        let repText = globals.gHtmlSpans[i];
-        let limit = 0;
+        for (let i = 0; i < globals.gHtmlSpans.length; ++i) {
+          let repText = globals.gHtmlSpans[i];
+          let limit = 0;
 
-        while (/¨C(\d+)C/.test(repText)) {
-          const num = RegExp.$1;
-          repText = repText.replace("¨C" + num + "C", globals.gHtmlSpans[num]);
-          if (limit === 10000) break;
-          ++limit;
+          while (/¨C(\d+)C/.test(repText)) {
+            const num = RegExp.$1;
+            repText = repText.replace("¨C" + num + "C", globals.gHtmlSpans[num]);
+            if (limit === 10000) break;
+            ++limit;
+          }
+          text = text.replace("¨C" + i + "C", repText);
         }
-        text = text.replace("¨C" + i + "C", repText);
-      }
 
-      text = globals.converter._dispatch("unhashHTMLSpans.after", text, {}, globals);
-      return text;
-    });
+        text = globals.converter._dispatch("unhashHTMLSpans.after", text, {}, globals);
+        return text;
+      },
+    );
   } catch {
     // subParser API may vary by showdown version
   }
@@ -256,7 +275,13 @@ function scopeSelector(sel: string, scopeId: string): string {
 
   // Namespace class selectors so they match the DOMPurify custom- rewrite
   const namespaced = trimmed.replace(/\.([\w-]+)/g, (_: string, className: string) => {
-    if (className.startsWith("custom-") || className.startsWith("fa-") || className.startsWith("note-") || className === "monospace" || className.startsWith("rt-")) {
+    if (
+      className.startsWith("custom-") ||
+      className.startsWith("fa-") ||
+      className.startsWith("note-") ||
+      className === "monospace" ||
+      className.startsWith("rt-")
+    ) {
       return `.${className}`;
     }
     return `.custom-${className}`;

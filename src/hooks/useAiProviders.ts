@@ -7,6 +7,7 @@ import {
   updateAiProvider,
   type AiProviderListItem,
 } from "@/server/fns/aiProviders";
+import { testProviderConnection, type ProbeResult } from "@/server/fns/models";
 
 export const aiProviderKeys = {
   all: ["aiProviders"] as const,
@@ -72,6 +73,12 @@ export function useDeleteAiProvider() {
       void queryClient.invalidateQueries({ queryKey: aiProviderKeys.all });
       queryClient.removeQueries({ queryKey: aiProviderKeys.detail(variables.id) });
     },
+  });
+}
+
+export function useTestProviderConnection() {
+  return useMutation({
+    mutationFn: (id: string): Promise<ProbeResult> => testProviderConnection({ data: { id } }),
   });
 }
 

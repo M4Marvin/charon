@@ -35,7 +35,14 @@ export function RichText({ content }: { content: string }) {
 
   const html = useMemo(
     () =>
-      mounted ? renderMarkdown(content, { scopeId, blockExternalMedia, highlightDialogue, autoFixMarkdown }) : "",
+      mounted
+        ? renderMarkdown(content, {
+            scopeId,
+            blockExternalMedia,
+            highlightDialogue,
+            autoFixMarkdown,
+          })
+        : "",
     [content, mounted, scopeId, blockExternalMedia, highlightDialogue, autoFixMarkdown],
   );
 

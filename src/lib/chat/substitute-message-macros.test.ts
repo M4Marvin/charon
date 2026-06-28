@@ -19,9 +19,9 @@ describe("substituteMessageMacros", () => {
   });
 
   it("replaces multiple occurrences", () => {
-    expect(
-      substituteMessageMacros("{{char}} and {{char}} and {{user}} and {{user}}", env),
-    ).toBe("Alice and Alice and Marv and Marv");
+    expect(substituteMessageMacros("{{char}} and {{char}} and {{user}} and {{user}}", env)).toBe(
+      "Alice and Alice and Marv and Marv",
+    );
   });
 
   it("is case-insensitive for {{CHAR}}", () => {

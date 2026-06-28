@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+  MessageScrollerProvider,
+  MessageScroller,
+  MessageScrollerViewport,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerButton,
+} from "@/components/ui/message-scroller";
+import { Message, MessageHeader, MessageContent, MessageFooter } from "@/components/ui/message";
+import { Bubble, BubbleContent } from "@/components/ui/bubble";
+import { Marker, MarkerContent } from "@/components/ui/marker";
 import { toast } from "sonner";
 import { useChat as useAiChat, fetchServerSentEvents } from "@tanstack/ai-react";
 import {
-  ArrowDown,
   ArrowLeft,
   ArrowUp,
   ChevronLeft,
@@ -120,9 +129,7 @@ function ChatPage() {
   const setChatImage = useChatStore((s) => s.setChatImage);
   const clearChatImage = useChatStore((s) => s.clearChatImage);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [showScrollFab, setShowScrollFab] = useState(false);
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [deleteMessageTarget, setDeleteMessageTarget] = useState<number | null>(null);
   const [deleteChatOpen, setDeleteChatOpen] = useState(false);
@@ -250,25 +257,6 @@ function ChatPage() {
       });
   }, [messages, activePlaceholderId, liveAssistantText]);
 
-  // ── Virtualizer ──────────────────────────────────────────────────────
-  const virtualizer = useVirtualizer({
-    count: activePath.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: () => 72,
-    getItemKey: (index) => activePath[index]!.message.id,
-    anchorTo: "end",
-    followOnAppend: true,
-    scrollEndThreshold: 80,
-    overscan: 6,
-  });
-
-  // Initial scroll to end once messages load.
-  useLayoutEffect(() => {
-    if (activePath.length > 0) {
-      virtualizer.scrollToEnd();
-    }
-  }, [virtualizer, activePath.length]);
-
   // Auto-grow composer textarea (cap at TEXTAREA_MAX_HEIGHT px).
   useLayoutEffect(() => {
     const el = textareaRef.current;
@@ -276,20 +264,6 @@ function ChatPage() {
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
   }, [input]);
-
-  // Scroll listener — shows the jump-to-bottom FAB when more than 80px
-  // from the end (matches scrollEndThreshold).
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-    setShowScrollFab(distance > 80);
-  }, []);
-
-  const scrollToBottom = useCallback(() => {
-    virtualizer.scrollToEnd({ behavior: "smooth" });
-    setShowScrollFab(false);
-  }, [virtualizer]);
 
   // Stale isStreaming recovery (B3). Runs once per chat id: on mount, if the
   // DB has any message with extra.isStreaming, mark it for cancellation.
@@ -655,82 +629,65 @@ function ChatPage() {
 
           {/* Center: Messages only */}
           <div className="flex flex-col overflow-hidden">
-            {/* ── Message column ── */}
-            <div
-              ref={scrollRef}
-              onScroll={handleScroll}
-              className="scrollbar-thin relative z-20 flex-1 overflow-y-auto"
+            <MessageScrollerProvider
+              autoScroll={true}
+              defaultScrollPosition="last-anchor"
+              scrollEdgeThreshold={80}
+              scrollPreviousItemPeek={64}
             >
-              <div className="mx-auto w-full max-w-3xl space-y-7 px-4 py-4 min-h-full">
-                {/* Character intro card (outside virtualizer) */}
-                {(characterDescription || characterTags.length > 0) && (
-                  <CharacterIntroCard
-                    name={chat.characterName}
-                    imagePath={chat.characterImagePath}
-                    characterId={chat.characterId}
-                    description={characterDescription}
-                    tags={characterTags}
-                  />
-                )}
-
-                {activePath.length === 0 ? (
-                  <div className="text-muted-foreground py-4 text-center text-sm">
-                    No messages yet. Say hello!
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      position: "relative",
-                      height: `${virtualizer.getTotalSize()}px`,
-                      width: "100%",
-                    }}
+              <MessageScroller className="flex-1">
+                <MessageScrollerViewport>
+                  <MessageScrollerContent
+                    className="mx-auto w-full px-4 py-2 gap-1"
+                    aria-busy={activePlaceholderId !== null}
                   >
-                    {virtualizer.getVirtualItems().map((virtualItem) => (
-                      <div
-                        key={virtualItem.key}
-                        ref={virtualizer.measureElement}
-                        data-index={virtualItem.index}
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          transform: `translateY(${virtualItem.start}px)`,
-                          width: "100%",
-                        }}
-                      >
-                        <MessageBubble
-                          entry={activePath[virtualItem.index]!}
-                          isNewest={virtualItem.index === activePath.length - 1}
-                          characterName={chat.characterName}
-                          characterImagePath={chat.characterImagePath}
+                    {/* Character intro card */}
+                    {(characterDescription || characterTags.length > 0) && (
+                      <MessageScrollerItem>
+                        <CharacterIntroCard
+                          name={chat.characterName}
+                          imagePath={chat.characterImagePath}
                           characterId={chat.characterId}
-                          personaName={activePersona?.name}
-                          personaIconPath={activePersona?.iconPath ?? null}
-                          onSwipe={handleSwipe}
-                          onDelete={handleDeleteMessage}
-                          onEdit={handleEditMessage}
-                          disabled={activePlaceholderId !== null}
+                          description={characterDescription}
+                          tags={characterTags}
                         />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                      </MessageScrollerItem>
+                    )}
 
-              {/* Scroll-to-bottom FAB */}
-              {showScrollFab && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={scrollToBottom}
-                  aria-label="Scroll to latest"
-                  className={`glass absolute right-4 bottom-4 z-20 size-10 rounded-full ${
-                    isStreaming ? "animate-pulse" : ""
-                  }`}
-                >
-                  <ArrowDown className="size-4" />
-                </Button>
-              )}
-            </div>
+                    {activePath.length === 0 ? (
+                      <MessageScrollerItem>
+                        <Marker variant="default" className="justify-center">
+                          <MarkerContent>No messages yet. Say hello!</MarkerContent>
+                        </Marker>
+                      </MessageScrollerItem>
+                    ) : (
+                      activePath.map((entry, index) => (
+                        <MessageScrollerItem
+                          key={entry.message.id}
+                          messageId={entry.message.id.toString()}
+                          scrollAnchor={entry.message.is_user ?? entry.message.role === "user"}
+                        >
+                          <ChatMessage
+                            entry={entry}
+                            isNewest={index === activePath.length - 1}
+                            characterName={chat.characterName}
+                            characterImagePath={chat.characterImagePath}
+                            characterId={chat.characterId}
+                            personaName={activePersona?.name}
+                            personaIconPath={activePersona?.iconPath ?? null}
+                            onSwipe={handleSwipe}
+                            onDelete={handleDeleteMessage}
+                            onEdit={handleEditMessage}
+                            disabled={activePlaceholderId !== null}
+                          />
+                        </MessageScrollerItem>
+                      ))
+                    )}
+                  </MessageScrollerContent>
+                </MessageScrollerViewport>
+                <MessageScrollerButton direction="end" />
+              </MessageScroller>
+            </MessageScrollerProvider>
           </div>
 
           {/* Right: Custom image column — always in grid, content conditional */}
@@ -828,6 +785,7 @@ function ChatPage() {
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         onDeleteChat={handleDeleteChat}
+        isStreaming={activePlaceholderId !== null}
       />
 
       <ImageLightbox
@@ -927,7 +885,7 @@ function CharacterIntroCard({
   );
 }
 
-function MessageBubble({
+function ChatMessage({
   entry,
   isNewest = false,
   characterName,
@@ -993,121 +951,100 @@ function MessageBubble({
 
   const displayName = isUser ? (personaName ?? "You") : characterName;
   const showFooter = !isEditing && !isDraft && !disabled;
+  const showNameplateActions = !isEditing && !isDraft && !disabled;
 
   return (
-    <div className={`flex flex-col gap-0.5 ${isNewest ? "animate-msg-in" : ""}`}>
-      {/* Nameplate — display name + Edit/Delete on same level */}
-      <div
-        className={`flex items-center justify-between gap-2 rounded-t-lg px-3 py-1 text-sm font-heading mt-4 ${
-          isUser ? "bg-primary/40 text-muted-foreground" : "bg-(--lagoon)/20 text-(--lagoon-deep)"
-        }`}
-      >
-        <span className="inline-flex items-center gap-1.5">
-          {isStreaming && (
-            <span aria-hidden className="text-[10px] text-(--lagoon)">
-              ✦
+    <div className={isNewest ? "animate-msg-in" : ""}>
+      <Message data-is-user={isUser ? "true" : "false"}>
+        <MessageHeader>
+          <span className="inline-flex items-center gap-1.5">
+            {isStreaming && (
+              <span aria-hidden className="text-[10px] text-(--lagoon)">
+                ✦
+              </span>
+            )}
+            {displayName}
+          </span>
+          {showNameplateActions && (
+            <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+              <button type="button" onClick={beginEdit} className="hover:text-foreground">
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => onDelete(message.id)}
+                className="hover:text-destructive"
+              >
+                Delete
+              </button>
             </span>
           )}
-          {displayName}
-        </span>
-        {!isEditing && !isDraft && !disabled && (
-          <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
-            <button type="button" onClick={beginEdit} className="hover:text-foreground">
-              Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => onDelete(message.id)}
-              className="hover:text-destructive"
-            >
-              Delete
-            </button>
-          </span>
-        )}
-      </div>
-
-      {/* Content panel */}
-      <div
-        className={`relative min-w-0 rounded-lg p-4 ${showFooter ? "pr-16" : ""} ${
-          isUser ? "bg-primary/40 border border-primary/30" : "glass-strong"
-        } ${isDraft || isStreaming ? "opacity-90" : ""}`}
-      >
-        {isDraft ? (
-          <p className="text-muted-foreground text-sm italic">Type your message...</p>
-        ) : isEditing ? (
-          <div className="w-full space-y-2">
-            <Textarea
-              ref={editRef}
-              value={draftContent}
-              onChange={(e) => setDraftContent(e.target.value)}
-              className="min-h-10 resize-none border-0 bg-transparent p-0 text-sm outline-none focus-visible:ring-0 prose prose-sm prose-invert max-w-none prose-headings:font-heading prose-code:font-mono prose-pre:font-mono"
-              autoFocus
-            />
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="ghost" onClick={cancelEdit}>
-                Cancel
-              </Button>
-              <Button size="sm" onClick={saveEdit}>
-                Save
-              </Button>
-            </div>
-          </div>
-        ) : isStreaming && message.content === "" ? (
-          <ThinkingDots />
-        ) : (
-          <div className="prose prose-sm prose-invert max-w-none prose-headings:font-heading prose-code:font-mono prose-pre:font-mono">
-            <RichText
-              content={isStreaming ? balanceMarkdown(message.content, false) : message.content}
-            />
-            {isStreaming && <StreamingCaret />}
-          </div>
-        )}
-
-        {/* Swipe arrows inside bubble */}
+        </MessageHeader>
+        <MessageContent>
+          <Bubble variant={isUser ? "default" : "ghost"}>
+            <BubbleContent className={isDraft || isStreaming ? "opacity-90" : ""}>
+              {isDraft ? (
+                <p className="text-muted-foreground text-sm italic">Type your message...</p>
+              ) : isEditing ? (
+                <div className="w-full space-y-2">
+                  <Textarea
+                    ref={editRef}
+                    value={draftContent}
+                    onChange={(e) => setDraftContent(e.target.value)}
+                    className="min-h-10 resize-none border-0 bg-transparent p-0 text-sm outline-none focus-visible:ring-0 prose prose-sm prose-invert max-w-none prose-headings:font-heading prose-code:font-mono prose-pre:font-mono"
+                    autoFocus
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" onClick={cancelEdit}>
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={saveEdit}>
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              ) : isStreaming && message.content === "" ? (
+                <p className="shimmer text-muted-foreground text-sm">Thinking…</p>
+              ) : (
+                <div className="prose prose-sm prose-invert max-w-none prose-headings:font-heading prose-code:font-mono prose-pre:font-mono">
+                  <RichText
+                    content={
+                      isStreaming ? balanceMarkdown(message.content, false) : message.content
+                    }
+                  />
+                  {isStreaming && <StreamingCaret />}
+                </div>
+              )}
+            </BubbleContent>
+          </Bubble>
+        </MessageContent>
         {showFooter && (
-          <div className="absolute bottom-1.5 right-2 flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onSwipe(message.id, "prev")}
-              disabled={siblingIndex === 0}
-              className="hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 rounded-full p-0.5"
-              aria-label="Previous message"
-            >
-              <ChevronLeft className="size-4" />
-            </button>
-            <span className="text-muted-foreground tabular-nums text-[11px]">
-              {siblingIndex + 1}/{siblingTotal}
+          <MessageFooter>
+            <span className="ml-auto inline-flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onSwipe(message.id, "prev")}
+                disabled={siblingIndex === 0}
+                className="hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 rounded-full p-0.5"
+                aria-label="Previous message"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <span className="text-muted-foreground tabular-nums text-[11px]">
+                {siblingIndex + 1}/{siblingTotal}
+              </span>
+              <button
+                type="button"
+                onClick={() => onSwipe(message.id, "next")}
+                className="hover:text-foreground rounded-full p-0.5"
+                aria-label="Next message"
+              >
+                <ChevronRight className="size-4" />
+              </button>
             </span>
-            <button
-              type="button"
-              onClick={() => onSwipe(message.id, "next")}
-              className="hover:text-foreground rounded-full p-0.5"
-              aria-label="Next message"
-            >
-              <ChevronRight className="size-4" />
-            </button>
-          </div>
+          </MessageFooter>
         )}
-      </div>
-    </div>
-  );
-}
-
-function ThinkingDots() {
-  return (
-    <div className="flex items-center gap-1 py-1" aria-label="Thinking">
-      <span
-        className="w-1 rounded-full bg-(--lagoon)/70 animate-pulse"
-        style={{ height: "12px", animationDelay: "0s", animationDuration: "0.6s" }}
-      />
-      <span
-        className="w-1 rounded-full bg-(--lagoon)/70 animate-pulse"
-        style={{ height: "16px", animationDelay: "0.15s", animationDuration: "0.6s" }}
-      />
-      <span
-        className="w-1 rounded-full bg-(--lagoon)/70 animate-pulse"
-        style={{ height: "12px", animationDelay: "0.3s", animationDuration: "0.6s" }}
-      />
+      </Message>
     </div>
   );
 }

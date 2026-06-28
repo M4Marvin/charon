@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AlertTriangle, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { useProviderModels } from "@/hooks/useProviderModels";
 
 import type { AiProviderListItem } from "@/hooks/useAiProviders";
 import type { PresetData, PresetListItem } from "@/hooks/usePresets";
@@ -61,6 +63,13 @@ export function PresetDialog({
   const [contextSize, setContextSize] = useState(8192);
   const [frequencyPenalty, setFrequencyPenalty] = useState(0);
   const [presencePenalty, setPresencePenalty] = useState(0);
+
+  const {
+    data: fetchedModels = [],
+    isLoading: modelsLoading,
+    error: modelsError,
+    refetch: refetchModels,
+  } = useProviderModels(providerId);
 
   useEffect(() => {
     if (editing) {
@@ -120,11 +129,73 @@ export function PresetDialog({
           </div>
           <div className="space-y-1">
             <Label>Model (optional)</Label>
-            <Input
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder="model id"
-            />
+            {providerId ? (
+              <>
+                <div className="flex gap-1.5">
+                  <Select value={model} onValueChange={setModel}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue
+                        placeholder={
+                          modelsLoading && fetchedModels.length === 0
+                            ? "Loading models..."
+                            : "Select model"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fetchedModels.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.id}
+                        </SelectItem>
+                      ))}
+                      {fetchedModels.length === 0 && !modelsLoading && !modelsError && (
+                        <div className="text-muted-foreground px-3 py-2 text-xs">
+                          No models found
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-8 shrink-0"
+                    disabled={modelsLoading}
+                    onClick={() => refetchModels()}
+                    aria-label="Reload models"
+                  >
+                    <RotateCw className={`size-3.5 ${modelsLoading ? "animate-spin" : ""}`} />
+                  </Button>
+                </div>
+                {modelsError && !modelsLoading && (
+                  <div className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
+                    <AlertTriangle className="size-3 shrink-0" />
+                    <span className="min-w-0 break-all">
+                      {modelsError instanceof Error ? modelsError.message : "Failed to load models"}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="link"
+                      className="ml-auto h-auto shrink-0 px-1 py-0 text-xs"
+                      onClick={() => refetchModels()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                )}
+                <Input
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="Or type model ID"
+                  className="mt-1"
+                />
+              </>
+            ) : (
+              <Input
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder="model id"
+              />
+            )}
           </div>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
