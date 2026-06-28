@@ -621,15 +621,14 @@ function ChatPage() {
                   <TooltipContent>Open AI settings</TooltipContent>
                 </Tooltip>
               )}
-              {isStreaming && (
-                <Badge
-                  variant="secondary"
-                  className="shimmer gap-1 text-[10px] text-muted-foreground"
-                >
-                  <Spinner className="size-2.5" />
-                  Generating
-                </Badge>
-              )}
+              <Badge
+                variant="secondary"
+                className={`shimmer gap-1 text-[10px] text-muted-foreground ${isStreaming ? "" : "invisible"}`}
+                aria-hidden={!isStreaming}
+              >
+                <Spinner className="size-2.5" />
+                Generating
+              </Badge>
             </div>
             <div className="flex items-center justify-end gap-1">
               <Tooltip>
