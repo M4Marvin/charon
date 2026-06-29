@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { type } from "arktype";
-import { getSession } from "@/server/session";
+import { getSession, isAdmin } from "@/server/session";
 import { getGlobalAiProvider, upsertGlobalAiProvider } from "@/db/repositories/aiProviders";
 
 export const getGlobalAiConfig = createServerFn({ method: "GET" }).handler(async () => {
   const { user } = await getSession();
-  if (user.username !== "marv") throw new Error("Forbidden");
+  if (!isAdmin(user)) throw new Error("Forbidden");
     const provider = await getGlobalAiProvider();
   return {
     baseUrl: provider.baseUrl,
@@ -30,7 +30,7 @@ export const updateGlobalAiConfig = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const { user } = await getSession();
-    if (user.username !== "marv") throw new Error("Forbidden");
+    if (!isAdmin(user)) throw new Error("Forbidden");
     await upsertGlobalAiProvider({
       name: "Built-in",
       baseUrl: data.baseUrl,

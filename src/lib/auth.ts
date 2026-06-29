@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { username } from "better-auth/plugins/username";
+import { admin } from "better-auth/plugins/admin";
 import { db } from "@/db";
 import { account, session, user, verification } from "@/db/schema";
 import { seedSampleData } from "@/server/seed";
@@ -22,12 +23,12 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        after: async (user) => {
-          const username = (user as Record<string, string>).username ?? "";
-          await seedSampleData(user.id, username);
+        after: async (userData) => {
+          const role = (userData as Record<string, unknown>).role as string ?? "user";
+          await seedSampleData(userData.id, role);
         },
       },
     },
   },
-  plugins: [username(), tanstackStartCookies()],
+  plugins: [username(), admin({ defaultRole: "user" }), tanstackStartCookies()],
 });

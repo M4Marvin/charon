@@ -32,7 +32,7 @@ function CharacterDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const { data: session } = authClient.useSession();
-  const isDemo = session?.user?.username !== "marv";
+  const isDemo = session?.user?.role !== "admin";
   const { data: character, isLoading, error } = useCharacter(id);
   const deleteMutation = useDeleteCharacter();
   const createChatMutation = useCreateChat();

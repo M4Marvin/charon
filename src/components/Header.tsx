@@ -48,7 +48,7 @@ export default function Header() {
               >
                 Lorebooks
               </Link>
-              {session.user.username === "marv" && (
+              {session.user.role === "admin" && (
                 <Link
                   to="/settings"
                   className="text-muted-foreground no-underline transition-colors hover:text-foreground"

@@ -13,10 +13,10 @@ async function bootstrap() {
 void bootstrap();
 
 /**
- * Returns true for non-marv users — demo users have restricted capabilities.
+ * Returns true if the user has admin role.
  */
-export function isDemoUsername(username: string): boolean {
-  return username !== "marv";
+export function isAdmin(user: { role?: string | null }): boolean {
+  return user.role === "admin";
 }
 
 /**

@@ -72,7 +72,7 @@ function filterCharacters(
 
 function CharactersPage() {
   const { data: session } = authClient.useSession();
-  const isDemo = session?.user?.username !== "marv";
+  const isDemo = session?.user?.role !== "admin";
   const { data, isLoading, error } = useCharacters();
   const deleteMutation = useDeleteCharacter();
 

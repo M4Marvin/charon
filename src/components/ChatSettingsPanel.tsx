@@ -105,7 +105,7 @@ export function ChatSettingsPanel({
   onActiveTabChange,
 }: ChatSettingsPanelProps) {
   const { data: session } = authClient.useSession();
-  const isMarv = session?.user?.username === "marv";
+  const isAdmin = session?.user?.role === "admin";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -121,12 +121,12 @@ export function ChatSettingsPanel({
           className="flex min-h-0 flex-1 flex-col pt-4"
         >
           <TabsList className="w-full shrink-0">
-            {isMarv && (
+            {isAdmin && (
               <TabsTrigger value="ai" className="text-xs flex-1">
                 AI
               </TabsTrigger>
             )}
-            {isMarv && (
+            {isAdmin && (
               <TabsTrigger value="demo-ai" className="text-xs flex-1">
                 Demo AI
               </TabsTrigger>
@@ -148,12 +148,12 @@ export function ChatSettingsPanel({
             </TabsTrigger>
           </TabsList>
           <div className="relative min-h-0 flex-1">
-            {activeTab === "ai" && isMarv && (
+            {activeTab === "ai" && isAdmin && (
               <div className="absolute inset-0 overflow-y-auto p-4">
                 <AiSection chat={chat} isStreaming={isStreaming} />
               </div>
             )}
-            {activeTab === "demo-ai" && isMarv && (
+            {activeTab === "demo-ai" && isAdmin && (
               <div className="absolute inset-0 overflow-y-auto p-4">
                 <DemoAiConfigSection />
               </div>
@@ -175,7 +175,7 @@ export function ChatSettingsPanel({
             )}
             {activeTab === "scene" && (
               <div className="absolute inset-0 overflow-y-auto p-4">
-                <SceneSection chat={chat} isDemo={!isMarv} />
+                <SceneSection chat={chat} isDemo={!isAdmin} />
               </div>
             )}
             {activeTab === "display" && (
@@ -1323,7 +1323,7 @@ function PromptsSection() {
   );
 }
 
-// ── Demo AI config section (marv only) ──────────────────────────────────────
+// ── Demo AI config section (admin only) ──────────────────────────────────────
 
 function DemoAiConfigSection() {
   const [baseUrl, setBaseUrl] = useState("");

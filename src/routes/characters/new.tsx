@@ -12,7 +12,7 @@ export const Route = createFileRoute("/characters/new")({
 function NewCharacterPage() {
   const navigate = useNavigate();
   const { data: session } = authClient.useSession();
-  const isDemo = session?.user?.username !== "marv";
+  const isDemo = session?.user?.role !== "admin";
 
   useEffect(() => {
     if (session && isDemo) {

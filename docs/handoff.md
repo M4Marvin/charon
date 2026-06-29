@@ -7,7 +7,7 @@ Snapshot of what exists in the repo right now. Not a roadmap, not a plan.
 ## TL;DR
 
 - **st-core** — 7 pure-logic modules in `src/lib/st-core/`. V2-only, do not edit.
-- **DB + auth** — Drizzle schema, better-auth adapter, `dev.db` with 13 tables. `getSession()` is a single-user stub until real auth UX lands.
+- **DB + auth** — Drizzle schema, better-auth adapter, `dev.db` with 15 tables. `getSession()` resolves the current session via better-auth. `isAdmin(user)` checks `user.role === "admin"` for permission gates.
 - **Characters slice** — repo + server fns + hooks + UI routes + 15 repo tests. V2 PNG import + rename + delete + read-only detail with embedded lorebook collapsible.
 - **Lorebooks slice** — repo + server fns + hooks + UI routes + 36 repo tests. `listLorebooks` includes `entryCount` + **`enabled`** via leftJoin + groupBy. **Per-user activation overlay** (`user_lorebook_settings` + `user_lore_entry_settings`) wired into `/api/chat-generate`; inline enable Switch on `/lorebooks`, per-entry Switch on `/lorebooks/$id` with AND-disable semantics. **Import** button on `/lorebooks` opens a Dialog for SillyTavern world-info JSON files; parsed via `parseWorldFile` and inserted as a disabled lorebook.
 - **Personas slice** — repo + server fns + hooks (CRUD) + reusable `PersonaDialog` + 12 repo tests. User-settings-backed active persona selection. Auto-seed on create via `updateUserDefaults({ defaultPersonaId: res.id })`.
@@ -39,14 +39,14 @@ TanStack Start rewrite of SillyTavern-style character chat. Single-character rol
 - `drizzle.config.ts` → `schema: './src/db/schema.ts'`, `dialect: 'sqlite'`, `out: './drizzle'`.
 - `src/db/index.ts` → `export const db = drizzle(process.env.DATABASE_URL!, { schema })`, exports `type DB` for consumers.
 - `DATABASE_URL="dev.db"` in `.env.local`. `dev.db` created by `drizzle/0000_*.sql` through `0003_*.sql` migrations.
-- `src/lib/auth.ts` — `betterAuth({ database: drizzleAdapter(db, ...), emailAndPassword, plugins: [tanstackStartCookies()] })`.
+- `src/lib/auth.ts` — `betterAuth({ database: drizzleAdapter(db, ...), emailAndPassword, plugins: [username(), admin({ defaultRole: "user" }), tanstackStartCookies()] })`.
 - `src/lib/auth-client.ts` — `createAuthClient()`.
 - API route: `src/routes/api/auth/$.ts` — proxies GET/POST to `auth.handler(request)`.
-- `src/server/session.ts:14` — `getSession()` single-user stub (throws on no session in real auth).
+- `src/server/session.ts` — `getSession()` resolves the current session; `isAdmin(user)` checks `user.role === "admin"` for permission gates.
 
 ### Schema
 
-**Migrations:** `0000` (initial 11 tables), `0001` (adds `ai_providers` + `presets.provider_id`/`model`), `0002` (adds `chats.provider_id`/`preset_id`/`selected_model`), `0003` (adds `user_settings`), `0004` (adds `user_lorebook_settings` + `user_lore_entry_settings`), `0005` (adds `defaultPersonaId`, `systemPrompt`, `postHistoryInstructions`, `impersonationPrompt` to `user_settings`), `0006` (adds `backgrounds`), `0007` (adds `characters.tagline`), `0008` (removes `backgrounds.user_id`, makes `ai_providers.user_id` nullable, adds `user.username`/`display_username`). 15 tables.
+**Migrations:** `0000` (initial 11 tables), `0001` (adds `ai_providers` + `presets.provider_id`/`model`), `0002` (adds `chats.provider_id`/`preset_id`/`selected_model`), `0003` (adds `user_settings`), `0004` (adds `user_lorebook_settings` + `user_lore_entry_settings`), `0005` (adds `defaultPersonaId`, `systemPrompt`, `postHistoryInstructions`, `impersonationPrompt` to `user_settings`), `0006` (adds `backgrounds`), `0007` (adds `characters.tagline`), `0008` (removes `backgrounds.user_id`, makes `ai_providers.user_id` nullable, adds `user.username`/`display_username`), `0009` (adds `user.role`/`banned`/`ban_reason`/`ban_expires` + `session.impersonated_by` for admin plugin). 15 tables.
 
 Auth tables (hand-written in same schema file): `user`, `session`, `account`, `verification`.
 
@@ -77,7 +77,7 @@ src/db/
   __tests__/characters.repo.test.ts           # 21 tests
 src/server/
   fns/characters.ts                           # list, get, import, update, delete; demo-restricted mutations
-  session.ts                                  # getSession() + isDemoUsername()
+  session.ts                                  # getSession() + isAdmin()
 src/routes/
   characters/{index,new,$id}.tsx              # list, import form, detail (read-only + rename + delete)
   api/characters/$id/avatar.ts                # GET PNG bytes from data/avatars/
@@ -88,7 +88,7 @@ src/lib/character/normalize.test.ts           # 9 tests
 
 V2 import flow: client `file.arrayBuffer()` → base64 → `importCharacter` server fn → `parseCharacterCard` → `normalizeCardData` → `validateCharacterCard` (strict arktype) → write PNG to `data/avatars/<uuid>.png` → insert row. On DB failure: `rm(imagePath)` orphan cleanup.
 
-**Demo restrictions:** All mutation server fns (`importCharacter`, `updateCharacter`, `updateCharacterData`, `deleteCharacter`) check `isDemoUsername()` and either return an error or throw. The UI hides import/edit/rename/delete buttons for demo users (components `CharacterCard`, `CharacterActions` pass an `isDemo` prop). Demo users are seeded with 2 rich characters on account creation and on server boot (if missing). See `src/server/seed.ts`.
+**Demo restrictions:** All mutation server fns (`importCharacter`, `updateCharacter`, `updateCharacterData`, `deleteCharacter`) check `isAdmin(user)` and either return an error or throw. The UI hides import/edit/rename/delete buttons for non-admin users (components `CharacterCard`, `CharacterActions` pass an `isDemo` prop). Demo users are seeded with 2 rich characters on account creation and on server boot (if missing). See `src/server/seed.ts`.
 
 ### Lorebooks slice
 
@@ -136,7 +136,7 @@ Backgrounds are **app-wide** (no `userId` column). The table stores a name and f
 
 **Seed:** On first boot with an empty `backgrounds` table, `seedDefaultBackgrounds()` copies 20 images from `public/data/backgrounds/` (SillyTavern's shipped scenes) to `data/backgrounds/<uuid>.ext` and inserts corresponding DB rows. Utility files starting with `_` are skipped.
 
-**Demo restrictions:** `uploadBackground` and `deleteBackground` check `isDemoUsername()` and throw. The `SceneSection` component hides the upload button and per-card delete (✕) buttons when `isDemo === true`. Demo users can still view and select any background for their chats.
+**Demo restrictions:** `uploadBackground` and `deleteBackground` check `isAdmin(user)` and throw. The `SceneSection` component hides the upload button and per-card delete (✕) buttons when `isDemo === true`. Demo users can still view and select any background for their chats.
 
 ### Personas slice
 

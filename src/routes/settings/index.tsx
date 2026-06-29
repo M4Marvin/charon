@@ -39,7 +39,7 @@ export const Route = createFileRoute("/settings/")({
 
 function SettingsPage() {
   const { data: session } = authClient.useSession();
-  const isMarv = session?.user?.username === "marv";
+  const isAdmin = session?.user?.role === "admin";
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
@@ -58,10 +58,14 @@ function SettingsPage() {
       </div>
 
       <div className="space-y-8">
-        <AiProvidersSection />
-        <PresetsSection />
+        {isAdmin && (
+          <>
+            <AiProvidersSection />
+            <PresetsSection />
+          </>
+        )}
 
-        {isMarv && (
+        {isAdmin && (
           <>
             <hr className="border-border/40" />
             <DemoAiConfigSection />

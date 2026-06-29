@@ -16,7 +16,7 @@ import {
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import { parseCharacterCard, validateCharacterCard } from "@/lib/st-core/character";
 import { normalizeCardData } from "@/lib/character/normalize";
-import { getSession, isDemoUsername } from "@/server/session";
+import { getSession, isAdmin } from "@/server/session";
 
 const AVATAR_DIR = "data/avatars";
 
@@ -110,7 +110,7 @@ export const importCharacter = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<ImportResult> => {
     const { user } = await getSession();
 
-    if (isDemoUsername(user.username ?? "")) {
+    if (!isAdmin(user)) {
       return { ok: false, error: { kind: "demo_restricted", message: "Demo users cannot import characters." } };
     }
 
@@ -194,7 +194,7 @@ export const updateCharacter = createServerFn({ method: "POST", strict: { output
   .validator(validateUpdateInput)
   .handler(async ({ data }): Promise<Character> => {
     const { user } = await getSession();
-    if (isDemoUsername(user.username ?? "")) throw new Error("Demo users cannot rename characters.");
+    if (!isAdmin(user)) throw new Error("Demo users cannot rename characters.");
     return repoUpdate(user.id, data.id, { name: data.name });
   });
 
@@ -202,7 +202,7 @@ export const updateCharacterData = createServerFn({ method: "POST", strict: { ou
   .validator(validateUpdateDataInput)
   .handler(async ({ data }): Promise<Character> => {
     const { user } = await getSession();
-    if (isDemoUsername(user.username ?? "")) throw new Error("Demo users cannot edit characters.");
+    if (!isAdmin(user)) throw new Error("Demo users cannot edit characters.");
     return repoUpdate(user.id, data.id, { name: data.data.name, data: data.data, tagline: data.tagline ?? null });
   });
 
@@ -210,7 +210,7 @@ export const deleteCharacter = createServerFn({ method: "POST" })
   .validator(validateIdInput)
   .handler(async ({ data }): Promise<{ id: string }> => {
     const { user } = await getSession();
-    if (isDemoUsername(user.username ?? "")) throw new Error("Demo users cannot delete characters.");
+    if (!isAdmin(user)) throw new Error("Demo users cannot delete characters.");
 
     let imagePath: string | null = null;
     try {

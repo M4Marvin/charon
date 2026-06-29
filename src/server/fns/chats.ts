@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Schema } from "effect";
 import { createServerFn } from "@tanstack/react-start";
-import { getSession } from "@/server/session";
+import { getSession, isAdmin } from "@/server/session";
 import {
   CancelStream,
   CreateChat,
@@ -893,7 +893,9 @@ export const updateChatSettings = createServerFn({ method: "POST", strict: { out
     const patch: Parameters<typeof repoUpdateChat>[2] = {};
     if (data.providerId !== undefined) patch.providerId = data.providerId;
     if (data.presetId !== undefined) patch.presetId = data.presetId;
-    if (data.selectedModel !== undefined) patch.selectedModel = data.selectedModel;
+    if (data.selectedModel !== undefined && isAdmin(user)) {
+      patch.selectedModel = data.selectedModel;
+    }
     if (data.backgroundPath !== undefined) patch.backgroundPath = data.backgroundPath;
     repoUpdateChat(user.id, data.id, patch);
     return { id: data.id };

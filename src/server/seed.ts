@@ -4,14 +4,14 @@ import { join, extname } from "node:path";
 import { db } from "@/db";
 import { createBackground } from "@/db/repositories/backgrounds";
 import { createCharacter } from "@/db/repositories/characters";
-import { createAiProvider, GLOBAL_PROVIDER_ID } from "@/db/repositories/aiProviders";
+import { GLOBAL_PROVIDER_ID } from "@/db/repositories/aiProviders";
 import { createPreset } from "@/db/repositories/presets";
 import { createPersona } from "@/db/repositories/personas";
 import { upsertUserSettings } from "@/db/repositories/userSettings";
 import { backgrounds } from "@/db/schema";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 
-export async function seedSampleData(userId: string, username: string): Promise<void> {
+export async function seedSampleData(userId: string, role: string): Promise<void> {
   // Default persona
   const personaId = randomUUID();
   createPersona({
@@ -22,10 +22,8 @@ export async function seedSampleData(userId: string, username: string): Promise<
     iconPath: null,
   });
 
-  const defaultModel = process.env.AI_DEFAULT_MODEL ?? "llama3.2";
-
-  if (username === "marv") {
-    // Sample character for marv
+  if (role === "admin") {
+    // Sample character for admin
     const charId = randomUUID();
     const avatarPath = "data/avatars/sample-ref.jpeg";
     const sampleData: CharacterDataV2 = {
@@ -53,23 +51,13 @@ export async function seedSampleData(userId: string, username: string): Promise<
       tagline: "Your character",
     });
 
-    const providerId = randomUUID();
-    await createAiProvider({
-      id: providerId,
-      userId,
-      name: "Built-in",
-      baseUrl: process.env.AI_BASE_URL ?? "http://localhost:11434/v1",
-      apiKey: process.env.AI_API_KEY ?? "",
-      defaultModel,
-    });
-
     const presetId = randomUUID();
     createPreset({
       id: presetId,
       userId,
       name: "Creative",
-      providerId,
-      model: defaultModel,
+      providerId: null,
+      model: null,
       data: {
         temperature: 0.9,
         maxTokens: 2048,
@@ -81,16 +69,13 @@ export async function seedSampleData(userId: string, username: string): Promise<
     });
 
     upsertUserSettings(userId, {
-      defaultProviderId: providerId,
       defaultPresetId: presetId,
-      defaultSelectedModel: defaultModel,
       defaultPersonaId: personaId,
     });
   } else {
     seedDemoCharactersForExistingUser(userId);
     upsertUserSettings(userId, {
       defaultProviderId: GLOBAL_PROVIDER_ID,
-      defaultSelectedModel: defaultModel,
       defaultPersonaId: personaId,
       systemPrompt: "You are a helpful AI assistant. Roleplay as {{char}} according to their character description, staying in character at all times. Write responses from {{char}}'s perspective in a narrative style, using *asterisks* for actions and descriptions.",
       postHistoryInstructions: "Stay in character and continue the scene naturally. React to {{user}}'s latest message and move the conversation forward.",

@@ -107,7 +107,7 @@ function ChatPage() {
   const { data: personas = [] } = usePersonas();
   const { data: userSettings } = useUserSettings();
   const { data: session } = authClient.useSession();
-  const isMarv = session?.user?.username === "marv";
+  const isAdmin = session?.user?.role === "admin";
 
   const prepareStream = usePrepareStream();
   const finalizeStream = useFinalizeStream();
@@ -143,12 +143,12 @@ function ChatPage() {
   const [customImageOpen, setCustomImageOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [lightboxAlt, setLightboxAlt] = useState("");
-  const [settingsTab, setSettingsTab] = useState(isMarv ? "ai" : "lorebooks");
+  const [settingsTab, setSettingsTab] = useState(isAdmin ? "ai" : "lorebooks");
 
   const selectedProviderId = chat?.providerId ?? "";
   const selectedModel = chat?.selectedModel ?? "";
 
-  const hasAi = selectedProviderId.length > 0 && selectedModel.length > 0;
+  const hasAi = selectedProviderId.length > 0;
   const canSend = activePlaceholderId === null;
   const isStreaming = activePlaceholderId !== null;
 
@@ -601,7 +601,7 @@ function ChatPage() {
               </Tooltip>
               <div className="md:hidden">{avatarNode}</div>
               <p className="truncate text-sm font-heading leading-tight">{chat.characterName}</p>
-              {selectedModel && isMarv && (
+              {selectedModel && isAdmin && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -776,7 +776,7 @@ function ChatPage() {
           {/* ── Composer + AI hint ── */}
           <div className="glass-strong z-10 shrink-0 border-t border-white/5 px-4 py-2.5">
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-1.5">
-              {!hasAi && isMarv && (
+              {!hasAi && isAdmin && (
                 <button
                   type="button"
                   onClick={() => setSettingsOpen(true)}
