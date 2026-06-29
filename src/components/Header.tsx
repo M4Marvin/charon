@@ -50,6 +50,15 @@ export default function Header() {
               </Link>
               {session.user.role === "admin" && (
                 <Link
+                  to="/admin/users"
+                  className="text-muted-foreground no-underline transition-colors hover:text-foreground"
+                  activeProps={{ className: "text-foreground" }}
+                >
+                  Admin
+                </Link>
+              )}
+              {session.user.role === "admin" && (
+                <Link
                   to="/settings"
                   className="text-muted-foreground no-underline transition-colors hover:text-foreground"
                   activeProps={{ className: "text-foreground" }}

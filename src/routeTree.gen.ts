@@ -23,6 +23,7 @@ import { Route as ChatsIdRouteImport } from './routes/chats/$id'
 import { Route as CharactersNewRouteImport } from './routes/characters/new'
 import { Route as CharactersIdRouteImport } from './routes/characters/$id'
 import { Route as ApiChatGenerateRouteImport } from './routes/api/chat-generate'
+import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as CharactersIdEditRouteImport } from './routes/characters/$id_.edit'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiCharactersIdAvatarRouteImport } from './routes/api/characters/$id/avatar'
@@ -98,6 +99,11 @@ const ApiChatGenerateRoute = ApiChatGenerateRouteImport.update({
   path: '/api/chat-generate',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CharactersIdEditRoute = CharactersIdEditRouteImport.update({
   id: '/characters/$id_/edit',
   path: '/characters/$id/edit',
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/chat-generate': typeof ApiChatGenerateRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
@@ -143,6 +150,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/chat-generate': typeof ApiChatGenerateRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/chat-generate': typeof ApiChatGenerateRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/'
     | '/signin'
     | '/signup'
+    | '/admin/users'
     | '/api/chat-generate'
     | '/characters/$id'
     | '/characters/new'
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/'
     | '/signin'
     | '/signup'
+    | '/admin/users'
     | '/api/chat-generate'
     | '/characters/$id'
     | '/characters/new'
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/'
     | '/signin'
     | '/signup'
+    | '/admin/users'
     | '/api/chat-generate'
     | '/characters/$id'
     | '/characters/new'
@@ -247,6 +259,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SigninRoute: typeof SigninRoute
   SignupRoute: typeof SignupRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   ApiChatGenerateRoute: typeof ApiChatGenerateRoute
   CharactersIdRoute: typeof CharactersIdRoute
   CharactersNewRoute: typeof CharactersNewRoute
@@ -364,6 +377,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatGenerateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/characters/$id_/edit': {
       id: '/characters/$id_/edit'
       path: '/characters/$id/edit'
@@ -399,6 +419,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SigninRoute: SigninRoute,
   SignupRoute: SignupRoute,
+  AdminUsersRoute: AdminUsersRoute,
   ApiChatGenerateRoute: ApiChatGenerateRoute,
   CharactersIdRoute: CharactersIdRoute,
   CharactersNewRoute: CharactersNewRoute,

@@ -13,7 +13,7 @@ Snapshot of what exists in the repo right now. Not a roadmap, not a plan.
 - **Personas slice** — repo + server fns + hooks (CRUD) + reusable `PersonaDialog` + 12 repo tests. User-settings-backed active persona selection. Auto-seed on create via `updateUserDefaults({ defaultPersonaId: res.id })`.
 - **Chats slice** — repo + server fns + hooks + UI routes + 16 repo tests. Hidden-root tree model: all greetings pre-loaded as children of a system root; swipe-on-all, draft messages, edit, delete, **streaming AI generation via SSE**. **Left/right side panels** (CSS grid 15/70/15 on md+): character portrait panel with streaming glow + lightbox, temporary per-chat custom image panel with upload/remove. **{{char}}/{{user}} macro substitution** on all persisted message content (createChat greetings, sendMessage, prepareStream, editMessage, finalizeStream) resolving `{{user}}` to the active persona name via `resolveUserName()`.
 - **AI slice** — providers + presets + user-settings repos + server fns + hooks + UI. `/ai-playground` (provider/preset CRUD + streaming chat) and per-chat provider/model/preset in a **floating draggable settings panel** (`ChatSettingsPanel`) on `/chats/$id`.
-- **Tests:** 222/222 pass (75 chat-tree + 9 normalize + 21 characters + 36 lorebooks + 16 chats + 8 userSettings + 15 userLorebookSettings + 22 world-file parser + 12 personas repository + **8 substitute-message-macros**)
+- **Tests:** 229/229 pass (75 chat-tree + 9 normalize + 21 characters + 36 lorebooks + 16 chats + 8 userSettings + 15 userLorebookSettings + 22 world-file parser + 12 personas repository + 8 substitute-message-macros + **7 users repository**)
 - **Typecheck:** clean (only 2 pre-existing errors: `drizzle.config.ts:6`, `transform/regex.ts:161`)
 - **Legacy migration** — `scripts/migrate-data.ts` imports `public/data/` (30 chars, 27 lorebooks, 1 persona). Idempotent.
 - **Upload normalization** — `src/lib/character/normalize.ts` shared by `importCharacter` and the migration. 9 unit tests.
@@ -245,6 +245,25 @@ src/hooks/
 
 `user_settings` is one row per user holding the AI defaults that seed new chats, the active persona id, and prompt overrides. `upsertUserSettings(userId, patch)` inserts on first call, then applies partial updates. `updateUserSettings` is partial-patch (undefined = leave alone, null = clear). The ChatSettingsPanel's provider/model/preset handlers mirror their changes into `user_settings` so new chats inherit them. Switching provider resets model + preset on both the chat and the user default.
 
+### Admin / Users slice
+
+```
+src/db/
+  repositories/users.ts                      # listUsers, deleteUser (manual cascade), countAdmins
+  __tests__/users.repo.test.ts                # 7 tests
+src/server/
+  fns/users.ts                                # listUsers (GET, admin-guarded), deleteUser (POST, admin + self-delete + last-admin guards)
+src/hooks/useUsers.ts                         # TanStack Query hooks: useUsers, useDeleteUser
+src/routes/
+  admin/users.tsx                              # User table with client-side search, per-row delete via AlertDialog
+```
+
+`/admin/users` is **admin-gated** via `beforeLoad` redirect. The route shows a table of all users (Name, Username, Email, Role badge, Banned badge, Created, Actions). **Client-side search** filters by name/username/email substring. **Delete** shows an `<AlertDialog>` confirm dialog and is hidden for the current session user (self-delete guard). The server fn also enforces a **last-admin lockout** (`countAdmins() <= 1` → reject if target is admin).
+
+`deleteUser` performs **manual cascade** across all domain + auth tables (FK enforcement is off in `dev.db` per Known Issues). Deletes in dependency order: `chat_messages` → `chats` → `user_lore_entry_settings` → `lore_entries` → `user_lorebook_settings` → `lorebooks` → `characters` → `personas` → `presets` → `aiProviders` → `user_settings` → `session` → `account` → `verification` → `user`.
+
+The `User` type was added to `src/db/schema.ts` alongside the existing auth types (previously missing — only `NewSession`/`Account`/`NewAccount`/`Verification`/`NewVerification` were exported).
+
 ### Legacy migration (`scripts/migrate-data.ts`)
 
 **Run:** `nub run migrate` (one-time; idempotent by `(userId, name)`).
@@ -318,6 +337,8 @@ Not migrated: presets, chats. V3 cards rejected. `normalizeCardData` is applied 
 | Message macro substitution | **{{user}}→persona name, {{char}}→character name** on all stored messages | `resolveUserName()` looks up active persona via `user_settings.defaultPersonaId`, falls back to `user.name`. Substitution applied server-side at every persistence point: `createChat` (greetings), `sendMessage`, `prepareStream`, `editMessage`, `finalizeStream`. |
 | Chat side panels | **CSS grid 15/70/15 (md+), always in DOM** | Side columns always have the grid track (no layout shift). Toggle only shows/hides inner content. Columns have no background — single background image extends across all three columns. Below md: single column, side divs hidden. |
 | Custom chat images | **Temporary, per-chat, base64 in zustand** | Store: `useChatStore.chatImages[chatId]`. Gone on reload. No DB, no file storage, no server fns. Left panel also has upload button that stores to same key (appears in right panel). |
+| Admin user management | **List + search + delete only for v1** | `/admin/users` is admin-gated via `beforeLoad`. Delete cascades manually (FK off in dev). Self-delete + last-admin guards enforced server-side. Ban/role/impersonate/password-reset deferred to follow-up. |
+| User type export | **Added `User`/`Session`/`NewUser` to schema.ts** | Previously only `NewSession`/`Account`/`NewAccount`/`Verification`/`NewVerification` were exported for auth tables. `User` is now the canonical row type used by the users repository. |
 
 ---
 

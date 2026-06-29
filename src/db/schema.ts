@@ -492,6 +492,9 @@ export const userSettingsRelations = relations(userSettings, ({ one }) => ({
 // ── Inferred types ──────────────────────────────────────────────────────────
 // Re-exported as the canonical row types. Use these in repos / server fns.
 
+export type User = typeof user.$inferSelect;
+export type NewUser = typeof user.$inferInsert;
+export type Session = typeof session.$inferSelect;
 export type NewSession = typeof session.$inferInsert;
 export type Account = typeof account.$inferSelect;
 export type NewAccount = typeof account.$inferInsert;
