@@ -399,6 +399,18 @@ export const userSettings = sqliteTable("user_settings", {
     .$defaultFn(() => new Date()),
 });
 
+export const userDailyUsage = sqliteTable(
+  "user_daily_usage",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    day: text("day").notNull(), // "YYYY-MM-DD" UTC
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] })],
+);
+
 // ── Relations ────────────────────────────────────────────────────────────────
 // Optional but useful for typed `with: { ... }` joins. Kept minimal here.
 
@@ -525,3 +537,4 @@ export type NewUserSettings = typeof userSettings.$inferInsert;
 export type NewAiProvider = typeof aiProviders.$inferInsert;
 export type Background = typeof backgrounds.$inferSelect;
 export type NewBackground = typeof backgrounds.$inferInsert;
+export type UserDailyUsage = typeof userDailyUsage.$inferSelect;

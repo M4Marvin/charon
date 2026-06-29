@@ -208,13 +208,38 @@ function ChatPage() {
         stack: err.stack,
         cause: (err as { cause?: unknown }).cause,
       });
-      const causeStr = (() => {
-        const c = (err as { cause?: unknown }).cause;
-        if (!c) return "";
-        if (c instanceof Error) return ` — ${c.message}`;
-        return ` — ${JSON.stringify(c)}`;
-      })();
-      toast.error(`Stream error: ${err.message}${causeStr}`);
+
+      const statusMatch = err.message.match(/status: (\d+)/);
+      const status = statusMatch ? Number(statusMatch[1]) : 0;
+
+      if (status === 429) {
+        const now = new Date();
+        const tomorrow = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
+        );
+        const ms = tomorrow.getTime() - now.getTime();
+        const hours = Math.floor(ms / 3_600_000);
+        const minutes = Math.floor((ms % 3_600_000) / 60_000);
+        const seconds = Math.floor((ms % 60_000) / 1000);
+        let remaining: string;
+        if (hours > 0) {
+          remaining = `${hours}h ${String(minutes).padStart(2, "0")}m`;
+        } else if (minutes > 0) {
+          remaining = `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+        } else {
+          remaining = `${seconds}s`;
+        }
+        toast.error(`Daily request limit reached (100/day). Resets in ${remaining}.`);
+      } else {
+        const causeStr = (() => {
+          const c = (err as { cause?: unknown }).cause;
+          if (!c) return "";
+          if (c instanceof Error) return ` — ${c.message}`;
+          return ` — ${JSON.stringify(c)}`;
+        })();
+        toast.error(`Stream error: ${err.message}${causeStr}`);
+      }
+
       const placeholderId = useChatStore.getState().activePlaceholderId;
       if (placeholderId) {
         cancelStream.mutate(

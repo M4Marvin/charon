@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { chat as aiChat, toServerSentEventsResponse } from "@tanstack/ai";
 import { openaiCompatibleText } from "@tanstack/ai-openai/compatible";
 import { getSession } from "@/server/session";
+import { checkRateLimit } from "@/server/ratelimit";
 import { getChat as repoGetChat, listMessages as repoListMessages } from "@/db/repositories/chats";
 import { getCharacter as repoGetChar } from "@/db/repositories/characters";
 import { getAiProviderWithGlobalFallback as repoGetProvider } from "@/db/repositories/aiProviders";
@@ -79,6 +80,18 @@ export const Route = createFileRoute("/api/chat-generate")({
       POST: async ({ request }) => {
         try {
           const { user } = await getSession();
+
+          const rateLimit = checkRateLimit(user);
+          if (!rateLimit.allowed) {
+            return new Response(
+              JSON.stringify({
+                error: "Daily request limit reached (100/day).",
+                retryAfterMs: rateLimit.retryAfterMs,
+              }),
+              { status: 429, headers: { "Content-Type": "application/json" } },
+            );
+          }
+
           const body = (await request.json()) as {
             forwardedProps?: {
               chatId?: string;

@@ -13,7 +13,7 @@ Snapshot of what exists in the repo right now. Not a roadmap, not a plan.
 - **Personas slice** — repo + server fns + hooks (CRUD) + reusable `PersonaDialog` + 12 repo tests. User-settings-backed active persona selection. Auto-seed on create via `updateUserDefaults({ defaultPersonaId: res.id })`.
 - **Chats slice** — repo + server fns + hooks + UI routes + 16 repo tests. Hidden-root tree model: all greetings pre-loaded as children of a system root; swipe-on-all, draft messages, edit, delete, **streaming AI generation via SSE**. **Left/right side panels** (CSS grid 15/70/15 on md+): character portrait panel with streaming glow + lightbox, temporary per-chat custom image panel with upload/remove. **{{char}}/{{user}} macro substitution** on all persisted message content (createChat greetings, sendMessage, prepareStream, editMessage, finalizeStream) resolving `{{user}}` to the active persona name via `resolveUserName()`.
 - **AI slice** — providers + presets + user-settings repos + server fns + hooks + UI. `/ai-playground` (provider/preset CRUD + streaming chat) and per-chat provider/model/preset in a **floating draggable settings panel** (`ChatSettingsPanel`) on `/chats/$id`.
-- **Tests:** 229/229 pass (75 chat-tree + 9 normalize + 21 characters + 36 lorebooks + 16 chats + 8 userSettings + 15 userLorebookSettings + 22 world-file parser + 12 personas repository + 8 substitute-message-macros + **7 users repository**)
+- **Tests:** 239/239 pass (75 chat-tree + 9 normalize + 21 characters + 36 lorebooks + 16 chats + 8 userSettings + 15 userLorebookSettings + 22 world-file parser + 12 personas repository + 8 substitute-message-macros + 7 users repository + **5 userUsage repository + 5 ratelimit**)
 - **Typecheck:** clean (only 2 pre-existing errors: `drizzle.config.ts:6`, `transform/regex.ts:161`)
 - **Legacy migration** — `scripts/migrate-data.ts` imports `public/data/` (30 chars, 27 lorebooks, 1 persona). Idempotent.
 - **Upload normalization** — `src/lib/character/normalize.ts` shared by `importCharacter` and the migration. 9 unit tests.
@@ -264,6 +264,31 @@ src/routes/
 
 The `User` type was added to `src/db/schema.ts` alongside the existing auth types (previously missing — only `NewSession`/`Account`/`NewAccount`/`Verification`/`NewVerification` were exported).
 
+### Rate limiting
+
+```
+src/db/
+  schema.ts                                   # userDailyUsage table (userId + day composite PK, count)
+  repositories/userUsage.ts                   # incrementToday (upsert RETURNING), getTodayCount, todayUTC, DAILY_LIMIT=100
+  __tests__/userUsage.repo.test.ts            # 5 tests
+src/server/
+  ratelimit.ts                                 # checkRateLimit(user, db?), msUntilNextUTCMidnight
+  __tests__/ratelimit.test.ts                  # 5 tests
+src/routes/
+  api/chat-generate.ts                         # Rate-limit check wired in POST handler (after getSession)
+  chats/$id.tsx                                 # 429 toast: "Daily request limit reached (100/day). Resets in Xh Ym."
+```
+
+**Architecture.** A `user_daily_usage` table tracks per-user per-day AI generation count. The check runs at the **top** of `/api/chat-generate` POST handler — before any DB reads or upstream calls — via `checkRateLimit(user)`. The function calls `incrementToday` (atomic UPSERT returning new count) first, then compares to `DAILY_LIMIT` (100). Over-limit attempts still burn a slot (increment-then-check), preventing retry-DoS on the boundary.
+
+**Admins bypass** via `isAdmin(user)` — no increment, always `allowed: true`.
+
+**Window:** fixed calendar day, UTC. `todayUTC()` returns `"YYYY-MM-DD"` via `new Date().toISOString().slice(0, 10)`. `msUntilNextUTCMidnight()` computes the retry-after value for the 429 response.
+
+**Client experience.** The SSE fetch wrapper (`@tanstack/ai-react`'s `fetchServerSentEvents`) throws `Error("HTTP error! status: 429 ...")` on non-200 responses. The `onError` handler in `chats/$id.tsx` parses the status from the message, computes the UTC midnight countdown client-side (so no extra network round-trip to decode the 429 body), formats as `"Xh Ym"` / `"Ym Zs"` / `"Zs"`, and shows a `toast.error(...)` with the remaining time. The placeholder message is cancelled as usual.
+
+No refund on failed generation — a slot reserved at request start stays counted even if the upstream provider 500s mid-stream.
+
 ### Legacy migration (`scripts/migrate-data.ts`)
 
 **Run:** `nub run migrate` (one-time; idempotent by `(userId, name)`).
@@ -339,6 +364,7 @@ Not migrated: presets, chats. V3 cards rejected. `normalizeCardData` is applied 
 | Custom chat images | **Temporary, per-chat, base64 in zustand** | Store: `useChatStore.chatImages[chatId]`. Gone on reload. No DB, no file storage, no server fns. Left panel also has upload button that stores to same key (appears in right panel). |
 | Admin user management | **List + search + delete only for v1** | `/admin/users` is admin-gated via `beforeLoad`. Delete cascades manually (FK off in dev). Self-delete + last-admin guards enforced server-side. Ban/role/impersonate/password-reset deferred to follow-up. |
 | User type export | **Added `User`/`Session`/`NewUser` to schema.ts** | Previously only `NewSession`/`Account`/`NewAccount`/`Verification`/`NewVerification` were exported for auth tables. `User` is now the canonical row type used by the users repository. |
+| Rate limiting | **100/day per user on /api/chat-generate, admins exempt, fixed UTC day, increment-then-check** | `userDailyUsage` sqlite table with composite PK `(userId, day)`. `checkRateLimit` called at top of chat-generate POST before any DB/upstream work. Over-limit attempts still burn a slot (prevents retry-DoS). No refund on failed generation. Client computes countdown client-side from UTC midnight, shows toast. Swipes and regens each count as new requests. |
 
 ---
 

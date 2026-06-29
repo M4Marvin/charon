@@ -71,6 +71,13 @@
       "when": 1782744613212,
       "tag": "0009_furry_wasp",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1782772759724,
+      "tag": "0010_colossal_fallen_one",
+      "breakpoints": true
     }
   ]
 }
