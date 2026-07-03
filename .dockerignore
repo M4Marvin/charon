@@ -4,7 +4,6 @@ node_modules/
 *.log
 .vscode/
 .vercel/
-.output/
 dist/
 .github/
 scripts/migrate-data.ts
