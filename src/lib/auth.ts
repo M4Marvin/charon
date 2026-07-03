@@ -6,6 +6,8 @@ import { admin } from "better-auth/plugins/admin";
 import { db } from "@/db";
 import { account, session, user, verification } from "@/db/schema";
 import { seedSampleData } from "@/server/seed";
+import { ensureGlobalAiProviderExists } from "@/db/repositories/aiProviders";
+import { FALLBACK_GLOBAL_PROVIDER } from "@/server/bootstrap";
 
 const appUrl = process.env.APP_URL || "http://localhost:3000";
 
@@ -25,6 +27,7 @@ export const auth = betterAuth({
       create: {
         after: async (userData) => {
           const role = (userData as Record<string, unknown>).role as string ?? "user";
+          await ensureGlobalAiProviderExists(FALLBACK_GLOBAL_PROVIDER);
           await seedSampleData(userData.id, role);
         },
       },

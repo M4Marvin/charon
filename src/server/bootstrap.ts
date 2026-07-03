@@ -3,8 +3,18 @@ import { characters as charactersTable, chats, user, userSettings } from "@/db/s
 import { eq, and, isNotNull, not, like } from "drizzle-orm";
 import { seedDefaultBackgrounds, seedDemoCharactersForExistingUser } from "@/server/seed";
 import { upsertUserSettings } from "@/db/repositories/userSettings";
+import { ensureGlobalAiProviderExists } from "@/db/repositories/aiProviders";
+
+export const FALLBACK_GLOBAL_PROVIDER = {
+  name: "Built-in",
+  baseUrl: "https://opencode.ai/zen/go/v1/",
+  apiKey: "not-configured",
+  defaultModel: null as string | null,
+  defaultHeaders: null as Record<string, string> | null,
+};
 
 export async function ensureGlobalProvider(): Promise<void> {
+  await ensureGlobalAiProviderExists(FALLBACK_GLOBAL_PROVIDER);
   await seedExistingDemoUsers();
   await seedDefaultBackgrounds();
 }

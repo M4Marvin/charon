@@ -78,6 +78,13 @@
       "when": 1782772759724,
       "tag": "0010_colossal_fallen_one",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1782772759725,
+      "tag": "0011_global_provider_nullable",
+      "breakpoints": true
     }
   ]
 }

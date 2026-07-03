@@ -147,6 +147,38 @@ export async function upsertGlobalAiProvider(
     .get();
 }
 
+export async function ensureGlobalAiProviderExists(
+  fallback: {
+    name: string;
+    baseUrl: string;
+    apiKey: string;
+    defaultModel?: string | null;
+    defaultHeaders?: Record<string, string> | null;
+  },
+  db: DB = defaultDb,
+): Promise<void> {
+  const existing = db
+    .select({ id: aiProviders.id })
+    .from(aiProviders)
+    .where(isNull(aiProviders.userId))
+    .get();
+  if (existing) return;
+
+  const encrypted = await encryptApiKey(fallback.apiKey);
+  db.insert(aiProviders)
+    .values({
+      id: GLOBAL_PROVIDER_ID,
+      userId: null,
+      name: fallback.name,
+      baseUrl: fallback.baseUrl,
+      apiKey: encrypted,
+      defaultModel: fallback.defaultModel ?? null,
+      defaultHeaders: fallback.defaultHeaders ?? null,
+    })
+    .onConflictDoNothing({ target: aiProviders.id })
+    .run();
+}
+
 export async function createAiProvider(input: CreateAiProviderInput, db: DB = defaultDb): Promise<AiProvider> {
   const row: NewAiProvider = {
     id: input.id,

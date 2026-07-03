@@ -6,8 +6,12 @@ let didBootstrap = false;
 async function bootstrap() {
   if (didBootstrap) return;
   didBootstrap = true;
-  const { ensureGlobalProvider } = await import("@/server/bootstrap");
-  await ensureGlobalProvider();
+  try {
+    const { ensureGlobalProvider } = await import("@/server/bootstrap");
+    await ensureGlobalProvider();
+  } catch (e) {
+    console.error("[bootstrap] failed:", e);
+  }
 }
 
 void bootstrap();
