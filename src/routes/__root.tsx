@@ -28,7 +28,8 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   beforeLoad: async ({ location }) => {
     const publicPaths = ["/", "/signin", "/signup"];
     const isApiRoute = location.pathname.startsWith("/api/");
-    if (publicPaths.includes(location.pathname) || isApiRoute) return;
+    const isAssetRoute = location.pathname.startsWith("/assets/");
+    if (publicPaths.includes(location.pathname) || isApiRoute || isAssetRoute) return;
 
     const session = await getSession();
     if (!session) {

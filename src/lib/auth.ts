@@ -10,10 +10,14 @@ import { ensureGlobalAiProviderExists } from "@/db/repositories/aiProviders";
 import { FALLBACK_GLOBAL_PROVIDER } from "@/server/bootstrap";
 
 const appUrl = process.env.APP_URL || "http://localhost:3000";
+const extraOrigins = (process.env.TRUSTED_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
 
 export const auth = betterAuth({
   baseURL: appUrl,
-  trustedOrigins: [appUrl, "http://localhost:4173"],
+  trustedOrigins: [appUrl, "http://localhost:4173", ...extraOrigins],
   database: drizzleAdapter(db, {
     provider: "sqlite",
     schema: { user, session, account, verification },
