@@ -15,4 +15,4 @@ RUN cp -r dist/client public
 ENV DATABASE_URL=/app/data/local.db
 ENV PORT=3000
 EXPOSE 3000
-CMD ["./node_modules/.bin/srvx", "--prod", "dist/server/server.js"]
+CMD ["./node_modules/.bin/srvx", "serve", "--prod", "--static=public", "dist/server/server.js"]
