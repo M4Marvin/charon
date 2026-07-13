@@ -19,9 +19,10 @@ export type CreateChatInput = {
   userId: string;
   characterId: string;
   title: string;
-  providerId?: string | null;
-  presetId?: string | null;
-  selectedModel?: string | null;
+  characterDescription?: string | null;
+  characterPersonality?: string | null;
+  characterScenario?: string | null;
+  characterSystemPrompt?: string | null;
 };
 
 export type MessagePatch = Partial<
@@ -66,9 +67,10 @@ export function createChat(input: CreateChatInput, db: DB = defaultDb): Chat {
       userId: input.userId,
       characterId: input.characterId,
       title: input.title,
-      providerId: input.providerId ?? null,
-      presetId: input.presetId ?? null,
-      selectedModel: input.selectedModel ?? null,
+      characterDescription: input.characterDescription ?? null,
+      characterPersonality: input.characterPersonality ?? null,
+      characterScenario: input.characterScenario ?? null,
+      characterSystemPrompt: input.characterSystemPrompt ?? null,
       createdAt: now,
       updatedAt: now,
     })
@@ -142,15 +144,16 @@ export function updateChat(
   userId: string,
   id: string,
   patch: Partial<
-    Pick<Chat, "providerId" | "presetId" | "selectedModel" | "title" | "backgroundPath">
+    Pick<Chat, "characterDescription" | "characterPersonality" | "characterScenario" | "characterSystemPrompt" | "title" | "backgroundPath">
   >,
   db: DB = defaultDb,
 ): Chat {
   const existing = getChat(userId, id, db);
   const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (patch.providerId !== undefined) updates.providerId = patch.providerId;
-  if (patch.presetId !== undefined) updates.presetId = patch.presetId;
-  if (patch.selectedModel !== undefined) updates.selectedModel = patch.selectedModel;
+  if (patch.characterDescription !== undefined) updates.characterDescription = patch.characterDescription;
+  if (patch.characterPersonality !== undefined) updates.characterPersonality = patch.characterPersonality;
+  if (patch.characterScenario !== undefined) updates.characterScenario = patch.characterScenario;
+  if (patch.characterSystemPrompt !== undefined) updates.characterSystemPrompt = patch.characterSystemPrompt;
   if (patch.title !== undefined) updates.title = patch.title;
   if (patch.backgroundPath !== undefined) updates.backgroundPath = patch.backgroundPath;
   const row = db

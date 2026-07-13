@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { characters as charactersTable, chats, user, userSettings } from "@/db/schema";
-import { eq, and, isNotNull, not, like } from "drizzle-orm";
+import { characters as charactersTable, user, userSettings } from "@/db/schema";
+import { eq, and, not, like } from "drizzle-orm";
 import { seedDefaultBackgrounds, seedDemoCharactersForExistingUser } from "@/server/seed";
 import { upsertUserSettings } from "@/db/repositories/userSettings";
 import { ensureGlobalAiProviderExists } from "@/db/repositories/aiProviders";
@@ -51,18 +51,6 @@ async function seedExistingDemoUsers(): Promise<void> {
       if (settings.defaultSelectedModel !== null) {
         upsertUserSettings(u.id, { defaultSelectedModel: null });
       }
-    }
-
-    const staleChats = db
-      .select({ id: chats.id })
-      .from(chats)
-      .where(and(eq(chats.userId, u.id), isNotNull(chats.selectedModel)))
-      .all();
-    if (staleChats.length > 0) {
-      db.update(chats)
-        .set({ selectedModel: null })
-        .where(eq(chats.userId, u.id))
-        .run();
     }
   }
 }

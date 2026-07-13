@@ -70,9 +70,10 @@ export const ImpersonateMessage = Schema.Struct({
 
 export const UpdateChatSettings = Schema.Struct({
   id: Schema.String,
-  providerId: NullableOptionalString,
-  presetId: NullableOptionalString,
-  selectedModel: NullableOptionalString,
+  characterDescription: NullableOptionalString,
+  characterPersonality: NullableOptionalString,
+  characterScenario: NullableOptionalString,
+  characterSystemPrompt: NullableOptionalString,
   backgroundPath: NullableOptionalString,
 });
 

@@ -140,6 +140,9 @@ export function ChatSettingsPanel({
             <TabsTrigger value="prompts" className="text-xs flex-1">
               Prompts
             </TabsTrigger>
+            <TabsTrigger value="character" className="text-xs flex-1">
+              Character
+            </TabsTrigger>
             <TabsTrigger value="scene" className="text-xs flex-1">
               Scene
             </TabsTrigger>
@@ -150,7 +153,7 @@ export function ChatSettingsPanel({
           <div className="relative min-h-0 flex-1">
             {activeTab === "ai" && isAdmin && (
               <div className="absolute inset-0 overflow-y-auto p-4">
-                <AiSection chat={chat} isStreaming={isStreaming} />
+                <AiSection isStreaming={isStreaming} />
               </div>
             )}
             {activeTab === "demo-ai" && isAdmin && (
@@ -171,6 +174,11 @@ export function ChatSettingsPanel({
             {activeTab === "prompts" && (
               <div className="absolute inset-0 overflow-y-auto p-4">
                 <PromptsSection />
+              </div>
+            )}
+            {activeTab === "character" && (
+              <div className="absolute inset-0 overflow-y-auto p-4">
+                <CharacterSection chat={chat} isStreaming={isStreaming} />
               </div>
             )}
             {activeTab === "scene" && (
@@ -358,15 +366,15 @@ function SceneSection({ chat, isDemo }: { chat: ChatDetail; isDemo: boolean }) {
 
 // ── AI section ─────────────────────────────────────────────────────────────
 
-function AiSection({ chat, isStreaming }: { chat: ChatDetail; isStreaming: boolean }) {
+function AiSection({ isStreaming }: { isStreaming: boolean }) {
   const { data: providers = [] } = useAiProviders();
   const { data: presets = [] } = usePresets();
-  const updateSettings = useUpdateChatSettings();
+  const { data: userSettings } = useUserSettings();
   const updateUserDefaults = useUpdateUserSettings();
 
-  const selectedProviderId = chat.providerId ?? "";
-  const selectedPresetId = chat.presetId ?? "";
-  const selectedModel = chat.selectedModel ?? "";
+  const selectedProviderId = userSettings?.defaultProviderId ?? "";
+  const selectedPresetId = userSettings?.defaultPresetId ?? "";
+  const selectedModel = userSettings?.defaultSelectedModel ?? "";
 
   const {
     data: models = [],
@@ -389,37 +397,29 @@ function AiSection({ chat, isStreaming }: { chat: ChatDetail; isStreaming: boole
 
   const handleChangeProvider = useCallback(
     (providerId: string) => {
-      updateSettings.mutate({
-        id: chat.id,
-        providerId,
-        selectedModel: null,
-        presetId: null,
-      });
       updateUserDefaults.mutate({
         defaultProviderId: providerId,
         defaultSelectedModel: null,
         defaultPresetId: null,
       });
     },
-    [chat.id, updateSettings, updateUserDefaults],
+    [updateUserDefaults],
   );
 
   const handleChangePreset = useCallback(
     (presetId: string) => {
       const value = presetId || null;
-      updateSettings.mutate({ id: chat.id, presetId: value });
       updateUserDefaults.mutate({ defaultPresetId: value });
     },
-    [chat.id, updateSettings, updateUserDefaults],
+    [updateUserDefaults],
   );
 
   const handleChangeModel = useCallback(
     (model: string) => {
       const value = model || null;
-      updateSettings.mutate({ id: chat.id, selectedModel: value });
       updateUserDefaults.mutate({ defaultSelectedModel: value });
     },
-    [chat.id, updateSettings, updateUserDefaults],
+    [updateUserDefaults],
   );
 
   return (
@@ -720,6 +720,71 @@ function AiSection({ chat, isStreaming }: { chat: ChatDetail; isStreaming: boole
           })
         }
       />
+    </div>
+  );
+}
+
+// ── Character section ──────────────────────────────────────────────────────
+
+function CharacterSection({
+  chat,
+  isStreaming,
+}: {
+  chat: ChatDetail;
+  isStreaming: boolean;
+}) {
+  const updateSettings = useUpdateChatSettings();
+  const isLocked = isStreaming;
+
+  const handleFieldChange = useCallback(
+    (field: string, value: string) => {
+      updateSettings.mutate({ id: chat.id, [field]: value || null });
+    },
+    [chat.id, updateSettings],
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <Label className="text-xs">Description</Label>
+        <Textarea
+          defaultValue={chat.characterDescription ?? ""}
+          onBlur={(e) => handleFieldChange("characterDescription", e.target.value)}
+          className="min-h-16 resize-none text-xs"
+          disabled={isLocked}
+          placeholder="Character description"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">Personality</Label>
+        <Textarea
+          defaultValue={chat.characterPersonality ?? ""}
+          onBlur={(e) => handleFieldChange("characterPersonality", e.target.value)}
+          className="min-h-16 resize-none text-xs"
+          disabled={isLocked}
+          placeholder="Character personality"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">Scenario</Label>
+        <Textarea
+          defaultValue={chat.characterScenario ?? ""}
+          onBlur={(e) => handleFieldChange("characterScenario", e.target.value)}
+          className="min-h-16 resize-none text-xs"
+          disabled={isLocked}
+          placeholder="Scenario context"
+        />
+      </div>
+      <div className="space-y-1">
+        <Label className="text-xs">System Prompt</Label>
+        <Textarea
+          defaultValue={chat.characterSystemPrompt ?? ""}
+          onBlur={(e) => handleFieldChange("characterSystemPrompt", e.target.value)}
+          className="min-h-16 resize-none text-xs"
+          disabled={isLocked}
+          placeholder="System prompt override"
+        />
+      </div>
     </div>
   );
 }

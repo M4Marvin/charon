@@ -153,9 +153,10 @@ export function useUpdateChatSettings() {
   return useMutation({
     mutationFn: (input: {
       id: string;
-      providerId?: string | null;
-      presetId?: string | null;
-      selectedModel?: string | null;
+      characterDescription?: string | null;
+      characterPersonality?: string | null;
+      characterScenario?: string | null;
+      characterSystemPrompt?: string | null;
       backgroundPath?: string | null;
     }): Promise<{ id: string }> => updateChatSettings({ data: input }),
     onSuccess: (_result, variables) => {

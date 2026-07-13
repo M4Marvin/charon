@@ -170,26 +170,29 @@ export const Route = createFileRoute("/api/chat-generate")({
             historyContentLens: historyMessages.map((m) => m.content.length),
           });
 
-          const providerId = chatRow.providerId;
+          // Load per-user settings: AI config + persona + prompt overrides.
+          const userSettingsRow = repoGetUserSettings(user.id);
+
+          const providerId = userSettingsRow?.defaultProviderId;
           if (!providerId) {
-            return new Response(JSON.stringify({ error: "No provider configured for this chat" }), {
+            return new Response(JSON.stringify({ error: "No AI provider configured" }), {
               status: 400,
               headers: { "Content-Type": "application/json" },
             });
           }
           const provider = await repoGetProvider(user.id, providerId);
-          const model = chatRow.selectedModel ?? provider.defaultModel;
+          const model = userSettingsRow?.defaultSelectedModel ?? provider.defaultModel;
           if (!model) {
-            return new Response(JSON.stringify({ error: "No model configured for this chat" }), {
+            return new Response(JSON.stringify({ error: "No model configured" }), {
               status: 400,
               headers: { "Content-Type": "application/json" },
             });
           }
 
           let dbPresetRaw: { model?: string | null; data: unknown } | null = null;
-          if (chatRow.presetId) {
+          if (userSettingsRow?.defaultPresetId) {
             try {
-              dbPresetRaw = repoGetPreset(user.id, chatRow.presetId);
+              dbPresetRaw = repoGetPreset(user.id, userSettingsRow.defaultPresetId);
             } catch {
               // preset missing
             }
@@ -212,10 +215,6 @@ export const Route = createFileRoute("/api/chat-generate")({
             }
           }
 
-          // Load per-user settings: default persona + prompt overrides.
-          // impersonationPrompt is stored but not yet wired into generation
-          // (no impersonate feature yet).
-          const userSettingsRow = repoGetUserSettings(user.id);
           let userPersona: string | undefined;
           if (userSettingsRow?.defaultPersonaId) {
             try {
@@ -236,6 +235,10 @@ export const Route = createFileRoute("/api/chat-generate")({
             userPersona,
             userSystemPrompt: userSettingsRow?.systemPrompt ?? undefined,
             userPostHistoryInstructions: userSettingsRow?.postHistoryInstructions ?? undefined,
+            chatCharacterDescription: chatRow.characterDescription,
+            chatCharacterPersonality: chatRow.characterPersonality,
+            chatCharacterScenario: chatRow.characterScenario,
+            chatCharacterSystemPrompt: chatRow.characterSystemPrompt,
           });
 
           const adapter = openaiCompatibleText(model, {

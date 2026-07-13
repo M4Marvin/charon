@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "3f7a8b12-c4d9-4e2a-b1f3-87c6d5e4a901",
-  "prevId": "2838548c-f3bf-46d2-b0ed-408929d5e76e",
+  "id": "65b33a4f-2f61-4c01-96d9-6b048921870b",
+  "prevId": "3f7a8b12-c4d9-4e2a-b1f3-87c6d5e4a901",
   "tables": {
     "account": {
       "name": "account",
@@ -520,22 +520,29 @@
           "notNull": false,
           "autoincrement": false
         },
-        "provider_id": {
-          "name": "provider_id",
+        "character_description": {
+          "name": "character_description",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "preset_id": {
-          "name": "preset_id",
+        "character_personality": {
+          "name": "character_personality",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "selected_model": {
-          "name": "selected_model",
+        "character_scenario": {
+          "name": "character_scenario",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "character_system_prompt": {
+          "name": "character_system_prompt",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -577,20 +584,6 @@
             "character_id"
           ],
           "isUnique": false
-        },
-        "chats_provider_id_idx": {
-          "name": "chats_provider_id_idx",
-          "columns": [
-            "provider_id"
-          ],
-          "isUnique": false
-        },
-        "chats_preset_id_idx": {
-          "name": "chats_preset_id_idx",
-          "columns": [
-            "preset_id"
-          ],
-          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -618,32 +611,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "chats_provider_id_ai_providers_id_fk": {
-          "name": "chats_provider_id_ai_providers_id_fk",
-          "tableFrom": "chats",
-          "tableTo": "ai_providers",
-          "columnsFrom": [
-            "provider_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "chats_preset_id_presets_id_fk": {
-          "name": "chats_preset_id_presets_id_fk",
-          "tableFrom": "chats",
-          "tableTo": "presets",
-          "columnsFrom": [
-            "preset_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

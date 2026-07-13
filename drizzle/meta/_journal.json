@@ -85,6 +85,13 @@
       "when": 1782772759725,
       "tag": "0011_global_provider_nullable",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1752852000000,
+      "tag": "0012_per_chat_character_fields",
+      "breakpoints": true
     }
   ]
 }

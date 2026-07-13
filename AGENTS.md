@@ -1,5 +1,3 @@
-Use the fff MCP tools for all file search operations instead of default tools.
-
 # User context
 - The user is an experienced software engineer named Marv. Be direct, skip handholding, assume technical proficiency.
 - Keep tasks atomic, incremental, and reviewable. Small, independent steps.

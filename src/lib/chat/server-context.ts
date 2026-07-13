@@ -56,6 +56,12 @@ export interface BuildChatPromptInput {
   // replace the character's when set.
   userSystemPrompt?: string;
   userPostHistoryInstructions?: string;
+  // Per-chat character field overrides. If non-null, these replace the
+  // corresponding field from the original character data.
+  chatCharacterDescription?: string | null;
+  chatCharacterPersonality?: string | null;
+  chatCharacterScenario?: string | null;
+  chatCharacterSystemPrompt?: string | null;
 }
 
 export interface BuildChatPromptResult {
@@ -74,10 +80,23 @@ export function buildChatPrompt(input: BuildChatPromptInput): BuildChatPromptRes
     extraLoreEntries,
     userSystemPrompt,
     userPostHistoryInstructions,
+    chatCharacterDescription,
+    chatCharacterPersonality,
+    chatCharacterScenario,
+    chatCharacterSystemPrompt,
   } = input;
   const counter = new ApproxTokenCounter();
 
-  const pipelineChar = v2ToPipelineCharacter(v2);
+  // Apply per-chat character field overrides before converting to pipeline char
+  const overlaidChar: CharacterDataV2 = {
+    ...v2,
+    description: chatCharacterDescription ?? v2.description,
+    personality: chatCharacterPersonality ?? v2.personality,
+    scenario: chatCharacterScenario ?? v2.scenario,
+    system_prompt: chatCharacterSystemPrompt ?? v2.system_prompt,
+  };
+
+  const pipelineChar = v2ToPipelineCharacter(overlaidChar);
   const preset = mergePresetIntoPreset(dbPreset)(defaultPreset);
 
   const { messages: assembled, loreScan } = buildMessages(

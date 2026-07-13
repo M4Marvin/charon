@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Schema } from "effect";
 import { createServerFn } from "@tanstack/react-start";
-import { getSession, isAdmin } from "@/server/session";
+import { getSession } from "@/server/session";
 import {
   CancelStream,
   CreateChat,
@@ -146,9 +146,10 @@ export type ChatDetail = {
   characterName: string;
   characterImagePath: string | null;
   title: string;
-  providerId: string | null;
-  presetId: string | null;
-  selectedModel: string | null;
+  characterDescription: string | null;
+  characterPersonality: string | null;
+  characterScenario: string | null;
+  characterSystemPrompt: string | null;
   backgroundPath: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -184,9 +185,10 @@ export const getChat = createServerFn({ method: "GET", strict: { output: false }
       characterName: char.name,
       characterImagePath: char.imagePath,
       title: chat.title,
-      providerId: chat.providerId,
-      presetId: chat.presetId,
-      selectedModel: chat.selectedModel,
+      characterDescription: chat.characterDescription ?? null,
+      characterPersonality: chat.characterPersonality ?? null,
+      characterScenario: chat.characterScenario ?? null,
+      characterSystemPrompt: chat.characterSystemPrompt ?? null,
       backgroundPath: chat.backgroundPath ?? null,
       createdAt: chat.createdAt,
       updatedAt: chat.updatedAt,
@@ -206,18 +208,16 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
     const { user } = await getSession();
     const char: Character = repoGetChar(user.id, data.characterId);
 
-    // Seed AI settings from user-level defaults so new chats start pre-configured.
-    const defaults = repoGetUserSettings(user.id);
-
     const chatId = randomUUID();
     const chat = repoCreateChat({
       id: chatId,
       userId: user.id,
       characterId: data.characterId,
       title: char.data.name,
-      providerId: defaults?.defaultProviderId ?? null,
-      presetId: defaults?.defaultPresetId ?? null,
-      selectedModel: defaults?.defaultSelectedModel ?? null,
+      characterDescription: char.data.description,
+      characterPersonality: char.data.personality,
+      characterScenario: char.data.scenario,
+      characterSystemPrompt: char.data.system_prompt,
     });
 
     // Collect all greetings: first_mes + every alternate_greeting.
@@ -270,9 +270,10 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
       characterName: char.name,
       characterImagePath: char.imagePath,
       title: chat.title,
-      providerId: chat.providerId,
-      presetId: chat.presetId,
-      selectedModel: chat.selectedModel,
+      characterDescription: chat.characterDescription ?? null,
+      characterPersonality: chat.characterPersonality ?? null,
+      characterScenario: chat.characterScenario ?? null,
+      characterSystemPrompt: chat.characterSystemPrompt ?? null,
       backgroundPath: chat.backgroundPath ?? null,
       createdAt: chat.createdAt,
       updatedAt: chat.updatedAt,
@@ -549,16 +550,17 @@ export const impersonateMessage = createServerFn({ method: "POST", strict: { out
       .filter((m) => m.id !== 0)
       .filter((m) => !(m.role === "system" && m.content.length === 0));
 
-    const providerId = chat.providerId;
-    if (!providerId) throw new Error("No provider configured for this chat");
+    const userSettingsRow = repoGetUserSettings(user.id);
+    const providerId = userSettingsRow?.defaultProviderId;
+    if (!providerId) throw new Error("No provider configured");
     const provider = await repoGetProvider(user.id, providerId);
-    const model = chat.selectedModel ?? provider.defaultModel;
+    const model = userSettingsRow?.defaultSelectedModel ?? provider.defaultModel;
     if (!model) throw new Error("No model configured");
 
     let dbPresetRaw: { model?: string | null; data: unknown } | null = null;
-    if (chat.presetId) {
+    if (userSettingsRow?.defaultPresetId) {
       try {
-        dbPresetRaw = repoGetPreset(user.id, chat.presetId);
+        dbPresetRaw = repoGetPreset(user.id, userSettingsRow.defaultPresetId);
       } catch {
         /* missing */
       }
@@ -580,7 +582,6 @@ export const impersonateMessage = createServerFn({ method: "POST", strict: { out
         })()
       : {};
 
-    const userSettingsRow = repoGetUserSettings(user.id);
     let userPersona: string | undefined;
     if (userSettingsRow?.defaultPersonaId) {
       try {
@@ -891,11 +892,10 @@ export const updateChatSettings = createServerFn({ method: "POST", strict: { out
   .handler(async ({ data }): Promise<{ id: string }> => {
     const { user } = await getSession();
     const patch: Parameters<typeof repoUpdateChat>[2] = {};
-    if (data.providerId !== undefined) patch.providerId = data.providerId;
-    if (data.presetId !== undefined) patch.presetId = data.presetId;
-    if (data.selectedModel !== undefined && isAdmin(user)) {
-      patch.selectedModel = data.selectedModel;
-    }
+    if (data.characterDescription !== undefined) patch.characterDescription = data.characterDescription;
+    if (data.characterPersonality !== undefined) patch.characterPersonality = data.characterPersonality;
+    if (data.characterScenario !== undefined) patch.characterScenario = data.characterScenario;
+    if (data.characterSystemPrompt !== undefined) patch.characterSystemPrompt = data.characterSystemPrompt;
     if (data.backgroundPath !== undefined) patch.backgroundPath = data.backgroundPath;
     repoUpdateChat(user.id, data.id, patch);
     return { id: data.id };

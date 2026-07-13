@@ -145,10 +145,8 @@ function ChatPage() {
   const [lightboxAlt, setLightboxAlt] = useState("");
   const [settingsTab, setSettingsTab] = useState(isAdmin ? "ai" : "lorebooks");
 
-  const selectedProviderId = chat?.providerId ?? "";
-  const selectedModel = chat?.selectedModel ?? "";
-
-  const hasAi = selectedProviderId.length > 0;
+  const selectedModel = userSettings?.defaultSelectedModel ?? "";
+  const hasAi = (userSettings?.defaultProviderId?.length ?? 0) > 0;
   const canSend = activePlaceholderId === null;
   const isStreaming = activePlaceholderId !== null;
 
