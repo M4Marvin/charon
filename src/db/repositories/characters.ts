@@ -25,6 +25,10 @@ export type CreateCharacterInput = {
   data: CharacterDataV2;
   imagePath?: string | null;
   tagline?: string | null;
+  // Spec identification. Defaults to V2 in the DB schema; V3 import paths
+  // override these to preserve the original card's spec.
+  spec?: "chara_card_v2" | "chara_card_v3";
+  specVersion?: "2.0" | "3.0";
 };
 
 export function listCharacters(userId: string, db: DB = defaultDb): Character[] {
@@ -102,6 +106,8 @@ export function createCharacter(input: CreateCharacterInput, db: DB = defaultDb)
       data: input.data,
       imagePath: input.imagePath ?? null,
       tagline: input.tagline ?? null,
+      spec: input.spec ?? "chara_card_v2",
+      specVersion: input.specVersion ?? "2.0",
       createdAt: now,
       updatedAt: now,
     })

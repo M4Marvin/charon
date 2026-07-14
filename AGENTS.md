@@ -26,7 +26,7 @@ Extracted core libraries from SillyTavern, copied from `sillytavern-dev/st-core/
 | Module | Path | What it does |
 |---|---|---|
 | shared | `shared/` | Types, token counter, event bus, ID generator, logger, validators |
-| character | `character/` | V2-only character cards, PNG read/write, validators (server-only: uses `Buffer`) |
+| character | `character/` | V2 + V3 character cards, PNG read/write, validators (server-only: uses `Buffer`). V3 spec: https://github.com/kwaroran/character-card-spec-v3 |
 | chat-tree | `chat-tree/` | Branching chat tree data structures + I/O |
 | lorebook | `lorebook/` | Lorebook buffer, context builder, entry types/validators |
 | context | `context/` | Prompt assembly, collection management, story string rendering |
@@ -38,6 +38,12 @@ Use `@/*` (not `#/*`) for st-core imports. Both map to `./src/*` via tsconfig pa
 
 ## Server-only constraint
 The `character` module (`parser.ts`, `png-encode.ts`, `serializer.ts`) uses `Buffer.from()` — a **Node-only global**. Import these **only** inside `createServerFn` server functions; importing them in a client route/component will crash at runtime. The other 6 modules are isomorphic-safe.
+
+## Character card V3 (ccv3)
+- **Parser**: `getCharacterCardSpec` and `readCharacterCard` scan PNG tEXt chunks. `ccv3` (V3) takes precedence over `chara` (V2) per the V3 spec.
+- **Validator**: `validateCharacterCard` is the V2 strict gate; `validateCharacterCardV3` validates V2-required fields + optional V3 fields. Import path picks one based on the parsed `spec`.
+- **Normalizer**: `normalizeV3ToV2` (in `src/lib/character/normalize.ts`) projects V3-only fields off `data` and stashes them under `data.extensions._v3` with camelCase keys. The stash preserves the original V3 data for lossless round-trip via `writeCharacterCard`.
+- **Write path**: `writeCharacterCard` emits both `chara` (backfilled V2 with `creator_notes` warning) and `ccv3` (original V3) chunks for V3 cards.
 
 # Commands
 

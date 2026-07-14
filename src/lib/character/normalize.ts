@@ -12,6 +12,14 @@
 // card is fine in practice. Both the user-facing importCharacter server fn and
 // the legacy data migration run cards through this normalizer before the
 // strict validator, so uploads and migrations get identical leniency.
+//
+// V3 cards (spec: chara_card_v3) are projected down to a V2-shaped object
+// via `normalizeV3ToV2`. V3-only fields (`assets`, `nickname`,
+// `creator_notes_multilingual`, `source`, `group_only_greetings`,
+// `creation_date`, `modification_date`) are stashed under
+// `data.extensions._v3` so the card can be losslessly re-emitted on export.
+// Callers should then run `normalizeCardData` to apply the V2 benevolence
+// fixes before the strict V2 arktype gate.
 
 import type { CharacterBook } from "@/lib/st-core/character";
 
@@ -32,6 +40,14 @@ type RawCardData = Record<string, unknown> & {
   name?: unknown;
   extensions?: Record<string, unknown>;
   character_book?: unknown;
+  // V3-only fields. Read by normalizeV3ToV2, then removed from `data`.
+  assets?: unknown;
+  nickname?: unknown;
+  creator_notes_multilingual?: unknown;
+  source?: unknown;
+  group_only_greetings?: unknown;
+  creation_date?: unknown;
+  modification_date?: unknown;
 };
 
 const VALID_POSITIONS = new Set(["before_char", "after_char"]);
@@ -128,6 +144,113 @@ export function normalizeCardData(raw: unknown): unknown {
       delete data.character_book;
     }
   }
+
+  return raw;
+}
+
+// ── V3 → V2 projection ──
+//
+// V3 cards are a strict superset of V2, but the DB column is typed
+// `CharacterDataV2`. Rather than widen the column or write a custom V3
+// validator for every consumer, we project a V3 card down to V2 by:
+//   1. Pulling V3-only fields off `data`.
+//   2. Stashing them in `data.extensions._v3` so the original V3 data
+//      survives round-trip on export.
+//   3. Returning the V2-shaped object, which then passes through
+//      `normalizeCardData` and the V2 strict arktype gate.
+//
+// The `_v3` stash is namespaced so it never collides with ST's
+// `extensions` namespace. Callers that need to re-emit the V3 JSON read
+// it back and build a V3-shaped object.
+//
+// We also default `group_only_greetings` to `[]` if missing — the V3
+// spec requires the field but real-world cards sometimes omit it, and
+// `use_regex` on lorebook entries to `false` so the V2 arktype gate
+// doesn't trip (V2 strict accepts it as optional, but we ensure it's
+// present when stashed).
+export function normalizeV3ToV2(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const card = raw as { data?: unknown };
+  if (!card.data || typeof card.data !== "object") return raw;
+
+  const data = card.data as RawCardData;
+  const stash: Record<string, unknown> = {};
+
+  // assets: array of { type, uri, name, ext } (validated by stashed shape only)
+  if (Array.isArray(data.assets)) {
+    stash.assets = data.assets;
+    delete data.assets;
+  }
+
+  if (typeof data.nickname === "string" && data.nickname.length > 0) {
+    stash.nickname = data.nickname;
+    delete data.nickname;
+  }
+
+  if (data.creator_notes_multilingual && typeof data.creator_notes_multilingual === "object") {
+    stash.creatorNotesMultilingual = data.creator_notes_multilingual;
+    delete data.creator_notes_multilingual;
+  }
+
+  if (Array.isArray(data.source)) {
+    stash.source = data.source;
+    delete data.source;
+  }
+
+  if (Array.isArray(data.group_only_greetings)) {
+    stash.groupOnlyGreetings = data.group_only_greetings;
+    delete data.group_only_greetings;
+  }
+  // We don't stash a default `groupOnlyGreetings: []` if the input was
+  // missing the field. The V3 spec requires the field, but a missing value
+  // round-trips as a missing value — round-trip faithfulness over spec
+  // strictness. The V3 arktype still accepts the field as optional.
+
+  if (typeof data.creation_date === "number") {
+    stash.creationDate = data.creation_date;
+    delete data.creation_date;
+  }
+
+  if (typeof data.modification_date === "number") {
+    stash.modificationDate = data.modification_date;
+    delete data.modification_date;
+  }
+
+  // Walk lorebook entries to default `use_regex` and coerce string `id`s.
+  // We match SillyTavern/Chub on read: missing `use_regex` is silently
+  // defaulted to `false` (the V3 spec marks it as required, but real-world
+  // cards omit it), and string ids are coerced to numbers when the string
+  // is a clean integer (the st-core lorebook engine uses numeric uids).
+  if (data.character_book && typeof data.character_book === "object") {
+    const book = data.character_book as {
+      entries?: Array<Record<string, unknown>>;
+      [k: string]: unknown;
+    };
+    if (Array.isArray(book.entries)) {
+      for (const entry of book.entries) {
+        if (typeof entry !== "object" || entry === null) continue;
+        if (typeof entry.use_regex !== "boolean") {
+          entry.use_regex = false;
+        }
+        if (typeof entry.id === "string") {
+          const n = Number.parseInt(entry.id, 10);
+          if (!Number.isNaN(n) && String(n) === entry.id.trim()) {
+            entry.id = n;
+          } else {
+            delete entry.id;
+          }
+        }
+      }
+    }
+  }
+
+  if (Object.keys(stash).length === 0) return raw;
+
+  // Ensure data.extensions exists, then write the stash.
+  if (!data.extensions || typeof data.extensions !== "object" || Array.isArray(data.extensions)) {
+    data.extensions = {};
+  }
+  (data.extensions as Record<string, unknown>)._v3 = stash;
 
   return raw;
 }

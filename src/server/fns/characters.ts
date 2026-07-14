@@ -14,8 +14,12 @@ import {
   type CharacterDetail,
 } from "@/db/repositories/characters";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
-import { parseCharacterCard, validateCharacterCard } from "@/lib/st-core/character";
-import { normalizeCardData } from "@/lib/character/normalize";
+import {
+  parseCharacterCard,
+  validateCharacterCard,
+  validateCharacterCardV3,
+} from "@/lib/st-core/character";
+import { normalizeCardData, normalizeV3ToV2 } from "@/lib/character/normalize";
 import { getSession, isAdmin } from "@/server/session";
 
 const AVATAR_DIR = "data/avatars";
@@ -111,7 +115,10 @@ export const importCharacter = createServerFn({ method: "POST" })
     const { user } = await getSession();
 
     if (!isAdmin(user)) {
-      return { ok: false, error: { kind: "demo_restricted", message: "Demo users cannot import characters." } };
+      return {
+        ok: false,
+        error: { kind: "demo_restricted", message: "Demo users cannot import characters." },
+      };
     }
 
     let pngBytes: Uint8Array;
@@ -142,7 +149,23 @@ export const importCharacter = createServerFn({ method: "POST" })
 
     raw = normalizeCardData(raw);
 
-    const validation = validateCharacterCard(raw);
+    // Detect the spec from the parsed JSON before V3 projection.
+    const detectedSpec =
+      typeof (raw as { spec?: unknown }).spec === "string"
+        ? (raw as { spec: string }).spec
+        : "chara_card_v2";
+    const isV3 = detectedSpec === "chara_card_v3";
+
+    // V3 → V2 projection. V3 cards carry V3-only fields that the V2
+    // arktype gate would reject; normalizeV3ToV2 stashes them under
+    // `data.extensions._v3` so the card remains round-trippable on
+    // export. The top-level `spec`/`spec_version` stay V3, so we run
+    // the V3 validator instead of the V2 strict gate for V3 cards.
+    if (isV3) {
+      raw = normalizeV3ToV2(raw);
+    }
+
+    const validation = isV3 ? validateCharacterCardV3(raw) : validateCharacterCard(raw);
     if (!validation.ok) {
       return { ok: false, error: { kind: "validation", errors: validation.errors } };
     }
@@ -165,12 +188,16 @@ export const importCharacter = createServerFn({ method: "POST" })
 
     try {
       const cardData = validation.card.data as CharacterDataV2;
+      const spec: "chara_card_v2" | "chara_card_v3" = isV3 ? "chara_card_v3" : "chara_card_v2";
+      const specVersion = isV3 ? "3.0" : "2.0";
       const character = repoCreate({
         id,
         userId: user.id,
         name: cardData.name,
         data: cardData,
         imagePath,
+        spec,
+        specVersion,
       });
       return {
         ok: true,
@@ -203,7 +230,11 @@ export const updateCharacterData = createServerFn({ method: "POST", strict: { ou
   .handler(async ({ data }): Promise<Character> => {
     const { user } = await getSession();
     if (!isAdmin(user)) throw new Error("Demo users cannot edit characters.");
-    return repoUpdate(user.id, data.id, { name: data.data.name, data: data.data, tagline: data.tagline ?? null });
+    return repoUpdate(user.id, data.id, {
+      name: data.data.name,
+      data: data.data,
+      tagline: data.tagline ?? null,
+    });
   });
 
 export const deleteCharacter = createServerFn({ method: "POST" })

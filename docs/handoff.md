@@ -326,7 +326,7 @@ Not migrated: presets, chats. V3 cards rejected. `normalizeCardData` is applied 
 
 | Decision | Choice | Why |
 |---|---|---|
-| V3 character support | **Removed** | V2 only. Parser reads only `chara` tEXt chunk; types/schema narrow to V2. |
+| V3 character support | **Enabled** | V2 ⊂ V3; parser reads `ccv3` first, falls back to `chara`. V3-only fields are projected to `data.extensions._v3` (with camelCase keys: `nickname` → `nickname`, `assets` → `assets`, `creator_notes_multilingual` → `creatorNotesMultilingual`, `source` → `source`, `group_only_greetings` → `groupOnlyGreetings`, `creation_date` → `creationDate`, `modification_date` → `modificationDate`). Write path emits both `chara` (backfilled V2 with `creator_notes` warning) and `ccv3` chunks for V3 cards. `characters.spec`/`specVersion` columns record the original spec. Migration transparently accepts V3 PNGs. Deferred: `nickname` macro substitution, `assets[]` beyond icon, `group_only_greetings`, `source[]` UI, `creator_notes_multilingual` UI, CHARX (zip) files, content decorators (`@@…`), new CBS macros (`{{random:}}`, `{{pick:}}`, `{{roll:}}`, `{{reverse:}}`, `{{// }}`, `{{hidden_key:}}`, `{{comment: }}`). |
 | Big payloads | `text({ mode: 'json' })` columns | Pragmatic over 30+ columns; round-trips typed via drizzle + `$type<>`. |
 | Chat messages | One row per message (relational) | Enables message-level CRUD; chat-tree lib round-trips via `treeFromNodes`/`treeToNodes`. |
 | Lore entries | Separate table | Enables per-entry CRUD; entry ownership enforced transitively. |

@@ -27,11 +27,12 @@ import {
 import {
   parseCharacterCard,
   validateCharacterCard,
+  validateCharacterCardV3,
   type CharacterBook,
   type CharacterDataV2,
 } from "@/lib/st-core/character";
 import { DEFAULT_LORE_CONFIG, type LoreEntry as LoreEntryData } from "@/lib/st-core/lorebook";
-import { normalizeCardData } from "@/lib/character/normalize";
+import { normalizeCardData, normalizeV3ToV2 } from "@/lib/character/normalize";
 
 const DEFAULT_USER_ID = "default-user";
 const DATA_ROOT = "public/data";
@@ -220,8 +221,20 @@ async function migrateCharacters(
       continue;
     }
 
-    const normalized = normalizeCardData(raw);
-    const validation = validateCharacterCard(normalized);
+    // V3 cards (parsed via the `ccv3` tEXt chunk if present) are projected
+    // to a V2-shaped object with extras stashed in `data.extensions._v3`
+    // before the V2 strict arktype gate. V2 cards pass through normalize
+    // unchanged.
+    const detectedSpec =
+      typeof (raw as { spec?: unknown }).spec === "string"
+        ? ((raw as { spec: string }).spec)
+        : "chara_card_v2";
+    const isV3 = detectedSpec === "chara_card_v3";
+    const projected = isV3 ? normalizeV3ToV2(raw) : raw;
+    const normalized = normalizeCardData(projected);
+    const validation = isV3
+      ? validateCharacterCardV3(normalized)
+      : validateCharacterCard(normalized);
     if (!validation.ok) {
       const errs = validation.errors
         .map((e) => `${e.field || "(root)"}: ${e.message}`)
@@ -232,6 +245,9 @@ async function migrateCharacters(
     }
 
     const data = validation.card.data as CharacterDataV2;
+    const spec: "chara_card_v2" | "chara_card_v3" = isV3 ? "chara_card_v3" : "chara_card_v2";
+    const specVersion = isV3 ? "3.0" : "2.0";
+
     const name = (data.name || fileBase).trim();
 
     if (characterNameExists(userId, name)) {
@@ -259,6 +275,8 @@ async function migrateCharacters(
           name,
           data,
           imagePath,
+          spec,
+          specVersion,
           createdAt: now,
           updatedAt: now,
         })
@@ -271,7 +289,7 @@ async function migrateCharacters(
 
     characterByName.set(name, id);
     counts.inserted++;
-    console.log(`  ✓ ${name}`);
+    console.log(`  ✓ ${name}${isV3 ? " (v3)" : ""}`);
 
     if (data.character_book) {
       const embeddedName = `${name} [embedded]`;

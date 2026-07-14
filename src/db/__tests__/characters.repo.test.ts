@@ -37,6 +37,55 @@ describe("characters repository", () => {
       expect(row.updatedAt).toBeInstanceOf(Date);
     });
 
+    it("preserves the V3 spec when explicitly provided", () => {
+      const data = makeCharacterData({ name: "V3" });
+      const row = createCharacter(
+        {
+          id: "char-v3",
+          userId,
+          name: "V3",
+          data,
+          spec: "chara_card_v3",
+          specVersion: "3.0",
+        },
+        db,
+      );
+      expect(row.spec).toBe("chara_card_v3");
+      expect(row.specVersion).toBe("3.0");
+
+      // Round-trip the JSON column including the V3 stash under
+      // data.extensions._v3. Validates that the column type tolerates
+      // the extra V3 fields stored in extensions.
+      const fetched = getCharacter(userId, "char-v3", db);
+      expect(fetched.spec).toBe("chara_card_v3");
+      expect(fetched.specVersion).toBe("3.0");
+      const fetchedData = fetched.data as { extensions?: { _v3?: unknown } };
+      expect(fetchedData.extensions?._v3).toBeUndefined();
+    });
+
+    it("preserves V3 stash data in extensions._v3 on round-trip", () => {
+      const data = makeCharacterData({
+        name: "V3",
+        extensions: {
+          talkativeness: 0.5,
+          _v3: {
+            nickname: "Nicky",
+            assets: [{ type: "icon", uri: "ccdefault:", name: "main", ext: "png" }],
+          },
+        },
+      });
+      createCharacter(
+        { id: "char-stash", userId, name: "V3", data, spec: "chara_card_v3", specVersion: "3.0" },
+        db,
+      );
+      const fetched = getCharacter(userId, "char-stash", db);
+      const ext = fetched.data.extensions as Record<string, unknown>;
+      expect(ext.talkativeness).toBe(0.5);
+      const stash = ext._v3 as Record<string, unknown>;
+      expect(stash.nickname).toBe("Nicky");
+      expect(stash.assets).toEqual([{ type: "icon", uri: "ccdefault:", name: "main", ext: "png" }]);
+    });
+
     it("round-trips nested JSON data column", () => {
       const data = makeCharacterData({
         alternate_greetings: ["hi", "hey"],

@@ -8,6 +8,41 @@ export interface CharacterCardV2 {
   [key: string]: unknown;
 }
 
+// ── V3 Character Card Spec ──
+// Spec: https://github.com/kwaroran/character-card-spec-v3/blob/main/SPEC_V3.md
+// V3 is a strict superset of V2: the same `data` fields are present, with
+// additional optional V3-only fields appended. PNG storage uses a separate
+// `ccv3` tEXt chunk that takes precedence over the `chara` chunk.
+
+export interface CharacterCardV3 {
+  spec: "chara_card_v3";
+  spec_version: "3.0";
+  data: CharacterDataV3;
+  [key: string]: unknown;
+}
+
+export interface CharacterDataV3 extends CharacterDataV2 {
+  // V3-only fields. `group_only_greetings` is required by the V3 spec, but
+  // legacy V2 cards re-mapped to V3 may be missing it; callers that
+  // build a V3 card from scratch must supply `[]`.
+  assets?: CharacterAsset[];
+  nickname?: string;
+  creator_notes_multilingual?: Record<string, string>;
+  source?: string[];
+  group_only_greetings?: string[];
+  creation_date?: number;
+  modification_date?: number;
+  [key: string]: unknown;
+}
+
+export interface CharacterAsset {
+  type: string;
+  uri: string;
+  name: string;
+  ext: string;
+  [key: string]: unknown;
+}
+
 export type CharacterCard = CharacterCardV2;
 
 export interface CharacterDataV2 {
@@ -67,6 +102,12 @@ export interface CharacterBookEntry {
   case_sensitive?: boolean;
   name?: string;
   priority?: number;
+  // V3 addition. Optional at the type level because V2 cards don't have it;
+  // V3 cards should always include it. The st-core lorebook engine doesn't
+  // act on this yet (substring matching only). The V2 strict arktype gate
+  // allows it through (optional, no constraint); the V3 normalizer can
+  // default missing values to `false`.
+  use_regex?: boolean;
   extensions?: CharacterBookEntryExtensions;
 }
 
