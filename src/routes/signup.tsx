@@ -5,20 +5,8 @@ import { z } from "zod";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 
@@ -27,10 +15,7 @@ const signupSchema = z
     username: z
       .string()
       .min(3, "Username must be at least 3 characters")
-      .regex(
-        /^[a-zA-Z0-9_]+$/,
-        "Username can only contain letters, numbers, and underscores",
-      ),
+      .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
     password: z.string().min(4, "Password must be at least 4 characters"),
     confirmPassword: z.string(),
   })
@@ -79,9 +64,7 @@ function SignupPage() {
         <Card>
           <CardHeader>
             <CardTitle>Create an account</CardTitle>
-            <CardDescription>
-              Enter a username and password to get started
-            </CardDescription>
+            <CardDescription>Enter a username and password to get started</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit}>
@@ -89,8 +72,7 @@ function SignupPage() {
                 <form.Field
                   name="username"
                   children={(field) => {
-                    const isInvalid =
-                      field.state.meta.isTouched && !field.state.meta.isValid;
+                    const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
                     return (
                       <Field data-invalid={isInvalid}>
                         <FieldLabel htmlFor={field.name}>Username</FieldLabel>
@@ -105,12 +87,8 @@ function SignupPage() {
                           autoComplete="username"
                           aria-invalid={isInvalid}
                         />
-                        <FieldDescription>
-                          Letters, numbers, and underscores only.
-                        </FieldDescription>
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
+                        <FieldDescription>Letters, numbers, and underscores only.</FieldDescription>
+                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
                       </Field>
                     );
                   }}
@@ -118,8 +96,7 @@ function SignupPage() {
                 <form.Field
                   name="password"
                   children={(field) => {
-                    const isInvalid =
-                      field.state.meta.isTouched && !field.state.meta.isValid;
+                    const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
                     return (
                       <Field data-invalid={isInvalid}>
                         <FieldLabel htmlFor={field.name}>Password</FieldLabel>
@@ -133,12 +110,8 @@ function SignupPage() {
                           autoComplete="new-password"
                           aria-invalid={isInvalid}
                         />
-                        <FieldDescription>
-                          Must be at least 8 characters long.
-                        </FieldDescription>
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
+                        <FieldDescription>Must be at least 8 characters long.</FieldDescription>
+                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
                       </Field>
                     );
                   }}
@@ -146,13 +119,10 @@ function SignupPage() {
                 <form.Field
                   name="confirmPassword"
                   children={(field) => {
-                    const isInvalid =
-                      field.state.meta.isTouched && !field.state.meta.isValid;
+                    const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
                     return (
                       <Field data-invalid={isInvalid}>
-                        <FieldLabel htmlFor={field.name}>
-                          Confirm Password
-                        </FieldLabel>
+                        <FieldLabel htmlFor={field.name}>Confirm Password</FieldLabel>
                         <Input
                           id={field.name}
                           name={field.name}
@@ -163,12 +133,8 @@ function SignupPage() {
                           autoComplete="new-password"
                           aria-invalid={isInvalid}
                         />
-                        <FieldDescription>
-                          Please confirm your password.
-                        </FieldDescription>
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
+                        <FieldDescription>Please confirm your password.</FieldDescription>
+                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
                       </Field>
                     );
                   }}
@@ -178,9 +144,7 @@ function SignupPage() {
                   children={({ isSubmitting }) => (
                     <Field>
                       <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting
-                          ? "Creating account..."
-                          : "Create Account"}
+                        {isSubmitting ? "Creating account..." : "Create Account"}
                       </Button>
                       <FieldDescription className="text-center">
                         Already have an account?{" "}

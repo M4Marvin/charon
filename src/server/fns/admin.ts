@@ -6,7 +6,7 @@ import { getGlobalAiProvider, upsertGlobalAiProvider } from "@/db/repositories/a
 export const getGlobalAiConfig = createServerFn({ method: "GET" }).handler(async () => {
   const { user } = await getSession();
   if (!isAdmin(user)) throw new Error("Forbidden");
-    const provider = await getGlobalAiProvider();
+  const provider = await getGlobalAiProvider();
   return {
     baseUrl: provider.baseUrl,
     apiKey: provider.apiKey,

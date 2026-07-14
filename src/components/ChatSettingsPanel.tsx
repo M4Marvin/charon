@@ -336,9 +336,9 @@ function SceneSection({ chat, isDemo }: { chat: ChatDetail; isDemo: boolean }) {
         open={deleteTarget !== null}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete background?</AlertDialogTitle>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete background?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently remove this background. Chats using it will revert to the
               default look.
@@ -726,13 +726,7 @@ function AiSection({ isStreaming }: { isStreaming: boolean }) {
 
 // ── Character section ──────────────────────────────────────────────────────
 
-function CharacterSection({
-  chat,
-  isStreaming,
-}: {
-  chat: ChatDetail;
-  isStreaming: boolean;
-}) {
+function CharacterSection({ chat, isStreaming }: { chat: ChatDetail; isStreaming: boolean }) {
   const updateSettings = useUpdateChatSettings();
   const isLocked = isStreaming;
 

@@ -194,11 +194,7 @@ function AiProvidersSection() {
         )}
 
         <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setEditingProvider("new")}
-          >
+          <Button size="sm" variant="outline" onClick={() => setEditingProvider("new")}>
             + Add provider
           </Button>
           {selectedProviderId && (

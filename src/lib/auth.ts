@@ -30,7 +30,7 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (userData) => {
-          const role = (userData as Record<string, unknown>).role as string ?? "user";
+          const role = ((userData as Record<string, unknown>).role as string) ?? "user";
           await ensureGlobalAiProviderExists(FALLBACK_GLOBAL_PROVIDER);
           await seedSampleData(userData.id, role);
         },

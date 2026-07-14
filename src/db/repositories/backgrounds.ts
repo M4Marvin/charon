@@ -12,19 +12,12 @@ export function listBackgrounds(db: DB = defaultDb): Background[] {
 }
 
 export function getBackground(id: string, db: DB = defaultDb): Background {
-  const row = db
-    .select()
-    .from(backgrounds)
-    .where(eq(backgrounds.id, id))
-    .get();
+  const row = db.select().from(backgrounds).where(eq(backgrounds.id, id)).get();
   if (!row) throw new Error("Background not found");
   return row;
 }
 
-export function createBackground(
-  input: CreateBackgroundInput,
-  db: DB = defaultDb,
-): Background {
+export function createBackground(input: CreateBackgroundInput, db: DB = defaultDb): Background {
   const now = new Date();
   const row = db
     .insert(backgrounds)
@@ -40,9 +33,6 @@ export function createBackground(
 }
 
 export function deleteBackground(id: string, db: DB = defaultDb): void {
-  const result = db
-    .delete(backgrounds)
-    .where(eq(backgrounds.id, id))
-    .run();
+  const result = db.delete(backgrounds).where(eq(backgrounds.id, id)).run();
   if (result.changes === 0) throw new Error("Background not found");
 }

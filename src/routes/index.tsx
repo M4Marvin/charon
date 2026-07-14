@@ -3,30 +3,27 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bot, BookOpen, Puzzle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSession } from "@/lib/auth.functions";
 
 const features = [
   {
     icon: Bot,
     title: "Characters",
-    description: "Import V2 character cards with full personality data, lorebooks, and alternate greetings.",
+    description:
+      "Import V2 character cards with full personality data, lorebooks, and alternate greetings.",
   },
   {
     icon: BookOpen,
     title: "Lorebooks",
-    description: "Build world knowledge with per-entry activation rules, scan depth, and recursive context insertion.",
+    description:
+      "Build world knowledge with per-entry activation rules, scan depth, and recursive context insertion.",
   },
   {
     icon: Puzzle,
     title: "AI Providers",
-    description: "Connect any OpenAI-compatible endpoint — local Ollama, Anthropic, Gemini, or custom.",
+    description:
+      "Connect any OpenAI-compatible endpoint — local Ollama, Anthropic, Gemini, or custom.",
   },
 ];
 
@@ -60,9 +57,7 @@ function LandingPage() {
   if (userName) {
     return (
       <main className="mx-auto flex min-h-[80vh] max-w-3xl flex-col items-center justify-center px-4 text-center">
-        <h1 className="mb-3 text-3xl font-semibold tracking-tight">
-          Welcome back, {userName}
-        </h1>
+        <h1 className="mb-3 text-3xl font-semibold tracking-tight">Welcome back, {userName}</h1>
         <p className="text-muted-foreground mb-8 max-w-md text-sm">
           Jump back into your conversations or start a new one.
         </p>
@@ -83,9 +78,8 @@ function LandingPage() {
       <div className="mb-16 text-center">
         <h1 className="mb-4 text-4xl font-bold tracking-tight">st-v2</h1>
         <p className="text-muted-foreground mx-auto mb-8 max-w-2xl text-lg">
-          A modern AI character chat platform. Import V2 character cards,
-          configure lorebooks, connect any LLM provider, and have immersive
-          conversations with branching narratives.
+          A modern AI character chat platform. Import V2 character cards, configure lorebooks,
+          connect any LLM provider, and have immersive conversations with branching narratives.
         </p>
         <div className="flex items-center justify-center gap-4">
           <Button asChild size="lg">

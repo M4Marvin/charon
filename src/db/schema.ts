@@ -274,19 +274,16 @@ export const chatMessages = sqliteTable(
   ],
 );
 
-export const backgrounds = sqliteTable(
-  "backgrounds",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    name: text("name").notNull(),
-    path: text("path").notNull(),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
-      .notNull()
-      .$defaultFn(() => new Date()),
-  },
-);
+export const backgrounds = sqliteTable("backgrounds", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  path: text("path").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
 
 export const aiProviders = sqliteTable(
   "ai_providers",
@@ -294,8 +291,7 @@ export const aiProviders = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    userId: text("user_id")
-      .references(() => user.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     baseUrl: text("base_url").notNull(),
     apiKey: text("api_key").notNull(),

@@ -47,11 +47,19 @@ export function deleteUser(userId: string, db: DB = defaultDb): void {
 
   db.delete(chats).where(eq(chats.userId, userId)).run();
 
-  const userLorebooks = db.select({ id: lorebooks.id }).from(lorebooks).where(eq(lorebooks.userId, userId)).all();
+  const userLorebooks = db
+    .select({ id: lorebooks.id })
+    .from(lorebooks)
+    .where(eq(lorebooks.userId, userId))
+    .all();
   const userLorebookIds = userLorebooks.map((l) => l.id);
 
   for (const lorebookId of userLorebookIds) {
-    const entries = db.select({ id: loreEntries.id }).from(loreEntries).where(eq(loreEntries.lorebookId, lorebookId)).all();
+    const entries = db
+      .select({ id: loreEntries.id })
+      .from(loreEntries)
+      .where(eq(loreEntries.lorebookId, lorebookId))
+      .all();
     const entryIds = entries.map((e) => e.id);
 
     for (const entryId of entryIds) {

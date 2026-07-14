@@ -5,20 +5,8 @@ import { z } from "zod";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 
@@ -65,9 +53,7 @@ function SigninPage() {
         <Card>
           <CardHeader>
             <CardTitle>Sign in to your account</CardTitle>
-            <CardDescription>
-              Enter your username below to sign in
-            </CardDescription>
+            <CardDescription>Enter your username below to sign in</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit}>
@@ -75,8 +61,7 @@ function SigninPage() {
                 <form.Field
                   name="username"
                   children={(field) => {
-                    const isInvalid =
-                      field.state.meta.isTouched && !field.state.meta.isValid;
+                    const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
                     return (
                       <Field data-invalid={isInvalid}>
                         <FieldLabel htmlFor={field.name}>Username</FieldLabel>
@@ -91,9 +76,7 @@ function SigninPage() {
                           autoComplete="username"
                           aria-invalid={isInvalid}
                         />
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
+                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
                       </Field>
                     );
                   }}
@@ -101,14 +84,11 @@ function SigninPage() {
                 <form.Field
                   name="password"
                   children={(field) => {
-                    const isInvalid =
-                      field.state.meta.isTouched && !field.state.meta.isValid;
+                    const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
                     return (
                       <Field data-invalid={isInvalid}>
                         <div className="flex items-center">
-                          <FieldLabel htmlFor={field.name}>
-                            Password
-                          </FieldLabel>
+                          <FieldLabel htmlFor={field.name}>Password</FieldLabel>
                         </div>
                         <Input
                           id={field.name}
@@ -120,9 +100,7 @@ function SigninPage() {
                           autoComplete="current-password"
                           aria-invalid={isInvalid}
                         />
-                        {isInvalid && (
-                          <FieldError errors={field.state.meta.errors} />
-                        )}
+                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
                       </Field>
                     );
                   }}

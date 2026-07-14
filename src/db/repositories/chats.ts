@@ -144,16 +144,27 @@ export function updateChat(
   userId: string,
   id: string,
   patch: Partial<
-    Pick<Chat, "characterDescription" | "characterPersonality" | "characterScenario" | "characterSystemPrompt" | "title" | "backgroundPath">
+    Pick<
+      Chat,
+      | "characterDescription"
+      | "characterPersonality"
+      | "characterScenario"
+      | "characterSystemPrompt"
+      | "title"
+      | "backgroundPath"
+    >
   >,
   db: DB = defaultDb,
 ): Chat {
   const existing = getChat(userId, id, db);
   const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (patch.characterDescription !== undefined) updates.characterDescription = patch.characterDescription;
-  if (patch.characterPersonality !== undefined) updates.characterPersonality = patch.characterPersonality;
+  if (patch.characterDescription !== undefined)
+    updates.characterDescription = patch.characterDescription;
+  if (patch.characterPersonality !== undefined)
+    updates.characterPersonality = patch.characterPersonality;
   if (patch.characterScenario !== undefined) updates.characterScenario = patch.characterScenario;
-  if (patch.characterSystemPrompt !== undefined) updates.characterSystemPrompt = patch.characterSystemPrompt;
+  if (patch.characterSystemPrompt !== undefined)
+    updates.characterSystemPrompt = patch.characterSystemPrompt;
   if (patch.title !== undefined) updates.title = patch.title;
   if (patch.backgroundPath !== undefined) updates.backgroundPath = patch.backgroundPath;
   const row = db

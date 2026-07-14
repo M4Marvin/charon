@@ -37,10 +37,7 @@ describe("ensureGlobalAiProviderExists", () => {
     await ensureGlobalAiProviderExists(FALLBACK, db);
     const first = await getGlobalAiProvider(db);
 
-    await ensureGlobalAiProviderExists(
-      { ...FALLBACK, name: "Should Not Be Set" },
-      db,
-    );
+    await ensureGlobalAiProviderExists({ ...FALLBACK, name: "Should Not Be Set" }, db);
     const second = await getGlobalAiProvider(db);
 
     expect(second.name).toBe(first.name);

@@ -1,9 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  listUsers,
-  deleteUser,
-  type UserListItem,
-} from "@/server/fns/users";
+import { listUsers, deleteUser, type UserListItem } from "@/server/fns/users";
 
 export const userKeys = {
   all: ["users"] as const,
@@ -20,8 +16,7 @@ export function useUsers() {
 export function useDeleteUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string }): Promise<{ id: string }> =>
-      deleteUser({ data: input }),
+    mutationFn: (input: { id: string }): Promise<{ id: string }> => deleteUser({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: userKeys.all });
     },

@@ -90,11 +90,7 @@ export async function getAiProviderWithGlobalFallback(
 }
 
 export async function getGlobalAiProvider(db: DB = defaultDb): Promise<AiProvider> {
-  const row = db
-    .select()
-    .from(aiProviders)
-    .where(isNull(aiProviders.userId))
-    .get();
+  const row = db.select().from(aiProviders).where(isNull(aiProviders.userId)).get();
   if (!row) throw new Error("Global provider not found");
   return decryptProvider(row);
 }
@@ -110,11 +106,7 @@ export async function upsertGlobalAiProvider(
   db: DB = defaultDb,
 ): Promise<AiProvider> {
   const encrypted = await encryptApiKey(input.apiKey);
-  const existing = db
-    .select()
-    .from(aiProviders)
-    .where(isNull(aiProviders.userId))
-    .get();
+  const existing = db.select().from(aiProviders).where(isNull(aiProviders.userId)).get();
 
   if (existing) {
     return db
@@ -179,7 +171,10 @@ export async function ensureGlobalAiProviderExists(
     .run();
 }
 
-export async function createAiProvider(input: CreateAiProviderInput, db: DB = defaultDb): Promise<AiProvider> {
+export async function createAiProvider(
+  input: CreateAiProviderInput,
+  db: DB = defaultDb,
+): Promise<AiProvider> {
   const row: NewAiProvider = {
     id: input.id,
     userId: input.userId,
@@ -215,7 +210,11 @@ export async function updateAiProvider(
   return decryptProvider(row);
 }
 
-export async function deleteAiProvider(userId: string, id: string, db: DB = defaultDb): Promise<void> {
+export async function deleteAiProvider(
+  userId: string,
+  id: string,
+  db: DB = defaultDb,
+): Promise<void> {
   const existing = await getAiProvider(userId, id, db);
   db.delete(aiProviders)
     .where(and(eq(aiProviders.id, existing.id), eq(aiProviders.userId, userId)))

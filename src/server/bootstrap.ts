@@ -20,18 +20,17 @@ export async function ensureGlobalProvider(): Promise<void> {
 }
 
 async function seedExistingDemoUsers(): Promise<void> {
-  const demoUsers = db.select({ id: user.id }).from(user).where(not(eq(user.role, "admin"))).all();
+  const demoUsers = db
+    .select({ id: user.id })
+    .from(user)
+    .where(not(eq(user.role, "admin")))
+    .all();
 
   for (const u of demoUsers) {
     const hasDemoChar = db
       .select({ id: charactersTable.id })
       .from(charactersTable)
-      .where(
-        and(
-          eq(charactersTable.userId, u.id),
-          like(charactersTable.name, "Captain Jack%"),
-        ),
-      )
+      .where(and(eq(charactersTable.userId, u.id), like(charactersTable.name, "Captain Jack%")))
       .get();
 
     if (!hasDemoChar) {
@@ -40,11 +39,21 @@ async function seedExistingDemoUsers(): Promise<void> {
 
     const settings = db.select().from(userSettings).where(eq(userSettings.userId, u.id)).get();
     if (settings) {
-      if (settings.systemPrompt === null || settings.postHistoryInstructions === null || settings.impersonationPrompt === null) {
+      if (
+        settings.systemPrompt === null ||
+        settings.postHistoryInstructions === null ||
+        settings.impersonationPrompt === null
+      ) {
         upsertUserSettings(u.id, {
-          systemPrompt: settings.systemPrompt ?? "You are a helpful AI assistant. Roleplay as {{char}} according to their character description, staying in character at all times. Write responses from {{char}}'s perspective in a narrative style, using *asterisks* for actions and descriptions.",
-          postHistoryInstructions: settings.postHistoryInstructions ?? "Stay in character and continue the scene naturally. React to {{user}}'s latest message and move the conversation forward.",
-          impersonationPrompt: settings.impersonationPrompt ?? "You are {{user}} for a single message only. Write a response as if you were {{user}} speaking to {{char}}. Stay in character for {{user}} based on the conversation so far.",
+          systemPrompt:
+            settings.systemPrompt ??
+            "You are a helpful AI assistant. Roleplay as {{char}} according to their character description, staying in character at all times. Write responses from {{char}}'s perspective in a narrative style, using *asterisks* for actions and descriptions.",
+          postHistoryInstructions:
+            settings.postHistoryInstructions ??
+            "Stay in character and continue the scene naturally. React to {{user}}'s latest message and move the conversation forward.",
+          impersonationPrompt:
+            settings.impersonationPrompt ??
+            "You are {{user}} for a single message only. Write a response as if you were {{user}} speaking to {{char}}. Stay in character for {{user}} based on the conversation so far.",
         });
       }
 

@@ -8,10 +8,7 @@ export function todayUTC(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function incrementToday(
-  userId: string,
-  db: DB = defaultDb,
-): number {
+export function incrementToday(userId: string, db: DB = defaultDb): number {
   const day = todayUTC();
   const row = db
     .insert(userDailyUsage)
@@ -25,10 +22,7 @@ export function incrementToday(
   return row.count;
 }
 
-export function getTodayCount(
-  userId: string,
-  db: DB = defaultDb,
-): number {
+export function getTodayCount(userId: string, db: DB = defaultDb): number {
   const day = todayUTC();
   const row = db
     .select({ count: userDailyUsage.count })

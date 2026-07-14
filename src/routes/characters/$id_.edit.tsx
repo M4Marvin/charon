@@ -6,13 +6,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
@@ -151,9 +145,7 @@ function CharacterEditPage() {
   const isPending = updateMutation.isPending;
 
   if (isLoading) {
-    return (
-      <LoadingSkeleton />
-    );
+    return <LoadingSkeleton />;
   }
 
   if (error) {
@@ -188,11 +180,11 @@ function CharacterEditPage() {
     <main className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <Button asChild variant="ghost" size="sm" className="-ml-3">
-          <Link to="/characters/$id" params={{ id }}>← Back</Link>
+          <Link to="/characters/$id" params={{ id }}>
+            ← Back
+          </Link>
         </Button>
-        <span className="text-sm text-muted-foreground">
-          Editing {character.name}
-        </span>
+        <span className="text-sm text-muted-foreground">Editing {character.name}</span>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -529,9 +521,7 @@ function CharacterEditPage() {
                     placeholder="fantasy, adventure, romance"
                     autoComplete="off"
                   />
-                  <FieldDescription>
-                    Comma-separated list of tags.
-                  </FieldDescription>
+                  <FieldDescription>Comma-separated list of tags.</FieldDescription>
                 </Field>
               )}
             />
@@ -553,9 +543,7 @@ function CharacterEditPage() {
                       onChange={(e) => field.handleChange(e.target.value)}
                       aria-invalid={isInvalid}
                     />
-                    <FieldDescription>
-                      How talkative the character is (0–100).
-                    </FieldDescription>
+                    <FieldDescription>How talkative the character is (0–100).</FieldDescription>
                     {isInvalid && <FieldError errors={field.state.meta.errors} />}
                   </Field>
                 );
@@ -568,7 +556,9 @@ function CharacterEditPage() {
 
         <div className="flex items-center justify-end gap-3">
           <Button asChild variant="ghost" type="button">
-            <Link to="/characters/$id" params={{ id }}>Cancel</Link>
+            <Link to="/characters/$id" params={{ id }}>
+              Cancel
+            </Link>
           </Button>
           <form.Subscribe
             selector={(state) => ({
@@ -600,27 +590,17 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-      <div className="space-y-4">
-        {children}
-      </div>
+      <div className="space-y-4">{children}</div>
     </div>
   );
 }
 
 function FieldSet({ children }: { children: React.ReactNode }) {
-  return (
-    <fieldset className="space-y-3 rounded-lg border bg-muted/20 p-4">
-      {children}
-    </fieldset>
-  );
+  return <fieldset className="space-y-3 rounded-lg border bg-muted/20 p-4">{children}</fieldset>;
 }
 
 function FieldLegend({ children }: { children: React.ReactNode }) {
-  return (
-    <legend className="text-sm font-medium text-muted-foreground px-1">
-      {children}
-    </legend>
-  );
+  return <legend className="text-sm font-medium text-muted-foreground px-1">{children}</legend>;
 }
 
 function LoadingSkeleton() {

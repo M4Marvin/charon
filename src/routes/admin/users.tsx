@@ -104,9 +104,7 @@ function AdminUsersPage() {
         </Button>
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
-          <p className="text-muted-foreground text-sm">
-            Manage accounts, roles, and access.
-          </p>
+          <p className="text-muted-foreground text-sm">Manage accounts, roles, and access.</p>
         </div>
       </div>
 
@@ -191,9 +189,8 @@ function UserRow({
     .toUpperCase();
 
   const banReason = user.banned ? (user.banReason ? ` — ${user.banReason}` : "") : "";
-  const banExpiry = user.banned && user.banExpires
-    ? ` (until ${formatDateFull(new Date(user.banExpires))})`
-    : "";
+  const banExpiry =
+    user.banned && user.banExpires ? ` (until ${formatDateFull(new Date(user.banExpires))})` : "";
 
   return (
     <TableRow>
@@ -211,16 +208,11 @@ function UserRow({
       <TableCell className="text-sm">{user.username}</TableCell>
       <TableCell className="text-sm text-muted-foreground">{user.email}</TableCell>
       <TableCell>
-        <Badge variant={user.role === "admin" ? "default" : "outline"}>
-          {user.role}
-        </Badge>
+        <Badge variant={user.role === "admin" ? "default" : "outline"}>{user.role}</Badge>
       </TableCell>
       <TableCell>
         {user.banned ? (
-          <Badge
-            variant="destructive"
-            title={`Banned${banReason}${banExpiry}`}
-          >
+          <Badge variant="destructive" title={`Banned${banReason}${banExpiry}`}>
             Banned
           </Badge>
         ) : (
@@ -253,18 +245,14 @@ function UserRow({
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete user</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will delete{" "}
-                  <span className="font-medium text-foreground">{user.name}</span> and all
-                  their data (characters, chats, lorebooks, personas, presets). This
-                  action cannot be undone.
+                  This will delete <span className="font-medium text-foreground">{user.name}</span>{" "}
+                  and all their data (characters, chats, lorebooks, personas, presets). This action
+                  cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  variant="destructive"
-                  onClick={onDeleteConfirm}
-                >
+                <AlertDialogAction variant="destructive" onClick={onDeleteConfirm}>
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>

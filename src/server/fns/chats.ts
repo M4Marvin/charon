@@ -892,10 +892,13 @@ export const updateChatSettings = createServerFn({ method: "POST", strict: { out
   .handler(async ({ data }): Promise<{ id: string }> => {
     const { user } = await getSession();
     const patch: Parameters<typeof repoUpdateChat>[2] = {};
-    if (data.characterDescription !== undefined) patch.characterDescription = data.characterDescription;
-    if (data.characterPersonality !== undefined) patch.characterPersonality = data.characterPersonality;
+    if (data.characterDescription !== undefined)
+      patch.characterDescription = data.characterDescription;
+    if (data.characterPersonality !== undefined)
+      patch.characterPersonality = data.characterPersonality;
     if (data.characterScenario !== undefined) patch.characterScenario = data.characterScenario;
-    if (data.characterSystemPrompt !== undefined) patch.characterSystemPrompt = data.characterSystemPrompt;
+    if (data.characterSystemPrompt !== undefined)
+      patch.characterSystemPrompt = data.characterSystemPrompt;
     if (data.backgroundPath !== undefined) patch.backgroundPath = data.backgroundPath;
     repoUpdateChat(user.id, data.id, patch);
     return { id: data.id };

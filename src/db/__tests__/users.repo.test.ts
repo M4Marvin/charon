@@ -36,10 +36,7 @@ describe("users repository", () => {
 
     it("counts admin users only", () => {
       seedTestUser(db, "user-1");
-      db.update(user)
-        .set({ role: "admin" })
-        .where(eq(user.id, "user-1"))
-        .run();
+      db.update(user).set({ role: "admin" }).where(eq(user.id, "user-1")).run();
       seedSecondUser(db, "user-2");
       expect(countAdmins(db)).toBe(1);
     });
@@ -56,27 +53,30 @@ describe("users repository", () => {
     it("cascades to domain tables", () => {
       const userId = seedTestUser(db);
 
-      createCharacter({
-        id: "char-1",
-        userId,
-        name: "Test Char",
-        data: {
+      createCharacter(
+        {
+          id: "char-1",
+          userId,
           name: "Test Char",
-          description: "",
-          personality: "",
-          scenario: "",
-          first_mes: "",
-          mes_example: "",
-          creator_notes: "",
-          system_prompt: "",
-          post_history_instructions: "",
-          alternate_greetings: [],
-          tags: [],
-          creator: "",
-          character_version: "1",
-          extensions: {},
+          data: {
+            name: "Test Char",
+            description: "",
+            personality: "",
+            scenario: "",
+            first_mes: "",
+            mes_example: "",
+            creator_notes: "",
+            system_prompt: "",
+            post_history_instructions: "",
+            alternate_greetings: [],
+            tags: [],
+            creator: "",
+            character_version: "1",
+            extensions: {},
+          },
         },
-      }, db);
+        db,
+      );
 
       createPersona({ id: "pers-1", userId, name: "Persona" }, db);
       upsertUserSettings(userId, { systemPrompt: "test" }, db);
