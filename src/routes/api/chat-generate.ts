@@ -15,6 +15,7 @@ import {
 import { getUserSettings as repoGetUserSettings } from "@/db/repositories/userSettings";
 import { getPersona as repoGetPersona } from "@/db/repositories/personas";
 import type { Character } from "@/db/schema";
+import type { ChatMessageRow } from "@/db/schema";
 import type { ChatMessage, ChatTree } from "@/lib/st-core/shared/types";
 import type { LoreEntry as LoreEntryData } from "@/lib/st-core/lorebook";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
@@ -22,15 +23,30 @@ import { getNode } from "@/lib/st-core/chat-tree/tree";
 import { buildChatPrompt } from "@/lib/chat/server-context";
 import { DEFAULT_PRESET } from "@/lib/chat/preset";
 import type { ChatCompletionPreset } from "@/lib/chat/types";
-import { rowToMessage } from "@/lib/chat/message-mapping";
+
+function rowToMessage(row: ChatMessageRow): ChatMessage {
+  const { chatId: _, ...rest } = row;
+  return {
+    localId: rest.localId,
+    parentLocalId: rest.parentLocalId,
+    children: rest.children ?? [],
+    selectedChildLocalId: rest.selectedChildLocalId,
+    role: rest.role,
+    name: rest.name ?? undefined,
+    content: rest.content,
+    isUser: rest.isUser ?? undefined,
+    isSystem: rest.isSystem ?? undefined,
+    extra: rest.extra ?? undefined,
+  };
+}
 
 function getPathToNode(tree: ChatTree, nodeId: number): ChatMessage[] {
   const path: ChatMessage[] = [];
   let current: ChatMessage | undefined = tree.get(nodeId);
   while (current !== undefined) {
     path.unshift(current);
-    if (current.parent_id === null) break;
-    current = tree.get(current.parent_id);
+    if (current.parentLocalId === null) break;
+    current = tree.get(current.parentLocalId);
   }
   return path;
 }
@@ -99,7 +115,7 @@ export const Route = createFileRoute("/api/chat-generate")({
           const tree = treeFromNodes(rows.map(rowToMessage));
 
           const placeholder = getNode(tree, forwarded.assistantMessageLocalId);
-          const parentId = placeholder.parent_id;
+          const parentId = placeholder.parentLocalId;
           console.log("[chat-generate] req", {
             chatId: forwarded.chatId,
             assistantMessageLocalId: forwarded.assistantMessageLocalId,
@@ -122,31 +138,31 @@ export const Route = createFileRoute("/api/chat-generate")({
           // empty-content messages (with a misleading "User message" error)
           // for all roles and would abort the stream.
           const historyMessages: import("@/lib/st-core/shared/types").ChatMessage[] = activePath
-            .filter((m) => m.id !== 0)
+            .filter((m) => m.localId !== 0)
             .filter((m) => {
               if (m.content.length === 0) {
                 console.log("[chat-generate] dropping empty-content message", {
-                  id: m.id,
+                  localId: m.localId,
                   role: m.role,
                   name: m.name,
-                  parent_id: m.parent_id,
-                  is_user: m.is_user,
-                  is_system: m.is_system,
+                  parentLocalId: m.parentLocalId,
+                  isUser: m.isUser,
+                  isSystem: m.isSystem,
                 });
                 return false;
               }
               return true;
             })
             .map((m) => ({
-              id: m.id,
-              parent_id: m.parent_id,
+              localId: m.localId,
+              parentLocalId: m.parentLocalId,
               children: m.children,
-              selected_child_id: m.selected_child_id,
+              selectedChildLocalId: m.selectedChildLocalId,
               role: m.role,
               name: m.name,
               content: m.content,
-              is_user: m.is_user,
-              is_system: m.is_system,
+              isUser: m.isUser,
+              isSystem: m.isSystem,
               extra: m.extra,
             }));
           console.log("[chat-generate] history", {
@@ -233,7 +249,7 @@ export const Route = createFileRoute("/api/chat-generate")({
             ...(provider.defaultHeaders ? { defaultHeaders: provider.defaultHeaders } : {}),
           });
 
-          // Greeting regeneration (placeholder.parent_id === 0) builds a prompt
+          // Greeting regeneration (placeholder.parentLocalId === 0) builds a prompt
           // from the root only — no user message in history. OpenAI-compatible
           // APIs reject user-less prompts with 400, so inject a non-whitespace
           // sentinel user message when the prompt has no user turn. The model

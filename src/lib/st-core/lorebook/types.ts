@@ -97,6 +97,46 @@ export const DEFAULT_LORE_CONFIG: LoreConfig = {
   scanDepth: 10,
 };
 
+export const DEFAULT_LORE_ENTRY: Omit<LoreEntry, "uid"> = {
+  key: [],
+  keysecondary: [],
+  comment: "",
+  content: "",
+  constant: false,
+  selective: false,
+  order: 100,
+  position: 0,
+  disable: false,
+  excludeRecursion: false,
+  preventRecursion: false,
+  delayUntilRecursion: false,
+  depth: 4,
+  selectiveLogic: 0,
+  group: "",
+  groupOverride: false,
+  groupWeight: 100,
+  probability: 100,
+  useProbability: false,
+  scanDepth: null,
+  caseSensitive: null,
+  matchWholeWords: null,
+  useGroupScoring: null,
+  automationId: "",
+  role: 0,
+  vectorized: false,
+  sticky: null,
+  cooldown: null,
+  delay: null,
+  matchPersonaDescription: false,
+  matchCharacterDescription: true,
+  matchCharacterPersonality: true,
+  matchCharacterDepthPrompt: false,
+  matchScenario: false,
+  matchCreatorNotes: false,
+  triggers: [],
+  ignoreBudget: false,
+};
+
 /** Result of a lore scan. */
 export interface LoreScanResult {
   beforeEntries: string[];

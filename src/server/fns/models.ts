@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { Effect } from "effect";
 import { getSession } from "@/server/session";
 import { validateId } from "@/server/validators";
 import { getAiProviderWithGlobalFallback as repoGet } from "@/db/repositories/aiProviders";
@@ -12,7 +13,7 @@ export const listProviderModels = createServerFn({ method: "GET", strict: { outp
     const { user } = await getSession();
     const provider = await repoGet(user.id, data.id);
 
-    const result = await probeProviderModels(provider);
+    const result = await Effect.runPromise(probeProviderModels(provider));
     if (!result.ok) throw new Error(result.error ?? "Provider unreachable");
     return result.models;
   });
@@ -22,5 +23,5 @@ export const testProviderConnection = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<ProbeResult> => {
     const { user } = await getSession();
     const provider = await repoGet(user.id, data.id);
-    return probeProviderModels(provider);
+    return Effect.runPromise(probeProviderModels(provider));
   });

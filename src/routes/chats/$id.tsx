@@ -75,15 +75,15 @@ export const Route = createFileRoute("/chats/$id")({
 
 function rowToMessage(row: ChatMessageRow): ChatMessage {
   return {
-    id: row.localId,
-    parent_id: row.parentLocalId,
+    localId: row.localId,
+    parentLocalId: row.parentLocalId,
     children: row.children ?? [],
-    selected_child_id: row.selectedChildLocalId,
+    selectedChildLocalId: row.selectedChildLocalId,
     role: row.role,
     name: row.name ?? undefined,
     content: row.content,
-    is_user: row.isUser ?? undefined,
-    is_system: row.isSystem ?? undefined,
+    isUser: row.isUser ?? undefined,
+    isSystem: row.isSystem ?? undefined,
     extra: row.extra ?? undefined,
   };
 }
@@ -270,9 +270,9 @@ function ChatPage() {
     return path
       .filter((msg) => msg.role !== "system")
       .map((msg) => {
-        const siblings = getSiblings(tree, msg.id);
-        const idx = siblings.findIndex((s) => s.id === msg.id);
-        const isStreamingLocal = msg.id === activePlaceholderId;
+        const siblings = getSiblings(tree, msg.localId);
+        const idx = siblings.findIndex((s) => s.localId === msg.localId);
+        const isStreamingLocal = msg.localId === activePlaceholderId;
         const baseMessage =
           isStreamingLocal && liveAssistantText !== null
             ? { ...msg, content: liveAssistantText }
@@ -434,17 +434,17 @@ function ChatPage() {
         swipeMutation.mutate({ chatId: id, messageLocalId, direction });
         return;
       }
-      const entry = activePath.find((p) => p.message.id === messageLocalId);
+      const entry = activePath.find((p) => p.message.localId === messageLocalId);
       if (entry) {
         console.log("[swipe] entry resolved", {
-          isUser: entry.message.is_user,
-          parentId: entry.message.parent_id,
+          isUser: entry.message.isUser,
+          parentId: entry.message.parentLocalId,
           siblingIndex: entry.siblingIndex,
           siblingTotal: entry.siblingTotal,
           isStreaming: entry.isStreaming,
         });
       }
-      if (entry && !entry.message.is_user && messageLocalId !== 0) {
+      if (entry && !entry.message.isUser && messageLocalId !== 0) {
         if (entry.isStreaming) {
           toast.error("Wait for the current response to finish");
           return;
@@ -459,7 +459,7 @@ function ChatPage() {
           swipeMutation.mutate({ chatId: id, messageLocalId, direction });
           return;
         }
-        const isGreeting = entry.message.parent_id === 0;
+        const isGreeting = entry.message.parentLocalId === 0;
         console.log("[swipe] → regen", { messageLocalId, isGreeting });
         prepareStream.mutate(
           { chatId: id, mode: "regenerate", messageLocalId },
@@ -750,9 +750,9 @@ function ChatPage() {
                       ) : (
                         activePath.map((entry, index) => (
                           <MessageScrollerItem
-                            key={entry.message.id}
-                            messageId={entry.message.id.toString()}
-                            scrollAnchor={entry.message.is_user ?? entry.message.role === "user"}
+                            key={entry.message.localId}
+                            messageId={entry.message.localId.toString()}
+                            scrollAnchor={entry.message.isUser ?? entry.message.role === "user"}
                           >
                             <ChatMessage
                               entry={entry}
@@ -1002,7 +1002,7 @@ function ChatMessage({
   disabled: boolean;
 }) {
   const { message, siblingIndex, siblingTotal, isDraft, isStreaming } = entry;
-  const isUser = message.is_user ?? message.role === "user";
+  const isUser = message.isUser ?? message.role === "user";
   const [isEditing, setIsEditing] = useState(false);
   const [draftContent, setDraftContent] = useState(message.content);
   const editRef = useRef<HTMLTextAreaElement>(null);
@@ -1036,7 +1036,7 @@ function ChatMessage({
       setIsEditing(false);
       return;
     }
-    onEdit(message.id, trimmed);
+    onEdit(message.localId, trimmed);
     setIsEditing(false);
   };
 
@@ -1063,7 +1063,7 @@ function ChatMessage({
               </button>
               <button
                 type="button"
-                onClick={() => onDelete(message.id)}
+                onClick={() => onDelete(message.localId)}
                 className="hover:text-destructive"
               >
                 Delete
@@ -1114,7 +1114,7 @@ function ChatMessage({
             <span className="ml-auto inline-flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => onSwipe(message.id, "prev")}
+                onClick={() => onSwipe(message.localId, "prev")}
                 disabled={siblingIndex === 0}
                 className="hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 rounded-full p-0.5"
                 aria-label="Previous message"
@@ -1126,7 +1126,7 @@ function ChatMessage({
               </span>
               <button
                 type="button"
-                onClick={() => onSwipe(message.id, "next")}
+                onClick={() => onSwipe(message.localId, "next")}
                 className="hover:text-foreground rounded-full p-0.5"
                 aria-label="Next message"
               >

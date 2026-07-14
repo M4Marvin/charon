@@ -2,4 +2,5 @@ allowBuilds:
   '@google/genai': false
   better-sqlite3: true
   esbuild: true
+  msgpackr-extract: false
   protobufjs: true

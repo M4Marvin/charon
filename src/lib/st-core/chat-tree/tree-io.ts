@@ -5,7 +5,7 @@ import { getRootId, getActiveLeafId } from "./tree.js";
 export function treeFromNodes(nodes: ChatMessage[]): ChatTree {
   const tree: ChatTree = new Map();
   for (const node of nodes) {
-    tree.set(node.id, { ...node, children: [...(node.children ?? [])] });
+    tree.set(node.localId, { ...node, children: [...(node.children ?? [])] });
   }
   return tree;
 }
@@ -29,7 +29,7 @@ export function treeToActivePath(tree: ChatTree): ChatMessage[] {
     const node = tree.get(currentId);
     if (!node) break;
     path.unshift(node);
-    currentId = node.parent_id;
+    currentId = node.parentLocalId;
   }
 
   return path;
@@ -51,9 +51,9 @@ export function validateTree(tree: ChatTree): ValidationResult {
 
   // 1. Find roots
   const roots: number[] = [];
-  for (const [id, node] of tree) {
-    if (node.parent_id === null || node.parent_id === undefined) {
-      roots.push(id);
+  for (const [localId, node] of tree) {
+    if (node.parentLocalId === null || node.parentLocalId === undefined) {
+      roots.push(localId);
     }
   }
 
@@ -64,9 +64,9 @@ export function validateTree(tree: ChatTree): ValidationResult {
   }
 
   // 2. Check children arrays
-  for (const [id, node] of tree) {
+  for (const [localId, node] of tree) {
     if (!Array.isArray(node.children)) {
-      errors.push(`Node ${id}: children is not an array`);
+      errors.push(`Node ${localId}: children is not an array`);
       continue;
     }
 
@@ -74,7 +74,7 @@ export function validateTree(tree: ChatTree): ValidationResult {
     const seen = new Set<number>();
     for (const childId of node.children) {
       if (seen.has(childId)) {
-        errors.push(`Node ${id}: duplicate child ${childId}`);
+        errors.push(`Node ${localId}: duplicate child ${childId}`);
         continue;
       }
       seen.add(childId);
@@ -82,18 +82,18 @@ export function validateTree(tree: ChatTree): ValidationResult {
       // Check child exists
       const child = tree.get(childId);
       if (!child) {
-        errors.push(`Node ${id}: child ${childId} not found in tree`);
-      } else if (child.parent_id !== id) {
+        errors.push(`Node ${localId}: child ${childId} not found in tree`);
+      } else if (child.parentLocalId !== localId) {
         errors.push(
-          `Node ${id}: child ${childId} has parent_id ${child.parent_id}, expected ${id}`,
+          `Node ${localId}: child ${childId} has parentLocalId ${child.parentLocalId}, expected ${localId}`,
         );
       }
     }
 
-    // Check selected_child_id
-    if (node.selected_child_id !== null && node.selected_child_id !== undefined) {
-      if (!node.children.includes(node.selected_child_id)) {
-        errors.push(`Node ${id}: selected_child_id ${node.selected_child_id} not in children list`);
+    // Check selectedChildLocalId
+    if (node.selectedChildLocalId !== null && node.selectedChildLocalId !== undefined) {
+      if (!node.children.includes(node.selectedChildLocalId)) {
+        errors.push(`Node ${localId}: selectedChildLocalId ${node.selectedChildLocalId} not in children list`);
       }
     }
   }
@@ -128,9 +128,9 @@ export function validateTree(tree: ChatTree): ValidationResult {
   }
 
   // Check unreachable nodes
-  for (const id of tree.keys()) {
-    if (!visited.has(id)) {
-      warnings.push(`Node ${id} is unreachable from any root`);
+  for (const localId of tree.keys()) {
+    if (!visited.has(localId)) {
+      warnings.push(`Node ${localId} is unreachable from any root`);
     }
   }
 

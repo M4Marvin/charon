@@ -17,7 +17,7 @@ import {
   Swipe,
   UpdateChatSettings,
 } from "@/server/schemas/chat";
-import type { ChatMessageRow, Character } from "@/db/schema";
+import type { ChatMessageRow, NewChatMessageRow, Character } from "@/db/schema";
 import {
   createChat as repoCreateChat,
   deleteChat as repoDeleteChat,
@@ -40,7 +40,6 @@ import type { ChatCompletionPreset } from "@/lib/chat/types";
 import { buildChatPrompt } from "@/lib/chat/server-context";
 import { DEFAULT_PRESET } from "@/lib/chat/preset";
 import { substituteMessageMacros } from "@/lib/chat/substitute-message-macros";
-import { rowToMessage, messageToInsert } from "@/lib/chat/message-mapping";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import {
   addChild,
@@ -53,6 +52,26 @@ import {
   getNextSiblingId,
   getPrevSiblingId,
 } from "@/lib/st-core/chat-tree/tree";
+
+function rowToMessage(row: ChatMessageRow): ChatMessage {
+  const { chatId: _, ...rest } = row;
+  return {
+    localId: rest.localId,
+    parentLocalId: rest.parentLocalId,
+    children: rest.children ?? [],
+    selectedChildLocalId: rest.selectedChildLocalId,
+    role: rest.role,
+    name: rest.name ?? undefined,
+    content: rest.content,
+    isUser: rest.isUser ?? undefined,
+    isSystem: rest.isSystem ?? undefined,
+    extra: rest.extra ?? undefined,
+  };
+}
+
+function messageToInsert(chatId: string, msg: ChatMessage): NewChatMessageRow {
+  return { chatId, ...msg, extra: (msg.extra as Record<string, unknown>) ?? null };
+}
 
 // ── Default replies (rotating, no AI) ───────────────────────────────────────
 
@@ -269,15 +288,15 @@ export const sendMessage = createServerFn({ method: "POST", strict: { output: fa
       // Build the reply first — the draft already exists in the tree, so
       // getNextId(tree) returns a fresh id with no collision.
       const reply: ChatMessage = {
-        id: getNextId(tree),
-        parent_id: null,
+        localId: getNextId(tree),
+        parentLocalId: null,
         children: [],
-        selected_child_id: null,
+        selectedChildLocalId: null,
         role: "assistant",
         name: char.data.name,
         content: pickDefaultReply(rows.length + 1),
-        is_user: false,
-        is_system: false,
+        isUser: false,
+        isSystem: false,
       };
       // 1) Set draft content + clear isDraft flag.
       repoUpdateMessage(user.id, data.chatId, activeLeafId, {
@@ -286,11 +305,11 @@ export const sendMessage = createServerFn({ method: "POST", strict: { output: fa
       });
       // 2) Attach the reply as its child (auto-selects the reply).
       addChild(tree, activeLeafId, reply);
-      // 3) Persist the now-mutated draft's children + selected_child_id.
+      // 3) Persist the now-mutated draft's children + selectedChildLocalId.
       const updatedDraft = getNode(tree, activeLeafId);
       repoUpdateMessage(user.id, data.chatId, activeLeafId, {
         children: updatedDraft.children,
-        selectedChildLocalId: updatedDraft.selected_child_id,
+        selectedChildLocalId: updatedDraft.selectedChildLocalId,
       });
       // 4) Insert the new reply.
       repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, reply));
@@ -310,36 +329,36 @@ export const sendMessage = createServerFn({ method: "POST", strict: { output: fa
     // IMPORTANT: build + addChild userMsg BEFORE allocating reply's id, otherwise
     // getNextId(tree) returns the same value for both and the second addChild throws.
     const userMsg: ChatMessage = {
-      id: getNextId(tree),
-      parent_id: null,
+      localId: getNextId(tree),
+      parentLocalId: null,
       children: [],
-      selected_child_id: null,
+      selectedChildLocalId: null,
       role: "user",
       name: user.name,
       content: substituteMessageMacros(data.content, macroEnv),
-      is_user: true,
-      is_system: false,
+      isUser: true,
+      isSystem: false,
     };
     addChild(tree, activeLeafId, userMsg); // auto-selects userMsg on activeLeaf
 
     const reply: ChatMessage = {
-      id: getNextId(tree),
-      parent_id: null,
+      localId: getNextId(tree),
+      parentLocalId: null,
       children: [],
-      selected_child_id: null,
+      selectedChildLocalId: null,
       role: "assistant",
       name: char.data.name,
       content: pickDefaultReply(rows.length + 1),
-      is_user: false,
-      is_system: false,
+      isUser: false,
+      isSystem: false,
     };
-    addChild(tree, userMsg.id, reply); // auto-selects reply on userMsg
+    addChild(tree, userMsg.localId, reply); // auto-selects reply on userMsg
 
     // Persist: update activeLeaf's children+selected, insert userMsg, insert reply.
     const updatedActiveLeaf = getNode(tree, activeLeafId);
     repoUpdateMessage(user.id, data.chatId, activeLeafId, {
       children: updatedActiveLeaf.children,
-      selectedChildLocalId: updatedActiveLeaf.selected_child_id,
+      selectedChildLocalId: updatedActiveLeaf.selectedChildLocalId,
     });
     repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, userMsg));
     repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, reply));
@@ -360,7 +379,7 @@ export const swipeMessage = createServerFn({ method: "POST", strict: { output: f
     const tree = treeFromNodes(rows.map(rowToMessage));
 
     const target = getNode(tree, data.messageLocalId);
-    const parentId = target.parent_id;
+    const parentId = target.parentLocalId;
     if (parentId === null) throw new Error("Cannot swipe the root message");
 
     const rowsById = new Map(rows.map((r) => [r.localId, r] as const));
@@ -381,7 +400,7 @@ export const swipeMessage = createServerFn({ method: "POST", strict: { output: f
       const parent = getNode(tree, parentId);
       repoUpdateMessage(user.id, data.chatId, parentId, {
         children: parent.children,
-        selectedChildLocalId: parent.selected_child_id,
+        selectedChildLocalId: parent.selectedChildLocalId,
       });
       return { selectedMessage: findRow(siblingId) };
     }
@@ -394,41 +413,41 @@ export const swipeMessage = createServerFn({ method: "POST", strict: { output: f
 
     // Next direction, no sibling — right arrow is never disabled, so we
     // always create a new sibling. addSibling does NOT auto-select.
-    const isUserMsg = (target.is_user ?? target.role === "user") === true;
+    const isUserMsg = (target.isUser ?? target.role === "user") === true;
     const newMsg: ChatMessage = isUserMsg
       ? {
-          id: getNextId(tree),
-          parent_id: null,
+          localId: getNextId(tree),
+          parentLocalId: null,
           children: [],
-          selected_child_id: null,
+          selectedChildLocalId: null,
           role: "user",
           // Draft user message — no character name; the user fills it in.
           name: undefined,
           content: "",
-          is_user: true,
-          is_system: false,
+          isUser: true,
+          isSystem: false,
           extra: { isDraft: true },
         }
       : {
-          id: getNextId(tree),
-          parent_id: null,
+          localId: getNextId(tree),
+          parentLocalId: null,
           children: [],
-          selected_child_id: null,
+          selectedChildLocalId: null,
           role: "assistant",
           name: target.name,
           content:
-            target.parent_id === 0 ? "Make your own greeting!" : pickDefaultReply(rows.length + 1),
-          is_user: false,
-          is_system: false,
+            target.parentLocalId === 0 ? "Make your own greeting!" : pickDefaultReply(rows.length + 1),
+          isUser: false,
+          isSystem: false,
         };
 
     addSibling(tree, data.messageLocalId, newMsg);
-    selectChild(tree, parentId, newMsg.id);
+    selectChild(tree, parentId, newMsg.localId);
 
     const parent = getNode(tree, parentId);
     repoUpdateMessage(user.id, data.chatId, parentId, {
       children: parent.children,
-      selectedChildLocalId: parent.selected_child_id,
+      selectedChildLocalId: parent.selectedChildLocalId,
     });
     repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, newMsg));
 
@@ -449,11 +468,11 @@ export const deleteMessageBranch = createServerFn({ method: "POST", strict: { ou
     if (subtreeIds.length === 0) throw new Error("Message not found");
 
     const target = getNode(tree, data.messageLocalId);
-    const parentId = target.parent_id;
+    const parentId = target.parentLocalId;
     if (parentId === null) throw new Error("Cannot delete the root message");
 
     // deleteSubtree mutates the parent: splices the child out, re-points
-    // selected_child_id to right-sibling → left-sibling → null.
+    // selectedChildLocalId to right-sibling → left-sibling → null.
     deleteSubtree(tree, data.messageLocalId);
 
     repoDeleteMessages(user.id, data.chatId, subtreeIds);
@@ -461,7 +480,7 @@ export const deleteMessageBranch = createServerFn({ method: "POST", strict: { ou
     const parent = getNode(tree, parentId);
     repoUpdateMessage(user.id, data.chatId, parentId, {
       children: parent.children,
-      selectedChildLocalId: parent.selected_child_id,
+      selectedChildLocalId: parent.selectedChildLocalId,
     });
 
     return { deletedIds: subtreeIds };
@@ -509,11 +528,11 @@ export const impersonateMessage = createServerFn({ method: "POST", strict: { out
     let cur = tree.get(activeLeafId);
     while (cur) {
       path.unshift(cur);
-      if (cur.parent_id === null) break;
-      cur = tree.get(cur.parent_id);
+      if (cur.parentLocalId === null) break;
+      cur = tree.get(cur.parentLocalId);
     }
     const historyMessages = path
-      .filter((m) => m.id !== 0)
+      .filter((m) => m.localId !== 0)
       .filter((m) => !(m.role === "system" && m.content.length === 0));
 
     const userSettingsRow = repoGetUserSettings(user.id);
@@ -659,61 +678,61 @@ export const prepareStreamMessage = createServerFn({
           extra: null,
         });
         const placeholder: ChatMessage = {
-          id: getNextId(tree),
-          parent_id: null,
+          localId: getNextId(tree),
+          parentLocalId: null,
           children: [],
-          selected_child_id: null,
+          selectedChildLocalId: null,
           role: "assistant",
           name: char.data.name,
           content: "",
-          is_user: false,
-          is_system: false,
+          isUser: false,
+          isSystem: false,
           extra: { isStreaming: true },
         };
         addChild(tree, activeLeafId, placeholder);
         const updatedDraft = getNode(tree, activeLeafId);
         repoUpdateMessage(user.id, data.chatId, activeLeafId, {
           children: updatedDraft.children,
-          selectedChildLocalId: updatedDraft.selected_child_id,
+          selectedChildLocalId: updatedDraft.selectedChildLocalId,
         });
         repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, placeholder));
-        assistantMessageLocalId = placeholder.id;
+        assistantMessageLocalId = placeholder.localId;
       } else {
         // Normal case: user msg + assistant placeholder
         const userMsg: ChatMessage = {
-          id: getNextId(tree),
-          parent_id: null,
+          localId: getNextId(tree),
+          parentLocalId: null,
           children: [],
-          selected_child_id: null,
+          selectedChildLocalId: null,
           role: "user",
           name: user.name,
           content: substituteMessageMacros(content, macroEnv),
-          is_user: true,
-          is_system: false,
+          isUser: true,
+          isSystem: false,
         };
         addChild(tree, activeLeafId, userMsg);
         const placeholder: ChatMessage = {
-          id: getNextId(tree),
-          parent_id: null,
+          localId: getNextId(tree),
+          parentLocalId: null,
           children: [],
-          selected_child_id: null,
+          selectedChildLocalId: null,
           role: "assistant",
           name: char.data.name,
           content: "",
-          is_user: false,
-          is_system: false,
+          isUser: false,
+          isSystem: false,
           extra: { isStreaming: true },
         };
-        addChild(tree, userMsg.id, placeholder);
+        addChild(tree, userMsg.localId, placeholder);
 
         const updatedActiveLeaf = getNode(tree, activeLeafId);
         repoUpdateMessage(user.id, data.chatId, activeLeafId, {
           children: updatedActiveLeaf.children,
-          selectedChildLocalId: updatedActiveLeaf.selected_child_id,
+          selectedChildLocalId: updatedActiveLeaf.selectedChildLocalId,
         });
         repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, userMsg));
         repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, placeholder));
-        assistantMessageLocalId = placeholder.id;
+        assistantMessageLocalId = placeholder.localId;
       }
     } else if (data.mode === "continue") {
       // Empty-send continue: generate a response from the active leaf.
@@ -729,78 +748,78 @@ export const prepareStreamMessage = createServerFn({
         throw new Error("Cannot continue from a draft message");
 
       const placeholder: ChatMessage = {
-        id: getNextId(tree),
-        parent_id: null,
+        localId: getNextId(tree),
+        parentLocalId: null,
         children: [],
-        selected_child_id: null,
+        selectedChildLocalId: null,
         role: "assistant",
         name: char.data.name,
         content: "",
-        is_user: false,
-        is_system: false,
+        isUser: false,
+        isSystem: false,
         extra: { isStreaming: true },
       };
 
-      if (activeLeaf.role === "user" || activeLeaf.is_user) {
+      if (activeLeaf.role === "user" || activeLeaf.isUser) {
         // Active leaf is a user message awaiting a reply.
         addChild(tree, activeLeafId, placeholder);
         const updatedLeaf = getNode(tree, activeLeafId);
         repoUpdateMessage(user.id, data.chatId, activeLeafId, {
           children: updatedLeaf.children,
-          selectedChildLocalId: updatedLeaf.selected_child_id,
+          selectedChildLocalId: updatedLeaf.selectedChildLocalId,
         });
       } else {
         // Active leaf is an assistant message — add sibling (regenerate).
-        if (activeLeaf.parent_id === null)
+        if (activeLeaf.parentLocalId === null)
           throw new Error("Cannot continue from a root-level assistant");
         addSibling(tree, activeLeafId, placeholder);
-        selectChild(tree, activeLeaf.parent_id, placeholder.id);
-        const parent = getNode(tree, activeLeaf.parent_id);
-        repoUpdateMessage(user.id, data.chatId, activeLeaf.parent_id, {
+        selectChild(tree, activeLeaf.parentLocalId, placeholder.localId);
+        const parent = getNode(tree, activeLeaf.parentLocalId);
+        repoUpdateMessage(user.id, data.chatId, activeLeaf.parentLocalId, {
           children: parent.children,
-          selectedChildLocalId: parent.selected_child_id,
+          selectedChildLocalId: parent.selectedChildLocalId,
         });
       }
 
       repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, placeholder));
-      assistantMessageLocalId = placeholder.id;
+      assistantMessageLocalId = placeholder.localId;
     } else {
       // Regenerate mode: create sibling of target assistant message
       const target = getNode(tree, messageLocalId);
       if (target.role !== "assistant") throw new Error("Can only regenerate assistant messages");
-      if (target.is_system) throw new Error("Cannot regenerate system messages");
-      if (target.parent_id === null) throw new Error("Cannot regenerate root message");
+      if (target.isSystem) throw new Error("Cannot regenerate system messages");
+      if (target.parentLocalId === null) throw new Error("Cannot regenerate root message");
       if ((target.extra?.isStreaming ?? false) === true)
         throw new Error("Cannot regenerate a message that is still streaming");
 
       console.log("[prepareStream] regenerate target", {
         targetRole: target.role,
-        targetParentId: target.parent_id,
+        targetParentId: target.parentLocalId,
         targetExtraStreaming: (target.extra?.isStreaming ?? false) === true,
       });
 
       const placeholder: ChatMessage = {
-        id: getNextId(tree),
-        parent_id: null,
+        localId: getNextId(tree),
+        parentLocalId: null,
         children: [],
-        selected_child_id: null,
+        selectedChildLocalId: null,
         role: "assistant",
         name: char.data.name,
         content: "",
-        is_user: false,
-        is_system: false,
+        isUser: false,
+        isSystem: false,
         extra: { isStreaming: true },
       };
       addSibling(tree, messageLocalId, placeholder);
-      selectChild(tree, target.parent_id, placeholder.id);
+      selectChild(tree, target.parentLocalId, placeholder.localId);
 
-      const parent = getNode(tree, target.parent_id);
-      repoUpdateMessage(user.id, data.chatId, target.parent_id, {
+      const parent = getNode(tree, target.parentLocalId);
+      repoUpdateMessage(user.id, data.chatId, target.parentLocalId, {
         children: parent.children,
-        selectedChildLocalId: parent.selected_child_id,
+        selectedChildLocalId: parent.selectedChildLocalId,
       });
       repoInsertMessage(user.id, data.chatId, messageToInsert(data.chatId, placeholder));
-      assistantMessageLocalId = placeholder.id;
+      assistantMessageLocalId = placeholder.localId;
     }
 
     console.log("[prepareStream] done", { assistantMessageLocalId });
@@ -841,14 +860,14 @@ export const cancelStream = createServerFn({ method: "POST", strict: { output: f
     const subtreeIds = collectSubtreeIds(tree, data.messageLocalId);
     if (subtreeIds.length === 0) throw new Error("Message not found");
     const target = getNode(tree, data.messageLocalId);
-    const parentId = target.parent_id;
+    const parentId = target.parentLocalId;
     if (parentId === null) throw new Error("Cannot cancel root message");
     deleteSubtree(tree, data.messageLocalId);
     repoDeleteMessages(user.id, data.chatId, subtreeIds);
     const parent = getNode(tree, parentId);
     repoUpdateMessage(user.id, data.chatId, parentId, {
       children: parent.children,
-      selectedChildLocalId: parent.selected_child_id,
+      selectedChildLocalId: parent.selectedChildLocalId,
     });
     return { deletedIds: subtreeIds };
   });

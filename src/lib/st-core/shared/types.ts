@@ -1,14 +1,14 @@
 /** A single message in the chat tree. */
 export interface ChatMessage {
-  id: number;
-  parent_id: number | null;
+  localId: number;
+  parentLocalId: number | null;
   children: number[];
-  selected_child_id: number | null;
+  selectedChildLocalId: number | null;
   role: "user" | "assistant" | "system";
   name?: string;
   content: string;
-  is_user?: boolean;
-  is_system?: boolean;
+  isUser?: boolean;
+  isSystem?: boolean;
   extra?: Record<string, unknown>;
 }
 

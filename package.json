@@ -26,6 +26,7 @@
   "dependencies": {
     "@adobe/css-tools": "^4.5.0",
     "@base-ui/react": "^1.6.0",
+    "@effect/platform": "^0.97.0",
     "@faker-js/faker": "^10.5.0",
     "@phosphor-icons/react": "^2.1.10",
     "@shadcn/react": "^0.1.0",
@@ -94,6 +95,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@effect/language-service": "^0.87.0",
     "@tailwindcss/typography": "^0.5.20",
     "@tanstack/devtools-event-client": "latest",
     "@tanstack/devtools-vite": "latest",

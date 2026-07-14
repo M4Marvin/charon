@@ -61,13 +61,13 @@ export function runPipeline(input: PipelineInput): PipelineStep[] {
   const allHistory = [
     ...chatHistory,
     {
-      id: chatHistory.length + 1,
-      parent_id: chatHistory.length,
+      localId: chatHistory.length + 1,
+      parentLocalId: chatHistory.length,
       children: [] as number[],
-      selected_child_id: null,
+      selectedChildLocalId: null,
       role: "user" as const,
       content: userMessage,
-      is_user: true,
+      isUser: true,
     },
   ];
   const { messages: assembled, loreScan } = buildMessages(character, allHistory, preset, "You");

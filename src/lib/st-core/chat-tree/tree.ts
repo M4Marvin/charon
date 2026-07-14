@@ -7,44 +7,44 @@ export function createTree(): ChatTree {
 }
 
 /**
- * Get the root node id of the tree.
+ * Get the root node localId of the tree.
  * Returns undefined if the tree is empty, warns if multiple roots exist.
  */
 export function getRootId(tree: ChatTree): number | undefined {
   let root: number | undefined;
-  for (const [id, node] of tree) {
-    if (node.parent_id === null || node.parent_id === undefined) {
+  for (const [localId, node] of tree) {
+    if (node.parentLocalId === null || node.parentLocalId === undefined) {
       if (root !== undefined) {
-        warn(`getRootId: multiple roots found (${root} and ${id}). Tree may be corrupt.`);
+        warn(`getRootId: multiple roots found (${root} and ${localId}). Tree may be corrupt.`);
       }
-      root ??= id;
+      root ??= localId;
     }
   }
   return root;
 }
 
 /**
- * Get the next available numeric id.
+ * Get the next available numeric localId.
  * Uses a loop instead of Math.max spread to avoid stack limits with large trees.
  */
 export function getNextId(tree: ChatTree): number {
   let max = -1;
-  for (const id of tree.keys()) {
-    if (id > max) max = id;
+  for (const localId of tree.keys()) {
+    if (localId > max) max = localId;
   }
   return max + 1;
 }
 
-/** Get a node by id, or throw if missing. */
-export function getNode(tree: ChatTree, id: number): ChatMessage {
-  const node = tree.get(id);
-  if (!node) throw new Error(`Node ${id} not found in tree`);
+/** Get a node by localId, or throw if missing. */
+export function getNode(tree: ChatTree, localId: number): ChatMessage {
+  const node = tree.get(localId);
+  if (!node) throw new Error(`Node ${localId} not found in tree`);
   return node;
 }
 
 /**
  * Walk the tree from an optional leaf back to root.
- * If activeLeafId is omitted, uses the deepest selected_child chain from root.
+ * If activeLeafId is omitted, uses the deepest selectedChildLocalId chain from root.
  * Throws on cycles.
  */
 export function getActivePath(tree: ChatTree, activeLeafId?: number | null): ChatMessage[] {
@@ -68,14 +68,14 @@ export function getActivePath(tree: ChatTree, activeLeafId?: number | null): Cha
     const node = tree.get(currentId);
     if (!node) break;
     path.unshift(node);
-    currentId = node.parent_id;
+    currentId = node.parentLocalId;
   }
 
   return path;
 }
 
 /**
- * Starting from root, follow selected_child_id to find the deepest selected leaf.
+ * Starting from root, follow selectedChildLocalId to find the deepest selected leaf.
  * Throws on cycles.
  */
 export function getActiveLeafId(tree: ChatTree, rootId?: number | null): number | null {
@@ -94,8 +94,8 @@ export function getActiveLeafId(tree: ChatTree, rootId?: number | null): number 
     visited.add(currentId);
     const node = tree.get(currentId);
     if (!node) return currentId;
-    if (node.selected_child_id === null || node.selected_child_id === undefined) return currentId;
-    currentId = node.selected_child_id;
+    if (node.selectedChildLocalId === null || node.selectedChildLocalId === undefined) return currentId;
+    currentId = node.selectedChildLocalId;
   }
 
   return currentId;
@@ -104,9 +104,9 @@ export function getActiveLeafId(tree: ChatTree, rootId?: number | null): number 
 /** Get the next sibling (to the right) in the parent's children list. */
 export function getNextSiblingId(tree: ChatTree, nodeId: number): number | null {
   const node = tree.get(nodeId);
-  if (!node || node.parent_id === null || node.parent_id === undefined) return null;
+  if (!node || node.parentLocalId === null || node.parentLocalId === undefined) return null;
 
-  const parent = tree.get(node.parent_id);
+  const parent = tree.get(node.parentLocalId);
   if (!parent) return null;
 
   const index = parent.children.indexOf(nodeId);
@@ -117,9 +117,9 @@ export function getNextSiblingId(tree: ChatTree, nodeId: number): number | null 
 /** Get the previous sibling (to the left) in the parent's children list. */
 export function getPrevSiblingId(tree: ChatTree, nodeId: number): number | null {
   const node = tree.get(nodeId);
-  if (!node || node.parent_id === null || node.parent_id === undefined) return null;
+  if (!node || node.parentLocalId === null || node.parentLocalId === undefined) return null;
 
-  const parent = tree.get(node.parent_id);
+  const parent = tree.get(node.parentLocalId);
   if (!parent) return null;
 
   const index = parent.children.indexOf(nodeId);
@@ -135,7 +135,7 @@ export function getSiblings(tree: ChatTree, nodeId: number): ChatMessage[] {
   const node = tree.get(nodeId);
   if (!node) return [];
 
-  const parent = tree.get(node.parent_id ?? -1);
+  const parent = tree.get(node.parentLocalId ?? -1);
   if (!parent) return [node];
 
   const siblings: ChatMessage[] = [];
@@ -144,17 +144,17 @@ export function getSiblings(tree: ChatTree, nodeId: number): ChatMessage[] {
     if (child) {
       siblings.push(child);
     } else {
-      warn(`getSiblings: child ${childId} listed in parent ${parent.id} but not found in tree`);
+      warn(`getSiblings: child ${childId} listed in parent ${parent.localId} but not found in tree`);
     }
   }
   return siblings;
 }
 
-/** Add a child node to a parent. Overwrites selected_child_id to the new child. */
+/** Add a child node to a parent. Overwrites selectedChildLocalId to the new child. */
 export function addChild(tree: ChatTree, parentId: number, node: ChatMessage): ChatMessage {
-  node.parent_id = parentId;
+  node.parentLocalId = parentId;
   if (!Array.isArray(node.children)) node.children = [];
-  node.selected_child_id = null;
+  node.selectedChildLocalId = null;
 
   const parent = tree.get(parentId);
   if (!parent) {
@@ -162,13 +162,13 @@ export function addChild(tree: ChatTree, parentId: number, node: ChatMessage): C
   }
   if (!Array.isArray(parent.children)) parent.children = [];
 
-  if (tree.has(node.id)) {
-    throw new Error(`addChild: node ${node.id} already exists in tree`);
+  if (tree.has(node.localId)) {
+    throw new Error(`addChild: node ${node.localId} already exists in tree`);
   }
 
-  parent.children.push(node.id);
-  parent.selected_child_id = node.id;
-  tree.set(node.id, node);
+  parent.children.push(node.localId);
+  parent.selectedChildLocalId = node.localId;
+  tree.set(node.localId, node);
   return node;
 }
 
@@ -180,30 +180,30 @@ export function addSibling(tree: ChatTree, nodeId: number, node: ChatMessage): C
   const existing = tree.get(nodeId);
   if (!existing) throw new Error(`addSibling: node ${nodeId} not found`);
 
-  if (tree.has(node.id)) {
-    throw new Error(`addSibling: node ${node.id} already exists in tree`);
+  if (tree.has(node.localId)) {
+    throw new Error(`addSibling: node ${node.localId} already exists in tree`);
   }
 
-  node.parent_id = existing.parent_id;
+  node.parentLocalId = existing.parentLocalId;
   if (!Array.isArray(node.children)) node.children = [];
-  node.selected_child_id = null;
+  node.selectedChildLocalId = null;
 
-  const parent = tree.get(existing.parent_id ?? -1);
-  if (!parent) throw new Error(`addSibling: parent ${existing.parent_id} not found`);
+  const parent = tree.get(existing.parentLocalId ?? -1);
+  if (!parent) throw new Error(`addSibling: parent ${existing.parentLocalId} not found`);
 
   const index = parent.children.indexOf(nodeId);
   if (index === -1) {
-    parent.children.push(node.id);
+    parent.children.push(node.localId);
   } else {
-    parent.children.splice(index + 1, 0, node.id);
+    parent.children.splice(index + 1, 0, node.localId);
   }
 
-  tree.set(node.id, node);
+  tree.set(node.localId, node);
   return node;
 }
 
 /**
- * Select a specific child of a parent. Updates selected_child_id.
+ * Select a specific child of a parent. Updates selectedChildLocalId.
  */
 export function selectChild(tree: ChatTree, parentId: number, childId: number): void {
   const parent = tree.get(parentId);
@@ -213,12 +213,12 @@ export function selectChild(tree: ChatTree, parentId: number, childId: number): 
     throw new Error(`selectChild: ${childId} is not a child of ${parentId}`);
   }
 
-  parent.selected_child_id = childId;
+  parent.selectedChildLocalId = childId;
 }
 
 /**
  * Delete a node and all its descendants from the tree.
- * Updates the parent's children list and selected_child_id.
+ * Updates the parent's children list and selectedChildLocalId.
  */
 export function deleteSubtree(tree: ChatTree, nodeId: number): void {
   const node = tree.get(nodeId);
@@ -230,16 +230,16 @@ export function deleteSubtree(tree: ChatTree, nodeId: number): void {
   }
 
   // Remove from parent's children list
-  if (node.parent_id !== null && node.parent_id !== undefined) {
-    const parent = tree.get(node.parent_id);
+  if (node.parentLocalId !== null && node.parentLocalId !== undefined) {
+    const parent = tree.get(node.parentLocalId);
     if (parent) {
       const index = parent.children.indexOf(nodeId);
       if (index !== -1) {
         // Save the intended next selection before splicing
         const nextSelection = parent.children[index + 1] ?? parent.children[index - 1] ?? null;
         parent.children.splice(index, 1);
-        if (parent.selected_child_id === nodeId) {
-          parent.selected_child_id = nextSelection;
+        if (parent.selectedChildLocalId === nodeId) {
+          parent.selectedChildLocalId = nextSelection;
         }
       }
     }
@@ -248,8 +248,8 @@ export function deleteSubtree(tree: ChatTree, nodeId: number): void {
   tree.delete(nodeId);
 }
 
-/** Replace a node in the tree (same id, new data). */
+/** Replace a node in the tree (same localId, new data). */
 export function replaceNode(tree: ChatTree, node: ChatMessage): void {
-  if (!tree.has(node.id)) throw new Error(`replaceNode: node ${node.id} not found`);
-  tree.set(node.id, node);
+  if (!tree.has(node.localId)) throw new Error(`replaceNode: node ${node.localId} not found`);
+  tree.set(node.localId, node);
 }

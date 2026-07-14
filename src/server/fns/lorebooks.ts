@@ -5,10 +5,10 @@ import {
   LoreConfigSchema,
   LoreEntrySchema,
   DEFAULT_LORE_CONFIG,
+  DEFAULT_LORE_ENTRY,
   type LoreConfig,
   type LoreEntry as LoreEntryData,
 } from "@/lib/st-core/lorebook";
-import { DEFAULT_ENTRY_DRAFT } from "@/server/services/lorebook/defaults";
 import { importWorldFile } from "@/server/services/lorebook/importer";
 import type { Lorebook, LoreEntry } from "@/db/schema";
 import {
@@ -237,7 +237,7 @@ export const createLorebookEntry = createServerFn({ method: "POST" })
     const { user } = await getSession();
     const uid = repoNextEntryUid(user.id, data.lorebookId);
     const draft = {
-      ...DEFAULT_ENTRY_DRAFT,
+      ...DEFAULT_LORE_ENTRY,
       uid,
       key: data.key,
       keysecondary: data.keysecondary ?? [],
