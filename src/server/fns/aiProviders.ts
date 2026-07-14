@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { type } from "arktype";
 import { getSession } from "@/server/session";
+import { validateId } from "@/server/validators";
 import type { AiProvider } from "@/db/schema";
 import {
   createAiProvider as repoCreate,
@@ -16,8 +17,6 @@ import {
 export type AiProviderListItem = AiProvider;
 
 // ── Validators ──────────────────────────────────────────────────────────────
-
-const IdInput = type({ id: "string > 0" });
 
 const CreateProviderInput = type({
   name: "string > 0",
@@ -35,12 +34,6 @@ const UpdateProviderInput = type({
   "defaultModel?": "string | null",
   "defaultHeaders?": "object | null",
 });
-
-function validateIdInput(data: unknown): { id: string } {
-  const result = IdInput(data);
-  if (result instanceof type.errors) throw new Error("Invalid id");
-  return result;
-}
 
 function validateCreateInput(data: unknown): {
   name: string;
@@ -106,7 +99,7 @@ export const listAiProviders = createServerFn({ method: "GET" }).handler(
 );
 
 export const getAiProvider = createServerFn({ method: "GET", strict: { output: false } })
-  .validator(validateIdInput)
+  .validator(validateId)
   .handler(async ({ data }): Promise<AiProvider> => {
     const { user } = await getSession();
     return await repoGet(user.id, data.id);
@@ -147,7 +140,7 @@ export const updateAiProvider = createServerFn({ method: "POST", strict: { outpu
   });
 
 export const deleteAiProvider = createServerFn({ method: "POST" })
-  .validator(validateIdInput)
+  .validator(validateId)
   .handler(async ({ data }): Promise<{ id: string }> => {
     const { user } = await getSession();
     await repoDelete(user.id, data.id);

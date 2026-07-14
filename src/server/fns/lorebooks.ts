@@ -8,7 +8,8 @@ import {
   type LoreConfig,
   type LoreEntry as LoreEntryData,
 } from "@/lib/st-core/lorebook";
-import { parseWorldFile } from "@/lib/lorebook/world-file";
+import { DEFAULT_ENTRY_DRAFT } from "@/server/services/lorebook/defaults";
+import { importWorldFile } from "@/server/services/lorebook/importer";
 import type { Lorebook, LoreEntry } from "@/db/schema";
 import {
   createEntry as repoCreateEntry,
@@ -24,6 +25,7 @@ import {
   type LorebookWithCount,
 } from "@/db/repositories/lorebooks";
 import { getSession } from "@/server/session";
+import { validateId } from "@/server/validators";
 
 export type LorebookListItem = LorebookWithCount;
 
@@ -36,7 +38,6 @@ export type LoreEntryListItem = Pick<
 
 // ── Validators ──────────────────────────────────────────────────────────────
 
-const IdInput = type({ id: "string > 0" });
 const LorebookIdInput = type({ lorebookId: "string > 0" });
 const EntryRefInput = type({ lorebookId: "string > 0", entryId: "string > 0" });
 
@@ -78,12 +79,6 @@ const UpdateEntryInput = type({
   "uid?": "number.integer",
   data: "unknown",
 });
-
-function validateIdInput(data: unknown): { id: string } {
-  const result = IdInput(data);
-  if (result instanceof type.errors) throw new Error("Invalid id");
-  return result;
-}
 
 function validateLorebookIdInput(data: unknown): { lorebookId: string } {
   const result = LorebookIdInput(data);
@@ -181,7 +176,7 @@ export const listLorebooks = createServerFn({ method: "GET" }).handler(
 );
 
 export const getLorebook = createServerFn({ method: "GET", strict: { output: false } })
-  .validator(validateIdInput)
+  .validator(validateId)
   .handler(async ({ data }): Promise<Lorebook> => {
     const { user } = await getSession();
     return repoGet(user.id, data.id);
@@ -214,7 +209,7 @@ export const updateLorebook = createServerFn({ method: "POST", strict: { output:
   });
 
 export const deleteLorebook = createServerFn({ method: "POST" })
-  .validator(validateIdInput)
+  .validator(validateId)
   .handler(async ({ data }): Promise<{ id: string }> => {
     const { user } = await getSession();
     repoDelete(user.id, data.id);
@@ -242,6 +237,7 @@ export const createLorebookEntry = createServerFn({ method: "POST" })
     const { user } = await getSession();
     const uid = repoNextEntryUid(user.id, data.lorebookId);
     const draft = {
+      ...DEFAULT_ENTRY_DRAFT,
       uid,
       key: data.key,
       keysecondary: data.keysecondary ?? [],
@@ -252,9 +248,6 @@ export const createLorebookEntry = createServerFn({ method: "POST" })
       order: data.order ?? 100,
       position: data.position ?? 0,
       disable: data.disable ?? false,
-      excludeRecursion: false,
-      preventRecursion: false,
-      delayUntilRecursion: false,
       depth: data.depth ?? 4,
       selectiveLogic: data.selectiveLogic ?? 0,
       group: data.group ?? "",
@@ -262,24 +255,7 @@ export const createLorebookEntry = createServerFn({ method: "POST" })
       groupWeight: data.groupWeight ?? 100,
       probability: data.probability ?? 100,
       useProbability: data.useProbability ?? false,
-      scanDepth: null,
-      caseSensitive: null,
-      matchWholeWords: null,
-      useGroupScoring: null,
-      automationId: "",
-      role: 0,
-      vectorized: false,
-      sticky: null,
-      cooldown: null,
-      delay: null,
-      matchPersonaDescription: false,
-      matchCharacterDescription: true,
-      matchCharacterPersonality: true,
-      matchCharacterDepthPrompt: false,
-      matchScenario: false,
-      matchCreatorNotes: false,
       triggers: [] as string[],
-      ignoreBudget: false,
     };
     const validated = LoreEntrySchema(draft);
     if (validated instanceof type.errors) throw new Error("Invalid entry data");
@@ -324,37 +300,6 @@ export const importLorebook = createServerFn({ method: "POST" })
       entriesSkipped: number;
     }> => {
       const { user } = await getSession();
-      const parsed = parseWorldFile(data.content);
-
-      const id = randomUUID();
-      repoCreate({
-        id,
-        userId: user.id,
-        name: parsed.name,
-        description: parsed.description,
-        config: parsed.config,
-      });
-
-      let entriesInserted = 0;
-      for (const entry of parsed.entries) {
-        try {
-          repoCreateEntry(user.id, {
-            id: randomUUID(),
-            lorebookId: id,
-            uid: entry.uid,
-            data: entry,
-          });
-          entriesInserted++;
-        } catch {
-          // (lorebookId, uid) collision — skip this entry.
-        }
-      }
-
-      return {
-        id,
-        name: parsed.name,
-        entriesInserted,
-        entriesSkipped: parsed.entriesSkipped,
-      };
+      return importWorldFile(data.content, user.id);
     },
   );

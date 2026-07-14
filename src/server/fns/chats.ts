@@ -17,7 +17,7 @@ import {
   Swipe,
   UpdateChatSettings,
 } from "@/server/schemas/chat";
-import type { ChatMessageRow, NewChatMessageRow, Character } from "@/db/schema";
+import type { ChatMessageRow, Character } from "@/db/schema";
 import {
   createChat as repoCreateChat,
   deleteChat as repoDeleteChat,
@@ -40,6 +40,7 @@ import type { ChatCompletionPreset } from "@/lib/chat/types";
 import { buildChatPrompt } from "@/lib/chat/server-context";
 import { DEFAULT_PRESET } from "@/lib/chat/preset";
 import { substituteMessageMacros } from "@/lib/chat/substitute-message-macros";
+import { rowToMessage, messageToInsert } from "@/lib/chat/message-mapping";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import {
   addChild,
@@ -86,41 +87,6 @@ function resolveUserName(user: { id: string; name: string }): string {
     // Settings not found — fall through to user.name
   }
   return user.name;
-}
-
-// ── Mapping helpers (DB row ↔ st-core ChatMessage) ───────────────────────────
-// IMPORTANT: st-core ChatMessage uses snake_case (parent_id, selected_child_id,
-// is_user, is_system); DB rows use camelCase. Always go through these helpers.
-
-function rowToMessage(row: ChatMessageRow): ChatMessage {
-  return {
-    id: row.localId,
-    parent_id: row.parentLocalId,
-    children: row.children ?? [],
-    selected_child_id: row.selectedChildLocalId,
-    role: row.role,
-    name: row.name ?? undefined,
-    content: row.content,
-    is_user: row.isUser ?? undefined,
-    is_system: row.isSystem ?? undefined,
-    extra: row.extra ?? undefined,
-  };
-}
-
-function messageToInsert(chatId: string, msg: ChatMessage): NewChatMessageRow {
-  return {
-    chatId,
-    localId: msg.id,
-    parentLocalId: msg.parent_id,
-    children: msg.children,
-    selectedChildLocalId: msg.selected_child_id,
-    role: msg.role,
-    name: msg.name ?? null,
-    content: msg.content,
-    isUser: msg.is_user ?? null,
-    isSystem: msg.is_system ?? null,
-    extra: (msg.extra as Record<string, unknown>) ?? null,
-  };
 }
 
 function collectSubtreeIds(tree: ChatTree, rootId: number): number[] {

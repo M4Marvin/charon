@@ -1,27 +1,9 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
-import { symmetricDecrypt, symmetricEncrypt } from "better-auth/crypto";
 import { db as defaultDb, type DB } from "@/db";
 import { aiProviders, type AiProvider, type NewAiProvider } from "@/db/schema";
+import { encryptApiKey, decryptApiKey } from "@/lib/crypto";
 
 export const GLOBAL_PROVIDER_ID = "00000000-0000-0000-0000-000000000001";
-
-function getEncryptionKey(): string {
-  return process.env.ENCRYPTION_KEY ?? "dev-encryption-key-change-in-production!";
-}
-
-async function encryptApiKey(plaintext: string): Promise<string> {
-  if (!plaintext) return "";
-  return symmetricEncrypt({ key: getEncryptionKey(), data: plaintext });
-}
-
-async function decryptApiKey(encrypted: string): Promise<string> {
-  if (!encrypted) return "";
-  try {
-    return await symmetricDecrypt({ key: getEncryptionKey(), data: encrypted });
-  } catch {
-    return encrypted;
-  }
-}
 
 async function decryptProvider(row: AiProvider): Promise<AiProvider> {
   return { ...row, apiKey: await decryptApiKey(row.apiKey) };

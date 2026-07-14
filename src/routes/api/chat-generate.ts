@@ -14,7 +14,7 @@ import {
 } from "@/db/repositories/userLorebookSettings";
 import { getUserSettings as repoGetUserSettings } from "@/db/repositories/userSettings";
 import { getPersona as repoGetPersona } from "@/db/repositories/personas";
-import type { ChatMessageRow, Character } from "@/db/schema";
+import type { Character } from "@/db/schema";
 import type { ChatMessage, ChatTree } from "@/lib/st-core/shared/types";
 import type { LoreEntry as LoreEntryData } from "@/lib/st-core/lorebook";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
@@ -22,21 +22,7 @@ import { getNode } from "@/lib/st-core/chat-tree/tree";
 import { buildChatPrompt } from "@/lib/chat/server-context";
 import { DEFAULT_PRESET } from "@/lib/chat/preset";
 import type { ChatCompletionPreset } from "@/lib/chat/types";
-
-function rowToMessage(row: ChatMessageRow): ChatMessage {
-  return {
-    id: row.localId,
-    parent_id: row.parentLocalId,
-    children: row.children ?? [],
-    selected_child_id: row.selectedChildLocalId,
-    role: row.role,
-    name: row.name ?? undefined,
-    content: row.content,
-    is_user: row.isUser ?? undefined,
-    is_system: row.isSystem ?? undefined,
-    extra: row.extra ?? undefined,
-  };
-}
+import { rowToMessage } from "@/lib/chat/message-mapping";
 
 function getPathToNode(tree: ChatTree, nodeId: number): ChatMessage[] {
   const path: ChatMessage[] = [];

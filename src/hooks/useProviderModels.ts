@@ -9,7 +9,7 @@ export function useProviderModels(providerId: string) {
     queryFn: () => listProviderModels({ data: { id: providerId } }),
     enabled: providerId.length > 0,
     staleTime: 5 * 60 * 1000,
-    retry: 0,
+    retry: 1,
   });
 }
 

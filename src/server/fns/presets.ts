@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { type } from "arktype";
 import { getSession } from "@/server/session";
+import { validateId } from "@/server/validators";
 import type { Preset } from "@/db/schema";
 import {
   createPreset as repoCreate,
@@ -17,8 +18,6 @@ import {
 export type PresetListItem = Preset;
 
 // ── Validators ──────────────────────────────────────────────────────────────
-
-const IdInput = type({ id: "string > 0" });
 
 const PresetDataInput = type({
   "systemPrompt?": "string",
@@ -44,12 +43,6 @@ const UpdatePresetInput = type({
   "model?": "string | null",
   "data?": "object",
 });
-
-function validateIdInput(data: unknown): { id: string } {
-  const result = IdInput(data);
-  if (result instanceof type.errors) throw new Error("Invalid id");
-  return result;
-}
 
 function validatePresetData(data: unknown): PresetData {
   const result = PresetDataInput(data);
@@ -93,7 +86,7 @@ export const listPresets = createServerFn({ method: "GET", strict: { output: fal
 );
 
 export const getPreset = createServerFn({ method: "GET", strict: { output: false } })
-  .validator(validateIdInput)
+  .validator(validateId)
   .handler(async ({ data }): Promise<Preset> => {
     const { user } = await getSession();
     return repoGet(user.id, data.id);
@@ -130,7 +123,7 @@ export const updatePreset = createServerFn({ method: "POST", strict: { output: f
   });
 
 export const deletePreset = createServerFn({ method: "POST" })
-  .validator(validateIdInput)
+  .validator(validateId)
   .handler(async ({ data }): Promise<{ id: string }> => {
     const { user } = await getSession();
     repoDelete(user.id, data.id);

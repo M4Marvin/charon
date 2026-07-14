@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { type } from "arktype";
 import { getSession } from "@/server/session";
+import { validateId } from "@/server/validators";
 import type { Persona } from "@/db/schema";
 import {
   createPersona as repoCreate,
@@ -17,8 +18,6 @@ export type PersonaListItem = Persona;
 
 // ── Validators ──────────────────────────────────────────────────────────────
 
-const IdInput = type({ id: "string > 0" });
-
 const CreatePersonaInput = type({
   name: "string > 0",
   "description?": "string",
@@ -31,12 +30,6 @@ const UpdatePersonaInput = type({
   "description?": "string | null",
   "iconPath?": "string | null",
 });
-
-function validateIdInput(data: unknown): { id: string } {
-  const result = IdInput(data);
-  if (result instanceof type.errors) throw new Error("Invalid id");
-  return result;
-}
 
 function validateCreateInput(data: unknown): {
   name: string;
@@ -69,7 +62,7 @@ export const listPersonas = createServerFn({ method: "GET" }).handler(
 );
 
 export const getPersona = createServerFn({ method: "GET", strict: { output: false } })
-  .validator(validateIdInput)
+  .validator(validateId)
   .handler(async ({ data }): Promise<Persona> => {
     const { user } = await getSession();
     return repoGet(user.id, data.id);
@@ -104,7 +97,7 @@ export const updatePersona = createServerFn({ method: "POST", strict: { output: 
   });
 
 export const deletePersona = createServerFn({ method: "POST" })
-  .validator(validateIdInput)
+  .validator(validateId)
   .handler(async ({ data }): Promise<{ id: string }> => {
     const { user } = await getSession();
     repoDelete(user.id, data.id);
