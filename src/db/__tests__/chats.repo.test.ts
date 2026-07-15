@@ -89,10 +89,7 @@ describe("chats repo", () => {
           children: [],
           selectedChildLocalId: null,
           role: "assistant",
-          name: "Test",
           content: "Hello!",
-          isUser: false,
-          isSystem: false,
           extra: null,
         },
         db,
@@ -131,8 +128,6 @@ describe("chats repo", () => {
           selectedChildLocalId: null,
           role: "assistant",
           content: "Hello!",
-          isUser: false,
-          isSystem: false,
           extra: null,
         },
         db,
@@ -154,8 +149,6 @@ describe("chats repo", () => {
           selectedChildLocalId: 2,
           role: "assistant",
           content: "Greeting",
-          isUser: false,
-          isSystem: false,
           extra: null,
         },
         db,
@@ -177,8 +170,6 @@ describe("chats repo", () => {
           selectedChildLocalId: null,
           role: "assistant",
           content: "Hello!",
-          isUser: false,
-          isSystem: false,
           extra: null,
         },
         db,
@@ -201,8 +192,6 @@ describe("chats repo", () => {
           selectedChildLocalId: null,
           role: "assistant",
           content: "Hello!",
-          isUser: false,
-          isSystem: false,
           extra: null,
         },
         db,
@@ -218,8 +207,6 @@ describe("chats repo", () => {
           selectedChildLocalId: null,
           role: "user",
           content: "Hi!",
-          isUser: true,
-          isSystem: false,
           extra: null,
         },
         db,
@@ -241,8 +228,6 @@ describe("chats repo", () => {
             selectedChildLocalId: null,
             role: "assistant",
             content: "Hello!",
-            isUser: false,
-            isSystem: false,
             extra: null,
           },
           db,
@@ -262,8 +247,6 @@ describe("chats repo", () => {
           selectedChildLocalId: 2,
           role: "assistant",
           content: "Original",
-          isUser: false,
-          isSystem: false,
           extra: null,
         },
         db,
@@ -275,7 +258,7 @@ describe("chats repo", () => {
       expect(msg!.selectedChildLocalId).toBe(2);
     });
 
-    it("round-trips isSystem on a system role message", () => {
+    it("round-trips a system role message", () => {
       repoInsertMessage(
         userId,
         "chat-1",
@@ -286,10 +269,7 @@ describe("chats repo", () => {
           children: [1],
           selectedChildLocalId: 1,
           role: "system",
-          name: null,
           content: "",
-          isUser: null,
-          isSystem: true,
           extra: null,
         },
         db,
@@ -297,7 +277,6 @@ describe("chats repo", () => {
       const root = repoGetMessage(userId, "chat-1", 0, db);
       expect(root).toBeDefined();
       expect(root!.role).toBe("system");
-      expect(root!.isSystem).toBe(true);
       expect(root!.content).toBe("");
     });
 
@@ -313,8 +292,6 @@ describe("chats repo", () => {
           selectedChildLocalId: null,
           role: "user",
           content: "",
-          isUser: true,
-          isSystem: false,
           extra: { isDraft: true },
         },
         db,
@@ -335,10 +312,7 @@ describe("chats repo", () => {
           children: [1, 2, 3],
           selectedChildLocalId: 1,
           role: "system",
-          name: null,
           content: "",
-          isUser: null,
-          isSystem: true,
           extra: null,
         },
         db,
@@ -354,8 +328,6 @@ describe("chats repo", () => {
           selectedChildLocalId: null,
           role: "assistant",
           content: "Greeting 1",
-          isUser: false,
-          isSystem: false,
           extra: null,
         },
         db,
@@ -371,8 +343,6 @@ describe("chats repo", () => {
           selectedChildLocalId: null,
           role: "assistant",
           content: "Greeting 2",
-          isUser: false,
-          isSystem: false,
           extra: null,
         },
         db,
@@ -388,8 +358,6 @@ describe("chats repo", () => {
           selectedChildLocalId: null,
           role: "assistant",
           content: "Greeting 3",
-          isUser: false,
-          isSystem: false,
           extra: null,
         },
         db,
@@ -399,7 +367,6 @@ describe("chats repo", () => {
       const root = all.find((m) => m.localId === 0)!;
       expect(root.children).toEqual([1, 2, 3]);
       expect(root.selectedChildLocalId).toBe(1);
-      expect(root.isSystem).toBe(true);
     });
   });
 });

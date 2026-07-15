@@ -62,31 +62,16 @@ import { useChatStore } from "@/stores/chat-store";
 import { ImageLightbox } from "@/components/chat/ImageLightbox";
 import { CharacterPortraitPanel } from "@/components/chat/CharacterPortraitPanel";
 import { CustomImagePanel } from "@/components/chat/CustomImagePanel";
-import type { ChatMessageRow } from "@/db/schema";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
 import { RichText } from "@/components/RichText";
 import { balanceMarkdown } from "@/lib/markdown";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import { getActivePath, getSiblings } from "@/lib/st-core/chat-tree/tree";
+import { rowToMessage } from "@/lib/chat/rows";
 
 export const Route = createFileRoute("/chats/$id")({
   component: ChatPage,
 });
-
-function rowToMessage(row: ChatMessageRow): ChatMessage {
-  return {
-    localId: row.localId,
-    parentLocalId: row.parentLocalId,
-    children: row.children ?? [],
-    selectedChildLocalId: row.selectedChildLocalId,
-    role: row.role,
-    name: row.name ?? undefined,
-    content: row.content,
-    isUser: row.isUser ?? undefined,
-    isSystem: row.isSystem ?? undefined,
-    extra: row.extra ?? undefined,
-  };
-}
 
 interface PathEntry {
   message: ChatMessage;
@@ -437,14 +422,13 @@ function ChatPage() {
       const entry = activePath.find((p) => p.message.localId === messageLocalId);
       if (entry) {
         console.log("[swipe] entry resolved", {
-          isUser: entry.message.isUser,
           parentId: entry.message.parentLocalId,
           siblingIndex: entry.siblingIndex,
           siblingTotal: entry.siblingTotal,
           isStreaming: entry.isStreaming,
         });
       }
-      if (entry && !entry.message.isUser && messageLocalId !== 0) {
+      if (entry && entry.message.role !== "user" && messageLocalId !== 0) {
         if (entry.isStreaming) {
           toast.error("Wait for the current response to finish");
           return;
@@ -752,7 +736,7 @@ function ChatPage() {
                           <MessageScrollerItem
                             key={entry.message.localId}
                             messageId={entry.message.localId.toString()}
-                            scrollAnchor={entry.message.isUser ?? entry.message.role === "user"}
+                            scrollAnchor={entry.message.role === "user"}
                           >
                             <ChatMessage
                               entry={entry}
@@ -1002,7 +986,7 @@ function ChatMessage({
   disabled: boolean;
 }) {
   const { message, siblingIndex, siblingTotal, isDraft, isStreaming } = entry;
-  const isUser = message.isUser ?? message.role === "user";
+  const isUser = message.role === "user";
   const [isEditing, setIsEditing] = useState(false);
   const [draftContent, setDraftContent] = useState(message.content);
   const editRef = useRef<HTMLTextAreaElement>(null);

@@ -92,6 +92,13 @@
       "when": 1752852000000,
       "tag": "0012_per_chat_character_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1784157070674,
+      "tag": "0013_chilly_jack_murdock",
+      "breakpoints": true
     }
   ]
 }

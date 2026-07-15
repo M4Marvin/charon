@@ -26,7 +26,7 @@ export type CreateChatInput = {
 };
 
 export type MessagePatch = Partial<
-  Pick<ChatMessageRow, "children" | "selectedChildLocalId" | "content" | "name" | "extra">
+  Pick<ChatMessageRow, "children" | "selectedChildLocalId" | "content" | "extra">
 >;
 
 export function listChats(userId: string, db: DB = defaultDb): ChatWithCharacter[] {

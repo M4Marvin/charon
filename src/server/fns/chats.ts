@@ -17,7 +17,7 @@ import {
   Swipe,
   UpdateChatSettings,
 } from "@/server/schemas/chat";
-import type { ChatMessageRow, NewChatMessageRow, Character } from "@/db/schema";
+import type { ChatMessageRow, Character } from "@/db/schema";
 import {
   createChat as repoCreateChat,
   deleteChat as repoDeleteChat,
@@ -53,25 +53,7 @@ import {
   getPrevSiblingId,
 } from "@/lib/st-core/chat-tree/tree";
 
-function rowToMessage(row: ChatMessageRow): ChatMessage {
-  const { chatId: _, ...rest } = row;
-  return {
-    localId: rest.localId,
-    parentLocalId: rest.parentLocalId,
-    children: rest.children ?? [],
-    selectedChildLocalId: rest.selectedChildLocalId,
-    role: rest.role,
-    name: rest.name ?? undefined,
-    content: rest.content,
-    isUser: rest.isUser ?? undefined,
-    isSystem: rest.isSystem ?? undefined,
-    extra: rest.extra ?? undefined,
-  };
-}
-
-function messageToInsert(chatId: string, msg: ChatMessage): NewChatMessageRow {
-  return { chatId, ...msg, extra: (msg.extra as Record<string, unknown>) ?? null };
-}
+import { rowToMessage, messageToInsert } from "@/lib/chat/rows";
 
 // ── Default replies (rotating, no AI) ───────────────────────────────────────
 
@@ -223,10 +205,7 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
       children: greetingTexts.map((_, i) => i + 1),
       selectedChildLocalId: 1, // first_mes is the default greeting
       role: "system",
-      name: null,
       content: "",
-      isUser: null,
-      isSystem: true,
       extra: null,
     });
 
@@ -241,10 +220,7 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
         children: [],
         selectedChildLocalId: null,
         role: "assistant",
-        name: char.data.name,
         content: substituteMessageMacros(text, macroEnv),
-        isUser: false,
-        isSystem: false,
         extra: null,
       });
     });
@@ -293,10 +269,7 @@ export const sendMessage = createServerFn({ method: "POST", strict: { output: fa
         children: [],
         selectedChildLocalId: null,
         role: "assistant",
-        name: char.data.name,
         content: pickDefaultReply(rows.length + 1),
-        isUser: false,
-        isSystem: false,
       };
       // 1) Set draft content + clear isDraft flag.
       repoUpdateMessage(user.id, data.chatId, activeLeafId, {
@@ -334,10 +307,7 @@ export const sendMessage = createServerFn({ method: "POST", strict: { output: fa
       children: [],
       selectedChildLocalId: null,
       role: "user",
-      name: user.name,
       content: substituteMessageMacros(data.content, macroEnv),
-      isUser: true,
-      isSystem: false,
     };
     addChild(tree, activeLeafId, userMsg); // auto-selects userMsg on activeLeaf
 
@@ -347,10 +317,7 @@ export const sendMessage = createServerFn({ method: "POST", strict: { output: fa
       children: [],
       selectedChildLocalId: null,
       role: "assistant",
-      name: char.data.name,
       content: pickDefaultReply(rows.length + 1),
-      isUser: false,
-      isSystem: false,
     };
     addChild(tree, userMsg.localId, reply); // auto-selects reply on userMsg
 
@@ -413,7 +380,7 @@ export const swipeMessage = createServerFn({ method: "POST", strict: { output: f
 
     // Next direction, no sibling — right arrow is never disabled, so we
     // always create a new sibling. addSibling does NOT auto-select.
-    const isUserMsg = (target.isUser ?? target.role === "user") === true;
+    const isUserMsg = target.role === "user";
     const newMsg: ChatMessage = isUserMsg
       ? {
           localId: getNextId(tree),
@@ -422,10 +389,7 @@ export const swipeMessage = createServerFn({ method: "POST", strict: { output: f
           selectedChildLocalId: null,
           role: "user",
           // Draft user message — no character name; the user fills it in.
-          name: undefined,
           content: "",
-          isUser: true,
-          isSystem: false,
           extra: { isDraft: true },
         }
       : {
@@ -434,11 +398,8 @@ export const swipeMessage = createServerFn({ method: "POST", strict: { output: f
           children: [],
           selectedChildLocalId: null,
           role: "assistant",
-          name: target.name,
           content:
             target.parentLocalId === 0 ? "Make your own greeting!" : pickDefaultReply(rows.length + 1),
-          isUser: false,
-          isSystem: false,
         };
 
     addSibling(tree, data.messageLocalId, newMsg);
@@ -683,10 +644,7 @@ export const prepareStreamMessage = createServerFn({
           children: [],
           selectedChildLocalId: null,
           role: "assistant",
-          name: char.data.name,
           content: "",
-          isUser: false,
-          isSystem: false,
           extra: { isStreaming: true },
         };
         addChild(tree, activeLeafId, placeholder);
@@ -705,10 +663,7 @@ export const prepareStreamMessage = createServerFn({
           children: [],
           selectedChildLocalId: null,
           role: "user",
-          name: user.name,
           content: substituteMessageMacros(content, macroEnv),
-          isUser: true,
-          isSystem: false,
         };
         addChild(tree, activeLeafId, userMsg);
         const placeholder: ChatMessage = {
@@ -717,14 +672,10 @@ export const prepareStreamMessage = createServerFn({
           children: [],
           selectedChildLocalId: null,
           role: "assistant",
-          name: char.data.name,
           content: "",
-          isUser: false,
-          isSystem: false,
           extra: { isStreaming: true },
         };
         addChild(tree, userMsg.localId, placeholder);
-
         const updatedActiveLeaf = getNode(tree, activeLeafId);
         repoUpdateMessage(user.id, data.chatId, activeLeafId, {
           children: updatedActiveLeaf.children,
@@ -753,14 +704,11 @@ export const prepareStreamMessage = createServerFn({
         children: [],
         selectedChildLocalId: null,
         role: "assistant",
-        name: char.data.name,
         content: "",
-        isUser: false,
-        isSystem: false,
         extra: { isStreaming: true },
       };
 
-      if (activeLeaf.role === "user" || activeLeaf.isUser) {
+      if (activeLeaf.role === "user") {
         // Active leaf is a user message awaiting a reply.
         addChild(tree, activeLeafId, placeholder);
         const updatedLeaf = getNode(tree, activeLeafId);
@@ -787,7 +735,6 @@ export const prepareStreamMessage = createServerFn({
       // Regenerate mode: create sibling of target assistant message
       const target = getNode(tree, messageLocalId);
       if (target.role !== "assistant") throw new Error("Can only regenerate assistant messages");
-      if (target.isSystem) throw new Error("Cannot regenerate system messages");
       if (target.parentLocalId === null) throw new Error("Cannot regenerate root message");
       if ((target.extra?.isStreaming ?? false) === true)
         throw new Error("Cannot regenerate a message that is still streaming");
@@ -804,10 +751,7 @@ export const prepareStreamMessage = createServerFn({
         children: [],
         selectedChildLocalId: null,
         role: "assistant",
-        name: char.data.name,
         content: "",
-        isUser: false,
-        isSystem: false,
         extra: { isStreaming: true },
       };
       addSibling(tree, messageLocalId, placeholder);

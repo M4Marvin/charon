@@ -15,7 +15,6 @@ import {
 import { getUserSettings as repoGetUserSettings } from "@/db/repositories/userSettings";
 import { getPersona as repoGetPersona } from "@/db/repositories/personas";
 import type { Character } from "@/db/schema";
-import type { ChatMessageRow } from "@/db/schema";
 import type { ChatMessage, ChatTree } from "@/lib/st-core/shared/types";
 import type { LoreEntry as LoreEntryData } from "@/lib/st-core/lorebook";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
@@ -23,22 +22,7 @@ import { getNode } from "@/lib/st-core/chat-tree/tree";
 import { buildChatPrompt } from "@/lib/chat/server-context";
 import { DEFAULT_PRESET } from "@/lib/chat/preset";
 import type { ChatCompletionPreset } from "@/lib/chat/types";
-
-function rowToMessage(row: ChatMessageRow): ChatMessage {
-  const { chatId: _, ...rest } = row;
-  return {
-    localId: rest.localId,
-    parentLocalId: rest.parentLocalId,
-    children: rest.children ?? [],
-    selectedChildLocalId: rest.selectedChildLocalId,
-    role: rest.role,
-    name: rest.name ?? undefined,
-    content: rest.content,
-    isUser: rest.isUser ?? undefined,
-    isSystem: rest.isSystem ?? undefined,
-    extra: rest.extra ?? undefined,
-  };
-}
+import { rowToMessage } from "@/lib/chat/rows";
 
 function getPathToNode(tree: ChatTree, nodeId: number): ChatMessage[] {
   const path: ChatMessage[] = [];
@@ -144,10 +128,7 @@ export const Route = createFileRoute("/api/chat-generate")({
                 console.log("[chat-generate] dropping empty-content message", {
                   localId: m.localId,
                   role: m.role,
-                  name: m.name,
                   parentLocalId: m.parentLocalId,
-                  isUser: m.isUser,
-                  isSystem: m.isSystem,
                 });
                 return false;
               }
@@ -159,10 +140,7 @@ export const Route = createFileRoute("/api/chat-generate")({
               children: m.children,
               selectedChildLocalId: m.selectedChildLocalId,
               role: m.role,
-              name: m.name,
               content: m.content,
-              isUser: m.isUser,
-              isSystem: m.isSystem,
               extra: m.extra,
             }));
           console.log("[chat-generate] history", {

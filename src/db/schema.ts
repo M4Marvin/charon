@@ -262,10 +262,7 @@ export const chatMessages = sqliteTable(
       .default(sql`'[]'`),
     selectedChildLocalId: integer("selected_child_local_id"),
     role: text("role", { enum: ["user", "assistant", "system"] }).notNull(),
-    name: text("name"),
     content: text("content").notNull(),
-    isUser: integer("is_user", { mode: "boolean" }),
-    isSystem: integer("is_system", { mode: "boolean" }),
     extra: text("extra", { mode: "json" }).$type<Record<string, unknown>>(),
   },
   (table) => [

@@ -67,7 +67,6 @@ export function runPipeline(input: PipelineInput): PipelineStep[] {
       selectedChildLocalId: null,
       role: "user" as const,
       content: userMessage,
-      isUser: true,
     },
   ];
   const { messages: assembled, loreScan } = buildMessages(character, allHistory, preset, "You");
