@@ -5,10 +5,7 @@ export interface ChatMessage {
   children: number[];
   selectedChildLocalId: number | null;
   role: "user" | "assistant" | "system";
-  name?: string;
   content: string;
-  isUser?: boolean;
-  isSystem?: boolean;
   extra?: Record<string, unknown>;
 }
 
