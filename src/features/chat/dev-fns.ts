@@ -1,9 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getSession } from "@/server/session";
-import { listChats, getChat, getMessages, getActivePath, createChat, appendUserAndReply, swipe, editMessage, deleteBranch } from "./tree/service";
+import { listChats, getChat, getMessages, getActivePath, createChat, appendMessage, appendUserAndReply, swipe, editMessage, deleteBranch } from "./tree/service";
 import { acquireGenerationLock, releaseLock } from "./tree/lock";
 import { listCharacters } from "@/db/repositories/characters";
+import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
+import { getNode } from "@/lib/st-core/chat-tree/tree";
+import { appendChild } from "./tree/operations";
+import { listMessages as repoListMessages, insertMessage as repoInsertMessage, updateMessage as repoUpdateMessage } from "@/db/repositories/chats";
 import type { ChatWithCharacter } from "@/db/repositories/chats";
+import type { ChatMessageRow } from "@/db/schema";
+import type { ChatMessage } from "@/lib/st-core/shared/types";
 
 export type ChatWithLock = ChatWithCharacter & {
   lockState: "idle" | "generating";
@@ -15,6 +21,18 @@ type CharacterSummary = {
   name: string;
   spec: string;
 };
+
+function rowToMsg(row: ChatMessageRow): ChatMessage {
+  return {
+    localId: row.localId,
+    parentLocalId: row.parentLocalId,
+    children: row.children ?? [],
+    selectedChildLocalId: row.selectedChildLocalId,
+    role: row.role,
+    content: row.content,
+    extra: row.extra ?? undefined,
+  };
+}
 
 // ── Chats ──
 
@@ -72,6 +90,35 @@ export const getDevActivePath = createServerFn({ method: "GET", strict: { output
   });
 
 // ── Tree operations ──
+
+export const devAppendMessage = createServerFn({ method: "POST", strict: { output: false } })
+  .validator((d: unknown) => d as { chatId: string; role: "user" | "assistant"; content: string; parentLocalId?: number })
+  .handler(async ({ data }) => {
+    const { user } = await getSession();
+    if (data.parentLocalId === undefined) {
+      return appendMessage(user.id, data.chatId, { role: data.role, content: data.content });
+    }
+    // Append to specific parent — manual tree load + persist
+    const rows = repoListMessages(user.id, data.chatId);
+    const tree = treeFromNodes(rows.map(rowToMsg));
+    const newNode = appendChild(tree, data.parentLocalId, { role: data.role, content: data.content });
+    const parent = getNode(tree, data.parentLocalId);
+    repoUpdateMessage(user.id, data.chatId, data.parentLocalId, {
+      children: parent.children,
+      selectedChildLocalId: parent.selectedChildLocalId,
+    });
+    repoInsertMessage(user.id, data.chatId, {
+      chatId: data.chatId,
+      localId: newNode.localId,
+      parentLocalId: newNode.parentLocalId,
+      children: newNode.children,
+      selectedChildLocalId: newNode.selectedChildLocalId,
+      role: newNode.role,
+      content: newNode.content,
+      extra: newNode.extra ?? null,
+    });
+    return newNode;
+  });
 
 export const devAppendUserAndReply = createServerFn({ method: "POST", strict: { output: false } })
   .validator((d: unknown) => d as { chatId: string; userContent: string; replyContent: string })

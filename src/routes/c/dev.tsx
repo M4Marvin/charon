@@ -15,6 +15,7 @@ import {
   getDevChatDetail,
   getDevMessages,
   getDevActivePath,
+  devAppendMessage,
   devAppendUserAndReply,
   devSwipe,
   devEditMessage,
@@ -228,16 +229,36 @@ function TreeTab({
 function OperationsTab({
   chatId,
   selectedNodeId,
+  onSelectNode,
+  messages,
+  activePath,
 }: {
   chatId: string;
   selectedNodeId: number | null;
+  onSelectNode: (id: number) => void;
+  messages: ChatMessage[];
+  activePath: ActivePathEntry[] | null;
 }) {
   const queryClient = useQueryClient();
+  const [role, setRole] = useState<"user" | "assistant">("user");
+  const [appendContent, setAppendContent] = useState("");
+  const [appendParentId, setAppendParentId] = useState("");
   const [userMsg, setUserMsg] = useState("");
   const [replyContent, setReplyContent] = useState("");
   const [editContent, setEditContent] = useState("");
   const [swipeDir, setSwipeDir] = useState<"next" | "prev">("next");
-  const [lockResult, setLockResult] = useState<string | null>(null);
+  const [result, setResult] = useState<string | null>(null);
+
+  // Auto-select active leaf on first mount
+  const [didAutoSelect, setDidAutoSelect] = useState(false);
+  if (!didAutoSelect && activePath && activePath.length > 0 && selectedNodeId === null) {
+    const last = activePath[activePath.length - 1]!.message.localId;
+    onSelectNode(last);
+    setDidAutoSelect(true);
+  }
+
+  const activeIds = new Set(activePath?.map((p) => p.message.localId) ?? []);
+  const selectedMsg = messages.find((m) => m.localId === selectedNodeId) ?? null;
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: QK.chatDetail(chatId) });
@@ -246,7 +267,25 @@ function OperationsTab({
     void queryClient.invalidateQueries({ queryKey: QK.chats });
   };
 
-  const appendMutation = useMutation({
+  const appendMsgMutation = useMutation({
+    mutationFn: () =>
+      devAppendMessage({
+        data: {
+          chatId,
+          role,
+          content: appendContent || "(empty)",
+          ...(appendParentId ? { parentLocalId: Number(appendParentId) } : {}),
+        },
+      }),
+    onSuccess: (newMsg) => {
+      setAppendContent("");
+      setResult(`Appended ${newMsg.role}:${newMsg.localId}`);
+      invalidate();
+    },
+    onError: (err) => setResult(`Error: ${err.message}`),
+  });
+
+  const appendPairMutation = useMutation({
     mutationFn: () =>
       devAppendUserAndReply({
         data: { chatId, userContent: userMsg || "(empty)", replyContent },
@@ -254,64 +293,161 @@ function OperationsTab({
     onSuccess: () => {
       setUserMsg("");
       setReplyContent("");
+      setResult("Appended user+reply");
       invalidate();
     },
-    onError: (err) => setLockResult(`Error: ${err.message}`),
+    onError: (err) => setResult(`Error: ${err.message}`),
   });
 
   const swipeMutation = useMutation({
     mutationFn: () =>
-      devSwipe({
-        data: { chatId, messageLocalId: selectedNodeId!, direction: swipeDir },
-      }),
+      devSwipe({ data: { chatId, messageLocalId: selectedNodeId!, direction: swipeDir } }),
     onSuccess: () => invalidate(),
-    onError: (err) => setLockResult(`Error: ${err.message}`),
+    onError: (err) => setResult(`Error: ${err.message}`),
   });
 
   const editMutation = useMutation({
     mutationFn: () =>
-      devEditMessage({
-        data: { chatId, messageLocalId: selectedNodeId!, content: editContent },
-      }),
+      devEditMessage({ data: { chatId, messageLocalId: selectedNodeId!, content: editContent } }),
     onSuccess: () => {
       setEditContent("");
+      setResult("Edited");
       invalidate();
     },
-    onError: (err) => setLockResult(`Error: ${err.message}`),
+    onError: (err) => setResult(`Error: ${err.message}`),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () =>
-      devDeleteBranch({
-        data: { chatId, messageLocalId: selectedNodeId! },
-      }),
-    onSuccess: () => invalidate(),
-    onError: (err) => setLockResult(`Error: ${err.message}`),
+    mutationFn: () => devDeleteBranch({ data: { chatId, messageLocalId: selectedNodeId! } }),
+    onSuccess: () => {
+      setResult("Deleted");
+      onSelectNode(-1); // clear selection after delete
+      invalidate();
+    },
+    onError: (err) => setResult(`Error: ${err.message}`),
   });
 
   const acquireLockMutation = useMutation({
-    mutationFn: () =>
-      devAcquireLock({
-        data: { chatId, messageLocalId: selectedNodeId ?? 1 },
-      }),
+    mutationFn: () => devAcquireLock({ data: { chatId, messageLocalId: selectedNodeId ?? 1 } }),
     onSuccess: () => {
-      setLockResult("Lock acquired");
+      setResult("Lock acquired");
       invalidate();
     },
-    onError: (err) => setLockResult(`Error: ${err.message}`),
+    onError: (err) => setResult(`Error: ${err.message}`),
   });
 
   const releaseLockMutation = useMutation({
     mutationFn: () => devReleaseLock({ data: { chatId } }),
     onSuccess: () => {
-      setLockResult("Lock released");
+      setResult("Lock released");
       invalidate();
     },
-    onError: (err) => setLockResult(`Error: ${err.message}`),
+    onError: (err) => setResult(`Error: ${err.message}`),
   });
+
 
   return (
     <div className="space-y-4">
+      {/* ── Message selector ── */}
+      <Card>
+        <CardHeader className="py-2 px-3">
+          <CardTitle className="text-xs font-medium">
+            Selected Message
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 py-2 px-3">
+          <div className="flex items-center gap-2">
+            <select
+              className="h-8 rounded border px-2 text-xs flex-1"
+              value={selectedNodeId ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                onSelectNode(v ? Number(v) : 0);
+              }}
+            >
+              <option value="">— pick a message —</option>
+              {messages.map((m) => (
+                <option key={m.localId} value={m.localId}>
+                  [{m.localId}] {m.role}: {m.content.slice(0, 60)}
+                  {activeIds.has(m.localId) ? " ◄ active" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+          {selectedMsg && (
+            <div className="text-xs space-y-1">
+              <div className="flex gap-2">
+                <span className="font-mono text-muted-foreground">#{selectedMsg.localId}</span>
+                <Badge variant="outline" className="text-[10px] px-1 h-4">
+                  {selectedMsg.role}
+                </Badge>
+                {activeIds.has(selectedMsg.localId) && (
+                  <Badge variant="secondary" className="text-[9px] px-1 h-4">active path</Badge>
+                )}
+                {selectedMsg.selectedChildLocalId !== null && (
+                  <span className="text-muted-foreground">↓{selectedMsg.selectedChildLocalId}</span>
+                )}
+              </div>
+              <p className="text-muted-foreground whitespace-pre-wrap break-all max-h-32 overflow-y-auto">
+                {selectedMsg.content}
+              </p>
+              {selectedMsg.parentLocalId !== null && (
+                <p className="text-muted-foreground">parent: {selectedMsg.parentLocalId}</p>
+              )}
+              {selectedMsg.children.length > 0 && (
+                <p className="text-muted-foreground">children: [{selectedMsg.children.join(", ")}]</p>
+              )}
+              {selectedMsg.extra && (
+                <pre className="text-[10px] text-amber-500 whitespace-pre-wrap">{JSON.stringify(selectedMsg.extra, null, 2)}</pre>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Append single message ── */}
+      <Card>
+        <CardHeader className="py-2 px-3">
+          <CardTitle className="text-xs font-medium">Append Message</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 py-2 px-3">
+          <div className="flex gap-2">
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as "user" | "assistant")}
+              className="h-8 rounded border px-2 text-xs w-24"
+            >
+              <option value="user">user</option>
+              <option value="assistant">assistant</option>
+            </select>
+            <Input
+              value={appendContent}
+              onChange={(e) => setAppendContent(e.target.value)}
+              placeholder="Message content"
+              className="h-8 text-xs flex-1"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs shrink-0">Parent:</Label>
+            <Input
+              value={appendParentId}
+              onChange={(e) => setAppendParentId(e.target.value)}
+              placeholder="blank = active leaf"
+              className="h-8 text-xs w-32"
+            />
+          </div>
+          <Button
+            size="sm"
+            className="w-full text-xs"
+            onClick={() => appendMsgMutation.mutate()}
+            disabled={appendMsgMutation.isPending}
+          >
+            {appendMsgMutation.isPending ? "..." : "Append"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ── Append user+reply ── */}
       <Card>
         <CardHeader className="py-2 px-3">
           <CardTitle className="text-xs font-medium">Append User + Reply</CardTitle>
@@ -319,20 +455,20 @@ function OperationsTab({
         <CardContent className="space-y-2 py-2 px-3">
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <Label className="text-xs">User message</Label>
+              <Label className="text-xs">User</Label>
               <Input
                 value={userMsg}
                 onChange={(e) => setUserMsg(e.target.value)}
-                placeholder="What the user says"
+                placeholder="User says..."
                 className="h-8 text-xs"
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Reply content</Label>
+              <Label className="text-xs">Reply</Label>
               <Input
                 value={replyContent}
                 onChange={(e) => setReplyContent(e.target.value)}
-                placeholder="Assistant reply"
+                placeholder="Assistant replies..."
                 className="h-8 text-xs"
               />
             </div>
@@ -340,103 +476,91 @@ function OperationsTab({
           <Button
             size="sm"
             className="w-full text-xs"
-            onClick={() => appendMutation.mutate()}
-            disabled={appendMutation.isPending}
+            onClick={() => appendPairMutation.mutate()}
+            disabled={appendPairMutation.isPending}
           >
-            {appendMutation.isPending ? "Appending..." : "Append"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="py-2 px-3">
-          <CardTitle className="text-xs font-medium">Swipe</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 py-2 px-3">
-          <div className="flex items-center gap-2">
-            <select
-              value={swipeDir}
-              onChange={(e) => setSwipeDir(e.target.value as "next" | "prev")}
-              className="h-8 rounded border px-2 text-xs"
-            >
-              <option value="next">Next</option>
-              <option value="prev">Prev</option>
-            </select>
-            <span className="text-xs text-muted-foreground">
-              on node <span className="font-mono">{selectedNodeId ?? "—"}</span>
-            </span>
-          </div>
-          <Button
-            size="sm"
-            className="w-full text-xs"
-            onClick={() => swipeMutation.mutate()}
-            disabled={swipeMutation.isPending || selectedNodeId === null}
-          >
-            {swipeMutation.isPending ? "Swiping..." : "Swipe"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="py-2 px-3">
-          <CardTitle className="text-xs font-medium">Edit Message</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 py-2 px-3">
-          <div className="space-y-1">
-            <Label className="text-xs">
-              Node <span className="font-mono">{selectedNodeId ?? "—"}</span> new content
-            </Label>
-            <Input
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              placeholder="New content"
-              className="h-8 text-xs"
-            />
-          </div>
-          <Button
-            size="sm"
-            className="w-full text-xs"
-            onClick={() => editMutation.mutate()}
-            disabled={editMutation.isPending || selectedNodeId === null || !editContent}
-          >
-            {editMutation.isPending ? "Editing..." : "Edit"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="py-2 px-3">
-          <CardTitle className="text-xs font-medium">Delete Branch</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 py-2 px-3">
-          <p className="text-xs text-muted-foreground">
-            Delete node <span className="font-mono">{selectedNodeId ?? "—"}</span> and all descendants
-          </p>
-          <Button
-            size="sm"
-            variant="destructive"
-            className="w-full text-xs"
-            onClick={() => {
-              if (window.confirm(`Delete node ${selectedNodeId} and all its descendants?`)) {
-                deleteMutation.mutate();
-              }
-            }}
-            disabled={deleteMutation.isPending || selectedNodeId === null}
-          >
-            {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            {appendPairMutation.isPending ? "..." : "Append Both"}
           </Button>
         </CardContent>
       </Card>
 
       <Separator />
 
+      {/* ── Mutations on selected message ── */}
       <Card>
         <CardHeader className="py-2 px-3">
-          <CardTitle className="text-xs font-medium">Lock Controls</CardTitle>
+          <CardTitle className="text-xs font-medium">
+            Mutate #{selectedNodeId ?? "—"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 py-2 px-3">
+          {/* Swipe */}
+          <div className="flex items-center gap-2">
+            <Label className="text-xs shrink-0">Swipe:</Label>
+            <select
+              value={swipeDir}
+              onChange={(e) => setSwipeDir(e.target.value as "next" | "prev")}
+              className="h-7 rounded border px-2 text-xs"
+            >
+              <option value="next">→</option>
+              <option value="prev">←</option>
+            </select>
+            <Button
+              size="sm"
+              className="flex-1 text-xs h-7"
+              onClick={() => swipeMutation.mutate()}
+              disabled={swipeMutation.isPending || selectedNodeId === null}
+            >
+              Swipe
+            </Button>
+          </div>
+
+          {/* Edit */}
+          <div className="flex items-center gap-2">
+            <Label className="text-xs shrink-0">Edit:</Label>
+            <Input
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              placeholder="New content"
+              className="h-7 text-xs flex-1"
+            />
+            <Button
+              size="sm"
+              className="text-xs h-7"
+              onClick={() => editMutation.mutate()}
+              disabled={editMutation.isPending || selectedNodeId === null || !editContent}
+            >
+              Edit
+            </Button>
+          </div>
+
+          {/* Delete */}
+          <Button
+            size="sm"
+            variant="destructive"
+            className="w-full text-xs"
+            onClick={() => {
+              if (window.confirm(`Delete node ${selectedNodeId} and descendants?`)) {
+                deleteMutation.mutate();
+              }
+            }}
+            disabled={deleteMutation.isPending || selectedNodeId === null}
+          >
+            Delete Branch
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Separator />
+
+      {/* ── Lock ── */}
+      <Card>
+        <CardHeader className="py-2 px-3">
+          <CardTitle className="text-xs font-medium">Lock</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 py-2 px-3">
           <p className="text-xs text-muted-foreground">
-            Acquire lock on node <span className="font-mono">{selectedNodeId ?? 1}</span>
+            Lock target: node <span className="font-mono">{selectedNodeId ?? 1}</span>
           </p>
           <div className="flex gap-2">
             <Button
@@ -446,7 +570,7 @@ function OperationsTab({
               onClick={() => acquireLockMutation.mutate()}
               disabled={acquireLockMutation.isPending}
             >
-              Acquire Lock
+              Acquire
             </Button>
             <Button
               size="sm"
@@ -455,14 +579,20 @@ function OperationsTab({
               onClick={() => releaseLockMutation.mutate()}
               disabled={releaseLockMutation.isPending}
             >
-              Release Lock
+              Release
             </Button>
           </div>
-          {lockResult && (
-            <p className="text-xs text-muted-foreground mt-1">{lockResult}</p>
-          )}
         </CardContent>
       </Card>
+
+      {/* ── Result log ── */}
+      {result && (
+        <Card>
+          <CardContent className="py-2 px-3">
+            <p className="text-xs text-muted-foreground">{result}</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -654,6 +784,9 @@ function DevPage() {
         <OperationsTab
           chatId={selectedChatId}
           selectedNodeId={selectedNodeId}
+          messages={messages ?? []}
+          activePath={activePath ?? null}
+          onSelectNode={setSelectedNodeId}
         />
       )}
 
