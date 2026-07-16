@@ -48,8 +48,16 @@ export function resolveServerTransports(
 
 export const getTransports: () => Transport[] = createIsomorphicFn()
   .server((): Transport[] => {
-    const fs = require("node:fs") as typeof import("node:fs");
-    const path = require("node:path") as typeof import("node:path");
-    return resolveServerTransports(fs, path);
+    // require() is available in Node.js CJS and vitest, but not in the Vite
+    // ESM module runner used by `pnpm run dev`. Catch the ReferenceError and
+    // fall back to console-only in dev. File logging works in production (srvx)
+    // and tests where the runtime provides require().
+    try {
+      const fs = require("node:fs") as typeof import("node:fs");
+      const path = require("node:path") as typeof import("node:path");
+      return resolveServerTransports(fs, path);
+    } catch {
+      return [consoleTransport];
+    }
   })
   .client((): Transport[] => [consoleTransport]) as unknown as () => Transport[];
