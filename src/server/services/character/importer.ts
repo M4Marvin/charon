@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createCharacter as repoCreate } from "@/db/repositories/characters";
-import { parseCharacterCard, validateCharacterCard, validateCharacterCardV3 } from "@/lib/st-core/character";
+import {
+  parseCharacterCard,
+  validateCharacterCard,
+  validateCharacterCardV3,
+} from "@/lib/st-core/character";
 import { normalizeCardData, normalizeV3ToV2 } from "@/lib/character/normalize";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 
@@ -18,7 +22,10 @@ export type ImportResult =
   | { ok: true; character: { id: string; name: string; imagePath: string | null } }
   | { ok: false; error: ImportError };
 
-export async function importCharacterCard(pngBase64: string, userId: string): Promise<ImportResult> {
+export async function importCharacterCard(
+  pngBase64: string,
+  userId: string,
+): Promise<ImportResult> {
   let pngBytes: Uint8Array;
   try {
     pngBytes = new Uint8Array(Buffer.from(pngBase64, "base64"));

@@ -40,6 +40,7 @@ The chat feature is split into 6 groups by concern. Each group has a clear bound
 ## What belongs where
 
 ### UI — `ui/`, `routes/`
+
 - Route components (`/c`, `/c/new`, `/c/$id`)
 - Message rendering, bubbles, markdown
 - Side panels (portrait, custom image)
@@ -52,6 +53,7 @@ The chat feature is split into 6 groups by concern. Each group has a clear bound
 **Does NOT:** touch the DB directly, decide message content, manage SSE
 
 ### Generation — `generation/`
+
 - SSE endpoint (`/api/chat-generate`)
 - `prepareStream` / `finalizeStream` / `cancelStream` — the streaming lifecycle
 - `impersonateMessage` — non-streaming LLM call
@@ -65,6 +67,7 @@ The chat feature is split into 6 groups by concern. Each group has a clear bound
 **Does NOT:** know about UI, decide tree structure, own message content
 
 ### Prompt — `prompt/`
+
 - `buildChatPrompt` — the production prompt builder
 - Context assembly (character + history + lorebook + system prompt)
 - Lorebook scanning + activation
@@ -78,6 +81,7 @@ The chat feature is split into 6 groups by concern. Each group has a clear bound
 **Does NOT:** touch the DB, call AI providers, know about streaming
 
 ### Config — `config/`
+
 - Provider/model/preset selection (per-user defaults)
 - Lorebook activation toggles (per-user overlay)
 - Persona selection (per-user active persona)
@@ -89,6 +93,7 @@ The chat feature is split into 6 groups by concern. Each group has a clear bound
 **Does NOT:** know about the tree, decide message content, call AI
 
 ### Tree — `tree/` ✅ built
+
 - Chat creation (hidden root + greetings)
 - Append message to active leaf
 - Append user + reply (one tree load for `getNextId` ordering)
@@ -102,6 +107,7 @@ The chat feature is split into 6 groups by concern. Each group has a clear bound
 **Does NOT:** know about AI, streaming, defaults, macros, personas
 
 ### Data — `data/`
+
 - Thin wrapper over `src/db/repositories/chats.ts` (or new repository)
 - DB CRUD: chats, messages
 
@@ -167,6 +173,7 @@ UI: user clicks Send (empty composer) → continue mode
 ## Why this split
 
 Each module can be built, tested, and understood independently:
+
 - `tree/` is testable with zero AI knowledge — pure data structures + DB CRUD
 - `prompt/` is testable as pure functions — inputs in, messages out
 - `generation/` is testable with mocked providers

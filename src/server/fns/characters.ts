@@ -13,7 +13,11 @@ import {
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import { getSession, isAdmin } from "@/server/session";
 import { validateId } from "@/server/validators";
-import { importCharacterCard, type ImportError, type ImportResult } from "@/server/services/character/importer";
+import {
+  importCharacterCard,
+  type ImportError,
+  type ImportResult,
+} from "@/server/services/character/importer";
 
 export type { ImportError, ImportResult };
 
@@ -135,9 +139,7 @@ export const deleteCharacter = createServerFn({ method: "POST" })
     if (imagePath) {
       try {
         await rm(imagePath);
-      } catch {
-
-      }
+      } catch {}
     }
 
     return { id: data.id };

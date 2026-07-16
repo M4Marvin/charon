@@ -3,9 +3,7 @@ import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import { getActivePath, getSiblings } from "@/lib/st-core/chat-tree/tree";
 import type { ActivePathEntry } from "./types";
 
-export function computeActivePathFromMessages(
-  messages: ChatMessage[],
-): ActivePathEntry[] {
+export function computeActivePathFromMessages(messages: ChatMessage[]): ActivePathEntry[] {
   if (messages.length === 0) return [];
   const tree = treeFromNodes(messages);
   return computeActivePath(tree);
@@ -26,10 +24,7 @@ export function computeActivePath(tree: ChatTree): ActivePathEntry[] {
     });
 }
 
-export function getPathToNode(
-  tree: ChatTree,
-  nodeId: number,
-): ChatMessage[] {
+export function getPathToNode(tree: ChatTree, nodeId: number): ChatMessage[] {
   const path: ChatMessage[] = [];
   let current: ChatMessage | undefined = tree.get(nodeId);
   while (current !== undefined) {

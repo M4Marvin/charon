@@ -9,9 +9,7 @@ import {
   editContent,
 } from "./operations";
 
-function makeMsg(
-  overrides: Partial<ChatMessage> & { localId: number },
-): ChatMessage {
+function makeMsg(overrides: Partial<ChatMessage> & { localId: number }): ChatMessage {
   return {
     parentLocalId: null,
     children: [],
@@ -88,9 +86,9 @@ describe("appendChild", () => {
 
   it("throws when parent does not exist", () => {
     const tree = setupTree();
-    expect(() =>
-      appendChild(tree, 999, { role: "user", content: "x" }),
-    ).toThrow("parent 999 not found");
+    expect(() => appendChild(tree, 999, { role: "user", content: "x" })).toThrow(
+      "parent 999 not found",
+    );
   });
 });
 
@@ -113,7 +111,17 @@ describe("appendToActiveLeaf", () => {
     const g1 = tree.get(1)!;
     g1.children = [3];
     g1.selectedChildLocalId = 3;
-    tree.set(3, makeMsg({ localId: 3, parentLocalId: 1, role: "user", content: "Hi", children: [4], selectedChildLocalId: 4 }));
+    tree.set(
+      3,
+      makeMsg({
+        localId: 3,
+        parentLocalId: 1,
+        role: "user",
+        content: "Hi",
+        children: [4],
+        selectedChildLocalId: 4,
+      }),
+    );
     tree.set(4, makeMsg({ localId: 4, parentLocalId: 3, role: "assistant", content: "Hey back" }));
 
     const msg = appendToActiveLeaf(tree, {
@@ -125,9 +133,9 @@ describe("appendToActiveLeaf", () => {
   });
 
   it("throws on empty tree", () => {
-    expect(() =>
-      appendToActiveLeaf(new Map(), { role: "user", content: "x" }),
-    ).toThrow("No active message");
+    expect(() => appendToActiveLeaf(new Map(), { role: "user", content: "x" })).toThrow(
+      "No active message",
+    );
   });
 });
 
@@ -164,9 +172,7 @@ describe("selectSibling", () => {
 
   it("throws on localId 0", () => {
     const tree = setupTree();
-    expect(() => selectSibling(tree, 0, "next")).toThrow(
-      "hidden root",
-    );
+    expect(() => selectSibling(tree, 0, "next")).toThrow("hidden root");
   });
 });
 
@@ -259,8 +265,6 @@ describe("editContent", () => {
   });
 
   it("throws on missing node", () => {
-    expect(() => editContent(new Map(), 999, "x")).toThrow(
-      "Node 999 not found",
-    );
+    expect(() => editContent(new Map(), 999, "x")).toThrow("Node 999 not found");
   });
 });

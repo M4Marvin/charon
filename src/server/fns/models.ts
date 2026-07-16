@@ -3,7 +3,11 @@ import { Effect } from "effect";
 import { getSession } from "@/server/session";
 import { validateId } from "@/server/validators";
 import { getAiProviderWithGlobalFallback as repoGet } from "@/db/repositories/aiProviders";
-import { probeProviderModels, type ProviderModel, type ProbeResult } from "@/server/services/ai/model-fetcher";
+import {
+  probeProviderModels,
+  type ProviderModel,
+  type ProbeResult,
+} from "@/server/services/ai/model-fetcher";
 
 export type { ProviderModel, ProbeResult };
 

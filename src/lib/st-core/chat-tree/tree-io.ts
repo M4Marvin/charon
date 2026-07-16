@@ -93,7 +93,9 @@ export function validateTree(tree: ChatTree): ValidationResult {
     // Check selectedChildLocalId
     if (node.selectedChildLocalId !== null && node.selectedChildLocalId !== undefined) {
       if (!node.children.includes(node.selectedChildLocalId)) {
-        errors.push(`Node ${localId}: selectedChildLocalId ${node.selectedChildLocalId} not in children list`);
+        errors.push(
+          `Node ${localId}: selectedChildLocalId ${node.selectedChildLocalId} not in children list`,
+        );
       }
     }
   }

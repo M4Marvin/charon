@@ -1,12 +1,27 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getSession } from "@/server/session";
-import { listChats, getChat, getMessages, getActivePath, createChat, appendMessage, appendUserAndReply, swipe, editMessage, deleteBranch } from "./tree/service";
+import {
+  listChats,
+  getChat,
+  getMessages,
+  getActivePath,
+  createChat,
+  appendMessage,
+  appendUserAndReply,
+  swipe,
+  editMessage,
+  deleteBranch,
+} from "./tree/service";
 import { acquireGenerationLock, releaseLock } from "./tree/lock";
 import { listCharacters } from "@/db/repositories/characters";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import { getNode } from "@/lib/st-core/chat-tree/tree";
 import { appendChild } from "./tree/operations";
-import { listMessages as repoListMessages, insertMessage as repoInsertMessage, updateMessage as repoUpdateMessage } from "@/db/repositories/chats";
+import {
+  listMessages as repoListMessages,
+  insertMessage as repoInsertMessage,
+  updateMessage as repoUpdateMessage,
+} from "@/db/repositories/chats";
 import type { ChatWithCharacter } from "@/db/repositories/chats";
 import type { ChatMessageRow } from "@/db/schema";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
@@ -36,23 +51,34 @@ function rowToMsg(row: ChatMessageRow): ChatMessage {
 
 // ── Chats ──
 
-export const listDevChats = createServerFn({ method: "GET", strict: { output: false } }).handler(async () => {
-  const { user } = await getSession();
-  const raw = listChats(user.id);
-  const out: ChatWithLock[] = [];
-  for (const c of raw) {
-    const detail = getChat(user.id, c.id);
-    out.push({ ...c, lockState: detail.lockState, lockMessageLocalId: detail.lockMessageLocalId });
-  }
-  return out;
-});
+export const listDevChats = createServerFn({ method: "GET", strict: { output: false } }).handler(
+  async () => {
+    const { user } = await getSession();
+    const raw = listChats(user.id);
+    const out: ChatWithLock[] = [];
+    for (const c of raw) {
+      const detail = getChat(user.id, c.id);
+      out.push({
+        ...c,
+        lockState: detail.lockState,
+        lockMessageLocalId: detail.lockMessageLocalId,
+      });
+    }
+    return out;
+  },
+);
 
 // ── Characters ──
 
-export const listDevCharacters = createServerFn({ method: "GET", strict: { output: false } }).handler(async () => {
+export const listDevCharacters = createServerFn({
+  method: "GET",
+  strict: { output: false },
+}).handler(async () => {
   const { user } = await getSession();
   const chars = listCharacters(user.id);
-  return chars.map((c) => ({ id: c.id, name: c.name, spec: c.spec ?? "unknown" } satisfies CharacterSummary));
+  return chars.map(
+    (c) => ({ id: c.id, name: c.name, spec: c.spec ?? "unknown" }) satisfies CharacterSummary,
+  );
 });
 
 // ── Chat CRUD ──
@@ -92,7 +118,10 @@ export const getDevActivePath = createServerFn({ method: "GET", strict: { output
 // ── Tree operations ──
 
 export const devAppendMessage = createServerFn({ method: "POST", strict: { output: false } })
-  .validator((d: unknown) => d as { chatId: string; role: "user" | "assistant"; content: string; parentLocalId?: number })
+  .validator(
+    (d: unknown) =>
+      d as { chatId: string; role: "user" | "assistant"; content: string; parentLocalId?: number },
+  )
   .handler(async ({ data }) => {
     const { user } = await getSession();
     if (data.parentLocalId === undefined) {
@@ -101,7 +130,10 @@ export const devAppendMessage = createServerFn({ method: "POST", strict: { outpu
     // Append to specific parent — manual tree load + persist
     const rows = repoListMessages(user.id, data.chatId);
     const tree = treeFromNodes(rows.map(rowToMsg));
-    const newNode = appendChild(tree, data.parentLocalId, { role: data.role, content: data.content });
+    const newNode = appendChild(tree, data.parentLocalId, {
+      role: data.role,
+      content: data.content,
+    });
     const parent = getNode(tree, data.parentLocalId);
     repoUpdateMessage(user.id, data.chatId, data.parentLocalId, {
       children: parent.children,
@@ -128,7 +160,9 @@ export const devAppendUserAndReply = createServerFn({ method: "POST", strict: { 
   });
 
 export const devSwipe = createServerFn({ method: "POST", strict: { output: false } })
-  .validator((d: unknown) => d as { chatId: string; messageLocalId: number; direction: "next" | "prev" })
+  .validator(
+    (d: unknown) => d as { chatId: string; messageLocalId: number; direction: "next" | "prev" },
+  )
   .handler(async ({ data }) => {
     const { user } = await getSession();
     return swipe(user.id, data.chatId, data.messageLocalId, data.direction);

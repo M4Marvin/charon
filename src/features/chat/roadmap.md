@@ -23,6 +23,7 @@ Lock state on root message's `extra` field. Self-healing stale recovery. Impleme
 6. Update tests: add lock tests, verify mutations are rejected when locked
 
 **New tests:**
+
 - `lock` state on `ChatDetail`
 - Mutations rejected when locked (active)
 - Mutations succeed when locked (stale — lock is cleared)
@@ -37,6 +38,7 @@ AI orchestration: SSE streaming, provider calls, rate limiting, lock lifecycle.
 **New module: `src/features/chat/generation/`**
 
 Files:
+
 - `types.ts` — streaming types, provider config
 - `service.ts` — `prepareStream`, `finalizeStream`, `cancelStream`, `impersonateMessage`
 - `fns.ts` — `createServerFn` wrappers
@@ -45,12 +47,14 @@ Files:
 - `default-replies.ts` — rotating fallback replies for no-AI case
 
 **New route: `src/routes/api/chat-generate.ts`** (SSE endpoint)
+
 - Reads lock from DB (gets `messageId`)
 - Builds prompt (calls prompt module)
 - Streams from provider
 - Returns SSE response
 
 **Generation flow:**
+
 ```
 UI: send
   → prepareStream (mode: "send")
@@ -81,6 +85,7 @@ Pure functions: character + history + settings + lorebooks → messages + modelO
 **New module: `src/features/chat/prompt/`**
 
 Files:
+
 - `types.ts` — `ChatCompletionPreset`, `ModelMessage`, `BuildChatPromptInput`, `BuildChatPromptResult`
 - `preset.ts` — `DEFAULT_PRESET` constant
 - `context-builder.ts` — message assembly + lorebook activation
@@ -92,6 +97,7 @@ Files:
 **Uses:** st-core lorebook + character types, existing `src/lib/chat/` for lorebook scanner (or copy/adapt)
 
 **Inputs (from `buildChatPrompt`):**
+
 - `CharacterDataV2` (from chat row's `data` field)
 - `ChatMessage[]` (from tree's `getActivePath` or `getPathToMessage`)
 - `Partial<ChatCompletionPreset>` (from config's user/chat preset)
@@ -101,6 +107,7 @@ Files:
 - Per-user prompt overrides (system prompt, post-history instructions)
 
 **Outputs:**
+
 - `ModelMessage[]` — ready for the AI adapter
 - `modelOptions` — temperature, max tokens, etc.
 
@@ -113,6 +120,7 @@ Per-chat and per-user settings.
 **New module: `src/features/chat/config/`**
 
 Files:
+
 - `types.ts` — `UserSettings`, `ChatOverrides`
 - `service.ts` — `getUserSettings`, `updateUserSettings`, `getChatOverrides`, `updateChatOverrides`
 - `fns.ts` — `createServerFn` wrappers
@@ -121,6 +129,7 @@ Files:
 - `prompt-context.ts` — `loadPromptContext(chatId, userId)` — gathers all settings for the prompt builder
 
 **The `loadPromptContext` function is the key one.** It replaces the duplicated data-loading in `chat-generate.ts` and `impersonateMessage`. Returns:
+
 ```typescript
 {
   character: CharacterDataV2,
@@ -154,24 +163,27 @@ Routes, components, client state.
 **New module: `src/features/chat/ui/` + `src/features/chat/routes/`**
 
 Routes:
+
 - `src/features/chat/routes/index.tsx` → mounted at `/c`
 - `src/features/chat/routes/new.tsx` → mounted at `/c/new`
 - `src/features/chat/routes/$id.tsx` → mounted at `/c/$id`
 
 **Register in `src/router.tsx` (or wherever routes are registered):**
+
 ```typescript
 const chatRoutes = createRoute({
   getParentRoute: () => rootRoute,
   path: "c",
   component: Outlet,
 }).addChildren([
-  { path: "/", component: () => import("@/features/chat/routes/index").then(m => m.default) },
-  { path: "new", component: () => import("@/features/chat/routes/new").then(m => m.default) },
-  { path: "$id", component: () => import("@/features/chat/routes/$id").then(m => m.default) },
+  { path: "/", component: () => import("@/features/chat/routes/index").then((m) => m.default) },
+  { path: "new", component: () => import("@/features/chat/routes/new").then((m) => m.default) },
+  { path: "$id", component: () => import("@/features/chat/routes/$id").then((m) => m.default) },
 ]);
 ```
 
 Components:
+
 - `ChatMessage.tsx` — render a single message bubble with edit/save inline
 - `Composer.tsx` — bottom textarea, send button, impersonate button
 - `CharacterPortraitPanel.tsx` — left side panel
@@ -180,6 +192,7 @@ Components:
 - `SettingsPanel.tsx` — floating settings sheet (splits from old `ChatSettingsPanel.tsx`)
 
 Hooks:
+
 - `useChats.ts` — TanStack Query hooks for tree operations
 - `useChatGeneration.ts` — streaming lifecycle (wraps `@tanstack/ai-react`)
 - `useUserSettings.ts` — config module hooks
@@ -187,6 +200,7 @@ Hooks:
 - `usePersonas.ts` — persona hooks
 
 Client state:
+
 - `chat-store.ts` — zustand: minimal — just `lockMessageLocalId` mirror for SSE body getter
 
 **Estimated size:** ~800 lines + ~20 tests
@@ -196,6 +210,7 @@ Client state:
 The data module is mostly a re-export of `src/db/repositories/chats.ts`. May not need a separate module. The tree service already uses the repository directly.
 
 If a separate `data/` module is desired:
+
 - `src/features/chat/data/repository.ts` — wraps `src/db/repositories/chats.ts`
 - `src/features/chat/data/types.ts` — re-exports `Chat`, `ChatMessageRow`, etc.
 

@@ -16,11 +16,7 @@ function assertNotRoot(localId: number): void {
   if (localId === 0) throw new Error("Cannot operate on the hidden root (localId 0)");
 }
 
-export function appendChild(
-  tree: ChatTree,
-  parentId: number,
-  msg: NewMessage,
-): ChatMessage {
+export function appendChild(tree: ChatTree, parentId: number, msg: NewMessage): ChatMessage {
   const node: ChatMessage = {
     localId: getNextId(tree),
     parentLocalId: null,
@@ -34,13 +30,9 @@ export function appendChild(
   return node;
 }
 
-export function appendToActiveLeaf(
-  tree: ChatTree,
-  msg: NewMessage,
-): ChatMessage {
+export function appendToActiveLeaf(tree: ChatTree, msg: NewMessage): ChatMessage {
   const activeLeafId = getActiveLeafId(tree);
-  if (activeLeafId === null)
-    throw new Error("No active message to append to");
+  if (activeLeafId === null) throw new Error("No active message to append to");
   return appendChild(tree, activeLeafId, msg);
 }
 
@@ -51,8 +43,7 @@ export function selectSibling(
 ): ChatMessage | null {
   assertNotRoot(messageLocalId);
   const target = getNode(tree, messageLocalId);
-  if (target.parentLocalId === null)
-    throw new Error("Cannot swipe the root message");
+  if (target.parentLocalId === null) throw new Error("Cannot swipe the root message");
 
   const siblingId =
     direction === "next"
@@ -71,8 +62,7 @@ export function createSiblingAndSelect(
   msg: SiblingContent,
 ): ChatMessage {
   const target = getNode(tree, targetId);
-  if (target.parentLocalId === null)
-    throw new Error("Cannot create sibling of root");
+  if (target.parentLocalId === null) throw new Error("Cannot create sibling of root");
 
   const node: ChatMessage = {
     localId: getNextId(tree),
@@ -88,14 +78,10 @@ export function createSiblingAndSelect(
   return node;
 }
 
-export function removeBranch(
-  tree: ChatTree,
-  messageLocalId: number,
-): number[] {
+export function removeBranch(tree: ChatTree, messageLocalId: number): number[] {
   assertNotRoot(messageLocalId);
   const target = getNode(tree, messageLocalId);
-  if (target.parentLocalId === null)
-    throw new Error("Cannot delete the root message");
+  if (target.parentLocalId === null) throw new Error("Cannot delete the root message");
 
   const ids: number[] = [];
   const stack = [messageLocalId];
@@ -111,11 +97,7 @@ export function removeBranch(
   return ids;
 }
 
-export function editContent(
-  tree: ChatTree,
-  messageLocalId: number,
-  content: string,
-): void {
+export function editContent(tree: ChatTree, messageLocalId: number, content: string): void {
   assertNotRoot(messageLocalId);
   getNode(tree, messageLocalId).content = content;
 }

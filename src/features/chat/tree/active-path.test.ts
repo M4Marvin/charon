@@ -1,14 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { ChatMessage, ChatTree } from "@/lib/st-core/shared/types";
-import {
-  computeActivePathFromMessages,
-  computeActivePath,
-  getPathToNode,
-} from "./active-path";
+import { computeActivePathFromMessages, computeActivePath, getPathToNode } from "./active-path";
 
-function makeMsg(
-  overrides: Partial<ChatMessage> & { localId: number },
-): ChatMessage {
+function makeMsg(overrides: Partial<ChatMessage> & { localId: number }): ChatMessage {
   return {
     parentLocalId: null,
     children: [],
@@ -41,7 +35,14 @@ describe("computeActivePathFromMessages", () => {
     const messages: ChatMessage[] = [
       makeMsg({ localId: 0, role: "system", content: "", children: [1], selectedChildLocalId: 1 }),
       makeMsg({ localId: 1, parentLocalId: 0, role: "assistant", content: "Hi" }),
-      makeMsg({ localId: 2, parentLocalId: 1, children: [], selectedChildLocalId: null, role: "user", content: "Hey" }),
+      makeMsg({
+        localId: 2,
+        parentLocalId: 1,
+        children: [],
+        selectedChildLocalId: null,
+        role: "user",
+        content: "Hey",
+      }),
     ];
     // Ensure path goes 1 → 2 by setting selectedChildLocalId on msg 1
     const msg = messages[0]!;
@@ -58,7 +59,13 @@ describe("computeActivePathFromMessages", () => {
   });
 
   it("computes correct sibling index and total for multi-greeting tree", () => {
-    const root = makeMsg({ localId: 0, role: "system", content: "", children: [1, 2, 3], selectedChildLocalId: 2 });
+    const root = makeMsg({
+      localId: 0,
+      role: "system",
+      content: "",
+      children: [1, 2, 3],
+      selectedChildLocalId: 2,
+    });
     const g1 = makeMsg({ localId: 1, parentLocalId: 0, role: "assistant", content: "Hi" });
     const g2 = makeMsg({ localId: 2, parentLocalId: 0, role: "assistant", content: "Hey" });
     const g3 = makeMsg({ localId: 3, parentLocalId: 0, role: "assistant", content: "Yo" });
@@ -72,15 +79,19 @@ describe("computeActivePathFromMessages", () => {
 
   it("returns empty array for system-root-only tree", () => {
     const messages: ChatMessage[] = [
-      makeMsg({ localId: 0, role: "system", content: "", children: [], selectedChildLocalId: null }),
+      makeMsg({
+        localId: 0,
+        role: "system",
+        content: "",
+        children: [],
+        selectedChildLocalId: null,
+      }),
     ];
     // Need to add a greeting to make it valid
     const root = messages[0]!;
     root.children = [1, 2];
     root.selectedChildLocalId = 1;
-    messages.push(
-      makeMsg({ localId: 1, parentLocalId: 0, role: "assistant", content: "Hi" }),
-    );
+    messages.push(makeMsg({ localId: 1, parentLocalId: 0, role: "assistant", content: "Hi" }));
     const path = computeActivePathFromMessages(messages);
     expect(path).toHaveLength(1);
   });
@@ -89,7 +100,13 @@ describe("computeActivePathFromMessages", () => {
 describe("computeActivePath (from tree)", () => {
   it("uses tree directly", () => {
     const tree: ChatTree = new Map();
-    const root = makeMsg({ localId: 0, role: "system", content: "", children: [1], selectedChildLocalId: 1 });
+    const root = makeMsg({
+      localId: 0,
+      role: "system",
+      content: "",
+      children: [1],
+      selectedChildLocalId: 1,
+    });
     tree.set(0, root);
     const msg = makeMsg({ localId: 1, parentLocalId: 0, role: "assistant", content: "Hello!" });
     tree.set(1, msg);

@@ -84,7 +84,11 @@ type TreeNode = {
   isSelected: boolean;
 };
 
-function buildTree(messages: ChatMessage[], activeLocalIds: Set<number>, selectedId: number | null): TreeNode[] {
+function buildTree(
+  messages: ChatMessage[],
+  activeLocalIds: Set<number>,
+  selectedId: number | null,
+): TreeNode[] {
   const map = new Map<number, TreeNode>();
   const roots: TreeNode[] = [];
 
@@ -116,13 +120,7 @@ function buildTree(messages: ChatMessage[], activeLocalIds: Set<number>, selecte
   return roots;
 }
 
-function TreeNodeRow({
-  node,
-  onSelect,
-}: {
-  node: TreeNode;
-  onSelect: (id: number) => void;
-}) {
+function TreeNodeRow({ node, onSelect }: { node: TreeNode; onSelect: (id: number) => void }) {
   const indent = node.depth * 20;
 
   return (
@@ -154,9 +152,7 @@ function TreeNodeRow({
             ↓{node.message.selectedChildLocalId}
           </span>
         )}
-        {node.message.extra && (
-          <span className="text-[9px] text-amber-500">extra</span>
-        )}
+        {node.message.extra && <span className="text-[9px] text-amber-500">extra</span>}
       </div>
       {node.children.map((child) => (
         <TreeNodeRow key={child.message.localId} node={child} onSelect={onSelect} />
@@ -345,15 +341,12 @@ function OperationsTab({
     onError: (err) => setResult(`Error: ${err.message}`),
   });
 
-
   return (
     <div className="space-y-4">
       {/* ── Message selector ── */}
       <Card>
         <CardHeader className="py-2 px-3">
-          <CardTitle className="text-xs font-medium">
-            Selected Message
-          </CardTitle>
+          <CardTitle className="text-xs font-medium">Selected Message</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 py-2 px-3">
           <div className="flex items-center gap-2">
@@ -382,7 +375,9 @@ function OperationsTab({
                   {selectedMsg.role}
                 </Badge>
                 {activeIds.has(selectedMsg.localId) && (
-                  <Badge variant="secondary" className="text-[9px] px-1 h-4">active path</Badge>
+                  <Badge variant="secondary" className="text-[9px] px-1 h-4">
+                    active path
+                  </Badge>
                 )}
                 {selectedMsg.selectedChildLocalId !== null && (
                   <span className="text-muted-foreground">↓{selectedMsg.selectedChildLocalId}</span>
@@ -395,10 +390,14 @@ function OperationsTab({
                 <p className="text-muted-foreground">parent: {selectedMsg.parentLocalId}</p>
               )}
               {selectedMsg.children.length > 0 && (
-                <p className="text-muted-foreground">children: [{selectedMsg.children.join(", ")}]</p>
+                <p className="text-muted-foreground">
+                  children: [{selectedMsg.children.join(", ")}]
+                </p>
               )}
               {selectedMsg.extra && (
-                <pre className="text-[10px] text-amber-500 whitespace-pre-wrap">{JSON.stringify(selectedMsg.extra, null, 2)}</pre>
+                <pre className="text-[10px] text-amber-500 whitespace-pre-wrap">
+                  {JSON.stringify(selectedMsg.extra, null, 2)}
+                </pre>
               )}
             </div>
           )}
@@ -489,9 +488,7 @@ function OperationsTab({
       {/* ── Mutations on selected message ── */}
       <Card>
         <CardHeader className="py-2 px-3">
-          <CardTitle className="text-xs font-medium">
-            Mutate #{selectedNodeId ?? "—"}
-          </CardTitle>
+          <CardTitle className="text-xs font-medium">Mutate #{selectedNodeId ?? "—"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 py-2 px-3">
           {/* Swipe */}
@@ -623,9 +620,7 @@ function RawDataTab({
 
       <Card>
         <CardHeader className="py-2 px-3">
-          <CardTitle className="text-xs font-medium">
-            Messages ({messages.length})
-          </CardTitle>
+          <CardTitle className="text-xs font-medium">Messages ({messages.length})</CardTitle>
         </CardHeader>
         <CardContent className="py-2 px-3">
           <pre className="text-xs font-mono whitespace-pre-wrap overflow-x-auto max-h-80">
@@ -746,7 +741,8 @@ function DevPage() {
           </Badge>
           {selectedChat.lockMessageLocalId !== null && (
             <span className="text-xs text-muted-foreground">
-              streaming into message <span className="font-mono">{selectedChat.lockMessageLocalId}</span>
+              streaming into message{" "}
+              <span className="font-mono">{selectedChat.lockMessageLocalId}</span>
             </span>
           )}
           <span className="text-xs text-muted-foreground">

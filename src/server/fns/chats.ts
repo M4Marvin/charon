@@ -399,7 +399,9 @@ export const swipeMessage = createServerFn({ method: "POST", strict: { output: f
           selectedChildLocalId: null,
           role: "assistant",
           content:
-            target.parentLocalId === 0 ? "Make your own greeting!" : pickDefaultReply(rows.length + 1),
+            target.parentLocalId === 0
+              ? "Make your own greeting!"
+              : pickDefaultReply(rows.length + 1),
         };
 
     addSibling(tree, data.messageLocalId, newMsg);

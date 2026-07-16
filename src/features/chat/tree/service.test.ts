@@ -43,20 +43,20 @@ describe("tree service", () => {
 
   describe("createChat", () => {
     it("creates a chat with root + greetings", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test Chat",
-        greetings: ["Hello!", "Hey there!"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test Chat",
+          greetings: ["Hello!", "Hey there!"],
+        },
+        db,
+      );
 
       expect(chat.title).toBe("Test Chat");
       expect(chat.characterId).toBe(charId);
 
-      const msgs = db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.chatId, chat.id))
-        .all();
+      const msgs = db.select().from(chatMessages).where(eq(chatMessages.chatId, chat.id)).all();
 
       // Root + 2 greetings
       expect(msgs).toHaveLength(3);
@@ -81,24 +81,32 @@ describe("tree service", () => {
 
     it("throws when greetings is empty", () => {
       expect(() =>
-        createChat(userId, {
-          characterId: charId,
-          title: "Empty",
-          greetings: [],
-        }, db),
+        createChat(
+          userId,
+          {
+            characterId: charId,
+            title: "Empty",
+            greetings: [],
+          },
+          db,
+        ),
       ).toThrow("at least one greeting is required");
     });
 
     it("includes character field overrides", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "With Overrides",
-        greetings: ["Hi"],
-        characterDescription: "Custom desc",
-        characterPersonality: "Brave",
-        characterScenario: "At the castle",
-        characterSystemPrompt: "Speak like a knight",
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "With Overrides",
+          greetings: ["Hi"],
+          characterDescription: "Custom desc",
+          characterPersonality: "Brave",
+          characterScenario: "At the castle",
+          characterSystemPrompt: "Speak like a knight",
+        },
+        db,
+      );
 
       expect(chat.characterDescription).toBe("Custom desc");
       expect(chat.characterPersonality).toBe("Brave");
@@ -109,11 +117,15 @@ describe("tree service", () => {
 
   describe("getChat", () => {
     it("returns chat detail", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "My Chat",
-        greetings: ["Hi"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "My Chat",
+          greetings: ["Hi"],
+        },
+        db,
+      );
 
       const detail = getChat(userId, chat.id, db);
       expect(detail.title).toBe("My Chat");
@@ -121,11 +133,15 @@ describe("tree service", () => {
     });
 
     it("throws on wrong user", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "My Chat",
-        greetings: ["Hi"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "My Chat",
+          greetings: ["Hi"],
+        },
+        db,
+      );
 
       expect(() => getChat("other-user", chat.id, db)).toThrow("Chat not found");
     });
@@ -133,11 +149,15 @@ describe("tree service", () => {
 
   describe("getMessages", () => {
     it("returns all messages ordered by localId", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Greeting"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Greeting"],
+        },
+        db,
+      );
 
       const msgs = getMessages(userId, chat.id, db);
       expect(msgs).toHaveLength(2); // root + 1 greeting
@@ -148,11 +168,15 @@ describe("tree service", () => {
 
   describe("getActivePath", () => {
     it("returns path filtering system root", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["First", "Second"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["First", "Second"],
+        },
+        db,
+      );
 
       const path = getActivePath(userId, chat.id, db);
       expect(path).toHaveLength(1);
@@ -165,27 +189,32 @@ describe("tree service", () => {
 
   describe("appendMessage", () => {
     it("appends a child to the active leaf", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Hello"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Hello"],
+        },
+        db,
+      );
 
-      const msg = appendMessage(userId, chat.id, {
-        role: "user",
-        content: "How are you?",
-      }, db);
+      const msg = appendMessage(
+        userId,
+        chat.id,
+        {
+          role: "user",
+          content: "How are you?",
+        },
+        db,
+      );
 
       expect(msg.role).toBe("user");
       expect(msg.content).toBe("How are you?");
       expect(msg.parentLocalId).toBe(1); // child of greeting 1
 
       // Verify DB state
-      const parent = db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.localId, 1))
-        .get()!;
+      const parent = db.select().from(chatMessages).where(eq(chatMessages.localId, 1)).get()!;
       expect(parent.children).toEqual([msg.localId]);
       expect(parent.selectedChildLocalId).toBe(msg.localId);
     });
@@ -193,11 +222,15 @@ describe("tree service", () => {
 
   describe("appendUserAndReply", () => {
     it("appends user message and reply in correct order", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Hi"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Hi"],
+        },
+        db,
+      );
 
       const { userMessage, replyMessage } = appendUserAndReply(
         userId,
@@ -221,11 +254,15 @@ describe("tree service", () => {
     });
 
     it("includes reply extra when provided", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Hi"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Hi"],
+        },
+        db,
+      );
 
       const { replyMessage } = appendUserAndReply(
         userId,
@@ -240,25 +277,33 @@ describe("tree service", () => {
     });
 
     it("throws on empty user content", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Hi"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Hi"],
+        },
+        db,
+      );
 
-      expect(() =>
-        appendUserAndReply(userId, chat.id, "", "reply", undefined, db),
-      ).toThrow("User content cannot be empty");
+      expect(() => appendUserAndReply(userId, chat.id, "", "reply", undefined, db)).toThrow(
+        "User content cannot be empty",
+      );
     });
   });
 
   describe("swipe", () => {
     it("navigates to next sibling", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["First", "Second"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["First", "Second"],
+        },
+        db,
+      );
 
       const result = swipe(userId, chat.id, 1, "next", undefined, db);
       expect(result.selectedMessage.localId).toBe(2);
@@ -270,11 +315,15 @@ describe("tree service", () => {
     });
 
     it("navigates to previous sibling", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["First", "Second", "Third"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["First", "Second", "Third"],
+        },
+        db,
+      );
 
       // Select greeting 3 first (from greeting 2)
       swipe(userId, chat.id, 2, "next", undefined, db);
@@ -285,16 +334,27 @@ describe("tree service", () => {
     });
 
     it("creates new sibling when no next exists and createIfMissing provided", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Only one"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Only one"],
+        },
+        db,
+      );
 
-      const result = swipe(userId, chat.id, 1, "next", {
-        role: "assistant",
-        content: "New greeting",
-      }, db);
+      const result = swipe(
+        userId,
+        chat.id,
+        1,
+        "next",
+        {
+          role: "assistant",
+          content: "New greeting",
+        },
+        db,
+      );
 
       expect(result.created).toBe(true);
       expect(result.selectedMessage.content).toBe("New greeting");
@@ -306,11 +366,15 @@ describe("tree service", () => {
     });
 
     it("returns current message when no next sibling and no createIfMissing", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Only one"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Only one"],
+        },
+        db,
+      );
 
       const result = swipe(userId, chat.id, 1, "next", undefined, db);
       expect(result.created).toBe(false);
@@ -318,11 +382,15 @@ describe("tree service", () => {
     });
 
     it("no-ops on prev with no sibling (defensive)", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["First"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["First"],
+        },
+        db,
+      );
 
       const result = swipe(userId, chat.id, 1, "prev", undefined, db);
       expect(result.created).toBe(false);
@@ -332,11 +400,15 @@ describe("tree service", () => {
 
   describe("deleteBranch", () => {
     it("deletes a leaf node and re-points parent selection", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["First", "Second"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["First", "Second"],
+        },
+        db,
+      );
 
       const { deletedIds } = deleteBranch(userId, chat.id, 1, db);
       expect(deletedIds).toEqual([1]);
@@ -347,11 +419,15 @@ describe("tree service", () => {
     });
 
     it("deletes a subtree with descendants", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Hi"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Hi"],
+        },
+        db,
+      );
 
       // Add user message + reply
       appendUserAndReply(userId, chat.id, "Hello", "Hi back", undefined, db);
@@ -367,11 +443,15 @@ describe("tree service", () => {
     });
 
     it("throws on localId 0", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Hi"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Hi"],
+        },
+        db,
+      );
 
       expect(() => deleteBranch(userId, chat.id, 0, db)).toThrow("hidden root");
     });
@@ -379,11 +459,15 @@ describe("tree service", () => {
 
   describe("editMessage", () => {
     it("updates content without changing structure", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Original"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Original"],
+        },
+        db,
+      );
 
       editMessage(userId, chat.id, 1, "Edited!", db);
 
@@ -395,34 +479,45 @@ describe("tree service", () => {
     });
 
     it("throws on localId 0", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Hi"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Hi"],
+        },
+        db,
+      );
 
       expect(() => editMessage(userId, chat.id, 0, "x", db)).toThrow("hidden root");
     });
 
     it("throws on missing message", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Hi"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Hi"],
+        },
+        db,
+      );
 
       expect(() => editMessage(userId, chat.id, 999, "x", db)).toThrow("Message not found");
     });
-
   });
 
   describe("deleteChat", () => {
     it("deletes a chat and all its messages", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Hi"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Hi"],
+        },
+        db,
+      );
 
       deleteChat(userId, chat.id, db);
 
@@ -437,11 +532,15 @@ describe("tree service", () => {
     });
 
     it("throws on wrong user", () => {
-      const chat = createChat(userId, {
-        characterId: charId,
-        title: "Test",
-        greetings: ["Hi"],
-      }, db);
+      const chat = createChat(
+        userId,
+        {
+          characterId: charId,
+          title: "Test",
+          greetings: ["Hi"],
+        },
+        db,
+      );
 
       expect(() => deleteChat("other-user", chat.id, db)).toThrow("Chat not found");
     });

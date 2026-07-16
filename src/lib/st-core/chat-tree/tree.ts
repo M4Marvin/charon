@@ -94,7 +94,8 @@ export function getActiveLeafId(tree: ChatTree, rootId?: number | null): number 
     visited.add(currentId);
     const node = tree.get(currentId);
     if (!node) return currentId;
-    if (node.selectedChildLocalId === null || node.selectedChildLocalId === undefined) return currentId;
+    if (node.selectedChildLocalId === null || node.selectedChildLocalId === undefined)
+      return currentId;
     currentId = node.selectedChildLocalId;
   }
 
@@ -144,7 +145,9 @@ export function getSiblings(tree: ChatTree, nodeId: number): ChatMessage[] {
     if (child) {
       siblings.push(child);
     } else {
-      warn(`getSiblings: child ${childId} listed in parent ${parent.localId} but not found in tree`);
+      warn(
+        `getSiblings: child ${childId} listed in parent ${parent.localId} but not found in tree`,
+      );
     }
   }
   return siblings;

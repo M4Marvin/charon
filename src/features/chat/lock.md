@@ -25,38 +25,41 @@ The lock provides server-enforced temporal exclusivity for chat mutations. While
 The hidden root message (localId 0) on every chat. Its `extra` field stores the lock state.
 
 **Idle:**
+
 ```typescript
-root.extra = null
+root.extra = null;
 // or
-root.extra = undefined
+root.extra = undefined;
 ```
 
 **Generating:**
+
 ```typescript
 root.extra = {
   lock: "generating",
-  messageId: 5,          // which message is being streamed into
-  lockedAt: 1712345678000  // unix ms, for staleness check
-}
+  messageId: 5, // which message is being streamed into
+  lockedAt: 1712345678000, // unix ms, for staleness check
+};
 ```
 
 **Why the root message?** It's always present, never rendered, and per-chat (one root per chat). Using its `extra` field avoids a schema migration — `extra` already accepts arbitrary JSON.
 
 ## What the lock replaces
 
-| Current scattered pattern | Replaced by |
-|---|---|
-| `activePlaceholderId` in zustand | `chat.lockMessageLocalId` |
-| `extra: { isStreaming: true }` on placeholder | Lock state on root |
-| Stale-stream recovery effect (scan messages for `isStreaming`) | Check `lockedAt` |
-| `recoveredFor` gate in zustand | Gone — lock state is authoritative |
-| `canSend = activePlaceholderId === null` | `chat.lockState === "idle"` |
-| `disabled={activePlaceholderId !== null}` | Same — read from chat data |
-| No server-side concurrency guard | Server rejects concurrent mutations |
+| Current scattered pattern                                      | Replaced by                         |
+| -------------------------------------------------------------- | ----------------------------------- |
+| `activePlaceholderId` in zustand                               | `chat.lockMessageLocalId`           |
+| `extra: { isStreaming: true }` on placeholder                  | Lock state on root                  |
+| Stale-stream recovery effect (scan messages for `isStreaming`) | Check `lockedAt`                    |
+| `recoveredFor` gate in zustand                                 | Gone — lock state is authoritative  |
+| `canSend = activePlaceholderId === null`                       | `chat.lockState === "idle"`         |
+| `disabled={activePlaceholderId !== null}`                      | Same — read from chat data          |
+| No server-side concurrency guard                               | Server rejects concurrent mutations |
 
 ## What gets locked
 
 **All tree mutations are rejected when lock is held.** This includes:
+
 - `appendMessage` (send new message)
 - `appendUserAndReply` (send + reply)
 - `swipe` (navigate or create sibling)
@@ -66,6 +69,7 @@ root.extra = {
 The generation module is also indirectly guarded — `prepareStream` calls `acquireGenerationLock`, which calls `ensureChatIdle` first, so starting a new generation while one is active also throws.
 
 **Read operations are always allowed:**
+
 - `getChat`
 - `getMessages`
 - `getActivePath`
@@ -117,17 +121,20 @@ export const STALE_LOCK_MS = 5 * 60 * 1000; // 5 minutes
 ```typescript
 // Check lock state. Throws if locked and not stale.
 // Clears stale locks automatically (self-healing).
-function ensureChatIdle(userId: string, chatId: string, db: DB = defaultDb): void
+function ensureChatIdle(userId: string, chatId: string, db: DB = defaultDb): void;
 
 // Acquire generation lock. Sets root.extra to lock state.
 // Throws if chat is already locked (and not stale — clears first).
 function acquireGenerationLock(
-  userId: string, chatId: string, messageLocalId: number, db: DB = defaultDb
-): void
+  userId: string,
+  chatId: string,
+  messageLocalId: number,
+  db: DB = defaultDb,
+): void;
 
 // Release lock. Sets root.extra to null.
 // No-op if not locked.
-function releaseLock(userId: string, chatId: string, db: DB = defaultDb): void
+function releaseLock(userId: string, chatId: string, db: DB = defaultDb): void;
 ```
 
 ### `ChatDetail` additions
@@ -231,10 +238,10 @@ export const cancelStream = createServerFn({ method: "POST" })
 With better-sqlite3 (synchronous), there's no `await` between the lock check and the mutation. The entire flow is:
 
 ```typescript
-ensureChatIdle(user, chatId, db);  // sync — check + maybe clear
-const newNode = appendChild(tree, parentId, msg);  // sync — pure tree op
-persistParent(user, chatId, tree, parentId, db);  // sync — write
-persistNewMessage(user, chatId, newNode, db);  // sync — write
+ensureChatIdle(user, chatId, db); // sync — check + maybe clear
+const newNode = appendChild(tree, parentId, msg); // sync — pure tree op
+persistParent(user, chatId, tree, parentId, db); // sync — write
+persistNewMessage(user, chatId, newNode, db); // sync — write
 ```
 
 This is atomic from the service's perspective. No other code can run between check and write. Even if two HTTP requests arrive simultaneously in Node.js, better-sqlite3 serializes all writes.
@@ -242,6 +249,7 @@ This is atomic from the service's perspective. No other code can run between che
 ## Why not a separate `chat_locks` table?
 
 A separate table is cleaner architecturally (separation of concerns) but requires a migration. Using the root message's `extra` field is pragmatic:
+
 - Zero schema changes
 - Always present (one root per chat)
 - Never rendered (can be used for metadata)

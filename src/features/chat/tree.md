@@ -94,7 +94,7 @@ export interface ActivePathEntry {
 export interface CreateChatInput {
   characterId: string;
   title: string;
-  greetings: string[];        // caller provides already-substituted text
+  greetings: string[]; // caller provides already-substituted text
   characterDescription?: string;
   characterPersonality?: string;
   characterScenario?: string;
@@ -103,7 +103,7 @@ export interface CreateChatInput {
 
 export interface SwipeResult {
   selectedMessage: ChatMessage;
-  created: boolean;            // true if a new sibling was created
+  created: boolean; // true if a new sibling was created
 }
 
 export interface ChatDetail {
@@ -127,6 +127,7 @@ export interface ChatDetail {
 ### All content from caller
 
 The tree never decides what a message says. The caller provides:
+
 - Greeting texts for `createChat` (already macro-substituted)
 - Reply content for `appendUserAndReply` (could be AI output, default text, or empty for streaming)
 - Content for new siblings in `swipe` (caller decides based on role — "Edit me!" for user, "Make your own greeting!" for greetings, placeholder for regeneration)
@@ -137,15 +138,20 @@ The tree never decides what a message says. The caller provides:
 When appending multiple nodes in one tree load, call `addChild` (or `appendChild`) for the first node BEFORE allocating the second node's id. Otherwise both `getNextId` calls return the same id and the second `addChild` throws "node already exists."
 
 `appendUserAndReply` handles this correctly:
+
 ```typescript
 const userMessage = appendChild(tree, activeLeafId, { role: "user", content: userContent });
 // Now userMessage is in the tree, getNextId will return a fresh id
-const replyMessage = appendChild(tree, userMessage.localId, { role: "assistant", content: replyContent });
+const replyMessage = appendChild(tree, userMessage.localId, {
+  role: "assistant",
+  content: replyContent,
+});
 ```
 
 ### Hidden root (localId 0)
 
 Every chat has a hidden system root at `localId 0`:
+
 - `role: "system"`, `content: ""`
 - `children: [1, 2, ...]` (greeting ids)
 - `selectedChildLocalId: 1` (first greeting is default)
@@ -162,24 +168,24 @@ There is no `isStreaming` flag on messages. The lock (chat-level) tracks which m
 
 ## What was rejected (and why)
 
-| Rejected | Why |
-|---|---|
-| `isDraft` flag on user messages | The draft was a UX hack — user types in composer, content gets injected into the draft. Unified editing: both new content and fixes use the same inline edit flow. Swipe creates a placeholder with "Edit me!" text. |
-| `isStreaming` flag on placeholder | The lock is the single source of truth. `chat.lockMessageLocalId` tells the UI which message is streaming. No need to smear chat-level state onto every message. |
-| `populateDraft` / `isDraftNode` operations | Drafts don't exist. |
-| `DEFAULT_REPLIES` fallback | The tree never decides content. Caller provides it. |
-| Macro substitution at persistence | The tree is content-agnostic. Caller substitutes macros before calling. |
-| `rows.ts` separate file | The null/undefined conversion is trivial. Inlined as private functions in `service.ts`. |
-| `ChatMessageRow` in the public API | `service.ts` returns `ChatMessage[]` to the client. The client never sees row types. |
+| Rejected                                   | Why                                                                                                                                                                                                                  |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `isDraft` flag on user messages            | The draft was a UX hack — user types in composer, content gets injected into the draft. Unified editing: both new content and fixes use the same inline edit flow. Swipe creates a placeholder with "Edit me!" text. |
+| `isStreaming` flag on placeholder          | The lock is the single source of truth. `chat.lockMessageLocalId` tells the UI which message is streaming. No need to smear chat-level state onto every message.                                                     |
+| `populateDraft` / `isDraftNode` operations | Drafts don't exist.                                                                                                                                                                                                  |
+| `DEFAULT_REPLIES` fallback                 | The tree never decides content. Caller provides it.                                                                                                                                                                  |
+| Macro substitution at persistence          | The tree is content-agnostic. Caller substitutes macros before calling.                                                                                                                                              |
+| `rows.ts` separate file                    | The null/undefined conversion is trivial. Inlined as private functions in `service.ts`.                                                                                                                              |
+| `ChatMessageRow` in the public API         | `service.ts` returns `ChatMessage[]` to the client. The client never sees row types.                                                                                                                                 |
 
 ## Test coverage
 
-| File | Tests | Covers |
-|---|---|---|
-| `active-path.test.ts` | 9 | Path computation, filtering, sibling metadata, `getPathToNode` |
-| `operations.test.ts` | 22 | All pure operations, root guards, edge cases |
-| `service.test.ts` | 24 | Full DB integration: create, read, append, swipe, delete, edit |
-| `lock.test.ts` | 16 | Lock state on `ChatDetail`, `ensureChatIdle`, `acquireGenerationLock` / `releaseLock` lifecycle, mutation rejection when locked, stale recovery |
+| File                  | Tests | Covers                                                                                                                                          |
+| --------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `active-path.test.ts` | 9     | Path computation, filtering, sibling metadata, `getPathToNode`                                                                                  |
+| `operations.test.ts`  | 22    | All pure operations, root guards, edge cases                                                                                                    |
+| `service.test.ts`     | 24    | Full DB integration: create, read, append, swipe, delete, edit                                                                                  |
+| `lock.test.ts`        | 16    | Lock state on `ChatDetail`, `ensureChatIdle`, `acquireGenerationLock` / `releaseLock` lifecycle, mutation rejection when locked, stale recovery |
 
 ## How callers use this module
 
@@ -188,7 +194,12 @@ There is no `isStreaming` flag on messages. The lock (chat-level) tracks which m
 ```typescript
 // prepareStream (send mode):
 const { userMessage, replyMessage } = appendUserAndReply(
-  userId, chatId, userContent, "", undefined, db
+  userId,
+  chatId,
+  userContent,
+  "",
+  undefined,
+  db,
 );
 acquireGenerationLock(userId, chatId, replyMessage.localId, db);
 
@@ -198,8 +209,12 @@ releaseLock(userId, chatId, db);
 
 // prepareStream (regenerate mode):
 const { selectedMessage, created } = swipe(
-  userId, chatId, targetLocalId, "next",
-  { role: "assistant", content: "" }, db
+  userId,
+  chatId,
+  targetLocalId,
+  "next",
+  { role: "assistant", content: "" },
+  db,
 );
 acquireGenerationLock(userId, chatId, selectedMessage.localId, db);
 ```

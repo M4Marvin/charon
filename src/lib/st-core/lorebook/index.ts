@@ -1,4 +1,10 @@
-export { LorePosition, SelectiveLogic, ScanState, DEFAULT_LORE_CONFIG, DEFAULT_LORE_ENTRY } from "./types.js";
+export {
+  LorePosition,
+  SelectiveLogic,
+  ScanState,
+  DEFAULT_LORE_CONFIG,
+  DEFAULT_LORE_ENTRY,
+} from "./types.js";
 export type { LoreEntry, LoreGlobalData, LoreConfig, LoreScanResult } from "./types.js";
 
 export { LoreBuffer, parseRegexFromString, escapeRegex } from "./buffer.js";

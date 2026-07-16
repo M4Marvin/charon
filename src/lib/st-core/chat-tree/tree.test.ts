@@ -573,7 +573,12 @@ describe("treeFromNodes", () => {
   });
 
   it("treats a missing children field as an empty array", () => {
-    const n = { localId: 0, role: "user" as const, content: "x", parentLocalId: null } as ChatMessage;
+    const n = {
+      localId: 0,
+      role: "user" as const,
+      content: "x",
+      parentLocalId: null,
+    } as ChatMessage;
     const tree = treeFromNodes([n]);
     expect(tree.get(0)!.children).toEqual([]);
   });
@@ -685,7 +690,9 @@ describe("validateTree", () => {
     tree.set(1, makeNode(1, { parentLocalId: 0 }));
     const result = validateTree(tree);
     expect(result.valid).toBe(false);
-    expect(result.errors.some((e) => /selectedChildLocalId 999 not in children/.test(e))).toBe(true);
+    expect(result.errors.some((e) => /selectedChildLocalId 999 not in children/.test(e))).toBe(
+      true,
+    );
   });
 
   it("errors on a cycle in the children graph", () => {

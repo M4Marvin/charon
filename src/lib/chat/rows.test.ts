@@ -65,7 +65,9 @@ describe("rowToMessage", () => {
     expect(typeof msg.localId).toBe("number");
     expect(msg.parentLocalId === null || typeof msg.parentLocalId === "number").toBe(true);
     expect(Array.isArray(msg.children)).toBe(true);
-    expect(msg.selectedChildLocalId === null || typeof msg.selectedChildLocalId === "number").toBe(true);
+    expect(msg.selectedChildLocalId === null || typeof msg.selectedChildLocalId === "number").toBe(
+      true,
+    );
     expect(["user", "assistant", "system"]).toContain(msg.role);
     expect(typeof msg.content).toBe("string");
   });

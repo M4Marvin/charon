@@ -12,12 +12,7 @@ import {
   getChat,
   swipe,
 } from "./service";
-import {
-  acquireGenerationLock,
-  ensureChatIdle,
-  releaseLock,
-  STALE_LOCK_MS,
-} from "./lock";
+import { acquireGenerationLock, ensureChatIdle, releaseLock, STALE_LOCK_MS } from "./lock";
 
 describe("lock", () => {
   let db: TestDb;
@@ -45,11 +40,7 @@ describe("lock", () => {
   });
 
   function createTestChat() {
-    return createChat(
-      userId,
-      { characterId: charId, title: "Test", greetings: ["Hi"] },
-      db,
-    );
+    return createChat(userId, { characterId: charId, title: "Test", greetings: ["Hi"] }, db);
   }
 
   function forceStaleLock(chatId: string, messageId: number) {
@@ -61,12 +52,7 @@ describe("lock", () => {
           lockedAt: Date.now() - STALE_LOCK_MS - 1,
         },
       })
-      .where(
-        and(
-          eq(chatMessages.chatId, chatId),
-          eq(chatMessages.localId, 0),
-        ),
-      )
+      .where(and(eq(chatMessages.chatId, chatId), eq(chatMessages.localId, 0)))
       .run();
   }
 
@@ -74,9 +60,7 @@ describe("lock", () => {
     return db
       .select()
       .from(chatMessages)
-      .where(
-        and(eq(chatMessages.chatId, chatId), eq(chatMessages.localId, 0)),
-      )
+      .where(and(eq(chatMessages.chatId, chatId), eq(chatMessages.localId, 0)))
       .get()?.extra;
   }
 
@@ -106,9 +90,7 @@ describe("lock", () => {
     it("throws when lock is active", () => {
       const chat = createTestChat();
       acquireGenerationLock(userId, chat.id, 1, db);
-      expect(() => ensureChatIdle(userId, chat.id, db)).toThrow(
-        "Chat is busy",
-      );
+      expect(() => ensureChatIdle(userId, chat.id, db)).toThrow("Chat is busy");
     });
 
     it("clears stale lock and does not throw", () => {
@@ -135,9 +117,7 @@ describe("lock", () => {
     it("throws when already locked (active)", () => {
       const chat = createTestChat();
       acquireGenerationLock(userId, chat.id, 1, db);
-      expect(() => acquireGenerationLock(userId, chat.id, 2, db)).toThrow(
-        "Chat is busy",
-      );
+      expect(() => acquireGenerationLock(userId, chat.id, 2, db)).toThrow("Chat is busy");
     });
 
     it("clears stale lock and acquires successfully", () => {
@@ -172,46 +152,35 @@ describe("lock", () => {
     it("appendMessage throws when locked", () => {
       const chat = createTestChat();
       acquireGenerationLock(userId, chat.id, 1, db);
-      expect(() =>
-        appendMessage(
-          userId,
-          chat.id,
-          { role: "user", content: "hi" },
-          db,
-        ),
-      ).toThrow("Chat is busy");
+      expect(() => appendMessage(userId, chat.id, { role: "user", content: "hi" }, db)).toThrow(
+        "Chat is busy",
+      );
     });
 
     it("appendUserAndReply throws when locked", () => {
       const chat = createTestChat();
       acquireGenerationLock(userId, chat.id, 1, db);
-      expect(() =>
-        appendUserAndReply(userId, chat.id, "hi", "reply", undefined, db),
-      ).toThrow("Chat is busy");
+      expect(() => appendUserAndReply(userId, chat.id, "hi", "reply", undefined, db)).toThrow(
+        "Chat is busy",
+      );
     });
 
     it("swipe throws when locked", () => {
       const chat = createTestChat();
       acquireGenerationLock(userId, chat.id, 1, db);
-      expect(() => swipe(userId, chat.id, 1, "next", undefined, db)).toThrow(
-        "Chat is busy",
-      );
+      expect(() => swipe(userId, chat.id, 1, "next", undefined, db)).toThrow("Chat is busy");
     });
 
     it("editMessage throws when locked", () => {
       const chat = createTestChat();
       acquireGenerationLock(userId, chat.id, 1, db);
-      expect(() => editMessage(userId, chat.id, 1, "edited", db)).toThrow(
-        "Chat is busy",
-      );
+      expect(() => editMessage(userId, chat.id, 1, "edited", db)).toThrow("Chat is busy");
     });
 
     it("deleteBranch throws when locked", () => {
       const chat = createTestChat();
       acquireGenerationLock(userId, chat.id, 1, db);
-      expect(() => deleteBranch(userId, chat.id, 1, db)).toThrow(
-        "Chat is busy",
-      );
+      expect(() => deleteBranch(userId, chat.id, 1, db)).toThrow("Chat is busy");
     });
   });
 
@@ -219,12 +188,7 @@ describe("lock", () => {
     it("appendMessage succeeds (stale lock auto-cleared)", () => {
       const chat = createTestChat();
       forceStaleLock(chat.id, 1);
-      const msg = appendMessage(
-        userId,
-        chat.id,
-        { role: "user", content: "after stale" },
-        db,
-      );
+      const msg = appendMessage(userId, chat.id, { role: "user", content: "after stale" }, db);
       expect(msg.content).toBe("after stale");
       expect(readRootExtra(chat.id)).toBeNull();
     });
