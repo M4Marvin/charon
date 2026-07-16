@@ -157,7 +157,7 @@ export function useUpdateChatSettings() {
       characterPersonality?: string | null;
       characterScenario?: string | null;
       characterSystemPrompt?: string | null;
-      backgroundPath?: string | null;
+      backgroundId?: string | null;
     }): Promise<{ id: string }> => updateChatSettings({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.detail(variables.id) });

@@ -19,10 +19,10 @@ export type CreateChatInput = {
   userId: string;
   characterId: string;
   title: string;
-  characterDescription?: string | null;
-  characterPersonality?: string | null;
-  characterScenario?: string | null;
-  characterSystemPrompt?: string | null;
+  characterDescription?: string;
+  characterPersonality?: string;
+  characterScenario?: string;
+  characterSystemPrompt?: string;
 };
 
 export type MessagePatch = Partial<
@@ -67,10 +67,10 @@ export function createChat(input: CreateChatInput, db: DB = defaultDb): Chat {
       userId: input.userId,
       characterId: input.characterId,
       title: input.title,
-      characterDescription: input.characterDescription ?? null,
-      characterPersonality: input.characterPersonality ?? null,
-      characterScenario: input.characterScenario ?? null,
-      characterSystemPrompt: input.characterSystemPrompt ?? null,
+      characterDescription: input.characterDescription ?? "",
+      characterPersonality: input.characterPersonality ?? "",
+      characterScenario: input.characterScenario ?? "",
+      characterSystemPrompt: input.characterSystemPrompt ?? "",
       createdAt: now,
       updatedAt: now,
     })
@@ -151,7 +151,7 @@ export function updateChat(
       | "characterScenario"
       | "characterSystemPrompt"
       | "title"
-      | "backgroundPath"
+      | "backgroundId"
     >
   >,
   db: DB = defaultDb,
@@ -166,7 +166,7 @@ export function updateChat(
   if (patch.characterSystemPrompt !== undefined)
     updates.characterSystemPrompt = patch.characterSystemPrompt;
   if (patch.title !== undefined) updates.title = patch.title;
-  if (patch.backgroundPath !== undefined) updates.backgroundPath = patch.backgroundPath;
+  if (patch.backgroundId !== undefined) updates.backgroundId = patch.backgroundId;
   const row = db
     .update(chats)
     .set(updates)

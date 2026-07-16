@@ -74,7 +74,7 @@ export const UpdateChatSettings = Schema.Struct({
   characterPersonality: NullableOptionalString,
   characterScenario: NullableOptionalString,
   characterSystemPrompt: NullableOptionalString,
-  backgroundPath: NullableOptionalString,
+  backgroundId: NullableOptionalString,
 });
 
 export const UpdateUserSettings = Schema.Struct({

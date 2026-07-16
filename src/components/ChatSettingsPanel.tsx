@@ -250,9 +250,9 @@ function SceneSection({ chat, isDemo }: { chat: ChatDetail; isDemo: boolean }) {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const selectedId = chat.backgroundPath ?? "";
+  const selectedId = chat.backgroundId ?? "";
   const handleSelect = (id: string | null) => {
-    updateSettings.mutate({ id: chat.id, backgroundPath: id });
+    updateSettings.mutate({ id: chat.id, backgroundId: id });
   };
 
   const handleUpload = (e: ChangeEvent<HTMLInputElement>) => {

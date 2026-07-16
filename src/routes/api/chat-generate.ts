@@ -215,10 +215,10 @@ export const Route = createFileRoute("/api/chat-generate")({
             userPersona,
             userSystemPrompt: userSettingsRow?.systemPrompt ?? undefined,
             userPostHistoryInstructions: userSettingsRow?.postHistoryInstructions ?? undefined,
-            chatCharacterDescription: chatRow.characterDescription,
-            chatCharacterPersonality: chatRow.characterPersonality,
-            chatCharacterScenario: chatRow.characterScenario,
-            chatCharacterSystemPrompt: chatRow.characterSystemPrompt,
+            characterDescription: chatRow.characterDescription,
+            characterPersonality: chatRow.characterPersonality,
+            characterScenario: chatRow.characterScenario,
+            characterSystemPrompt: chatRow.characterSystemPrompt,
           });
 
           const adapter = openaiCompatibleText(model, {

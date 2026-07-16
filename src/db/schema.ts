@@ -229,12 +229,11 @@ export const chats = sqliteTable(
       .notNull()
       .references(() => characters.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
-    backgroundPath: text("background_path"),
-    characterDescription: text("character_description"),
-    characterPersonality: text("character_personality"),
-    characterScenario: text("character_scenario"),
-    characterSystemPrompt: text("character_system_prompt"),
-    metadata: text("metadata", { mode: "json" }),
+    backgroundId: text("background_id").references(() => backgrounds.id, { onDelete: "set null" }),
+    characterDescription: text("character_description").notNull().default(""),
+    characterPersonality: text("character_personality").notNull().default(""),
+    characterScenario: text("character_scenario").notNull().default(""),
+    characterSystemPrompt: text("character_system_prompt").notNull().default(""),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),

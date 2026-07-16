@@ -56,12 +56,11 @@ export interface BuildChatPromptInput {
   // replace the character's when set.
   userSystemPrompt?: string;
   userPostHistoryInstructions?: string;
-  // Per-chat character field overrides. If non-null, these replace the
-  // corresponding field from the original character data.
-  chatCharacterDescription?: string | null;
-  chatCharacterPersonality?: string | null;
-  chatCharacterScenario?: string | null;
-  chatCharacterSystemPrompt?: string | null;
+  // Per-chat character field copies. The chat's copy is canonical.
+  characterDescription?: string;
+  characterPersonality?: string;
+  characterScenario?: string;
+  characterSystemPrompt?: string;
 }
 
 export interface BuildChatPromptResult {
@@ -80,20 +79,19 @@ export function buildChatPrompt(input: BuildChatPromptInput): BuildChatPromptRes
     extraLoreEntries,
     userSystemPrompt,
     userPostHistoryInstructions,
-    chatCharacterDescription,
-    chatCharacterPersonality,
-    chatCharacterScenario,
-    chatCharacterSystemPrompt,
+    characterDescription,
+    characterPersonality,
+    characterScenario,
+    characterSystemPrompt,
   } = input;
   const counter = new ApproxTokenCounter();
 
-  // Apply per-chat character field overrides before converting to pipeline char
   const overlaidChar: CharacterDataV2 = {
     ...v2,
-    description: chatCharacterDescription ?? v2.description,
-    personality: chatCharacterPersonality ?? v2.personality,
-    scenario: chatCharacterScenario ?? v2.scenario,
-    system_prompt: chatCharacterSystemPrompt ?? v2.system_prompt,
+    description: characterDescription ?? "",
+    personality: characterPersonality ?? "",
+    scenario: characterScenario ?? "",
+    system_prompt: characterSystemPrompt ?? "",
   };
 
   const pipelineChar = v2ToPipelineCharacter(overlaidChar);

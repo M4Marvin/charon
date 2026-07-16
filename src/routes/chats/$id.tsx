@@ -537,8 +537,8 @@ function ChatPage() {
 
   const characterDescription = (character?.data?.description as string | undefined) ?? "";
   const characterTags = (character?.data?.tags as string[] | undefined) ?? [];
-  const backgroundUrl = chat.backgroundPath
-    ? `/api/backgrounds/${chat.backgroundPath}/image`
+  const backgroundUrl = chat.backgroundId
+    ? `/api/backgrounds/${chat.backgroundId}/image`
     : null;
   const ambientUrl =
     backgroundUrl ??

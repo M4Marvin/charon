@@ -113,11 +113,11 @@ export type ChatDetail = {
   characterName: string;
   characterImagePath: string | null;
   title: string;
-  characterDescription: string | null;
-  characterPersonality: string | null;
-  characterScenario: string | null;
-  characterSystemPrompt: string | null;
-  backgroundPath: string | null;
+  characterDescription: string;
+  characterPersonality: string;
+  characterScenario: string;
+  characterSystemPrompt: string;
+  backgroundId: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -152,11 +152,11 @@ export const getChat = createServerFn({ method: "GET", strict: { output: false }
       characterName: char.name,
       characterImagePath: char.imagePath,
       title: chat.title,
-      characterDescription: chat.characterDescription ?? null,
-      characterPersonality: chat.characterPersonality ?? null,
-      characterScenario: chat.characterScenario ?? null,
-      characterSystemPrompt: chat.characterSystemPrompt ?? null,
-      backgroundPath: chat.backgroundPath ?? null,
+      characterDescription: chat.characterDescription,
+      characterPersonality: chat.characterPersonality,
+      characterScenario: chat.characterScenario,
+      characterSystemPrompt: chat.characterSystemPrompt,
+      backgroundId: chat.backgroundId ?? null,
       createdAt: chat.createdAt,
       updatedAt: chat.updatedAt,
     };
@@ -231,11 +231,11 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
       characterName: char.name,
       characterImagePath: char.imagePath,
       title: chat.title,
-      characterDescription: chat.characterDescription ?? null,
-      characterPersonality: chat.characterPersonality ?? null,
-      characterScenario: chat.characterScenario ?? null,
-      characterSystemPrompt: chat.characterSystemPrompt ?? null,
-      backgroundPath: chat.backgroundPath ?? null,
+      characterDescription: chat.characterDescription,
+      characterPersonality: chat.characterPersonality,
+      characterScenario: chat.characterScenario,
+      characterSystemPrompt: chat.characterSystemPrompt,
+      backgroundId: chat.backgroundId ?? null,
       createdAt: chat.createdAt,
       updatedAt: chat.updatedAt,
     };
@@ -547,6 +547,10 @@ export const impersonateMessage = createServerFn({ method: "POST", strict: { out
       userPersona,
       userSystemPrompt: userSettingsRow?.systemPrompt ?? undefined,
       userPostHistoryInstructions: userSettingsRow?.postHistoryInstructions ?? undefined,
+      characterDescription: chat.characterDescription,
+      characterPersonality: chat.characterPersonality,
+      characterScenario: chat.characterScenario,
+      characterSystemPrompt: chat.characterSystemPrompt,
     });
 
     const impersonationInstruction = (
@@ -822,13 +826,14 @@ export const updateChatSettings = createServerFn({ method: "POST", strict: { out
     const { user } = await getSession();
     const patch: Parameters<typeof repoUpdateChat>[2] = {};
     if (data.characterDescription !== undefined)
-      patch.characterDescription = data.characterDescription;
+      patch.characterDescription = data.characterDescription ?? "";
     if (data.characterPersonality !== undefined)
-      patch.characterPersonality = data.characterPersonality;
-    if (data.characterScenario !== undefined) patch.characterScenario = data.characterScenario;
+      patch.characterPersonality = data.characterPersonality ?? "";
+    if (data.characterScenario !== undefined)
+      patch.characterScenario = data.characterScenario ?? "";
     if (data.characterSystemPrompt !== undefined)
-      patch.characterSystemPrompt = data.characterSystemPrompt;
-    if (data.backgroundPath !== undefined) patch.backgroundPath = data.backgroundPath;
+      patch.characterSystemPrompt = data.characterSystemPrompt ?? "";
+    if (data.backgroundId !== undefined) patch.backgroundId = data.backgroundId;
     repoUpdateChat(user.id, data.id, patch);
     return { id: data.id };
   });

@@ -1,5 +1,8 @@
 # User context
 - The user is an experienced software engineer named Marv. Be direct, skip handholding, assume technical proficiency.
+- You are not an autonomous agent. Your job is to assist the user, who is a software engineer. Operate under their direction, not independently.
+- Always read relevant docs and code before acting. Do not guess.
+- When you're confused or stuck, stop and ask the user. Asking for help is explicitly allowed and preferred over forging ahead with assumptions.
 - Keep tasks atomic, incremental, and reviewable. Small, independent steps.
 
 # Project state
@@ -44,6 +47,43 @@ The `character` module (`parser.ts`, `png-encode.ts`, `serializer.ts`) uses `Buf
 - **Validator**: `validateCharacterCard` is the V2 strict gate; `validateCharacterCardV3` validates V2-required fields + optional V3 fields. Import path picks one based on the parsed `spec`.
 - **Normalizer**: `normalizeV3ToV2` (in `src/lib/character/normalize.ts`) projects V3-only fields off `data` and stashes them under `data.extensions._v3` with camelCase keys. The stash preserves the original V3 data for lossless round-trip via `writeCharacterCard`.
 - **Write path**: `writeCharacterCard` emits both `chara` (backfilled V2 with `creator_notes` warning) and `ccv3` (original V3) chunks for V3 cards.
+
+# Shell (Nushell)
+
+The default shell is **nushell** (`/Users/marvin/.cargo/bin/nu`), not bash. Shell commands must use nu syntax.
+
+## Key differences from bash
+
+| Bash | Nushell | Notes |
+|---|---|---|
+| `2>&1` | `out+err>\|` or `o+e>\|` | Merge stdout+stderr |
+| `> /dev/null` | `\| ignore` | Discard stdout |
+| `> /dev/null 2>&1` | `out+err>\| ignore` or `o+e>\| ignore` | Discard stdout+stderr |
+| `>> <path>` | `out>> <path>` or `o>> <path>` | Append to file |
+| `command1 && command2` | `command1; command2` | Run on success |
+| `$?` | `$env.LAST_EXIT_CODE` | Exit code |
+| `echo $PATH` | `$env.PATH` | View path variable |
+| `export FOO=bar` | `$env.FOO = "bar"` | Set env var |
+| `pwd` / `echo $PWD` | `pwd` / `$env.PWD` | Current directory |
+| `man <cmd>` | `help <cmd>` | Command help |
+| `command \| head -5` | `command \| first 5` | First 5 rows |
+| `grep <pattern>` | `where $it =~ <substring>` or `find <substring>` | Filter strings |
+| `find . -name *.rs` | `ls **/*.rs` | Recursive file search |
+| `sed` | `str replace` | Find/replace in strings |
+
+## History substitutions
+
+| Action | Key/Command | Behavior |
+|---|---|---|
+| Last command | `!!` | Inserts (not auto-executes) — review before Enter |
+| Last token | `!$` | Inserts last spatially-separated token |
+| Nth from start | `!<n>` (e.g. `!5`) | Tip: `history \| enumerate \| last 10` to see positions |
+| Nth from end | `!<-n>` (e.g. `!-5`) | Insert command from end of history |
+| Starts with | `!<string>` (e.g. `!ls`) | Most recent history item beginning with string |
+| Reverse search | Ctrl+R | Interactive history search |
+| Edit in editor | Ctrl+O | Opens command-line in `$env.EDITOR` |
+
+**Critical**: Unlike bash (which executes immediately after substitution), nushell **inserts** the substitution into the command-line on Enter. This lets you review and edit before executing. Same for Ctrl+O — inserts editor contents instead of auto-executing.
 
 # Commands
 
