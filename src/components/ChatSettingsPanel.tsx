@@ -284,7 +284,7 @@ function SceneSection({ chat, isDemo }: { chat: ChatDetail; isDemo: boolean }) {
           {backgrounds.map((bg) => (
             <div key={bg.id} className="group relative">
               <img
-                src={`/api/backgrounds/${bg.id}/image`}
+                src={`/${bg.path}`}
                 alt={bg.name}
                 className={`aspect-video w-full rounded-lg object-cover cursor-pointer border-2 transition-all ${
                   selectedId === bg.id

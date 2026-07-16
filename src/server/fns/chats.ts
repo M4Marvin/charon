@@ -31,6 +31,7 @@ import {
   type ChatWithCharacter,
 } from "@/db/repositories/chats";
 import { getCharacter as repoGetChar } from "@/db/repositories/characters";
+import { getBackground as repoGetBackground } from "@/db/repositories/backgrounds";
 import { getAiProviderWithGlobalFallback as repoGetProvider } from "@/db/repositories/aiProviders";
 import { getPreset as repoGetPreset } from "@/db/repositories/presets";
 import { getPersona as repoGetPersona } from "@/db/repositories/personas";
@@ -118,6 +119,7 @@ export type ChatDetail = {
   characterScenario: string;
   characterSystemPrompt: string;
   backgroundId: string | null;
+  backgroundPath: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -157,6 +159,9 @@ export const getChat = createServerFn({ method: "GET", strict: { output: false }
       characterScenario: chat.characterScenario,
       characterSystemPrompt: chat.characterSystemPrompt,
       backgroundId: chat.backgroundId ?? null,
+      backgroundPath: chat.backgroundId
+        ? (repoGetBackground(chat.backgroundId).path ?? null)
+        : null,
       createdAt: chat.createdAt,
       updatedAt: chat.updatedAt,
     };
@@ -236,6 +241,9 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
       characterScenario: chat.characterScenario,
       characterSystemPrompt: chat.characterSystemPrompt,
       backgroundId: chat.backgroundId ?? null,
+      backgroundPath: chat.backgroundId
+        ? (repoGetBackground(chat.backgroundId).path ?? null)
+        : null,
       createdAt: chat.createdAt,
       updatedAt: chat.updatedAt,
     };

@@ -16,7 +16,8 @@ import {
   UploadBackgroundInput,
 } from "@/server/schemas/background";
 
-const BACKGROUNDS_DIR = "data/backgrounds";
+const BACKGROUNDS_DIR = "public/data/backgrounds";
+const PUBLIC_PATH_PREFIX = "data/backgrounds";
 
 export type BackgroundListItem = Pick<Background, "id" | "name" | "path" | "createdAt">;
 
@@ -51,7 +52,7 @@ export const uploadBackground = createServerFn({ method: "POST" })
     const bytes = Buffer.from(data.fileBase64, "base64");
     await writeFile(filepath, bytes);
 
-    return repoCreate({ name: data.name, path: filepath });
+    return repoCreate({ name: data.name, path: join(PUBLIC_PATH_PREFIX, filename) });
   });
 
 export const deleteBackground = createServerFn({ method: "POST" })
@@ -63,7 +64,7 @@ export const deleteBackground = createServerFn({ method: "POST" })
     const bg = repoGet(data.id);
 
     try {
-      await rm(bg.path, { force: true });
+      await rm(join("public", bg.path), { force: true });
     } catch {
       // File might already be gone; that's fine.
     }

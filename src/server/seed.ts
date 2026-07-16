@@ -207,8 +207,9 @@ export function seedDemoCharactersForExistingUser(userId: string): void {
   });
 }
 
-const SOURCE_DIR = "public/data/backgrounds";
-const DEST_DIR = "data/backgrounds";
+const SOURCE_DIR = "public/data/backgrounds-seed";
+const DEST_DIR = "public/data/backgrounds";
+const PUBLIC_PATH_PREFIX = "data/backgrounds";
 
 function cleanBackgroundName(filename: string): string {
   const name = filename.replace(extname(filename), "");
@@ -235,7 +236,7 @@ export async function seedDefaultBackgrounds(): Promise<void> {
 
     createBackground({
       name: cleanBackgroundName(file),
-      path: destPath,
+      path: join(PUBLIC_PATH_PREFIX, destFilename),
     });
   }
 }
