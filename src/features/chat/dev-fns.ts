@@ -165,7 +165,13 @@ export const devSwipe = createServerFn({ method: "POST", strict: { output: false
   )
   .handler(async ({ data }) => {
     const { user } = await getSession();
-    return swipe(user.id, data.chatId, data.messageLocalId, data.direction);
+    const msgs = getMessages(user.id, data.chatId);
+    const target = msgs.find((m) => m.localId === data.messageLocalId);
+    const createIfMissing =
+      target && data.direction === "next"
+        ? { role: target.role as "user" | "assistant", content: "(new)" }
+        : undefined;
+    return swipe(user.id, data.chatId, data.messageLocalId, data.direction, createIfMissing);
   });
 
 export const devEditMessage = createServerFn({ method: "POST", strict: { output: false } })
