@@ -1,8 +1,8 @@
 # Architecture
 
-The chat feature is split into 6 groups by concern. Each group has a clear boundary — modules in one group never import from modules in a "downstream" group, and only the appropriate group owns I/O.
+The chat feature is split into 5 groups by concern. Each group has a clear boundary — modules in one group never import from modules in a "downstream" group, and only the appropriate group owns I/O.
 
-## The 6 groups
+## The 5 groups
 
 ```
                           ┌──────────────────────────────────┐
@@ -12,15 +12,11 @@ The chat feature is split into 6 groups by concern. Each group has a clear bound
                                          │ hooks
                           ┌──────────────▼───────────────────┐
                           │      Generation (AI calls)       │
-                          │  SSE, provider, lock lifecycle   │
+                          │  SSE, provider, lock lifecycle,  │
+                          │  prompt context + buildChatPrompt │
                           └──────────────┬───────────────────┘
                                          │ calls
                           ┌──────────────▼───────────────────┐
-                          │     Prompt (pure functions)      │
-                          │  buildChatPrompt, context, scan  │
-                          └──────────────────────────────────┘
-                                         ▲
-                          ┌──────────────┴───────────────────┐
                           │      Config (settings)            │
                           │  AI defaults, lorebook toggles,   │
                           │  persona, prompt overrides        │
@@ -62,25 +58,13 @@ The chat feature is split into 6 groups by concern. Each group has a clear bound
 - Lock acquire/release
 - The `@tanstack/ai-react` client integration
 
-**Imports from:** tree (for tree operations), prompt (for prompt building), config (for user defaults)
+**Imports from:** tree (for tree operations), `lib/chat/server-context.ts` (for prompt assembly), config (for user defaults via `loadGenerationContext`)
 
 **Does NOT:** know about UI, decide tree structure, own message content
 
-### Prompt — `prompt/`
+**Prompt assembly:** The original roadmap listed a separate "Prompt" module, but `buildChatPrompt` in `src/lib/chat/server-context.ts` already does all prompt work (character rendering, story strings, lore injection, pre-processing, truncation). It is reused by the generation module via `loadGenerationContext` + `buildPromptFromContext` in `generation/prompt-context.ts`. No standalone prompt module is needed.
 
-- `buildChatPrompt` — the production prompt builder
-- Context assembly (character + history + lorebook + system prompt)
-- Lorebook scanning + activation
-- Pre-processing (squash, character names, continue, truncate)
-- Macro substitution (`{{char}}`/`{{user}}`)
-- Sentinel injection (the `"."` user message for greeting regeneration)
-- Persona description injection
-
-**Imports from:** tree (for `ChatMessage[]`), config (for prompt overrides, persona)
-
-**Does NOT:** touch the DB, call AI providers, know about streaming
-
-### Config — `config/`
+### Config — `config/` (Phase 4, future)
 
 - Provider/model/preset selection (per-user defaults)
 - Lorebook activation toggles (per-user overlay)
@@ -164,8 +148,8 @@ UI: user clicks Send (empty composer) → continue mode
 
 ## Boundary rules (enforced by convention)
 
-1. **Tree never imports from prompt or generation.** Tree is the foundation.
-2. **Prompt never imports from generation.** Prompt is pure. Generation calls prompt.
+1. **Tree never imports from generation or config.** Tree is the foundation.
+2. **Config is independent.** Config CRUD can be built and tested without tree, generation, or UI.
 3. **Data is at the bottom.** Only tree and config import from data.
 4. **UI is at the top.** UI imports from everything (via hooks), but the lower layers never import from UI.
 5. **No cross-cutting I/O.** Each module owns its I/O. The tree service does its own DB calls. The generation module does its own DB calls. They don't share I/O.
@@ -175,8 +159,7 @@ UI: user clicks Send (empty composer) → continue mode
 Each module can be built, tested, and understood independently:
 
 - `tree/` is testable with zero AI knowledge — pure data structures + DB CRUD
-- `prompt/` is testable as pure functions — inputs in, messages out
-- `generation/` is testable with mocked providers
+- `generation/` is testable with mocked providers; prompt assembly is delegated to `lib/chat/server-context.ts`
 - `config/` is testable as CRUD
 - `ui/` is testable with mocked hooks
 

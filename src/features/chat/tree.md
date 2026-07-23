@@ -184,7 +184,7 @@ There is no `isStreaming` flag on messages. The lock (chat-level) tracks which m
 | --------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `active-path.test.ts` | 9     | Path computation, filtering, sibling metadata, `getPathToNode`                                                                                  |
 | `operations.test.ts`  | 22    | All pure operations, root guards, edge cases                                                                                                    |
-| `service.test.ts`     | 24    | Full DB integration: create, read, append, swipe, delete, edit                                                                                  |
+| `service.test.ts`     | 28    | Full DB integration: create, read, append, swipe, delete, edit, appendSibling, skipIdleCheck branch                                       |
 | `lock.test.ts`        | 16    | Lock state on `ChatDetail`, `ensureChatIdle`, `acquireGenerationLock` / `releaseLock` lifecycle, mutation rejection when locked, stale recovery |
 
 ## How callers use this module

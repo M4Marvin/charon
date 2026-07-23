@@ -2,19 +2,16 @@
 
 The character chat experience: branching message trees, AI generation, lorebook integration, persona, per-chat configuration.
 
-Built from scratch in `src/features/chat/`. The old chat code at `src/routes/chats/`, `src/server/fns/chats.ts`, and `src/lib/chat/` stays untouched until the new code is feature-complete.
+Built from scratch in `src/features/chat/`. The old streaming fns have been replaced; the old page at `src/routes/chats/$id.tsx` is frozen and will be replaced at Phase 5.
 
 ## Status
 
 | Module         | Status            | Notes                                                                                       |
 | -------------- | ----------------- | ------------------------------------------------------------------------------------------- |
-| **tree**       | ✅ Built & tested | 55 tests passing. Pure data structure ops, no AI awareness.                                 |
-| **lock**       | ✅ Built & tested | 16 tests. Lock on root message's `extra` field, self-healing stale recovery. See `lock.md`. |
-| **generation** | ⏳ Not started    | Next up. SSE streaming + AI orchestration.                                                  |
-| **prompt**     | ⏳ Not started    | Pure functions, depends on `tree` for history.                                              |
-| **config**     | ⏳ Not started    | Per-chat + per-user settings.                                                               |
-| **ui**         | ⏳ Not started    | Routes, components, client state.                                                           |
-| **data**       | ⏳ Not started    | Thin wrapper over `src/db/repositories/chats.ts`.                                           |
+| **tree**       | ✅ Built & tested | 59 tests. Pure data structure ops, no AI awareness. Lock module integrated. |
+| **generation** | ✅ Built & tested | 412 tests total. Streaming lifecycle + provider resolution + impersonation. Prompt assembly via `lib/chat/server-context.ts` + `generation/prompt-context.ts`. See `generation.md`. |
+| **config**     | ⏳ Not started    | Phase 4. Per-chat + per-user settings: provider/model/preset, lorebook toggles, persona, prompt overrides, character field overrides. |
+| **ui**         | ⏳ Not started    | Phase 5. New chat page (`/c`) built from scratch using `generation/fns.ts`. Old page at `/chats/$id.tsx` is frozen. |
 
 ## Directory structure
 
@@ -24,14 +21,13 @@ src/features/chat/
 ├── architecture.md     ← 6-group boundary split, data flow
 ├── tree.md             ← tree module design, API, conventions
 ├── lock.md             ← lock design, state machine, stale recovery
+├── generation.md       ← generation module design, streaming pipeline, learnings
 ├── roadmap.md          ← build order for remaining modules
 ├── tree/               ← ✅ built (includes `lock.ts` + `lock.test.ts`)
-├── generation/         ← (future)
-├── prompt/             ← (future)
-├── config/             ← (future)
-├── data/               ← (future)
-├── routes/             ← (future — `/c`, `/c/new`, `/c/$id`)
-└── ui/                 ← (future)
+├── generation/         ← ✅ built
+├── config/             ← Phase 4
+├── routes/             ← Phase 5 (new `/c`, `/c/new`, `/c/$id`)
+└── ui/                 ← Phase 5
 ```
 
 ## Quick start for the next module
@@ -52,7 +48,7 @@ src/features/chat/
 | Pure ops layer + I/O service              | `operations.ts` is pure (no DB), `service.ts` does I/O                         | Operations are unit-testable without DB. Service uses repository.                                                         |
 | All service fns take `db: DB = defaultDb` | Test injection point                                                           | Integration tests use in-memory DB.                                                                                       |
 | Hidden root at `localId 0`                | Never rendered, never mutated by external callers                              | UI filters `role === "system"`. All mutations reject `localId 0`.                                                         |
-| `userId` is first param                   | No auth in service                                                             | Auth happens in `fns.ts` (future) via `getSession()`.                                                                     |
+| `userId` is first param                   | No auth in service                                                             | Auth happens in `fns.ts` via `getSession()`.                                                                             |
 
 ## Test commands
 

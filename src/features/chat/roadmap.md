@@ -4,7 +4,7 @@ Order to build the remaining modules. Each module is testable in isolation befor
 
 ## ✅ Phase 1: Tree (done)
 
-Pure data structure operations. 55 tests passing.
+Pure data structure operations. 59 tests passing.
 
 - `src/features/chat/tree/`
 - See `tree.md`
@@ -31,7 +31,7 @@ Lock state on root message's `extra` field. Self-healing stale recovery. Impleme
 
 **Estimated size:** ~80 lines + ~6 tests
 
-## Phase 3: Generation
+## Phase 3: Generation ✅ (done)
 
 AI orchestration: SSE streaming, provider calls, rate limiting, lock lifecycle.
 
@@ -49,7 +49,7 @@ Files:
 **New route: `src/routes/api/chat-generate.ts`** (SSE endpoint)
 
 - Reads lock from DB (gets `messageId`)
-- Builds prompt (calls prompt module)
+- Builds prompt (calls `buildChatPrompt` via `lib/chat/server-context.ts`)
 - Streams from provider
 - Returns SSE response
 
@@ -78,42 +78,7 @@ UI: send
 
 **Estimated size:** ~200 lines + ~10 tests
 
-## Phase 4: Prompt Building
-
-Pure functions: character + history + settings + lorebooks → messages + modelOptions.
-
-**New module: `src/features/chat/prompt/`**
-
-Files:
-
-- `types.ts` — `ChatCompletionPreset`, `ModelMessage`, `BuildChatPromptInput`, `BuildChatPromptResult`
-- `preset.ts` — `DEFAULT_PRESET` constant
-- `context-builder.ts` — message assembly + lorebook activation
-- `lorebook.ts` — lorebook entry scanning
-- `pre-process.ts` — squash, character names, continue, truncate
-- `substitute-macros.ts` — `{{char}}`/`{{user}}` substitution
-- `build.ts` — `buildChatPrompt` (production entry point, takes DB row shapes, returns model-ready messages)
-
-**Uses:** st-core lorebook + character types, existing `src/lib/chat/` for lorebook scanner (or copy/adapt)
-
-**Inputs (from `buildChatPrompt`):**
-
-- `CharacterDataV2` (from chat row's `data` field)
-- `ChatMessage[]` (from tree's `getActivePath` or `getPathToMessage`)
-- `Partial<ChatCompletionPreset>` (from config's user/chat preset)
-- `LoreEntry[]` (from config's enabled lorebooks, filtered)
-- Persona description (from config's active persona)
-- Per-chat character field overrides
-- Per-user prompt overrides (system prompt, post-history instructions)
-
-**Outputs:**
-
-- `ModelMessage[]` — ready for the AI adapter
-- `modelOptions` — temperature, max tokens, etc.
-
-**Estimated size:** ~300 lines (mostly from `src/lib/chat/server-context.ts` adapted) + ~15 tests
-
-## Phase 5: Config
+## Phase 4: Config
 
 Per-chat and per-user settings.
 
@@ -156,7 +121,7 @@ Files:
 
 **Estimated size:** ~250 lines + ~12 tests
 
-## Phase 6: UI
+## Phase 5: New Chat Page
 
 Routes, components, client state.
 
@@ -205,29 +170,14 @@ Client state:
 
 **Estimated size:** ~800 lines + ~20 tests
 
-## Phase 7: Data (optional)
-
-The data module is mostly a re-export of `src/db/repositories/chats.ts`. May not need a separate module. The tree service already uses the repository directly.
-
-If a separate `data/` module is desired:
-
-- `src/features/chat/data/repository.ts` — wraps `src/db/repositories/chats.ts`
-- `src/features/chat/data/types.ts` — re-exports `Chat`, `ChatMessageRow`, etc.
-
-**Estimated size:** ~50 lines (mostly re-exports)
-
----
-
 ## Build order rationale
 
 1. **Tree first** — foundation, no dependencies, pure data structures
 2. **Lock** — small additions to tree, unlocks generation
-3. **Generation** — uses tree + lock, depends on prompt
-4. **Prompt** — pure functions, can be built independently
-5. **Config** — CRUD, can be built independently
-6. **UI** — depends on everything above
-7. **Data** — optional refactor
+3. **Generation** — uses tree + lock; prompt assembly via existing `lib/chat/server-context.ts`
+4. **Config** — CRUD, can be built independently or alongside UI
+5. **New chat page** — depends on everything above
 
-**Order: tree → lock → prompt + config (parallel) → generation → UI**
+**Order: tree → lock → generation → config + UI (parallel)**
 
-This minimizes rework — each phase builds on the previous, and UI is last so we don't have to change UI as the lower layers evolve.
+The old "Prompt" phase was a misnomer — `buildChatPrompt` in `lib/chat/server-context.ts` already does all prompt work. The generation module wires it in via `loadGenerationContext` + `buildPromptFromContext`. Similarly, a separate "Data" module is unnecessary — the tree and generation services interact with repositories directly.
