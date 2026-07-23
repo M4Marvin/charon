@@ -43,29 +43,6 @@ export const EditMessage = Schema.Struct({
   content: Schema.String,
 });
 
-// ── Streaming ───────────────────────────────────────────────────────────────
-
-export const PrepareStream = Schema.Struct({
-  chatId: Schema.String,
-  mode: Schema.Literal("send", "regenerate", "continue"),
-  content: Schema.optional(Schema.String),
-  messageLocalId: Schema.optional(Schema.Number),
-});
-
-export const FinalizeStream = Schema.Struct({
-  chatId: Schema.String,
-  messageLocalId: Schema.Number,
-  content: Schema.String,
-});
-
-export const CancelStream = ChatIdAndLocalId;
-
-// ── Impersonation ────────────────────────────────────────────────────────────
-
-export const ImpersonateMessage = Schema.Struct({
-  chatId: Schema.String,
-});
-
 // ── Settings ────────────────────────────────────────────────────────────────
 
 export const UpdateChatSettings = Schema.Struct({

@@ -1,23 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  cancelStream,
   createChat,
   deleteChat,
   deleteMessageBranch,
   editMessage,
-  finalizeStream,
   getChat,
   getChatMessages,
-  impersonateMessage,
   listChats,
-  prepareStreamMessage,
   sendMessage,
   swipeMessage,
   updateChatSettings,
   type SendResult,
-  type StreamResult,
   type SwipeResult,
 } from "@/server/fns/chats";
+import {
+  cancelStreamFn,
+  finalizeStreamFn,
+  impersonateFn,
+  prepareStreamFn,
+} from "@/features/chat/generation/fns";
+import type { PrepareStreamResult } from "@/features/chat/generation/types";
 
 export const chatKeys = {
   all: ["chats"] as const,
@@ -114,7 +116,7 @@ export function usePrepareStream() {
       mode: "send" | "regenerate" | "continue";
       content?: string;
       messageLocalId?: number;
-    }): Promise<StreamResult> => prepareStreamMessage({ data: input }),
+    }): Promise<PrepareStreamResult> => prepareStreamFn({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
@@ -128,7 +130,7 @@ export function useFinalizeStream() {
       chatId: string;
       messageLocalId: number;
       content: string;
-    }): Promise<{ messageLocalId: number; content: string }> => finalizeStream({ data: input }),
+    }): Promise<{ messageLocalId: number; content: string }> => finalizeStreamFn({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
@@ -141,7 +143,7 @@ export function useCancelStream() {
     mutationFn: (input: {
       chatId: string;
       messageLocalId: number;
-    }): Promise<{ deletedIds: number[] }> => cancelStream({ data: input }),
+    }): Promise<{ deletedIds: number[] }> => cancelStreamFn({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
@@ -179,7 +181,7 @@ export function useImpersonateMessage() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { chatId: string }): Promise<{ text: string }> =>
-      impersonateMessage({ data: input }),
+      impersonateFn({ data: input }) as Promise<{ text: string }>,
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
