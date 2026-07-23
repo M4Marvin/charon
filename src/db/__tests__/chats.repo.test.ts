@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { makeTestDb, seedTestUser, seedSecondUser, type TestDb } from "./helpers";
 import { makeCharacterData } from "./character-data";
@@ -20,8 +20,10 @@ describe("chats repo", () => {
   let userId: string;
   let charId: string;
 
+  let ctx: ReturnType<typeof makeTestDb>;
+
   beforeEach(() => {
-    const ctx = makeTestDb();
+    ctx = makeTestDb();
     db = ctx.db;
     userId = seedTestUser(db);
     const data = makeCharacterData();
@@ -38,6 +40,10 @@ describe("chats repo", () => {
         updatedAt: new Date(),
       })
       .run();
+  });
+
+  afterEach(() => {
+    ctx.sqlite.close();
   });
 
   describe("chat CRUD", () => {

@@ -18,6 +18,7 @@ import { Route as ChatsIndexRouteImport } from './routes/chats/index'
 import { Route as CharactersIndexRouteImport } from './routes/characters/index'
 import { Route as LorebooksNewRouteImport } from './routes/lorebooks/new'
 import { Route as LorebooksIdRouteImport } from './routes/lorebooks/$id'
+import { Route as DemoGenerationRouteImport } from './routes/demo/generation'
 import { Route as ChatsNewRouteImport } from './routes/chats/new'
 import { Route as ChatsIdRouteImport } from './routes/chats/$id'
 import { Route as CharactersNewRouteImport } from './routes/characters/new'
@@ -72,6 +73,11 @@ const LorebooksNewRoute = LorebooksNewRouteImport.update({
 const LorebooksIdRoute = LorebooksIdRouteImport.update({
   id: '/lorebooks/$id',
   path: '/lorebooks/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoGenerationRoute = DemoGenerationRouteImport.update({
+  id: '/demo/generation',
+  path: '/demo/generation',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatsNewRoute = ChatsNewRouteImport.update({
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/characters/new': typeof CharactersNewRoute
   '/chats/$id': typeof ChatsIdRoute
   '/chats/new': typeof ChatsNewRoute
+  '/demo/generation': typeof DemoGenerationRoute
   '/lorebooks/$id': typeof LorebooksIdRoute
   '/lorebooks/new': typeof LorebooksNewRoute
   '/characters/': typeof CharactersIndexRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/characters/new': typeof CharactersNewRoute
   '/chats/$id': typeof ChatsIdRoute
   '/chats/new': typeof ChatsNewRoute
+  '/demo/generation': typeof DemoGenerationRoute
   '/lorebooks/$id': typeof LorebooksIdRoute
   '/lorebooks/new': typeof LorebooksNewRoute
   '/characters': typeof CharactersIndexRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/characters/new': typeof CharactersNewRoute
   '/chats/$id': typeof ChatsIdRoute
   '/chats/new': typeof ChatsNewRoute
+  '/demo/generation': typeof DemoGenerationRoute
   '/lorebooks/$id': typeof LorebooksIdRoute
   '/lorebooks/new': typeof LorebooksNewRoute
   '/characters/': typeof CharactersIndexRoute
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/characters/new'
     | '/chats/$id'
     | '/chats/new'
+    | '/demo/generation'
     | '/lorebooks/$id'
     | '/lorebooks/new'
     | '/characters/'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/characters/new'
     | '/chats/$id'
     | '/chats/new'
+    | '/demo/generation'
     | '/lorebooks/$id'
     | '/lorebooks/new'
     | '/characters'
@@ -243,6 +254,7 @@ export interface FileRouteTypes {
     | '/characters/new'
     | '/chats/$id'
     | '/chats/new'
+    | '/demo/generation'
     | '/lorebooks/$id'
     | '/lorebooks/new'
     | '/characters/'
@@ -265,6 +277,7 @@ export interface RootRouteChildren {
   CharactersNewRoute: typeof CharactersNewRoute
   ChatsIdRoute: typeof ChatsIdRoute
   ChatsNewRoute: typeof ChatsNewRoute
+  DemoGenerationRoute: typeof DemoGenerationRoute
   LorebooksIdRoute: typeof LorebooksIdRoute
   LorebooksNewRoute: typeof LorebooksNewRoute
   CharactersIndexRoute: typeof CharactersIndexRoute
@@ -340,6 +353,13 @@ declare module '@tanstack/react-router' {
       path: '/lorebooks/$id'
       fullPath: '/lorebooks/$id'
       preLoaderRoute: typeof LorebooksIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/generation': {
+      id: '/demo/generation'
+      path: '/demo/generation'
+      fullPath: '/demo/generation'
+      preLoaderRoute: typeof DemoGenerationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chats/new': {
@@ -425,6 +445,7 @@ const rootRouteChildren: RootRouteChildren = {
   CharactersNewRoute: CharactersNewRoute,
   ChatsIdRoute: ChatsIdRoute,
   ChatsNewRoute: ChatsNewRoute,
+  DemoGenerationRoute: DemoGenerationRoute,
   LorebooksIdRoute: LorebooksIdRoute,
   LorebooksNewRoute: LorebooksNewRoute,
   CharactersIndexRoute: CharactersIndexRoute,

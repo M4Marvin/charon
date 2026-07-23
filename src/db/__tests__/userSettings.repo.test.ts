@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb, seedTestUser, type TestDb } from "./helpers";
 import { aiProviders, personas, presets } from "@/db/schema";
 import { getUserSettings, upsertUserSettings } from "@/db/repositories/userSettings";
@@ -49,13 +49,19 @@ describe("userSettings repo", () => {
   let db: TestDb;
   let userId: string;
 
+  let ctx: ReturnType<typeof makeTestDb>;
+
   beforeEach(() => {
-    const ctx = makeTestDb();
+    ctx = makeTestDb();
     db = ctx.db;
     userId = seedTestUser(db);
     seedProvider(db, userId);
     seedPreset(db, userId);
     seedPersona(db, userId);
+  });
+
+  afterEach(() => {
+    ctx.sqlite.close();
   });
 
   it("returns null for a user with no settings row yet", () => {

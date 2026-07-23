@@ -1,12 +1,19 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { makeTestDb, seedTestUser, type TestDb } from "@/db/__tests__/helpers";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { makeTestDb, seedTestUser, type TestDb, type TestSqlite } from "@/db/__tests__/helpers";
 import { incrementToday, getTodayCount, todayUTC } from "@/db/repositories/userUsage";
 
 describe("userUsage repository", () => {
   let db: TestDb;
+  let sqlite: TestSqlite;
 
   beforeEach(() => {
-    db = makeTestDb().db;
+    const ctx = makeTestDb();
+    db = ctx.db;
+    sqlite = ctx.sqlite;
+  });
+
+  afterEach(() => {
+    sqlite.close();
   });
 
   describe("todayUTC", () => {

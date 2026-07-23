@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
-import { makeTestDb, seedTestUser, seedSecondUser, type TestDb } from "@/db/__tests__/helpers";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { makeTestDb, seedTestUser, seedSecondUser, type TestDb, type TestSqlite } from "@/db/__tests__/helpers";
 import { listUsers, deleteUser, countAdmins } from "@/db/repositories/users";
 import { createCharacter } from "@/db/repositories/characters";
 import { createPersona } from "@/db/repositories/personas";
@@ -9,9 +9,16 @@ import { user, characters, userSettings } from "@/db/schema";
 
 describe("users repository", () => {
   let db: TestDb;
+  let sqlite: TestSqlite;
 
   beforeEach(() => {
-    db = makeTestDb().db;
+    const ctx = makeTestDb();
+    db = ctx.db;
+    sqlite = ctx.sqlite;
+  });
+
+  afterEach(() => {
+    sqlite.close();
   });
 
   describe("listUsers", () => {

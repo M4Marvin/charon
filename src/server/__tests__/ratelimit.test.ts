@@ -1,13 +1,20 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { makeTestDb, seedTestUser, type TestDb } from "@/db/__tests__/helpers";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { makeTestDb, seedTestUser, type TestDb, type TestSqlite } from "@/db/__tests__/helpers";
 import { DAILY_LIMIT, incrementToday } from "@/db/repositories/userUsage";
 import { checkRateLimit, msUntilNextUTCMidnight } from "@/server/ratelimit";
 
 describe("ratelimit", () => {
   let db: TestDb;
+  let sqlite: TestSqlite;
 
   beforeEach(() => {
-    db = makeTestDb().db;
+    const ctx = makeTestDb();
+    db = ctx.db;
+    sqlite = ctx.sqlite;
+  });
+
+  afterEach(() => {
+    sqlite.close();
   });
 
   describe("msUntilNextUTCMidnight", () => {

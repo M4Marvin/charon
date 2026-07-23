@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it } from "vitest";
-import { makeTestDb, type TestDb } from "./helpers";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { makeTestDb, type TestDb, type TestSqlite } from "./helpers";
 import {
   ensureGlobalAiProviderExists,
   getGlobalAiProvider,
@@ -16,9 +16,16 @@ const FALLBACK = {
 
 describe("ensureGlobalAiProviderExists", () => {
   let db: TestDb;
+  let sqlite: TestSqlite;
 
   beforeEach(() => {
-    db = makeTestDb().db;
+    const ctx = makeTestDb();
+    db = ctx.db;
+    sqlite = ctx.sqlite;
+  });
+
+  afterEach(() => {
+    sqlite.close();
   });
 
   it("inserts a global provider when none exists", async () => {

@@ -375,17 +375,53 @@ export function swipe(
   }
 }
 
+export function appendSibling(
+  userId: string,
+  chatId: string,
+  targetLocalId: number,
+  msg: SiblingContent,
+  db: DB = defaultDb,
+): ChatMessage {
+  log.debug("appendSibling start", { chatId, targetLocalId });
+  ensureChatIdle(userId, chatId, db);
+  try {
+    const rows = repoListMessages(userId, chatId, db);
+    const tree = treeFromNodes(rows.map(rowToMessage));
+    const target = getNode(tree, targetLocalId);
+    if (!target) throw new Error("Message not found");
+    if (target.parentLocalId === null) {
+      throw new Error("Cannot append a sibling to the root message");
+    }
+    const parentId = target.parentLocalId;
+    const newSibling = appendChild(tree, parentId, msg);
+    persistParent(userId, chatId, tree, parentId, db);
+    persistNewMessage(userId, chatId, newSibling, db);
+    log.info("Sibling appended", {
+      chatId,
+      targetLocalId,
+      newLocalId: newSibling.localId,
+    });
+    return newSibling;
+  } catch (e) {
+    log.error("appendSibling failed", { chatId, targetLocalId }, e as Error);
+    throw e;
+  }
+}
+
 export function deleteBranch(
   userId: string,
   chatId: string,
   messageLocalId: number,
   db: DB = defaultDb,
+  opts?: { skipIdleCheck?: boolean },
 ): { deletedIds: number[] } {
   if (messageLocalId === 0) {
     throw new Error("Cannot delete the hidden root (localId 0)");
   }
   log.debug("deleteBranch start", { chatId, messageLocalId });
-  ensureChatIdle(userId, chatId, db);
+  if (!opts?.skipIdleCheck) {
+    ensureChatIdle(userId, chatId, db);
+  }
   try {
     const rows = repoListMessages(userId, chatId, db);
     const tree = treeFromNodes(rows.map(rowToMessage));

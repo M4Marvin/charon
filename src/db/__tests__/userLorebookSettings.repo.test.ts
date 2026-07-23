@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb, seedSecondUser, seedTestUser, type TestDb } from "@/db/__tests__/helpers";
 import {
   createEntry,
@@ -22,10 +22,16 @@ describe("userLorebookSettings repo", () => {
   let db: TestDb;
   let userId: string;
 
+  let ctx: ReturnType<typeof makeTestDb>;
+
   beforeEach(() => {
-    const ctx = makeTestDb();
+    ctx = makeTestDb();
     db = ctx.db;
     userId = seedTestUser(db);
+  });
+
+  afterEach(() => {
+    ctx.sqlite.close();
   });
 
   describe("setLorebookEnabled / isLorebookEnabled", () => {

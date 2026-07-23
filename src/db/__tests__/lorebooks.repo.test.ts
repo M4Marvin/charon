@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createEntry,
   createLorebook,
@@ -19,10 +19,16 @@ describe("lorebooks repository", () => {
   let db: TestDb;
   let userId: string;
 
+  let ctx: ReturnType<typeof makeTestDb>;
+
   beforeEach(() => {
-    const ctx = makeTestDb();
+    ctx = makeTestDb();
     db = ctx.db;
     userId = seedTestUser(db);
+  });
+
+  afterEach(() => {
+    ctx.sqlite.close();
   });
 
   describe("createLorebook", () => {

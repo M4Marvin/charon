@@ -108,11 +108,18 @@ export function buildChatPrompt(input: BuildChatPromptInput): BuildChatPromptRes
     userPostHistoryInstructions,
   );
 
+  const summarize = (s: string) => {
+    const words = s.split(/\s+/).filter(Boolean);
+    const first = words.slice(0, 5).join(" ");
+    const last = words.slice(-5).join(" ");
+    return { wordCount: words.length, first: words.length <= 10 ? s : first + "...", last: words.length <= 10 ? "" : "..." + last };
+  };
+
   console.log("[pipeline] context-assembly", {
     msgCount: assembled.length,
-    systemPrompts: assembled.filter((m) => m.role === "system").map((m) => m.content),
-    activatedLore: loreScan.activated.map((e) => e.content),
-    postHistory: userPostHistoryInstructions ?? pipelineChar.post_history_instructions,
+    systemPrompts: assembled.filter((m) => m.role === "system").map((m) => summarize(m.content)),
+    activatedLore: loreScan.activated.map((e) => summarize(e.content)),
+    postHistory: summarize(userPostHistoryInstructions ?? pipelineChar.post_history_instructions ?? ""),
   });
 
   // Pre-process
