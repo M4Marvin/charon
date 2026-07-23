@@ -12,6 +12,9 @@ export const Route = createFileRoute("/api/chat-generate")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // eslint-disable-next-line no-console
+        console.log("[chat-generate] handler invoked");
+
         try {
           const { user } = await getSession();
 
@@ -23,19 +26,36 @@ export const Route = createFileRoute("/api/chat-generate")({
             });
           }
 
-          const body = (await request.json()) as { chatId?: string; assistantMessageLocalId?: number };
-          if (!body.chatId || body.assistantMessageLocalId == null) {
-            return new Response(JSON.stringify({ error: "Missing required fields" }), {
-              status: 400,
-              headers: { "Content-Type": "application/json" },
-            });
+          const rawBody = await request.text();
+
+          const body = JSON.parse(rawBody) as Record<string, unknown>;
+          const data = (body.data ?? {}) as Record<string, unknown>;
+          const chatId = (data.chatId ?? "") as string;
+          const messageLocalId = data.assistantMessageLocalId as number | undefined;
+
+          // eslint-disable-next-line no-console
+          console.log("[chat-generate] request", {
+            chatId,
+            assistantMessageLocalId: messageLocalId,
+            keys: Object.keys(body),
+          });
+
+          if (!chatId || messageLocalId == null) {
+            return new Response(
+              JSON.stringify({
+                error: "Missing required fields",
+                received: { chatId, assistantMessageLocalId: messageLocalId },
+                keys: Object.keys(body),
+              }),
+              { status: 400, headers: { "Content-Type": "application/json" } },
+            );
           }
 
           const ctx = await loadGenerationContext(
             user.id,
             user.name,
-            body.chatId,
-            body.assistantMessageLocalId,
+            chatId,
+            messageLocalId,
           );
 
           const promptResult = buildPromptFromContext(ctx.prompt);
@@ -63,7 +83,24 @@ export const Route = createFileRoute("/api/chat-generate")({
 
           return toServerSentEventsResponse(stream);
         } catch (err) {
-          console.error("[chat-generate]", err);
+          let rawBody = "";
+          try {
+            const clone = request.clone();
+            rawBody = await clone.text();
+          } catch {
+            // body already consumed
+          }
+
+          // eslint-disable-next-line no-console
+          console.error("[chat-generate] ERROR", {
+            message: err instanceof Error ? err.message : String(err),
+            name: err instanceof Error ? err.name : undefined,
+            stack: err instanceof Error ? err.stack : undefined,
+            rawBody: rawBody.substring(0, 500),
+            cause: (err as any)?.cause,
+            status: (err as any)?.status,
+          });
+
           return new Response(
             JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
             { status: 500, headers: { "Content-Type": "application/json" } },
