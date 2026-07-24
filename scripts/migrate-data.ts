@@ -36,8 +36,10 @@ import { normalizeCardData, normalizeV3ToV2 } from "@/lib/character/normalize";
 
 const DEFAULT_USER_ID = "default-user";
 const DATA_ROOT = "public/data";
-const AVATAR_DIR = "data/avatars";
-const PERSONA_ICON_DIR = "data/personas";
+const AVATAR_DIR = "public/data/avatars";
+const AVATAR_PUBLIC_PREFIX = "data/avatars";
+const PERSONA_ICON_DIR = "public/data/personas";
+const PERSONA_PUBLIC_PREFIX = "data/personas";
 
 type Counts = {
   found: number;
@@ -256,10 +258,12 @@ async function migrateCharacters(
     }
 
     const id = randomUUID();
-    const imagePath = join(AVATAR_DIR, `${id}.png`);
+    const filename = `${id}.png`;
+    const writePath = join(AVATAR_DIR, filename);
+    const avatarPath = join(AVATAR_PUBLIC_PREFIX, filename);
 
     try {
-      await copyFile(pngPath, imagePath);
+      await copyFile(pngPath, writePath);
     } catch (e) {
       console.log(`  ✗ ${fileBase}: avatar copy (${(e as Error).message})`);
       counts.failed++;
@@ -274,7 +278,7 @@ async function migrateCharacters(
           userId,
           name,
           data,
-          imagePath,
+          imagePath: avatarPath,
           spec,
           specVersion,
           createdAt: now,
@@ -464,9 +468,11 @@ async function migratePersonas(userId: string): Promise<Counts> {
         : null;
 
     if (sourcePath) {
-      iconPath = join(PERSONA_ICON_DIR, `${id}.png`);
+      const iconFilename = `${id}.png`;
+      const iconWritePath = join(PERSONA_ICON_DIR, iconFilename);
+      iconPath = join(PERSONA_PUBLIC_PREFIX, iconFilename);
       try {
-        await copyFile(sourcePath, iconPath);
+        await copyFile(sourcePath, iconWritePath);
       } catch (e) {
         console.log(`  ✗ ${name}: icon copy (${(e as Error).message})`);
         iconPath = null;

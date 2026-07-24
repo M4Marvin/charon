@@ -541,12 +541,12 @@ function ChatPage() {
     chat.backgroundId && chat.backgroundPath ? `/${chat.backgroundPath}` : null;
   const ambientUrl =
     backgroundUrl ??
-    (chat.characterImagePath ? `/api/characters/${chat.characterId}/avatar` : null);
+    (chat.characterImagePath ? `/${chat.characterImagePath}` : null);
 
   const avatarNode = (
     <Avatar className="size-8 shrink-0 ring-1 ring-(--lagoon)/20">
       {chat.characterImagePath ? (
-        <AvatarImage src={`/api/characters/${chat.characterId}/avatar`} alt={chat.characterName} />
+        <AvatarImage src={`/${chat.characterImagePath}`} alt={chat.characterName} />
       ) : null}
       <AvatarFallback className="text-[10px]">{chat.characterName[0]}</AvatarFallback>
     </Avatar>
@@ -682,14 +682,13 @@ function ChatPage() {
             <div className="hidden md:flex flex-col overflow-y-auto z-10">
               {portraitOpen && (
                 <CharacterPortraitPanel
-                  characterId={chat.characterId}
                   characterName={chat.characterName}
                   imagePath={chat.characterImagePath}
                   isStreaming={activePlaceholderId !== null}
                   onClick={() => {
                     setLightboxAlt(chat.characterName);
                     setLightboxSrc(
-                      chat.characterImagePath ? `/api/characters/${chat.characterId}/avatar` : null,
+                      chat.characterImagePath ? `/${chat.characterImagePath}` : null,
                     );
                   }}
                   onUpload={(base64) => setChatImage(chat.id, base64)}
@@ -717,7 +716,6 @@ function ChatPage() {
                           <CharacterIntroCard
                             name={chat.characterName}
                             imagePath={chat.characterImagePath}
-                            characterId={chat.characterId}
                             description={characterDescription}
                             tags={characterTags}
                           />
@@ -917,13 +915,11 @@ function ChatPage() {
 function CharacterIntroCard({
   name,
   imagePath,
-  characterId,
   description,
   tags,
 }: {
   name: string;
   imagePath: string | null;
-  characterId: string;
   description: string;
   tags: string[];
 }) {
@@ -931,7 +927,7 @@ function CharacterIntroCard({
     <div className="glass flex items-start gap-4 rounded-2xl p-4">
       <Avatar className="size-14 shrink-0">
         {imagePath ? (
-          <AvatarImage src={`/api/characters/${characterId}/avatar`} alt={name} />
+          <AvatarImage src={`/${imagePath}`} alt={name} />
         ) : null}
         <AvatarFallback>{name[0]}</AvatarFallback>
       </Avatar>

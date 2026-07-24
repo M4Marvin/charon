@@ -61,7 +61,7 @@ function NewChatPage() {
               <CardHeader>
                 {char.imagePath ? (
                   <Avatar className="mb-2 size-20 self-center">
-                    <AvatarImage src={`/api/characters/${char.id}/avatar`} alt={char.name} />
+                    <AvatarImage src={`/${char.imagePath}`} alt={char.name} />
                     <AvatarFallback>{char.name[0]}</AvatarFallback>
                   </Avatar>
                 ) : (

@@ -10,7 +10,8 @@ import {
 import { normalizeCardData, normalizeV3ToV2 } from "@/lib/character/normalize";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 
-const AVATAR_DIR = "data/avatars";
+const AVATAR_DIR = "public/data/avatars";
+const PUBLIC_PATH_PREFIX = "data/avatars";
 
 export type ImportError =
   | { kind: "demo_restricted"; message: string }
@@ -70,11 +71,13 @@ export async function importCharacterCard(
   }
 
   const id = randomUUID();
-  const imagePath = join(AVATAR_DIR, `${id}.png`);
+  const filename = `${id}.png`;
+  const writePath = join(AVATAR_DIR, filename);
+  const publicPath = join(PUBLIC_PATH_PREFIX, filename);
 
   try {
     await mkdir(AVATAR_DIR, { recursive: true });
-    await writeFile(imagePath, pngBytes);
+    await writeFile(writePath, pngBytes);
   } catch (e) {
     return {
       ok: false,
@@ -94,7 +97,7 @@ export async function importCharacterCard(
       userId,
       name: cardData.name,
       data: cardData,
-      imagePath,
+      imagePath: publicPath,
       spec,
       specVersion,
     });
@@ -108,7 +111,7 @@ export async function importCharacterCard(
     };
   } catch (e) {
     try {
-      await rm(imagePath);
+      await rm(writePath);
     } catch {
       // best-effort
     }

@@ -1,4 +1,5 @@
 import { rm } from "node:fs/promises";
+import { join } from "node:path";
 import { createServerFn } from "@tanstack/react-start";
 import { type } from "arktype";
 import type { Character } from "@/db/schema";
@@ -138,7 +139,7 @@ export const deleteCharacter = createServerFn({ method: "POST" })
 
     if (imagePath) {
       try {
-        await rm(imagePath);
+        await rm(join("public", imagePath), { force: true });
       } catch {}
     }
 

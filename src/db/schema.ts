@@ -131,7 +131,6 @@ export const lorebooks = sqliteTable(
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     description: text("description"),
-    imagePath: text("image_path"),
     config: text("config", { mode: "json" }).$type<LoreConfig>().notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()

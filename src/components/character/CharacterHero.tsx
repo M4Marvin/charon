@@ -12,7 +12,7 @@ export function CharacterHero({ character }: { character: CharacterDetail }) {
       <div className="shrink-0">
         {hasAvatar ? (
           <img
-            src={`/api/characters/${character.id}/avatar`}
+            src={`/${character.imagePath}`}
             alt={character.name}
             className="w-60 sm:w-60 rounded-xl object-cover aspect-3/4 shadow-lg border border-border"
             onError={(e) => {

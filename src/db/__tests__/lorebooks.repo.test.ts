@@ -46,7 +46,6 @@ describe("lorebooks repository", () => {
       expect(row.userId).toBe(userId);
       expect(row.name).toBe("World Guide");
       expect(row.description).toBeNull();
-      expect(row.imagePath).toBeNull();
       expect(row.config).toEqual(makeLorebookConfig());
       expect(row.createdAt).toBeInstanceOf(Date);
       expect(row.updatedAt).toBeInstanceOf(Date);

@@ -1,3 +1,4 @@
+import { mkdir } from "node:fs/promises";
 import { db } from "@/db";
 import { characters as charactersTable, user, userSettings } from "@/db/schema";
 import { eq, and, not, like } from "drizzle-orm";
@@ -14,6 +15,8 @@ export const FALLBACK_GLOBAL_PROVIDER = {
 };
 
 export async function ensureGlobalProvider(): Promise<void> {
+  await mkdir("public/data/avatars", { recursive: true });
+  await mkdir("public/data/backgrounds", { recursive: true });
   await ensureGlobalAiProviderExists(FALLBACK_GLOBAL_PROVIDER);
   await seedExistingDemoUsers();
   await seedDefaultBackgrounds();

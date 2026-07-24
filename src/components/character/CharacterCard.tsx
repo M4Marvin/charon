@@ -49,7 +49,7 @@ export function CharacterCard({
       <CardContent className="flex gap-2 p-2">
         {character.imagePath ? (
           <img
-            src={`/api/characters/${character.id}/avatar`}
+            src={`/${character.imagePath}`}
             alt={character.name}
             className="size-20 shrink-0 rounded-md object-cover"
             onError={(e) => {

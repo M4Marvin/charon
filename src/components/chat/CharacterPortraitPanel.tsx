@@ -3,7 +3,6 @@ import { ImagePlus, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CharacterPortraitPanelProps {
-  characterId: string;
   characterName: string;
   imagePath: string | null;
   isStreaming: boolean;
@@ -12,14 +11,13 @@ interface CharacterPortraitPanelProps {
 }
 
 export function CharacterPortraitPanel({
-  characterId,
   characterName,
   imagePath,
   isStreaming,
   onClick,
   onUpload,
 }: CharacterPortraitPanelProps) {
-  const src = imagePath ? `/api/characters/${characterId}/avatar` : null;
+  const src = imagePath ? `/${imagePath}` : null;
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback(

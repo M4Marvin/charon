@@ -43,7 +43,7 @@ function ChatsPage() {
                 <div className="flex items-center gap-3">
                   {chat.characterImagePath ? (
                     <img
-                      src={`/api/characters/${chat.characterId}/avatar`}
+                      src={`/${chat.characterImagePath}`}
                       alt={chat.characterName}
                       className="size-10 rounded-full object-cover"
                       onError={(e) => {
