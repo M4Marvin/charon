@@ -175,7 +175,7 @@ export function ChatPage() {
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden" style={{ background: "var(--bg-base)" }}>
-      <ChatBackground src={backgroundSrc} />
+      <ChatBackground src={backgroundSrc} fallbackSrc={characterAvatarSrc} />
 
       <ChatHeader
         characterName={config.character.name}

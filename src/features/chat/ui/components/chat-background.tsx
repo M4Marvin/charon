@@ -2,35 +2,37 @@ import { useState, useRef, useCallback } from "react";
 
 interface ChatBackgroundProps {
   src: string | null;
+  fallbackSrc: string | null;
 }
 
-export function ChatBackground({ src }: ChatBackgroundProps) {
+export function ChatBackground({ src, fallbackSrc }: ChatBackgroundProps) {
+  const effectiveSrc = src ?? fallbackSrc;
   const [loaded, setLoaded] = useState(false);
-  const prevSrc = useRef<string | null>(src);
+  const prevSrc = useRef<string | null>(effectiveSrc);
 
   const onLoad = useCallback(() => setLoaded(true), []);
 
-  if (prevSrc.current !== src) {
-    prevSrc.current = src;
+  if (prevSrc.current !== effectiveSrc) {
+    prevSrc.current = effectiveSrc;
     if (loaded) setLoaded(false);
   }
 
   return (
     <div className="pointer-events-none fixed inset-0 select-none">
-      {src ? (
+      {effectiveSrc ? (
         <>
           {prevSrc.current && !loaded && (
             <img
               src={`/${prevSrc.current}`}
               alt=""
-              className="absolute inset-0 size-full object-cover brightness-[0.8]"
+              className="absolute inset-0 size-full object-cover brightness-[0.8] blur-sm scale-110"
             />
           )}
           <img
-            src={`/${src}`}
+            src={`/${effectiveSrc}`}
             alt=""
             onLoad={onLoad}
-            className="absolute inset-0 size-full object-cover brightness-[0.8] transition-opacity duration-700"
+            className="absolute inset-0 size-full object-cover brightness-[0.8] blur-sm scale-110 transition-opacity duration-700"
             style={{ opacity: loaded ? 1 : 0 }}
           />
         </>

@@ -5,7 +5,11 @@ import {
   MessageScrollerContent,
   MessageScrollerItem,
   MessageScrollerButton,
+  useMessageScroller,
+  useMessageScrollerVisibility,
 } from "@/components/ui/message-scroller";
+import { Button } from "@/components/ui/button";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { ChatMessage } from "./chat-message";
 import type { ActivePathEntry } from "@/features/chat/tree/types";
 
@@ -22,6 +26,56 @@ interface MessageListProps {
   onRegenerate: (messageLocalId: number) => void;
   onEdit: (messageLocalId: number, content: string) => void;
   onDelete: (messageLocalId: number) => void;
+}
+
+function MessageNavButtons({ ids }: { ids: string[] }) {
+  const { scrollToMessage } = useMessageScroller();
+  const { visibleMessageIds } = useMessageScrollerVisibility();
+
+  const firstIdx = visibleMessageIds[0] ? ids.indexOf(visibleMessageIds[0]) : -1;
+  const lastIdx =
+    visibleMessageIds.length > 0
+      ? ids.indexOf(visibleMessageIds[visibleMessageIds.length - 1])
+      : -1;
+  const canPrev = firstIdx > 0;
+  const canNext = lastIdx >= 0 && lastIdx < ids.length - 1;
+
+  if (ids.length < 2) return null;
+
+  return (
+    <div className="absolute bottom-24 right-4 z-10 flex flex-col gap-1.5">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-8 rounded-full glass text-white/40 hover:text-white/90 disabled:opacity-20"
+        disabled={!canPrev}
+        onClick={() =>
+          scrollToMessage(ids[firstIdx - 1], {
+            align: "end",
+            behavior: "smooth",
+          })
+        }
+        aria-label="Previous message"
+      >
+        <ChevronUp className="size-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-8 rounded-full glass text-white/40 hover:text-white/90 disabled:opacity-20"
+        disabled={!canNext}
+        onClick={() =>
+          scrollToMessage(ids[lastIdx + 1], {
+            align: "start",
+            behavior: "smooth",
+          })
+        }
+        aria-label="Next message"
+      >
+        <ChevronDown className="size-4" />
+      </Button>
+    </div>
+  );
 }
 
 export function MessageList({
@@ -53,6 +107,8 @@ export function MessageList({
     );
   }
 
+  const ids = entries.map((e) => String(e.message.localId));
+
   return (
     <MessageScrollerProvider
       autoScroll
@@ -71,6 +127,7 @@ export function MessageList({
               return (
                 <MessageScrollerItem
                   key={entry.message.localId}
+                  messageId={String(entry.message.localId)}
                   scrollAnchor={isUserMessage}
                 >
                   <ChatMessage
@@ -104,6 +161,7 @@ export function MessageList({
           size="icon-sm"
           className="bottom-24 z-10"
         />
+        <MessageNavButtons ids={ids} />
       </MessageScroller>
     </MessageScrollerProvider>
   );
