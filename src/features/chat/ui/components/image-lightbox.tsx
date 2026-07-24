@@ -30,7 +30,7 @@ export function ImageLightbox({
         <DialogTitle className="sr-only">Image viewer</DialogTitle>
         {src && (
           <div
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md"
             onClick={() => onOpenChange(false)}
           >
             <button
@@ -68,7 +68,7 @@ export function ImageLightbox({
                 "select-none transition-transform duration-200",
                 zoomed
                   ? "max-w-none max-h-none scale-150 cursor-zoom-out"
-                  : "max-h-[88vh] max-w-[92vw] object-contain cursor-zoom-in",
+                  : "max-h-[70vh] max-w-[min(90vw,40rem)] object-contain cursor-zoom-in",
               )}
             />
           </div>

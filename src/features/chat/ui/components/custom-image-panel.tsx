@@ -1,20 +1,45 @@
-import { X, ImageIcon } from "lucide-react";
+import { useRef, useCallback } from "react";
+import { X, ImageIcon, ImagePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface CustomImagePanelProps {
   open: boolean;
   imageSrc: string | null;
+  customImageSrc: string | null;
   onClose: () => void;
   onImageClick: () => void;
+  onUploadImage: (file: File) => void;
+  onClearImage: () => void;
 }
 
 export function CustomImagePanel({
   open,
   imageSrc,
+  customImageSrc,
   onClose,
   onImageClick,
+  onUploadImage,
+  onClearImage,
 }: CustomImagePanelProps) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        onUploadImage(file);
+        e.target.value = "";
+      }
+    },
+    [onUploadImage],
+  );
+
+  const displaySrc = customImageSrc ?? (imageSrc ? `/${imageSrc}` : null);
+  const isCustom = customImageSrc !== null;
+  const hasImage = displaySrc !== null;
+  const label = isCustom ? "Custom" : "Scene";
+
   return (
     <div
       className={cn(
@@ -23,41 +48,68 @@ export function CustomImagePanel({
       )}
     >
       <div
-        className="glass-strong rounded-2xl overflow-hidden w-48 shadow-xl cursor-pointer group"
-        onClick={imageSrc ? onImageClick : undefined}
+        className="glass-strong rounded-2xl overflow-hidden w-[max(12rem,calc((100vw-48rem)/2-2rem))] shadow-xl cursor-pointer group"
+        onClick={hasImage ? onImageClick : undefined}
         role="button"
-        tabIndex={imageSrc ? 0 : -1}
-        aria-label={imageSrc ? "View scene image" : "No scene set"}
-        onKeyDown={(e) => e.key === "Enter" && imageSrc && onImageClick()}
+        tabIndex={hasImage ? 0 : -1}
+        aria-label={hasImage ? `View ${label.toLowerCase()} image` : "No image set"}
+        onKeyDown={(e) => e.key === "Enter" && hasImage && onImageClick()}
       >
-        <div className="aspect-video relative flex items-center justify-center bg-[--bg-base]/60">
-          {imageSrc ? (
+        <div className="relative flex items-center justify-center bg-[--bg-base]/60">
+          {hasImage ? (
             <img
-              src={`/${imageSrc}`}
-              alt="Scene"
-              className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+              src={displaySrc}
+              alt={label}
+              className="w-full h-auto block transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
-            <div className="flex flex-col items-center gap-2 text-[--sea-ink-soft]">
+            <div className="flex flex-col items-center gap-2 text-[--sea-ink-soft] py-10 w-full">
               <ImageIcon className="size-6 opacity-40" />
               <span className="text-xs">No scene set</span>
             </div>
           )}
         </div>
-        <div className="px-3 py-2.5">
-          <p className="text-xs text-[--sea-ink-soft]">Scene</p>
-        </div>
       </div>
 
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-8 rounded-full glass self-start text-white/60 hover:text-white -mt-1"
-        onClick={onClose}
-        aria-label="Close scene panel"
-      >
-        <X className="size-3.5" />
-      </Button>
+      <div className="flex items-center gap-1.5 self-start -mt-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 rounded-full glass text-white/60 hover:text-white"
+          onClick={() => fileRef.current?.click()}
+          aria-label="Upload custom image"
+        >
+          <ImagePlus className="size-3.5" />
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+          aria-label="Upload custom image file"
+        />
+        {isCustom && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 rounded-full glass text-white/60 hover:text-white"
+            onClick={onClearImage}
+            aria-label="Clear custom image"
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 rounded-full glass text-white/60 hover:text-white"
+          onClick={onClose}
+          aria-label="Close scene panel"
+        >
+          <X className="size-3.5" />
+        </Button>
+      </div>
     </div>
   );
 }

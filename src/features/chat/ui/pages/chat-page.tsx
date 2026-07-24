@@ -11,6 +11,7 @@ import { computeActivePathFromMessages } from "@/features/chat/tree/active-path"
 import { useChatGeneration } from "../hooks/use-chat-generation";
 import { useChatUiStore, selectInput, selectActivePlaceholderId, selectSettingsOpen, selectPortraitOpen, selectSceneOpen, selectLightboxSrc } from "../chat-store";
 import { useChatMacros } from "../macros";
+import { fileToDownscaledDataUrl } from "../custom-image";
 import { ChatBackground } from "../components/chat-background";
 import { ChatHeader } from "../components/chat-header";
 import { MessageList } from "../components/message-list";
@@ -38,6 +39,9 @@ export function ChatPage() {
   const setSceneOpen = useChatUiStore((s) => s.setSceneOpen);
   const openLightbox = useChatUiStore((s) => s.openLightbox);
   const closeLightbox = useChatUiStore((s) => s.closeLightbox);
+  const customImage = useChatUiStore((s) => s.customImages[chatId] ?? null);
+  const setCustomImage = useChatUiStore((s) => s.setCustomImage);
+  const clearCustomImage = useChatUiStore((s) => s.clearCustomImage);
 
   const { data: config, isLoading: configLoading } = useChatConfig(chatId);
   const { data: messages, isLoading: messagesLoading } = useChatMessages(chatId);
@@ -133,6 +137,22 @@ export function ChatPage() {
     );
   }, [chatId, isBusy, impersonateMutation, setInput]);
 
+  const handleUploadImage = useCallback(
+    async (file: File) => {
+      try {
+        const dataUrl = await fileToDownscaledDataUrl(file);
+        setCustomImage(chatId, dataUrl);
+      } catch {
+        toast.error("Failed to load image");
+      }
+    },
+    [chatId, setCustomImage],
+  );
+
+  const handleClearImage = useCallback(() => {
+    clearCustomImage(chatId);
+  }, [chatId, clearCustomImage]);
+
   if (configLoading || messagesLoading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
@@ -197,8 +217,14 @@ export function ChatPage() {
       <CustomImagePanel
         open={sceneOpen}
         imageSrc={backgroundSrc}
+        customImageSrc={customImage}
         onClose={() => setSceneOpen(false)}
-        onImageClick={() => backgroundSrc && openLightbox(`/${backgroundSrc}`)}
+        onImageClick={() => {
+          if (customImage) openLightbox(customImage);
+          else if (backgroundSrc) openLightbox(`/${backgroundSrc}`);
+        }}
+        onUploadImage={handleUploadImage}
+        onClearImage={handleClearImage}
       />
 
       <ImageLightbox

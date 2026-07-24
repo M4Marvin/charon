@@ -27,14 +27,14 @@ export function CharacterPortraitPanel({
       )}
     >
       <div
-        className="glass-strong rounded-2xl overflow-hidden w-48 shadow-xl cursor-pointer group"
+        className="glass-strong rounded-2xl overflow-hidden w-[max(12rem,calc((100vw-48rem)/2-2rem))] shadow-xl cursor-pointer group"
         onClick={onImageClick}
         role="button"
         tabIndex={0}
         aria-label={`View ${name} portrait`}
         onKeyDown={(e) => e.key === "Enter" && onImageClick()}
       >
-        <div className="aspect-[3/4] relative flex items-center justify-center bg-[--bg-base]/60">
+        <div className="aspect-[3/4] max-h-[70dvh] relative flex items-center justify-center bg-[--bg-base]/60">
           {imageSrc ? (
             <img
               src={`/${imageSrc}`}
