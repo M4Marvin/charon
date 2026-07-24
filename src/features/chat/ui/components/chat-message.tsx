@@ -124,7 +124,7 @@ export function ChatMessage({
         )}
       >
         <div className="flex gap-3">
-          <Avatar className="size-11 shrink-0">
+          <Avatar className="size-8 shrink-0">
             <AvatarImage
               src={avatarSrc ? `/${avatarSrc}` : undefined}
               alt={name}

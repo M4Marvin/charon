@@ -9,7 +9,7 @@ import { useBackground } from "@/hooks/useBackgrounds";
 import { usePersona } from "@/hooks/usePersonas";
 import { computeActivePathFromMessages } from "@/features/chat/tree/active-path";
 import { useChatGeneration } from "../hooks/use-chat-generation";
-import { useChatUiStore, selectActivePlaceholderId, selectSettingsOpen, selectPortraitOpen, selectSceneOpen, selectLightboxSrc, selectShortcutsOpen } from "../chat-store";
+import { useChatUiStore, selectActivePlaceholderId, selectSettingsOpen, selectPortraitOpen, selectSceneOpen, selectLightboxSrc } from "../chat-store";
 import { useChatMacros } from "../macros";
 import { fileToDownscaledDataUrl } from "../custom-image";
 import { ChatBackground } from "../components/chat-background";
@@ -19,7 +19,6 @@ import { Composer } from "../components/composer";
 import { CharacterPortraitPanel } from "../components/character-portrait-panel";
 import { CustomImagePanel } from "../components/custom-image-panel";
 import { ImageLightbox } from "../components/image-lightbox";
-import { KeyboardShortcutsDialog } from "../components/keyboard-shortcuts-dialog";
 import { SettingsPanel } from "../settings/settings-panel";
 
 export function ChatPage() {
@@ -31,7 +30,6 @@ export function ChatPage() {
   const portraitOpen = useChatUiStore(selectPortraitOpen);
   const sceneOpen = useChatUiStore(selectSceneOpen);
   const lightboxSrc = useChatUiStore(selectLightboxSrc);
-  const shortcutsOpen = useChatUiStore(selectShortcutsOpen);
 
   const setInput = useChatUiStore((s) => s.setInputDraft);
   const clearInput = useChatUiStore((s) => s.clearInputDraft);
@@ -40,7 +38,6 @@ export function ChatPage() {
   const setSceneOpen = useChatUiStore((s) => s.setSceneOpen);
   const openLightbox = useChatUiStore((s) => s.openLightbox);
   const closeLightbox = useChatUiStore((s) => s.closeLightbox);
-  const setShortcutsOpen = useChatUiStore((s) => s.setShortcutsOpen);
   const customImage = useChatUiStore((s) => s.customImages[chatId] ?? null);
   const setCustomImage = useChatUiStore((s) => s.setCustomImage);
   const clearCustomImage = useChatUiStore((s) => s.clearCustomImage);
@@ -175,12 +172,6 @@ export function ChatPage() {
       const mod = e.ctrlKey || e.metaKey;
       const typing = isTypingTarget(e.target);
 
-      if (e.key === "?" && !typing) {
-        e.preventDefault();
-        setShortcutsOpen(!shortcutsOpen);
-        return;
-      }
-
       if (!mod || !e.shiftKey) return;
       if (isBusy) return;
 
@@ -208,7 +199,7 @@ export function ChatPage() {
 
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [activePath, isBusy, generation, handleSwipe, handleImpersonate, shortcutsOpen, setShortcutsOpen]);
+  }, [activePath, isBusy, generation, handleSwipe, handleImpersonate]);
 
   if (configLoading || messagesLoading) {
     return (
@@ -237,7 +228,6 @@ export function ChatPage() {
       <ChatHeader
         characterName={config.character.name}
         avatarSrc={characterAvatarSrc}
-        model={config.provider?.model ?? null}
         isGenerating={generation.isStreaming}
         onBack={() => navigate({ to: "/c" })}
         portraitOpen={portraitOpen}
@@ -245,7 +235,6 @@ export function ChatPage() {
         onTogglePortrait={() => setPortraitOpen(!portraitOpen)}
         onToggleScene={() => setSceneOpen(!sceneOpen)}
         onOpenSettings={() => setSettingsOpen(true)}
-        onOpenShortcuts={() => setShortcutsOpen(true)}
       />
 
       <MessageList
@@ -307,11 +296,6 @@ export function ChatPage() {
         chatId={chatId}
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
-      />
-
-      <KeyboardShortcutsDialog
-        open={shortcutsOpen}
-        onOpenChange={setShortcutsOpen}
       />
     </div>
   );
