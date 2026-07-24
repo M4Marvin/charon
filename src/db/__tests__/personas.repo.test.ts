@@ -43,12 +43,12 @@ describe("personas repository", () => {
           userId,
           name: "Alice",
           description: "A brave hero",
-          iconPath: "data/personas/alice.png",
+          iconPath: "uploads/personas/alice.png",
         },
         db,
       );
       expect(row.description).toBe("A brave hero");
-      expect(row.iconPath).toBe("data/personas/alice.png");
+      expect(row.iconPath).toBe("uploads/personas/alice.png");
     });
   });
 

@@ -47,11 +47,12 @@ src/
     c/                    # Chat routes (/c, /c/new, /c/$id)
     api/chat-generate.ts  # SSE streaming endpoint
     admin/, characters/, settings/, lorebooks/, demo/
-  components/ui/          # shadcn/ui components
+  components/ui/          # shadcn/ui components + uploaded-image wrapper
   hooks/                  # TanStack Query hooks
   lib/
     st-core/              # SillyTavern core libs (DO NOT EDIT — see below)
     markdown.ts           # Showdown + DOMPurify render pipeline
+    uploads-url.ts        # URL builder for /uploads/<type>/<uuid>.png
   features/logging/       # Structured logger
 scripts/
   migrate-data.ts         # Legacy SillyTavern importer

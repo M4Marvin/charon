@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { rm, writeFile } from "node:fs/promises";
 import { createCharacter as repoCreate } from "@/db/repositories/characters";
 import {
   parseCharacterCard,
@@ -9,9 +8,11 @@ import {
 } from "@/lib/st-core/character";
 import { normalizeCardData, normalizeV3ToV2 } from "@/lib/character/normalize";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
-
-const AVATAR_DIR = "public/data/avatars";
-const PUBLIC_PATH_PREFIX = "data/avatars";
+import {
+  ensureUploadsDirs,
+  diskPathFromStored,
+  storedPathFromDiskComponents,
+} from "@/server/uploads";
 
 export type ImportError =
   | { kind: "demo_restricted"; message: string }
@@ -72,11 +73,11 @@ export async function importCharacterCard(
 
   const id = randomUUID();
   const filename = `${id}.png`;
-  const writePath = join(AVATAR_DIR, filename);
-  const publicPath = join(PUBLIC_PATH_PREFIX, filename);
+  const storedPath = storedPathFromDiskComponents("avatars", filename);
+  const writePath = diskPathFromStored(storedPath);
 
   try {
-    await mkdir(AVATAR_DIR, { recursive: true });
+    await ensureUploadsDirs();
     await writeFile(writePath, pngBytes);
   } catch (e) {
     return {
@@ -97,7 +98,7 @@ export async function importCharacterCard(
       userId,
       name: cardData.name,
       data: cardData,
-      imagePath: publicPath,
+      imagePath: storedPath,
       spec,
       specVersion,
     });

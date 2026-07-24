@@ -9,29 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as SigninRouteImport } from './routes/signin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SettingsIndexRouteImport } from './routes/settings/index'
-import { Route as LorebooksIndexRouteImport } from './routes/lorebooks/index'
-import { Route as CharactersIndexRouteImport } from './routes/characters/index'
-import { Route as CIndexRouteImport } from './routes/c/index'
-import { Route as LorebooksNewRouteImport } from './routes/lorebooks/new'
-import { Route as LorebooksIdRouteImport } from './routes/lorebooks/$id'
-import { Route as DemoGenerationRouteImport } from './routes/demo/generation'
-import { Route as DemoConfigRouteImport } from './routes/demo/config'
-import { Route as CharactersNewRouteImport } from './routes/characters/new'
-import { Route as CharactersIdRouteImport } from './routes/characters/$id'
-import { Route as CNewRouteImport } from './routes/c/new'
-import { Route as CIdRouteImport } from './routes/c/$id'
-import { Route as ApiChatGenerateRouteImport } from './routes/api/chat-generate'
+import { Route as SigninRouteImport } from './routes/signin'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
-import { Route as CharactersIdEditRouteImport } from './routes/characters/$id_.edit'
+import { Route as ApiChatGenerateRouteImport } from './routes/api/chat-generate'
+import { Route as CIndexRouteImport } from './routes/c/index'
+import { Route as CIdRouteImport } from './routes/c/$id'
+import { Route as CNewRouteImport } from './routes/c/new'
+import { Route as CharactersIndexRouteImport } from './routes/characters/index'
+import { Route as CharactersIdRouteImport } from './routes/characters/$id'
+import { Route as CharactersNewRouteImport } from './routes/characters/new'
+import { Route as DemoConfigRouteImport } from './routes/demo/config'
+import { Route as DemoGenerationRouteImport } from './routes/demo/generation'
+import { Route as LorebooksIndexRouteImport } from './routes/lorebooks/index'
+import { Route as LorebooksIdRouteImport } from './routes/lorebooks/$id'
+import { Route as LorebooksNewRouteImport } from './routes/lorebooks/new'
+import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as CharactersIdEditRouteImport } from './routes/characters/$id_.edit'
+import { Route as UploadsTypeIdRouteImport } from './routes/uploads/$type/$id'
 
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SigninRoute = SigninRouteImport.update({
@@ -39,74 +40,9 @@ const SigninRoute = SigninRouteImport.update({
   path: '/signin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsIndexRoute = SettingsIndexRouteImport.update({
-  id: '/settings/',
-  path: '/settings/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LorebooksIndexRoute = LorebooksIndexRouteImport.update({
-  id: '/lorebooks/',
-  path: '/lorebooks/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CharactersIndexRoute = CharactersIndexRouteImport.update({
-  id: '/characters/',
-  path: '/characters/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CIndexRoute = CIndexRouteImport.update({
-  id: '/c/',
-  path: '/c/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LorebooksNewRoute = LorebooksNewRouteImport.update({
-  id: '/lorebooks/new',
-  path: '/lorebooks/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LorebooksIdRoute = LorebooksIdRouteImport.update({
-  id: '/lorebooks/$id',
-  path: '/lorebooks/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoGenerationRoute = DemoGenerationRouteImport.update({
-  id: '/demo/generation',
-  path: '/demo/generation',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoConfigRoute = DemoConfigRouteImport.update({
-  id: '/demo/config',
-  path: '/demo/config',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CharactersNewRoute = CharactersNewRouteImport.update({
-  id: '/characters/new',
-  path: '/characters/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CharactersIdRoute = CharactersIdRouteImport.update({
-  id: '/characters/$id',
-  path: '/characters/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CNewRoute = CNewRouteImport.update({
-  id: '/c/new',
-  path: '/c/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CIdRoute = CIdRouteImport.update({
-  id: '/c/$id',
-  path: '/c/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiChatGenerateRoute = ApiChatGenerateRouteImport.update({
-  id: '/api/chat-generate',
-  path: '/api/chat-generate',
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -114,14 +50,84 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CharactersIdEditRoute = CharactersIdEditRouteImport.update({
-  id: '/characters/$id_/edit',
-  path: '/characters/$id/edit',
+const ApiChatGenerateRoute = ApiChatGenerateRouteImport.update({
+  id: '/api/chat-generate',
+  path: '/api/chat-generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CIndexRoute = CIndexRouteImport.update({
+  id: '/c/',
+  path: '/c/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CIdRoute = CIdRouteImport.update({
+  id: '/c/$id',
+  path: '/c/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CNewRoute = CNewRouteImport.update({
+  id: '/c/new',
+  path: '/c/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CharactersIndexRoute = CharactersIndexRouteImport.update({
+  id: '/characters/',
+  path: '/characters/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CharactersIdRoute = CharactersIdRouteImport.update({
+  id: '/characters/$id',
+  path: '/characters/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CharactersNewRoute = CharactersNewRouteImport.update({
+  id: '/characters/new',
+  path: '/characters/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoConfigRoute = DemoConfigRouteImport.update({
+  id: '/demo/config',
+  path: '/demo/config',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoGenerationRoute = DemoGenerationRouteImport.update({
+  id: '/demo/generation',
+  path: '/demo/generation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LorebooksIndexRoute = LorebooksIndexRouteImport.update({
+  id: '/lorebooks/',
+  path: '/lorebooks/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LorebooksIdRoute = LorebooksIdRouteImport.update({
+  id: '/lorebooks/$id',
+  path: '/lorebooks/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LorebooksNewRoute = LorebooksNewRouteImport.update({
+  id: '/lorebooks/new',
+  path: '/lorebooks/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CharactersIdEditRoute = CharactersIdEditRouteImport.update({
+  id: '/characters/$id_/edit',
+  path: '/characters/$id/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UploadsTypeIdRoute = UploadsTypeIdRouteImport.update({
+  id: '/uploads/$type/$id',
+  path: '/uploads/$type/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/characters/$id/edit': typeof CharactersIdEditRoute
+  '/uploads/$type/$id': typeof UploadsTypeIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/characters/$id/edit': typeof CharactersIdEditRoute
+  '/uploads/$type/$id': typeof UploadsTypeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/characters/$id_/edit': typeof CharactersIdEditRoute
+  '/uploads/$type/$id': typeof UploadsTypeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -211,6 +220,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/api/auth/$'
     | '/characters/$id/edit'
+    | '/uploads/$type/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/auth/$'
     | '/characters/$id/edit'
+    | '/uploads/$type/$id'
   id:
     | '__root__'
     | '/'
@@ -253,6 +264,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/api/auth/$'
     | '/characters/$id_/edit'
+    | '/uploads/$type/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -275,15 +287,16 @@ export interface RootRouteChildren {
   SettingsIndexRoute: typeof SettingsIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   CharactersIdEditRoute: typeof CharactersIdEditRoute
+  UploadsTypeIdRoute: typeof UploadsTypeIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signin': {
@@ -293,102 +306,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SigninRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/': {
-      id: '/settings/'
-      path: '/settings'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof SettingsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lorebooks/': {
-      id: '/lorebooks/'
-      path: '/lorebooks'
-      fullPath: '/lorebooks/'
-      preLoaderRoute: typeof LorebooksIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/characters/': {
-      id: '/characters/'
-      path: '/characters'
-      fullPath: '/characters/'
-      preLoaderRoute: typeof CharactersIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/c/': {
-      id: '/c/'
-      path: '/c'
-      fullPath: '/c/'
-      preLoaderRoute: typeof CIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lorebooks/new': {
-      id: '/lorebooks/new'
-      path: '/lorebooks/new'
-      fullPath: '/lorebooks/new'
-      preLoaderRoute: typeof LorebooksNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lorebooks/$id': {
-      id: '/lorebooks/$id'
-      path: '/lorebooks/$id'
-      fullPath: '/lorebooks/$id'
-      preLoaderRoute: typeof LorebooksIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/generation': {
-      id: '/demo/generation'
-      path: '/demo/generation'
-      fullPath: '/demo/generation'
-      preLoaderRoute: typeof DemoGenerationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/config': {
-      id: '/demo/config'
-      path: '/demo/config'
-      fullPath: '/demo/config'
-      preLoaderRoute: typeof DemoConfigRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/characters/new': {
-      id: '/characters/new'
-      path: '/characters/new'
-      fullPath: '/characters/new'
-      preLoaderRoute: typeof CharactersNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/characters/$id': {
-      id: '/characters/$id'
-      path: '/characters/$id'
-      fullPath: '/characters/$id'
-      preLoaderRoute: typeof CharactersIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/c/new': {
-      id: '/c/new'
-      path: '/c/new'
-      fullPath: '/c/new'
-      preLoaderRoute: typeof CNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/c/$id': {
-      id: '/c/$id'
-      path: '/c/$id'
-      fullPath: '/c/$id'
-      preLoaderRoute: typeof CIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/chat-generate': {
-      id: '/api/chat-generate'
-      path: '/api/chat-generate'
-      fullPath: '/api/chat-generate'
-      preLoaderRoute: typeof ApiChatGenerateRouteImport
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/users': {
@@ -398,11 +320,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/characters/$id_/edit': {
-      id: '/characters/$id_/edit'
-      path: '/characters/$id/edit'
-      fullPath: '/characters/$id/edit'
-      preLoaderRoute: typeof CharactersIdEditRouteImport
+    '/api/chat-generate': {
+      id: '/api/chat-generate'
+      path: '/api/chat-generate'
+      fullPath: '/api/chat-generate'
+      preLoaderRoute: typeof ApiChatGenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/': {
+      id: '/c/'
+      path: '/c'
+      fullPath: '/c/'
+      preLoaderRoute: typeof CIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/$id': {
+      id: '/c/$id'
+      path: '/c/$id'
+      fullPath: '/c/$id'
+      preLoaderRoute: typeof CIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/new': {
+      id: '/c/new'
+      path: '/c/new'
+      fullPath: '/c/new'
+      preLoaderRoute: typeof CNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/characters/': {
+      id: '/characters/'
+      path: '/characters'
+      fullPath: '/characters/'
+      preLoaderRoute: typeof CharactersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/characters/$id': {
+      id: '/characters/$id'
+      path: '/characters/$id'
+      fullPath: '/characters/$id'
+      preLoaderRoute: typeof CharactersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/characters/new': {
+      id: '/characters/new'
+      path: '/characters/new'
+      fullPath: '/characters/new'
+      preLoaderRoute: typeof CharactersNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/config': {
+      id: '/demo/config'
+      path: '/demo/config'
+      fullPath: '/demo/config'
+      preLoaderRoute: typeof DemoConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo/generation': {
+      id: '/demo/generation'
+      path: '/demo/generation'
+      fullPath: '/demo/generation'
+      preLoaderRoute: typeof DemoGenerationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lorebooks/': {
+      id: '/lorebooks/'
+      path: '/lorebooks'
+      fullPath: '/lorebooks/'
+      preLoaderRoute: typeof LorebooksIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lorebooks/$id': {
+      id: '/lorebooks/$id'
+      path: '/lorebooks/$id'
+      fullPath: '/lorebooks/$id'
+      preLoaderRoute: typeof LorebooksIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lorebooks/new': {
+      id: '/lorebooks/new'
+      path: '/lorebooks/new'
+      fullPath: '/lorebooks/new'
+      preLoaderRoute: typeof LorebooksNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/': {
+      id: '/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -410,6 +416,20 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/characters/$id_/edit': {
+      id: '/characters/$id_/edit'
+      path: '/characters/$id/edit'
+      fullPath: '/characters/$id/edit'
+      preLoaderRoute: typeof CharactersIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/uploads/$type/$id': {
+      id: '/uploads/$type/$id'
+      path: '/uploads/$type/$id'
+      fullPath: '/uploads/$type/$id'
+      preLoaderRoute: typeof UploadsTypeIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -435,6 +455,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsIndexRoute: SettingsIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   CharactersIdEditRoute: CharactersIdEditRoute,
+  UploadsTypeIdRoute: UploadsTypeIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

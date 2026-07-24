@@ -1,6 +1,7 @@
 import { Calendar, MessageCircle, MessageSquareText, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { CharacterDetail } from "@/db/repositories/characters";
+import { UploadedImage } from "@/components/ui/uploaded-image";
 
 export function CharacterHero({ character }: { character: CharacterDetail }) {
   const data = character.data;
@@ -11,9 +12,12 @@ export function CharacterHero({ character }: { character: CharacterDetail }) {
     <div className="flex flex-col sm:flex-row gap-6">
       <div className="shrink-0">
         {hasAvatar ? (
-          <img
-            src={`/${character.imagePath}`}
+          <UploadedImage
+            storedPath={character.imagePath}
             alt={character.name}
+            width={240}
+            height={320}
+            layout="constrained"
             className="w-60 sm:w-60 rounded-xl object-cover aspect-3/4 shadow-lg border border-border"
             onError={(e) => {
               e.currentTarget.style.display = "none";

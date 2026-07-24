@@ -112,11 +112,11 @@ describe("characters repository", () => {
           userId,
           name: "X",
           data: makeCharacterData(),
-          imagePath: "data/avatars/char-1.png",
+          imagePath: "uploads/avatars/char-1.png",
         },
         db,
       );
-      expect(row.imagePath).toBe("data/avatars/char-1.png");
+      expect(row.imagePath).toBe("uploads/avatars/char-1.png");
     });
   });
 

@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { useState, useCallback, useRef } from "react";
+import { Plus, Pencil, Trash2, Image as ImageIcon, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -13,9 +13,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { usePersonas, useCreatePersona, useUpdatePersona, useDeletePersona } from "@/hooks/usePersonas";
+import { usePersonas, useCreatePersona, useUpdatePersona, useDeletePersona, useUploadPersonaIcon } from "@/hooks/usePersonas";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
 import { ConfirmDialog } from "../confirm-dialog";
+import { UploadedImage } from "@/components/ui/uploaded-image";
 
 interface SectionProps {
   chatId: string;
@@ -30,11 +31,14 @@ export function PersonaSection(_props: SectionProps) {
   const createPersona = useCreatePersona();
   const updatePersona = useUpdatePersona();
   const deletePersona = useDeletePersona();
+  const uploadPersonaIcon = useUploadPersonaIcon();
 
-  const [dialog, setDialog] = useState<{ kind: "create" } | { kind: "edit"; id: string; name: string; description: string } | null>(null);
+  const [dialog, setDialog] = useState<{ kind: "create" } | { kind: "edit"; id: string; name: string; description: string; iconPath: string | null } | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [pendingIconPath, setPendingIconPath] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedId = settings?.defaultPersonaId ?? "";
 
@@ -51,13 +55,37 @@ export function PersonaSection(_props: SectionProps) {
     setDialog({ kind: "create" });
   }, []);
 
-  const openEdit = useCallback((id: string, n: string, d: string | null) => {
+  const openEdit = useCallback((id: string, n: string, d: string | null, icon: string | null) => {
     setName(n);
     setDescription(d ?? "");
-    setDialog({ kind: "edit", id, name: n, description: d ?? "" });
+    setPendingIconPath(null);
+    setDialog({ kind: "edit", id, name: n, description: d ?? "", iconPath: icon });
   }, []);
 
   const closeDialog = useCallback(() => setDialog(null), []);
+
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || dialog?.kind !== "edit") return;
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const dataUrl = reader.result as string;
+        const base64 = dataUrl.split(",")[1];
+        if (!base64) return;
+        uploadPersonaIcon.mutate(
+          { id: dialog.id, fileBase64: base64 },
+          {
+            onSuccess: (result) => setPendingIconPath(result.iconPath),
+          },
+        );
+      };
+      reader.readAsDataURL(file);
+    },
+    [dialog, uploadPersonaIcon],
+  );
+
+  const displayIconPath = pendingIconPath ?? (dialog?.kind === "edit" ? dialog.iconPath : null);
 
   const handleSave = useCallback(() => {
     const trimmed = name.trim();
@@ -104,7 +132,7 @@ export function PersonaSection(_props: SectionProps) {
             size="icon"
             className="size-9 shrink-0"
             disabled={!selectedId}
-            onClick={() => selectedPersona && openEdit(selectedPersona.id, selectedPersona.name, selectedPersona.description)}
+            onClick={() => selectedPersona && openEdit(selectedPersona.id, selectedPersona.name, selectedPersona.description, selectedPersona.iconPath)}
             aria-label="Edit persona"
           >
             <Pencil className="size-4" />
@@ -147,6 +175,44 @@ export function PersonaSection(_props: SectionProps) {
                 rows={3}
               />
             </div>
+            {dialog?.kind === "edit" && (
+              <div className="space-y-1.5">
+                <Label>Icon</Label>
+                <div className="flex items-center gap-3">
+                  {displayIconPath ? (
+                    <UploadedImage
+                      storedPath={displayIconPath}
+                      alt=""
+                      width={64}
+                      height={64}
+                      layout="fixed"
+                      className="size-16 rounded-lg object-cover border border-border"
+                    />
+                  ) : (
+                    <div className="size-16 rounded-lg bg-muted flex items-center justify-center border border-border">
+                      <ImageIcon className="size-6 text-muted-foreground/40" />
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadPersonaIcon.isPending}
+                    className="flex items-center gap-1.5"
+                  >
+                    <Upload className="size-3.5" />
+                    {uploadPersonaIcon.isPending ? "Uploading..." : "Upload"}
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>Cancel</Button>

@@ -5,6 +5,7 @@ import {
   getPersona,
   listPersonas,
   updatePersona,
+  uploadPersonaIcon,
   type PersonaListItem,
 } from "@/server/fns/personas";
 
@@ -66,6 +67,18 @@ export function useDeletePersona() {
     onSuccess: ({ id }) => {
       void queryClient.invalidateQueries({ queryKey: personaKeys.all });
       queryClient.removeQueries({ queryKey: personaKeys.detail(id) });
+    },
+  });
+}
+
+export function useUploadPersonaIcon() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; fileBase64: string }) =>
+      uploadPersonaIcon({ data: input }),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: personaKeys.all });
+      queryClient.removeQueries({ queryKey: personaKeys.detail(variables.id) });
     },
   });
 }

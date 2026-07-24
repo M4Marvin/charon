@@ -1,9 +1,16 @@
 import { randomUUID } from "node:crypto";
+import { rm, writeFile } from "node:fs/promises";
 import { createServerFn } from "@tanstack/react-start";
 import { type } from "arktype";
 import { getSession } from "@/server/session";
 import { validateId } from "@/server/validators";
+import {
+  ensureUploadsDirs,
+  diskPathFromStored,
+  storedPathFromDiskComponents,
+} from "@/server/uploads";
 import type { Persona } from "@/db/schema";
+import { UploadPersonaIconInput } from "@/server/schemas/persona";
 import {
   createPersona as repoCreate,
   deletePersona as repoDelete,
@@ -100,6 +107,36 @@ export const deletePersona = createServerFn({ method: "POST" })
   .validator(validateId)
   .handler(async ({ data }): Promise<{ id: string }> => {
     const { user } = await getSession();
+    const existing = repoGet(user.id, data.id);
+    if (existing.iconPath) {
+      try {
+        await rm(diskPathFromStored(existing.iconPath), { force: true });
+      } catch {}
+    }
     repoDelete(user.id, data.id);
     return { id: data.id };
+  });
+
+export const uploadPersonaIcon = createServerFn({ method: "POST" })
+  .validator(UploadPersonaIconInput)
+  .handler(async ({ data }): Promise<{ iconPath: string }> => {
+    const { user } = await getSession();
+    const existing = repoGet(user.id, data.id);
+    const filename = `${randomUUID()}.png`;
+    const storedPath = storedPathFromDiskComponents("personas", filename);
+    const diskPath = diskPathFromStored(storedPath);
+
+    await ensureUploadsDirs();
+
+    const bytes = Buffer.from(data.fileBase64, "base64");
+    await writeFile(diskPath, bytes);
+
+    if (existing.iconPath) {
+      try {
+        await rm(diskPathFromStored(existing.iconPath), { force: true });
+      } catch {}
+    }
+
+    repoUpdate(user.id, data.id, { iconPath: storedPath });
+    return { iconPath: storedPath };
   });

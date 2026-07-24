@@ -205,8 +205,8 @@ export function seedDemoCharactersForExistingUser(userId: string): void {
 }
 
 const SOURCE_DIR = "public/data/backgrounds-seed";
-const DEST_DIR = "public/data/backgrounds";
-const PUBLIC_PATH_PREFIX = "data/backgrounds";
+const DEST_DIR = "data/uploads/backgrounds";
+const PUBLIC_PATH_PREFIX = "uploads/backgrounds";
 
 function cleanBackgroundName(filename: string): string {
   const name = filename.replace(extname(filename), "");

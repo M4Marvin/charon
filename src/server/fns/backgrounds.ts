@@ -1,6 +1,5 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import { join } from "node:path";
 import { createServerFn } from "@tanstack/react-start";
 import type { Background } from "@/db/schema";
 import {
@@ -15,15 +14,13 @@ import {
   DeleteBackgroundInput,
   UploadBackgroundInput,
 } from "@/server/schemas/background";
-
-const BACKGROUNDS_DIR = "public/data/backgrounds";
-const PUBLIC_PATH_PREFIX = "data/backgrounds";
+import {
+  ensureUploadsDirs,
+  diskPathFromStored,
+  storedPathFromDiskComponents,
+} from "@/server/uploads";
 
 export type BackgroundListItem = Pick<Background, "id" | "name" | "path" | "createdAt">;
-
-function ensureDir() {
-  return mkdir(BACKGROUNDS_DIR, { recursive: true });
-}
 
 export const listBackgrounds = createServerFn({ method: "GET" }).handler(
   async (): Promise<BackgroundListItem[]> => {
@@ -45,14 +42,15 @@ export const uploadBackground = createServerFn({ method: "POST" })
     const { user } = await getSession();
     if (!isAdmin(user)) throw new Error("Demo users cannot upload backgrounds.");
 
-    await ensureDir();
+    await ensureUploadsDirs();
     const filename = `${randomUUID()}.png`;
-    const filepath = join(BACKGROUNDS_DIR, filename);
+    const storedPath = storedPathFromDiskComponents("backgrounds", filename);
+    const filepath = diskPathFromStored(storedPath);
 
     const bytes = Buffer.from(data.fileBase64, "base64");
     await writeFile(filepath, bytes);
 
-    return repoCreate({ name: data.name, path: join(PUBLIC_PATH_PREFIX, filename) });
+    return repoCreate({ name: data.name, path: storedPath });
   });
 
 export const deleteBackground = createServerFn({ method: "POST" })
@@ -64,7 +62,7 @@ export const deleteBackground = createServerFn({ method: "POST" })
     const bg = repoGet(data.id);
 
     try {
-      await rm(join("public", bg.path), { force: true });
+      await rm(diskPathFromStored(bg.path), { force: true });
     } catch {
       // File might already be gone; that's fine.
     }

@@ -3,6 +3,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useChats, useDeleteChat } from "@/hooks/useChats";
+import { uploadsUrl } from "@/lib/uploads-url";
 
 export function ChatListPage() {
   const { data: chats, isLoading, error } = useChats();
@@ -67,7 +68,7 @@ export function ChatListPage() {
                   <div className="flex items-center gap-3 mb-3">
                     <Avatar className="size-12 shrink-0 rounded-xl ring-1 ring-white/10">
                       <AvatarImage
-                        src={chat.characterImagePath ? `/${chat.characterImagePath}` : undefined}
+                        src={uploadsUrl(chat.characterImagePath) ?? undefined}
                         alt={chat.characterName}
                         className="object-cover"
                       />

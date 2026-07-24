@@ -1,5 +1,4 @@
 import { rm } from "node:fs/promises";
-import { join } from "node:path";
 import { createServerFn } from "@tanstack/react-start";
 import { type } from "arktype";
 import type { Character } from "@/db/schema";
@@ -14,6 +13,7 @@ import {
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import { getSession, isAdmin } from "@/server/session";
 import { validateId } from "@/server/validators";
+import { diskPathFromStored } from "@/server/uploads";
 import {
   importCharacterCard,
   type ImportError,
@@ -139,7 +139,7 @@ export const deleteCharacter = createServerFn({ method: "POST" })
 
     if (imagePath) {
       try {
-        await rm(join("public", imagePath), { force: true });
+        await rm(diskPathFromStored(imagePath), { force: true });
       } catch {}
     }
 
