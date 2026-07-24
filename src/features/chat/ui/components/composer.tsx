@@ -3,34 +3,36 @@ import { ArrowUp, Square, Wand } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
+import { useChatUiStore } from "../chat-store";
 
 const TEXTAREA_MAX_HEIGHT = 120;
 
 interface ComposerProps {
-  value: string;
-  onChange: (value: string) => void;
+  chatId: string;
+  hasMessages: boolean;
   onSend: () => void;
   onStop: () => void;
   onImpersonate: () => void;
   isStreaming: boolean;
-  canSend: boolean;
   impersonatePending: boolean;
   disabled: boolean;
   characterName?: string;
 }
 
 export function Composer({
-  value,
-  onChange,
+  chatId,
+  hasMessages,
   onSend,
   onStop,
   onImpersonate,
   isStreaming,
-  canSend,
   impersonatePending,
   disabled,
   characterName,
 }: ComposerProps) {
+  const value = useChatUiStore((s) => s.inputDrafts[chatId] ?? "");
+  const setInputDraft = useChatUiStore((s) => s.setInputDraft);
+  const canSend = (value.trim().length > 0 || hasMessages) && !isStreaming;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => {
@@ -65,7 +67,7 @@ export function Composer({
           <Textarea
             ref={textareaRef}
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => setInputDraft(chatId, e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             rows={1}

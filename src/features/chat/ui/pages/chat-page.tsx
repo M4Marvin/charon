@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useEffect } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 
@@ -9,7 +9,7 @@ import { useBackground } from "@/hooks/useBackgrounds";
 import { usePersona } from "@/hooks/usePersonas";
 import { computeActivePathFromMessages } from "@/features/chat/tree/active-path";
 import { useChatGeneration } from "../hooks/use-chat-generation";
-import { useChatUiStore, selectInput, selectActivePlaceholderId, selectSettingsOpen, selectPortraitOpen, selectSceneOpen, selectLightboxSrc } from "../chat-store";
+import { useChatUiStore, selectActivePlaceholderId, selectSettingsOpen, selectPortraitOpen, selectSceneOpen, selectLightboxSrc, selectShortcutsOpen } from "../chat-store";
 import { useChatMacros } from "../macros";
 import { fileToDownscaledDataUrl } from "../custom-image";
 import { ChatBackground } from "../components/chat-background";
@@ -19,26 +19,28 @@ import { Composer } from "../components/composer";
 import { CharacterPortraitPanel } from "../components/character-portrait-panel";
 import { CustomImagePanel } from "../components/custom-image-panel";
 import { ImageLightbox } from "../components/image-lightbox";
+import { KeyboardShortcutsDialog } from "../components/keyboard-shortcuts-dialog";
 import { SettingsPanel } from "../settings/settings-panel";
 
 export function ChatPage() {
   const { id: chatId } = useParams({ from: "/c/$id" });
   const navigate = useNavigate();
 
-  const input = useChatUiStore(selectInput);
   const activePlaceholderId = useChatUiStore(selectActivePlaceholderId);
   const settingsOpen = useChatUiStore(selectSettingsOpen);
   const portraitOpen = useChatUiStore(selectPortraitOpen);
   const sceneOpen = useChatUiStore(selectSceneOpen);
   const lightboxSrc = useChatUiStore(selectLightboxSrc);
+  const shortcutsOpen = useChatUiStore(selectShortcutsOpen);
 
-  const setInput = useChatUiStore((s) => s.setInput);
-  const clearInput = useChatUiStore((s) => s.clearInput);
+  const setInput = useChatUiStore((s) => s.setInputDraft);
+  const clearInput = useChatUiStore((s) => s.clearInputDraft);
   const setSettingsOpen = useChatUiStore((s) => s.setSettingsOpen);
   const setPortraitOpen = useChatUiStore((s) => s.setPortraitOpen);
   const setSceneOpen = useChatUiStore((s) => s.setSceneOpen);
   const openLightbox = useChatUiStore((s) => s.openLightbox);
   const closeLightbox = useChatUiStore((s) => s.closeLightbox);
+  const setShortcutsOpen = useChatUiStore((s) => s.setShortcutsOpen);
   const customImage = useChatUiStore((s) => s.customImages[chatId] ?? null);
   const setCustomImage = useChatUiStore((s) => s.setCustomImage);
   const clearCustomImage = useChatUiStore((s) => s.clearCustomImage);
@@ -69,7 +71,6 @@ export function ChatPage() {
 
   const isBusy = config ? config.chat.lockState !== "idle" : false;
   const hasMessages = activePath.length > 0;
-  const canSend = (input.trim().length > 0 || hasMessages) && !generation.isStreaming;
   const composerDisabled = config?.chat.lockState === "generating" && activePlaceholderId === null;
 
   const userAvatarSrc = persona?.iconPath ?? null;
@@ -77,17 +78,17 @@ export function ChatPage() {
   const backgroundSrc = background?.path ?? null;
 
   const handleSend = useCallback(() => {
-    const trimmed = input.trim();
     if (generation.isStreaming) return;
+    const trimmed = (useChatUiStore.getState().inputDrafts[chatId] ?? "").trim();
 
     if (trimmed) {
       const final = substitute(trimmed);
-      clearInput();
+      clearInput(chatId);
       generation.start("send", { content: final });
     } else if (hasMessages) {
       generation.start("continue");
     }
-  }, [input, substitute, clearInput, generation, hasMessages]);
+  }, [chatId, substitute, clearInput, generation, hasMessages]);
 
   const handleSwipe = useCallback(
     (messageLocalId: number, direction: "next" | "prev") => {
@@ -117,7 +118,10 @@ export function ChatPage() {
   const handleDelete = useCallback(
     (messageLocalId: number) => {
       if (isBusy) return;
-      deleteMsgMutation.mutate({ chatId, messageLocalId });
+      deleteMsgMutation.mutate(
+        { chatId, messageLocalId },
+        { onSuccess: () => toast.success("Message deleted") },
+      );
     },
     [chatId, isBusy, deleteMsgMutation],
   );
@@ -128,7 +132,7 @@ export function ChatPage() {
       { chatId },
       {
         onSuccess: (result) => {
-          setInput(result.text);
+          setInput(chatId, result.text);
         },
         onError: () => {
           toast.error("Impersonation failed");
@@ -152,6 +156,59 @@ export function ChatPage() {
   const handleClearImage = useCallback(() => {
     clearCustomImage(chatId);
   }, [chatId, clearCustomImage]);
+
+  useEffect(() => {
+    const isTypingTarget = (el: EventTarget | null) => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        el.isContentEditable
+      );
+    };
+
+    const lastAssistant = [...activePath].reverse().find((e) => e.message.role === "assistant");
+
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      const typing = isTypingTarget(e.target);
+
+      if (e.key === "?" && !typing) {
+        e.preventDefault();
+        setShortcutsOpen(!shortcutsOpen);
+        return;
+      }
+
+      if (!mod || !e.shiftKey) return;
+      if (isBusy) return;
+
+      if (e.key.toLowerCase() === "r" && !typing) {
+        if (!lastAssistant) return;
+        e.preventDefault();
+        generation.start("regenerate", { messageLocalId: lastAssistant.message.localId });
+        return;
+      }
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        if (typing) return;
+        if (!lastAssistant) return;
+        e.preventDefault();
+        handleSwipe(lastAssistant.message.localId, e.key === "ArrowLeft" ? "prev" : "next");
+        return;
+      }
+
+      if (e.key.toLowerCase() === "i") {
+        e.preventDefault();
+        handleImpersonate();
+        return;
+      }
+    };
+
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [activePath, isBusy, generation, handleSwipe, handleImpersonate, shortcutsOpen, setShortcutsOpen]);
 
   if (configLoading || messagesLoading) {
     return (
@@ -188,6 +245,7 @@ export function ChatPage() {
         onTogglePortrait={() => setPortraitOpen(!portraitOpen)}
         onToggleScene={() => setSceneOpen(!sceneOpen)}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
       />
 
       <MessageList
@@ -234,13 +292,12 @@ export function ChatPage() {
       />
 
       <Composer
-        value={input}
-        onChange={setInput}
+        chatId={chatId}
+        hasMessages={hasMessages}
         onSend={handleSend}
         onStop={generation.stop}
         onImpersonate={handleImpersonate}
         isStreaming={generation.isStreaming}
-        canSend={canSend}
         impersonatePending={impersonateMutation.isPending}
         disabled={composerDisabled}
         characterName={config.character.name}
@@ -250,6 +307,11 @@ export function ChatPage() {
         chatId={chatId}
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
+      />
+
+      <KeyboardShortcutsDialog
+        open={shortcutsOpen}
+        onOpenChange={setShortcutsOpen}
       />
     </div>
   );

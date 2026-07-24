@@ -1,5 +1,5 @@
 import { useState, useLayoutEffect, useRef, useCallback } from "react";
-import { ChevronLeft, ChevronRight, RotateCw, Pencil, Trash2, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, RotateCw, Pencil, Trash2, Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
@@ -56,6 +56,8 @@ export function ChatMessage({
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const editRef = useRef<HTMLTextAreaElement>(null);
 
@@ -95,6 +97,7 @@ export function ChatMessage({
   const displayContent = isStreaming
     ? streamingText || message.content
     : message.content;
+  const isLongMessage = displayContent.length > 600;
 
   if (isSystem) {
     return (
@@ -116,12 +119,12 @@ export function ChatMessage({
       <div
         className={cn(
           "group relative rounded-2xl px-4 py-3.5 md:px-5 md:py-4",
-          isAssistant ? "glass-strong" : "glass",
+          isAssistant ? "glass-strong border-l-2 border-[--lagoon]/40" : "glass",
           isNewest && "motion-safe:animate-msg-in",
         )}
       >
         <div className="flex gap-3">
-          <Avatar className="size-11 shrink-0 rounded-lg ring-1 ring-white/10">
+          <Avatar className="size-11 shrink-0">
             <AvatarImage
               src={avatarSrc ? `/${avatarSrc}` : undefined}
               alt={name}
@@ -148,9 +151,23 @@ export function ChatMessage({
                 {name}
               </span>
               <span className={cn(
-                "ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0",
+                "ml-auto flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity shrink-0",
                 disabled && "pointer-events-none",
               )}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-6 text-white/40 hover:text-white"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(displayContent).then(() => {
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1500);
+                    });
+                  }}
+                  aria-label={copied ? "Copied" : "Copy message"}
+                >
+                  {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -182,7 +199,7 @@ export function ChatMessage({
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="min-h-[60px] resize-none border-0 bg-transparent p-0 text-[15px] leading-7 text-foreground focus-visible:ring-0"
+                  className="min-h-[60px] resize-none border-0 bg-transparent p-0 text-sm leading-6 text-foreground focus-visible:ring-0"
                   style={{ maxHeight: TEXTAREA_MAX_HEIGHT }}
                 />
                 <div className="mt-2 flex items-center gap-2">
@@ -219,10 +236,26 @@ export function ChatMessage({
                 ))}
               </div>
             ) : (
-              <div className="text-[15px] leading-7">
-                <RichText content={displayContent} />
-                {isStreaming && streamingText && (
-                  <span className="inline-block w-[2px] h-[1.15em] bg-[--lagoon] animate-pulse align-baseline ml-0.5" />
+              <div>
+                <div
+                  className={cn(
+                    "text-sm leading-6",
+                    !expanded && isLongMessage && "line-clamp-[10]",
+                  )}
+                >
+                  <RichText content={displayContent} />
+                  {isStreaming && streamingText && (
+                    <span className="inline-block w-[2px] h-[1.15em] bg-[--lagoon] animate-pulse align-baseline ml-0.5" />
+                  )}
+                </div>
+                {isLongMessage && !isStreaming && (
+                  <button
+                    type="button"
+                    onClick={() => setExpanded((v) => !v)}
+                    className="mt-1 text-[11px] text-[--lagoon]/70 hover:text-[--lagoon] transition-colors"
+                  >
+                    {expanded ? "Show less" : "Show more"}
+                  </button>
                 )}
               </div>
             )}

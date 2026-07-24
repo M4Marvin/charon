@@ -32,13 +32,10 @@ function MessageNavButtons({ ids }: { ids: string[] }) {
   const { scrollToMessage } = useMessageScroller();
   const { visibleMessageIds } = useMessageScrollerVisibility();
 
-  const firstIdx = visibleMessageIds[0] ? ids.indexOf(visibleMessageIds[0]) : -1;
-  const lastIdx =
-    visibleMessageIds.length > 0
-      ? ids.indexOf(visibleMessageIds[visibleMessageIds.length - 1])
-      : -1;
-  const canPrev = firstIdx > 0;
-  const canNext = lastIdx >= 0 && lastIdx < ids.length - 1;
+  const mid = Math.floor(visibleMessageIds.length / 2);
+  const currentIdx = visibleMessageIds[mid] ? ids.indexOf(visibleMessageIds[mid]) : -1;
+  const canPrev = currentIdx > 0;
+  const canNext = currentIdx >= 0 && currentIdx < ids.length - 1;
 
   if (ids.length < 2) return null;
 
@@ -50,7 +47,7 @@ function MessageNavButtons({ ids }: { ids: string[] }) {
         className="size-8 rounded-full glass text-white/40 hover:text-white/90 disabled:opacity-20"
         disabled={!canPrev}
         onClick={() =>
-          scrollToMessage(ids[firstIdx - 1], {
+          scrollToMessage(ids[currentIdx - 1], {
             align: "end",
             behavior: "smooth",
           })
@@ -65,7 +62,7 @@ function MessageNavButtons({ ids }: { ids: string[] }) {
         className="size-8 rounded-full glass text-white/40 hover:text-white/90 disabled:opacity-20"
         disabled={!canNext}
         onClick={() =>
-          scrollToMessage(ids[lastIdx + 1], {
+          scrollToMessage(ids[currentIdx + 1], {
             align: "start",
             behavior: "smooth",
           })
@@ -116,8 +113,8 @@ export function MessageList({
       scrollEdgeThreshold={80}
     >
       <MessageScroller className="size-full">
-        <MessageScrollerViewport className="px-3 md:px-6 pt-28 pb-52">
-          <MessageScrollerContent className="mx-auto max-w-3xl flex flex-col gap-10 pb-6">
+        <MessageScrollerViewport className="px-3 md:px-6 pt-20 pb-24">
+          <MessageScrollerContent className="mx-auto max-w-3xl flex flex-col gap-3 pb-6">
             {entries.map((entry) => {
               const isPlaceholder =
                 activePlaceholderId !== null &&

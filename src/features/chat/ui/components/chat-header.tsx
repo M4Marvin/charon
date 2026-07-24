@@ -1,4 +1,4 @@
-import { ArrowLeft, Settings, User, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Settings, User, Image as ImageIcon, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ interface ChatHeaderProps {
   onTogglePortrait: () => void;
   onToggleScene: () => void;
   onOpenSettings: () => void;
+  onOpenShortcuts: () => void;
 }
 
 export function ChatHeader({
@@ -27,13 +28,14 @@ export function ChatHeader({
   onTogglePortrait,
   onToggleScene,
   onOpenSettings,
+  onOpenShortcuts,
 }: ChatHeaderProps) {
   return (
-    <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-white/5 bg-black/40 backdrop-blur-xl px-3 py-3 md:px-5 md:py-4">
+    <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-white/5 bg-black/40 backdrop-blur-xl px-3 py-2 md:px-5">
       <Button
         variant="ghost"
         size="icon"
-        className="size-10 rounded-full glass shrink-0 text-white/80 hover:text-white"
+        className="size-9 rounded-full glass shrink-0 text-white/80 hover:text-white"
         onClick={onBack}
         aria-label="Back to chats"
       >
@@ -41,7 +43,7 @@ export function ChatHeader({
       </Button>
 
       <div className="flex items-center gap-3 min-w-0">
-        <Avatar className="size-9 shrink-0 rounded-lg ring-1 ring-white/10">
+        <Avatar className="size-8 shrink-0">
           <AvatarImage
             src={avatarSrc ? `/${avatarSrc}` : undefined}
             alt={characterName}
@@ -107,6 +109,15 @@ export function ChatHeader({
           aria-label="Open settings"
         >
           <Settings className="size-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-9 rounded-full glass shrink-0 text-white/80 hover:text-white"
+          onClick={onOpenShortcuts}
+          aria-label="Keyboard shortcuts"
+        >
+          <Keyboard className="size-4" />
         </Button>
       </div>
     </header>
