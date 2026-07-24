@@ -1,5 +1,6 @@
 export function uploadsUrl(
   stored: string | null | undefined,
 ): string | null {
-  return stored ? `/${stored}` : null;
+  if (!stored) return null;
+  return `/${stored.replace(/\.(png|jpe?g|webp)$/i, "")}`;
 }

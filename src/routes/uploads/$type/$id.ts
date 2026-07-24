@@ -1,12 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import {
   diskPathFromStored,
+  storedPathFromDiskComponents,
   UPLOADS_SUBDIRS,
+  type UploadSubdir,
 } from "@/server/uploads";
 
 const validTypes: Set<string> = new Set(Object.values(UPLOADS_SUBDIRS));
+const extensions = [".png", ".jpg", ".jpeg", ".webp"] as const;
+
+const contentTypeMap: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+};
 
 export const Route = createFileRoute("/uploads/$type/$id")({
   server: {
@@ -17,30 +26,36 @@ export const Route = createFileRoute("/uploads/$type/$id")({
         if (!validTypes.has(type)) {
           return new Response("Invalid type", { status: 400 });
         }
-        if (!/^[\w-]+\.(png|jpe?g|webp)$/.test(id)) {
+        if (!/^[\w-]+$/.test(id)) {
           return new Response("Invalid filename", { status: 400 });
         }
 
-        const diskPath = diskPathFromStored(join(type, id));
+        let bytes: Buffer | null = null;
+        let resolvedExt = "";
 
-        try {
-          const bytes = await readFile(diskPath);
-          const ext = id.split(".").pop()?.toLowerCase();
-          const contentType =
-            ext === "webp"
-              ? "image/webp"
-              : ext === "png"
-                ? "image/png"
-                : "image/jpeg";
-          return new Response(bytes, {
-            headers: {
-              "Content-Type": contentType,
-              "Cache-Control": "public, max-age=31536000, immutable",
-            },
-          });
-        } catch {
+        for (const ext of extensions) {
+          const stored = storedPathFromDiskComponents(
+            type as UploadSubdir,
+            `${id}${ext}`,
+          );
+          const diskPath = diskPathFromStored(stored);
+          try {
+            bytes = await readFile(diskPath);
+            resolvedExt = ext;
+            break;
+          } catch {}
+        }
+
+        if (!bytes) {
           return new Response("Not found", { status: 404 });
         }
+
+        return new Response(new Uint8Array(bytes) as BodyInit, {
+          headers: {
+            "Content-Type": contentTypeMap[resolvedExt],
+            "Cache-Control": "public, max-age=31536000, immutable",
+          },
+        });
       },
     },
   },
