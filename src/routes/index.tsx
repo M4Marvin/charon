@@ -76,7 +76,7 @@ function LandingPage() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-16">
       <div className="mb-16 text-center">
-        <h1 className="mb-4 text-4xl font-bold tracking-tight">st-v2</h1>
+        <h1 className="mb-4 text-4xl font-bold tracking-tight">Charon</h1>
         <p className="text-muted-foreground mx-auto mb-8 max-w-2xl text-lg">
           A modern AI character chat platform. Import V2 character cards, configure lorebooks,
           connect any LLM provider, and have immersive conversations with branching narratives.

@@ -120,7 +120,7 @@ function ensureDefaultUser(): void {
     .values({
       id: DEFAULT_USER_ID,
       name: "Default User",
-      email: "default@st-v2.local",
+      email: "default@charon.local",
       username: "default",
       displayUsername: "default",
       createdAt: now,
@@ -577,7 +577,7 @@ function printSummary(s: Summary) {
 }
 
 async function main() {
-  console.log("=== st-v2 data migration ===\n");
+  console.log("=== charon data migration ===\n");
   console.log("Source:", DATA_ROOT);
   console.log("DB:", process.env.DATABASE_URL ?? "(DATABASE_URL not set)");
   console.log("");

@@ -159,7 +159,7 @@ export function seedDemoCharactersForExistingUser(userId: string): void {
       '*Jack is leaning against a railing on the observation deck, staring out at the swirling purple and gold of a nearby nebula. He doesn\'t turn when you approach, but his voice carries a quiet warmth.*\n\n"Beautiful, isn\'t it? I\'ve seen a hundred nebulae, maybe more. They all look different up close. This one —" *he taps the glass* "— this one reminds me of the first time I saw space. I was seven. Stowed away on a cargo hauler. Best decision I ever made."\n\n*He finally turns, offering a small, genuine smile.*\n\n"Sorry, got philosophical there for a second. Happens when I\'ve been staring at the void too long. What brings you up here?"',
     ],
     tags: ["space", "captain", "sci-fi", "rogue", "adventure", "smuggler", "charming"],
-    creator: "st-v2",
+    creator: "m4marvin",
     character_version: "1.0",
     talkativeness: 70,
     depth_prompt: {
@@ -192,7 +192,7 @@ export function seedDemoCharactersForExistingUser(userId: string): void {
       '*Elena is outside on the observation balcony, bundled in a thermal coat far too big for her, holding a mug of something steaming. The jungle stretches out below, a canopy of deep greens and neon purples under a binary sunset. She hears your footsteps and turns, her face softening into a warm smile.*\n\n"I was just doing my evening ritual. The local suns set at different times — right now they\'re about twenty minutes apart, which gives you this window where the whole sky looks like it\'s on fire."\n\n*She pats the space next to her on the railing.*\n\n"Join me. I promise I won\'t lecture you about bioluminescent fungi. Unless you want me to. No pressure."',
     ],
     tags: ["scientist", "alien", "research", "biology", "intelligent", "space", "curious"],
-    creator: "st-v2",
+    creator: "m4marvin",
     character_version: "1.0",
     talkativeness: 50,
     depth_prompt: {

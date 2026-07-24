@@ -22,7 +22,7 @@ export default function Header() {
           to="/c"
           className="text-sm font-semibold tracking-tight text-foreground no-underline"
         >
-          st-v2
+          Charon
         </Link>
         <nav className="flex items-center gap-6 text-sm">
           {isPending ? null : session?.user ? (
