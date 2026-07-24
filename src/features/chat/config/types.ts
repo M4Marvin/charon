@@ -24,7 +24,7 @@ export interface ChatConfig {
   chat: ChatDetail;
   character: CharacterDataV2;
   settings: UserSettingsView;
-  provider: ResolvedProvider;
+  provider: ResolvedProvider | null;
   persona: PersonaInfo;
   loreEntries: LoreEntry[];
 }

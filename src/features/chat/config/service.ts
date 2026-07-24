@@ -5,7 +5,7 @@ import { getChat } from "../tree/service";
 import { resolveProvider } from "./provider";
 import { resolvePersona } from "./persona";
 import { getEnabledLoreEntries } from "./lorebook";
-import type { ChatConfig, UserSettingsView } from "./types";
+import type { ChatConfig, ResolvedProvider, UserSettingsView } from "./types";
 import { createLogger } from "@/features/logging";
 
 const log = createLogger("chat:config:service");
@@ -40,7 +40,14 @@ export async function loadChatConfig(
   const chat = getChat(userId, chatId, db);
   const char = repoGetCharacter(userId, chat.characterId, db);
   const settings = toSettingsView(getUserSettings(userId, db));
-  const provider = await resolveProvider(userId, db);
+
+  let provider: ResolvedProvider | null = null;
+  try {
+    provider = await resolveProvider(userId, db);
+  } catch {
+    log.info("loadChatConfig: no provider configured", { chatId });
+  }
+
   const persona = resolvePersona(userId, fallbackUserName, db);
   const loreEntries = getEnabledLoreEntries(userId, db);
 

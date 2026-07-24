@@ -19,7 +19,7 @@ export default function Header() {
     <header className="sticky top-0 z-50 border-b border-border/40 bg-background/60 px-4 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between">
         <Link
-          to="/chats"
+          to="/c"
           className="text-sm font-semibold tracking-tight text-foreground no-underline"
         >
           st-v2
@@ -35,7 +35,7 @@ export default function Header() {
                 Characters
               </Link>
               <Link
-                to="/chats"
+                to="/c"
                 className="text-muted-foreground no-underline transition-colors hover:text-foreground"
                 activeProps={{ className: "text-foreground" }}
               >

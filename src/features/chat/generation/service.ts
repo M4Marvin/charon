@@ -175,8 +175,18 @@ export function cancelStream(
   log.debug("cancelStream start", { chatId, messageLocalId });
   if (messageLocalId === 0) throw new Error("Cannot cancel the root message");
 
-  const result = deleteBranch(userId, chatId, messageLocalId, db, { skipIdleCheck: true });
+  let deletedIds: number[] = [];
+  try {
+    const result = deleteBranch(userId, chatId, messageLocalId, db, { skipIdleCheck: true });
+    deletedIds = result.deletedIds;
+  } catch (err) {
+    log.warn("cancelStream: deleteBranch failed, releasing lock anyway", {
+      chatId,
+      messageLocalId,
+      error: (err as Error).message,
+    });
+  }
   releaseLock(userId, chatId, db);
-  log.info("cancelStream done", { messageLocalId, deletedCount: result.deletedIds.length });
-  return { deletedIds: result.deletedIds };
+  log.info("cancelStream done", { messageLocalId, deletedCount: deletedIds.length });
+  return { deletedIds };
 }

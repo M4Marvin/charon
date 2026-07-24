@@ -12,6 +12,7 @@ import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import TanstackQueryProvider from "../integrations/tanstack-query/root-provider";
 
 import Header from "@/components/Header";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import appCss from "@/styles.css?url";
 
@@ -65,31 +66,35 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   // The chat page renders its own fixed header (back chevron / character
   // name / gear). Hide the global nav there so it doesn't double up.
-  const hideGlobalHeader = /^\/chats\/[^/]+/.test(location.pathname);
+  const hideGlobalHeader =
+    /^\/chats\/[^/]+/.test(location.pathname) ||
+    /^\/c\/(?!new$)[^/]+$/.test(location.pathname);
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
       <body>
-        {!hideGlobalHeader && <Header />}
-        <RichTextSettingsProvider>
-          <TanstackQueryProvider queryClient={queryClient}>{children}</TanstackQueryProvider>
-        </RichTextSettingsProvider>
-        <Toaster />
-        <TanStackDevtools
-          config={{
-            position: "bottom-right",
-          }}
-          plugins={[
-            {
-              name: "Tanstack Router",
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-            TanStackQueryDevtools,
-          ]}
-        />
-        <Scripts />
+        <TooltipProvider>
+          {!hideGlobalHeader && <Header />}
+          <RichTextSettingsProvider>
+            <TanstackQueryProvider queryClient={queryClient}>{children}</TanstackQueryProvider>
+          </RichTextSettingsProvider>
+          <Toaster />
+          <TanStackDevtools
+            config={{
+              position: "bottom-right",
+            }}
+            plugins={[
+              {
+                name: "Tanstack Router",
+                render: <TanStackRouterDevtoolsPanel />,
+              },
+              TanStackQueryDevtools,
+            ]}
+          />
+          <Scripts />
+        </TooltipProvider>
       </body>
     </html>
   );

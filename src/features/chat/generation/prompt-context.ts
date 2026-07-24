@@ -20,6 +20,8 @@ export async function loadGenerationContext(
   log.debug("loadGenerationContext start", { chatId, assistantMessageLocalId });
 
   const config = await loadChatConfig(userId, chatId, fallbackUserName, db);
+  if (!config.provider) throw new Error("No provider configured");
+
   const { chat, character, settings, provider: resolved, persona, loreEntries } = config;
 
   const messages = getMessages(userId, chatId, db);

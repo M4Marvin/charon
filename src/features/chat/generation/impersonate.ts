@@ -36,6 +36,8 @@ export async function impersonateMessage(
   if (activeLeafId === null) throw new Error("No active message");
 
   const config = await loadChatConfig(userId, chatId, userName, db);
+  if (!config.provider) throw new Error("No provider configured");
+
   const { chat, character, settings, provider, persona } = config;
 
   const path = getPathToNode(tree, activeLeafId);
