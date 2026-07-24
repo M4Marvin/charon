@@ -1,5 +1,5 @@
-import { Converter } from "showdown";
-import type { ShowdownExtension } from "showdown";
+import showdown from "showdown";
+import type { Converter, ShowdownExtension } from "showdown";
 import DOMPurify from "dompurify";
 import type { Config as DOMPurifyConfig } from "dompurify";
 import { parse, stringify } from "@adobe/css-tools";
@@ -193,7 +193,7 @@ function addShowdownPatch(converter: Converter) {
 
 function getConverter(): Converter {
   if (!_converter) {
-    _converter = new Converter({
+    _converter = new showdown.Converter({
       emoji: true,
       literalMidWordUnderscores: true,
       parseImgDimensions: true,

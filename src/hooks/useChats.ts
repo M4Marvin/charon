@@ -2,16 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createChat,
   deleteChat,
-  deleteMessageBranch,
-  editMessage,
   getChat,
   getChatMessages,
   listChats,
-  sendMessage,
-  swipeMessage,
   updateChatSettings,
-  type SendResult,
-  type SwipeResult,
 } from "@/server/fns/chats";
 import {
   cancelStreamFn,
@@ -19,6 +13,12 @@ import {
   impersonateFn,
   prepareStreamFn,
 } from "@/features/chat/generation/fns";
+import {
+  appendUserAndReplyFn,
+  deleteBranchFn,
+  editMessageFn,
+  swipeFn,
+} from "@/features/chat/tree/fns";
 import type { PrepareStreamResult } from "@/features/chat/generation/types";
 
 export const chatKeys = {
@@ -61,11 +61,11 @@ export function useCreateChat() {
   });
 }
 
-export function useSendMessage() {
+export function useAppendUserAndReply() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { chatId: string; content: string }): Promise<SendResult> =>
-      sendMessage({ data: input }),
+    mutationFn: (input: { chatId: string; content: string }) =>
+      appendUserAndReplyFn({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
@@ -79,7 +79,8 @@ export function useSwipeMessage() {
       chatId: string;
       messageLocalId: number;
       direction: "next" | "prev";
-    }): Promise<SwipeResult> => swipeMessage({ data: input }),
+      createIfMissing?: { role: "user" | "assistant"; content: string };
+    }) => swipeFn({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
@@ -90,7 +91,7 @@ export function useDeleteMessage() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { chatId: string; messageLocalId: number }) =>
-      deleteMessageBranch({ data: input }),
+      deleteBranchFn({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
@@ -101,7 +102,7 @@ export function useEditMessage() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { chatId: string; messageLocalId: number; content: string }) =>
-      editMessage({ data: input }),
+      editMessageFn({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },

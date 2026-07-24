@@ -63,10 +63,10 @@ function LandingPage() {
         </p>
         <div className="flex gap-4">
           <Button asChild size="lg">
-            <Link to="/chats">Go to Chats</Link>
+            <Link to="/c">Go to Chats</Link>
           </Button>
           <Button asChild variant="outline" size="lg">
-            <Link to="/chats/new">New Chat</Link>
+            <Link to="/c/new">New Chat</Link>
           </Button>
         </div>
       </main>

@@ -45,7 +45,7 @@ function SignupPage() {
         toast.error(error.message || "Sign up failed");
         return;
       }
-      await navigate({ to: "/chats" });
+      await navigate({ to: "/c" });
     },
   });
 

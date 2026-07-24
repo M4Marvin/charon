@@ -41,7 +41,7 @@ function CharacterDetailPage() {
   const handleStartChat = async () => {
     if (!character || createChatMutation.isPending) return;
     const result = await createChatMutation.mutateAsync({ characterId: character.id });
-    void navigate({ to: "/chats/$id", params: { id: result.id } });
+    void navigate({ to: "/c/$id", params: { id: result.id } });
   };
 
   return (

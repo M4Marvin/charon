@@ -158,7 +158,7 @@ export function runRegexScript(
 export function filterString(
   rawString: string,
   trimStrings: string[],
-  params: { characterOverride?: string } = {},
+  _params: { characterOverride?: string } = {},
   resolveMacro?: MacroResolver,
 ): string {
   let result = rawString;

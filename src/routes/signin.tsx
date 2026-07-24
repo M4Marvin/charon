@@ -34,7 +34,7 @@ function SigninPage() {
         toast.error(error.message || error.statusText || "Sign in failed");
         return;
       }
-      await navigate({ to: "/chats" });
+      await navigate({ to: "/c" });
     },
   });
 

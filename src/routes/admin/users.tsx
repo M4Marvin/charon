@@ -33,7 +33,7 @@ export const Route = createFileRoute("/admin/users")({
   beforeLoad: async () => {
     const session = await getSession();
     if (!session || session.user.role !== "admin") {
-      throw redirect({ to: "/chats" });
+      throw redirect({ to: "/c" });
     }
   },
   component: AdminUsersPage,
@@ -98,7 +98,7 @@ function AdminUsersPage() {
     <main className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6 flex items-center gap-3">
         <Button asChild variant="ghost" size="icon" className="shrink-0">
-          <Link to="/chats">
+          <Link to="/c">
             <ArrowLeft className="size-4" />
           </Link>
         </Button>

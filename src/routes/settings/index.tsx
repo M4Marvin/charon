@@ -45,7 +45,7 @@ function SettingsPage() {
     <main className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center gap-3">
         <Button asChild variant="ghost" size="icon" className="shrink-0">
-          <Link to="/chats">
+          <Link to="/c">
             <ArrowLeft className="size-4" />
           </Link>
         </Button>

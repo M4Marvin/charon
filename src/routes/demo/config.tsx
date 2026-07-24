@@ -44,12 +44,14 @@ const loadDemoConfig = createServerFn({ method: "POST", strict: { output: false 
         description: config.persona.description ?? null,
         isFallback: config.persona.name === user.name,
       },
-      provider: {
-        baseUrl: config.provider.provider.baseUrl,
-        model: config.provider.model,
-        hasApiKey: config.provider.provider.apiKey.length > 0,
-        preset: config.provider.preset,
-      },
+      provider: config.provider
+        ? {
+            baseUrl: config.provider.provider.baseUrl,
+            model: config.provider.model,
+            hasApiKey: config.provider.provider.apiKey.length > 0,
+            preset: config.provider.preset,
+          }
+        : null,
       character: {
         name: config.character.name,
         description: config.character.description,
@@ -158,7 +160,7 @@ interface DemoData {
     model: string;
     hasApiKey: boolean;
     preset: Record<string, unknown>;
-  };
+  } | null;
   character: {
     name: string;
     description: string;
@@ -400,29 +402,37 @@ function ConfigDemo() {
 
                 {/* ── Provider ── */}
                 <Section title="Provider Resolution">
-                  <div className="space-y-1">
-                    <FieldRow label="Base URL" value={provider.baseUrl} />
-                    <FieldRow
-                      label="Model"
-                      value={<code className="text-emerald-400">{provider.model}</code>}
-                    />
-                    <FieldRow
-                      label="API Key"
-                      value={
-                        provider.hasApiKey ? (
-                          <Badge variant="set">present</Badge>
-                        ) : (
-                          <Badge variant="unset">missing</Badge>
-                        )
-                      }
-                    />
-                  </div>
-                  {Object.keys(provider.preset).length > 0 && (
-                    <div className="mt-3">
-                      <div className="font-semibold mb-1 text-sm text-foreground">Preset Overrides</div>
-                      <pre className="bg-muted text-foreground p-3 rounded-lg text-xs leading-relaxed overflow-auto max-h-48 m-0">
-                        {JSON.stringify(provider.preset, null, 2)}
-                      </pre>
+                  {provider ? (
+                    <>
+                      <div className="space-y-1">
+                        <FieldRow label="Base URL" value={provider.baseUrl} />
+                        <FieldRow
+                          label="Model"
+                          value={<code className="text-emerald-400">{provider.model}</code>}
+                        />
+                        <FieldRow
+                          label="API Key"
+                          value={
+                            provider.hasApiKey ? (
+                              <Badge variant="set">present</Badge>
+                            ) : (
+                              <Badge variant="unset">missing</Badge>
+                            )
+                          }
+                        />
+                      </div>
+                      {Object.keys(provider.preset).length > 0 && (
+                        <div className="mt-3">
+                          <div className="font-semibold mb-1 text-sm text-foreground">Preset Overrides</div>
+                          <pre className="bg-muted text-foreground p-3 rounded-lg text-xs leading-relaxed overflow-auto max-h-48 m-0">
+                            {JSON.stringify(provider.preset, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-muted-foreground text-sm italic">
+                      No provider configured.
                     </div>
                   )}
                 </Section>
@@ -496,8 +506,14 @@ function ConfigDemo() {
                     </div>
                     <div className="bg-muted/50 rounded-lg p-3">
                       <div className="text-muted-foreground mb-1">Model</div>
-                      <div className="text-foreground font-semibold text-sm">{provider.model}</div>
-                      <div className="text-muted-foreground text-[11px] break-all">{provider.baseUrl}</div>
+                      {provider ? (
+                        <>
+                          <div className="text-foreground font-semibold text-sm">{provider.model}</div>
+                          <div className="text-muted-foreground text-[11px] break-all">{provider.baseUrl}</div>
+                        </>
+                      ) : (
+                        <div className="text-muted-foreground text-sm italic">None</div>
+                      )}
                     </div>
                     <div className="bg-muted/50 rounded-lg p-3">
                       <div className="text-muted-foreground mb-1">Lorebooks</div>
