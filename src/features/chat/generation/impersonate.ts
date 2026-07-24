@@ -1,9 +1,9 @@
 import { db as defaultDb, type DB } from "@/db";
-import { loadGenerationContext } from "./prompt-context";
+import { loadChatConfig } from "../config/service";
 import { getMessages } from "../tree/service";
+import { getPathToNode } from "../tree/active-path";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import { getActiveLeafId } from "@/lib/st-core/chat-tree/tree";
-import { getUserSettings } from "@/db/repositories/userSettings";
 import { createLogger } from "@/features/logging";
 
 const log = createLogger("chat:gen:impersonate");
@@ -35,23 +35,30 @@ export async function impersonateMessage(
   const activeLeafId = getActiveLeafId(tree);
   if (activeLeafId === null) throw new Error("No active message");
 
-  const ctx = await loadGenerationContext(userId, userName, chatId, activeLeafId, db);
+  const config = await loadChatConfig(userId, chatId, userName, db);
+  const { chat, character, settings, provider, persona } = config;
 
-  const settings = getUserSettings(userId, db);
-  const rawInstruction = settings?.impersonationPrompt ?? DEFAULT_IMPERSONATION_PROMPT;
+  const path = getPathToNode(tree, activeLeafId);
+  const chatHistory = path.filter((m) => {
+    if (m.localId === 0) return false;
+    if (m.role === "system" && m.content.length === 0) return false;
+    return true;
+  });
+
+  const rawInstruction = settings.impersonationPrompt ?? DEFAULT_IMPERSONATION_PROMPT;
   const instruction = rawInstruction
-    .replace(/\{\{user\}\}/gi, ctx.prompt.userName)
-    .replace(/\{\{char\}\}/gi, ctx.prompt.character.name);
+    .replace(/\{\{user\}\}/gi, persona.name)
+    .replace(/\{\{char\}\}/gi, character.name);
 
   const characterContext = [
-    ctx.prompt.characterDescription || ctx.prompt.character.description
-      ? `${ctx.prompt.character.name}: ${ctx.prompt.characterDescription || ctx.prompt.character.description}`
+    chat.characterDescription || character.description
+      ? `${character.name}: ${chat.characterDescription || character.description}`
       : null,
-    ctx.prompt.characterPersonality || ctx.prompt.character.personality
-      ? `Personality: ${ctx.prompt.characterPersonality || ctx.prompt.character.personality}`
+    chat.characterPersonality || character.personality
+      ? `Personality: ${chat.characterPersonality || character.personality}`
       : null,
-    ctx.prompt.characterScenario || ctx.prompt.character.scenario
-      ? `Scenario: ${ctx.prompt.characterScenario || ctx.prompt.character.scenario}`
+    chat.characterScenario || character.scenario
+      ? `Scenario: ${chat.characterScenario || character.scenario}`
       : null,
   ]
     .filter(Boolean)
@@ -65,14 +72,14 @@ export async function impersonateMessage(
     finalMessages.push({ role: "system", content: characterContext });
   }
 
-  if (ctx.prompt.userPersona) {
+  if (persona.description) {
     finalMessages.push({
       role: "system",
-      content: `${ctx.prompt.userName}'s persona: ${ctx.prompt.userPersona}`,
+      content: `${persona.name}'s persona: ${persona.description}`,
     });
   }
 
-  for (const m of ctx.prompt.chatHistory) {
+  for (const m of chatHistory) {
     if (m.role === "user" || m.role === "assistant") {
       finalMessages.push({ role: m.role, content: m.content });
     }
@@ -80,21 +87,21 @@ export async function impersonateMessage(
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${ctx.resolved.provider.apiKey}`,
+    Authorization: `Bearer ${provider.provider.apiKey}`,
   };
-  if (ctx.resolved.provider.defaultHeaders) {
-    for (const [k, v] of Object.entries(ctx.resolved.provider.defaultHeaders)) {
+  if (provider.provider.defaultHeaders) {
+    for (const [k, v] of Object.entries(provider.provider.defaultHeaders)) {
       if (v) headers[k] = v;
     }
   }
 
   const response = await fetchFn(
-    `${ctx.resolved.provider.baseUrl}/chat/completions`,
+    `${provider.provider.baseUrl}/chat/completions`,
     {
       method: "POST",
       headers,
       body: JSON.stringify({
-        model: ctx.resolved.model,
+        model: provider.model,
         messages: finalMessages,
         stream: false,
       }),

@@ -6,8 +6,6 @@ import {
   updateMessage as repoUpdateMessage,
 } from "@/db/repositories/chats";
 import { getCharacter as repoGetCharacter } from "@/db/repositories/characters";
-import { getUserSettings } from "@/db/repositories/userSettings";
-import { getPersona } from "@/db/repositories/personas";
 import {
   appendMessage,
   appendUserAndReply,
@@ -19,26 +17,12 @@ import { acquireGenerationLock, releaseLock, ensureChatIdle } from "../tree/lock
 import { substituteMessageMacros } from "@/lib/chat/substitute-message-macros";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import { getActiveLeafId, getNode } from "@/lib/st-core/chat-tree/tree";
+import { resolvePersona } from "../config/persona";
+import { hasProvider } from "../config/service";
 import { pickDefaultReply } from "./default-replies";
 import { createLogger } from "@/features/logging";
 
 const log = createLogger("chat:gen:service");
-
-function resolveUserName(userId: string, fallback: string, db: DB): string {
-  try {
-    const settings = getUserSettings(userId, db);
-    if (settings?.defaultPersonaId) {
-      try {
-        return getPersona(userId, settings.defaultPersonaId, db).name;
-      } catch {
-        // persona deleted
-      }
-    }
-  } catch {
-    // no settings
-  }
-  return fallback;
-}
 
 function loadMacroEnv(
   userId: string,
@@ -50,7 +34,7 @@ function loadMacroEnv(
   const char = repoGetCharacter(userId, chat.characterId, db);
   return {
     char: char.data.name,
-    user: resolveUserName(userId, fallbackUserName, db),
+    user: resolvePersona(userId, fallbackUserName, db).name,
   };
 }
 
@@ -71,8 +55,7 @@ export function prepareStream(
     const macroEnv = loadMacroEnv(userId, input.chatId, userName, db);
     const userContent = substituteMessageMacros(content, macroEnv);
 
-    const settings = getUserSettings(userId, db);
-    if (!settings?.defaultProviderId) {
+    if (!hasProvider(userId, db)) {
       const reply = substituteMessageMacros(pickDefaultReply(), macroEnv);
       const { replyMessage } = appendUserAndReply(
         userId,
