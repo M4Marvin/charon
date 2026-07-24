@@ -6,7 +6,7 @@
 - Keep tasks atomic, incremental, and reviewable. Small, independent steps.
 
 # Project state
-See `docs/handoff.md` for current state, architecture, locked decisions, schema, roadmap, and how to pick up. Read it after this file.
+See `CONTRIBUTING.md` for project layout, architecture, commands, and conventions. Read it after this file.
 
 # pnpm
 Package manager used for all Node.js operations. Path: `/Users/marvinprakash/Library/pnpm/bin/pnpm`
