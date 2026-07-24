@@ -22,7 +22,7 @@ There are two user roles: **admin** and **user** (demo users).
 Roles are stored in the `user.role` database column. The default role for all signup users is `"user"`. Admin accounts can only be created via the CLI script:
 
 ```
-pnpm create-admin --username <name> --email <email> --password <password>
+bun run create-admin --username <name> --email <email> --password <password>
 ```
 
 If the username already exists, the script promotes it to `admin`. Otherwise it creates a new admin account.
@@ -49,4 +49,4 @@ Demo users do not select models or manage AI providers. They use the **global sh
 
 ## Registration
 
-All users who sign up via `/signup` are created with `role: "user"` (demo). There is no upgrade path from demo to admin via the UI. Admin accounts are created exclusively via `pnpm create-admin`.
+All users who sign up via `/signup` are created with `role: "user"` (demo). There is no upgrade path from demo to admin via the UI. Admin accounts are created exclusively via `bun run create-admin`.

@@ -81,7 +81,7 @@ setGlobalLevel("warn"); // hide debug + info everywhere
 ## Muting via env (without code change)
 
 ```bash
-LOG_LEVEL=warn pnpm run dev
+LOG_LEVEL=warn bun run dev
 ```
 
 ## Custom module name
@@ -94,7 +94,7 @@ log.info("Chat persisted", { chatId }); // → ...,"module":"db:repos",...
 ## Disable file logging (tests, CI)
 
 ```bash
-LOG_FILE_ENABLED=false pnpm run test
+LOG_FILE_ENABLED=false bun run test
 ```
 
 ## Skip data when none to log

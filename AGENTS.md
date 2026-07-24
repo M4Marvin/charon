@@ -8,8 +8,8 @@
 # Project state
 See `CONTRIBUTING.md` for project layout, architecture, commands, and conventions. Read it after this file.
 
-# pnpm
-Package manager used for all Node.js operations. Path: `/Users/marvinprakash/Library/pnpm/bin/pnpm`
+# bun
+Package manager used for all Node.js operations. Install: `curl -fsSL https://bun.sh/install | bash`
 
 # TanStack Start
 Full-stack React framework: TanStack Router + Vite.
@@ -88,17 +88,17 @@ The default shell is **nushell** (`/Users/marvin/.cargo/bin/nu`), not bash. Shel
 # Commands
 
 | Task | Command |
-|---|---|
-| Install deps | `pnpm install` |
-| Add dev dep | `pnpm add -D <pkg>` |
-| Add runtime dep | `pnpm add <pkg>` |
-| Dev server | `pnpm run dev` |
-| **Run tests** | `pnpm run test` |
-| **Run legacy migration** | `pnpm run migrate` |
-| Lint | `pnpm run lint` |
-| Format | `pnpm run format` |
-| Typecheck | `pnpm exec tsc --noEmit` |
-| Drizzle studio | `pnpm run db:studio` |
+|---|---|---|
+| Install deps | `bun install` |
+| Add dev dep | `bun add -d <pkg>` |
+| Add runtime dep | `bun add <pkg>` |
+| Dev server | `bun run dev` |
+| **Run tests** | `bun run test` |
+| **Run legacy migration** | `bun run migrate` |
+| Lint | `bun run lint` |
+| Format | `bun run format` |
+| Typecheck | `bunx tsc --noEmit` |
+| Drizzle studio | `bun run db:studio` |
 
 # Known typecheck noise
 Pre-existing and expected — do not fix unless asked:

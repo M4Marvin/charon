@@ -8,17 +8,25 @@
 - **Auth:** better-auth (email+password)
 - **AI:** `@tanstack/ai*` — Anthropic, OpenAI, Gemini, Ollama adapters
 - **UI:** shadcn/ui, Tailwind CSS v4
-- **Package manager:** pnpm
+- **Package manager:** bun
 
 ## Setup
 
 ```bash
-pnpm install
+bun install
 echo 'DATABASE_URL="dev.db"' > .env
 echo 'BETTER_AUTH_SECRET="your-64-char-secret"' >> .env
 echo 'ENCRYPTION_KEY="your-32-char-secret"' >> .env
-pnpm run dev
+bun run dev
 ```
+
+Don't have bun?
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
+
+Or see [bun.sh](https://bun.sh) for other install methods.
 
 ## Project layout
 
@@ -100,20 +108,20 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 ## Commands
 
 | Task | Command |
-|---|---|
-| Dev server | `pnpm run dev` |
-| Run tests | `pnpm run test` |
-| Lint | `pnpm run lint` |
-| Format | `pnpm run format` |
-| Typecheck | `pnpm exec tsc --noEmit` |
-| DB generate | `pnpm run db:generate` |
-| DB migrate | `pnpm run db:migrate` |
-| DB push | `pnpm run db:push` |
-| DB studio | `pnpm run db:studio` |
+|---|---|---|
+| Dev server | `bun run dev` |
+| Run tests | `bun run test` |
+| Lint | `bun run lint` |
+| Format | `bun run format` |
+| Typecheck | `bunx tsc --noEmit` |
+| DB generate | `bun run db:generate` |
+| DB migrate | `bun run db:migrate` |
+| DB push | `bun run db:push` |
+| DB studio | `bun run db:studio` |
 
 ## Tests
 
-412 tests across 23 files. All pass. Uses in-memory SQLite for integration tests. Run with `pnpm run test`.
+412 tests across 23 files. All pass. Uses in-memory SQLite for integration tests. Run with `bun run test`.
 
 ## Known typecheck noise
 

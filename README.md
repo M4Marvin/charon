@@ -1,6 +1,6 @@
 # Charon
 
-> AI character chat. Branching conversations. Your data, your API key.
+> My take on properly building an app that combines features from Chub, SillyTavern, and everything else I always wanted.
 
 Charon is a self-hosted web app for roleplaying with AI characters. Import character cards from SillyTavern or Chub, chat with branching message trees, swipe between replies, and keep everything local.
 
@@ -28,15 +28,23 @@ docker compose up -d
 
 Open http://localhost:3000. Data persists in a Docker volume.
 
-### Option B: pnpm
+### Option B: bun
 
 ```bash
-pnpm install
+bun install
 echo 'DATABASE_URL="dev.db"' > .env
 echo 'BETTER_AUTH_SECRET="your-64-char-secret"' >> .env
 echo 'ENCRYPTION_KEY="your-32-char-secret"' >> .env
-pnpm run dev
+bun run dev
 ```
+
+Don't have bun?
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
+
+Or see [bun.sh](https://bun.sh) for other install methods.
 
 Generate secrets:
 
@@ -74,7 +82,7 @@ Characters not included. Grab some from [Chub](https://chub.ai) or copy `.png` f
 ```bash
 # Copy your old data in
 cp -r /path/to/SillyTavern/public/* public/data/
-pnpm run migrate
+bun run migrate
 ```
 
 ---
@@ -82,8 +90,8 @@ pnpm run migrate
 ## Production
 
 ```bash
-pnpm run build
-pnpm run start        # port 3000
+bun run build
+bun run start         # port 3000
 ```
 
 Set `APP_URL` to your public URL for auth cookies. The production server is the same app, built once.
