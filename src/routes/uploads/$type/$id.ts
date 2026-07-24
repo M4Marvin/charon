@@ -17,7 +17,7 @@ export const Route = createFileRoute("/uploads/$type/$id")({
         if (!validTypes.has(type)) {
           return new Response("Invalid type", { status: 400 });
         }
-        if (!/^[\w-]+\.png$/.test(id)) {
+        if (!/^[\w-]+\.(png|jpe?g|webp)$/.test(id)) {
           return new Response("Invalid filename", { status: 400 });
         }
 
@@ -25,9 +25,16 @@ export const Route = createFileRoute("/uploads/$type/$id")({
 
         try {
           const bytes = await readFile(diskPath);
+          const ext = id.split(".").pop()?.toLowerCase();
+          const contentType =
+            ext === "webp"
+              ? "image/webp"
+              : ext === "png"
+                ? "image/png"
+                : "image/jpeg";
           return new Response(bytes, {
             headers: {
-              "Content-Type": "image/png",
+              "Content-Type": contentType,
               "Cache-Control": "public, max-age=31536000, immutable",
             },
           });

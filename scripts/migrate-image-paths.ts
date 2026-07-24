@@ -32,12 +32,12 @@ async function migrateSubdir(subdir: UploadSubdir): Promise<Counts> {
   if (!existsSync(sourceDir)) return counts;
 
   const entries = await readdir(sourceDir, { withFileTypes: true });
-  const pngs = entries.filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".png"));
-  counts.found = pngs.length;
+  const images = entries.filter((e) => e.isFile() && /\.(png|jpe?g|webp)$/i.test(e.name));
+  counts.found = images.length;
 
-  for (const png of pngs) {
-    const src = join(sourceDir, png.name);
-    const stored = storedPathFromDiskComponents(subdir, png.name);
+  for (const img of images) {
+    const src = join(sourceDir, img.name);
+    const stored = storedPathFromDiskComponents(subdir, img.name);
     const dst = diskPathFromStored(stored);
 
     if (existsSync(dst)) {
@@ -126,13 +126,13 @@ async function cleanOrphans(): Promise<{ deleted: string[] }> {
   if (!existsSync(dataDir)) return { deleted };
 
   const entries = await readdir(dataDir, { withFileTypes: true });
-  const pngs = entries.filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".png"));
+  const images = entries.filter((e) => e.isFile() && /\.(png|jpe?g|webp)$/i.test(e.name));
 
-  for (const png of pngs) {
-    if (isReferenced(png.name)) continue;
-    const path = join(dataDir, png.name);
+  for (const img of images) {
+    if (isReferenced(img.name)) continue;
+    const path = join(dataDir, img.name);
     await rm(path, { force: true });
-    deleted.push(png.name);
+    deleted.push(img.name);
   }
 
   return { deleted };
