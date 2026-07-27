@@ -186,7 +186,7 @@ export function useImpersonateMessage() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { chatId: string }): Promise<{ text: string }> =>
-      impersonateFn({ data: input }) as Promise<{ text: string }>,
+      impersonateFn({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
