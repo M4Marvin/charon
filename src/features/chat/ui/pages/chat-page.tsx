@@ -102,15 +102,15 @@ export function ChatPage() {
 
   const handleSwipe = useCallback(
     (messageLocalId: number, direction: "next" | "prev") => {
-      if (isBusy) return;
+      if (isBusy || generation.isStreaming) return;
       swipeMutation.mutate({ chatId, messageLocalId, direction });
     },
-    [chatId, isBusy, swipeMutation],
+    [chatId, isBusy, generation.isStreaming, swipeMutation],
   );
 
   const handleRegenerate = useCallback(
     (messageLocalId: number) => {
-      if (isBusy) return;
+      if (isBusy || generation.isStreaming) return;
       generation.start("regenerate", { messageLocalId });
     },
     [isBusy, generation],
@@ -118,26 +118,26 @@ export function ChatPage() {
 
   const handleEdit = useCallback(
     (messageLocalId: number, content: string) => {
-      if (isBusy) return;
+      if (isBusy || generation.isStreaming) return;
       const final = substitute(content);
       editMutation.mutate({ chatId, messageLocalId, content: final });
     },
-    [chatId, isBusy, substitute, editMutation],
+    [chatId, isBusy, generation.isStreaming, substitute, editMutation],
   );
 
   const handleDelete = useCallback(
     (messageLocalId: number) => {
-      if (isBusy) return;
+      if (isBusy || generation.isStreaming) return;
       deleteMsgMutation.mutate(
         { chatId, messageLocalId },
         { onSuccess: () => toast.success("Message deleted") },
       );
     },
-    [chatId, isBusy, deleteMsgMutation],
+    [chatId, isBusy, generation.isStreaming, deleteMsgMutation],
   );
 
   const handleImpersonate = useCallback(() => {
-    if (isBusy) return;
+    if (isBusy || generation.isStreaming) return;
     impersonateMutation.mutate(
       { chatId },
       {
@@ -149,7 +149,7 @@ export function ChatPage() {
         },
       },
     );
-  }, [chatId, isBusy, impersonateMutation, setInput]);
+  }, [chatId, isBusy, generation.isStreaming, impersonateMutation, setInput]);
 
   const handleUploadImage = useCallback(
     async (file: File) => {
