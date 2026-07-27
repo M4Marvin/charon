@@ -74,7 +74,9 @@ export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps
         <SheetContent side="right" className="glass-strong flex flex-col gap-0 p-0 sm:max-w-lg">
           <SheetHeader className="px-5 pt-5 pb-3 border-b border-white/5">
             <SheetTitle className="font-heading text-[--sea-ink]">Chat Settings</SheetTitle>
-            <SheetDescription className="text-xs">Configure AI, persona, prompts, and appearance.</SheetDescription>
+            <SheetDescription className="text-xs">
+              Configure AI, persona, prompts, and appearance.
+            </SheetDescription>
           </SheetHeader>
 
           <div className="flex flex-1 min-h-0">

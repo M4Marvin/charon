@@ -2,14 +2,27 @@ import { useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 
-import { useChatMessages, useSwipeMessage, useDeleteMessage, useEditMessage, useImpersonateMessage } from "@/hooks/useChats";
+import {
+  useChatMessages,
+  useSwipeMessage,
+  useDeleteMessage,
+  useEditMessage,
+  useImpersonateMessage,
+} from "@/hooks/useChats";
 import { useChatConfig } from "@/hooks/useChatConfig";
 import { useCharacter } from "@/hooks/useCharacters";
 import { useBackground } from "@/hooks/useBackgrounds";
 import { usePersona } from "@/hooks/usePersonas";
 import { computeActivePathFromMessages } from "@/features/chat/tree/active-path";
 import { useChatGeneration } from "../hooks/use-chat-generation";
-import { useChatUiStore, selectActivePlaceholderId, selectSettingsOpen, selectPortraitOpen, selectSceneOpen, selectLightboxSrc } from "../chat-store";
+import {
+  useChatUiStore,
+  selectActivePlaceholderId,
+  selectSettingsOpen,
+  selectPortraitOpen,
+  selectSceneOpen,
+  selectLightboxSrc,
+} from "../chat-store";
 import { useChatMacros } from "../macros";
 import { fileToDownscaledDataUrl } from "../custom-image";
 import { ChatBackground } from "../components/chat-background";
@@ -156,11 +169,20 @@ export function ChatPage() {
 
   if (configLoading || messagesLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
+      <div
+        className="fixed inset-0 flex items-center justify-center"
+        style={{ background: "var(--bg-base)" }}
+      >
         <div className="flex items-center gap-2 text-[--sea-ink-soft]">
           <span className="size-2 rounded-full bg-[--lagoon] animate-bounce" />
-          <span className="size-2 rounded-full bg-[--lagoon] animate-bounce" style={{ animationDelay: "150ms" }} />
-          <span className="size-2 rounded-full bg-[--lagoon] animate-bounce" style={{ animationDelay: "300ms" }} />
+          <span
+            className="size-2 rounded-full bg-[--lagoon] animate-bounce"
+            style={{ animationDelay: "150ms" }}
+          />
+          <span
+            className="size-2 rounded-full bg-[--lagoon] animate-bounce"
+            style={{ animationDelay: "300ms" }}
+          />
         </div>
       </div>
     );
@@ -168,14 +190,20 @@ export function ChatPage() {
 
   if (!config) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
+      <div
+        className="fixed inset-0 flex items-center justify-center"
+        style={{ background: "var(--bg-base)" }}
+      >
         <p className="text-red-400">Chat not found.</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden" style={{ background: "var(--bg-base)" }}>
+    <div
+      className="flex h-dvh w-full flex-col overflow-hidden"
+      style={{ background: "var(--bg-base)" }}
+    >
       <ChatBackground src={backgroundUrl} fallbackSrc={characterAvatarUrl} />
 
       <ChatHeader
@@ -230,7 +258,9 @@ export function ChatPage() {
       <ImageLightbox
         src={lightboxSrc}
         open={lightboxSrc !== null}
-        onOpenChange={(open) => { if (!open) closeLightbox(); }}
+        onOpenChange={(open) => {
+          if (!open) closeLightbox();
+        }}
       />
 
       <Composer
@@ -245,11 +275,7 @@ export function ChatPage() {
         characterName={config.character.name}
       />
 
-      <SettingsPanel
-        chatId={chatId}
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-      />
+      <SettingsPanel chatId={chatId} open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }

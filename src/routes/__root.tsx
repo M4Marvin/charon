@@ -28,7 +28,10 @@ interface MyRouterContext {
 
 function RootErrorComponent({ error }: ErrorComponentProps) {
   return (
-    <div className="flex h-dvh items-center justify-center" style={{ background: "var(--bg-base)" }}>
+    <div
+      className="flex h-dvh items-center justify-center"
+      style={{ background: "var(--bg-base)" }}
+    >
       <div className="glass rounded-2xl px-8 py-10 text-center max-w-sm">
         <p className="font-heading text-xl text-red-400 mb-2">Something went wrong</p>
         <p className="text-sm text-[--sea-ink-soft] leading-relaxed mb-4">{error.message}</p>
@@ -45,7 +48,10 @@ function RootErrorComponent({ error }: ErrorComponentProps) {
 
 function RootNotFoundComponent() {
   return (
-    <div className="flex h-dvh items-center justify-center" style={{ background: "var(--bg-base)" }}>
+    <div
+      className="flex h-dvh items-center justify-center"
+      style={{ background: "var(--bg-base)" }}
+    >
       <div className="glass rounded-2xl px-8 py-10 text-center max-w-sm">
         <p className="font-heading text-xl text-[--sea-ink] mb-2">Page not found</p>
         <p className="text-sm text-[--sea-ink-soft] leading-relaxed">
@@ -100,8 +106,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   // The chat page renders its own fixed header (back chevron / character
   // name / gear). Hide the global nav there so it doesn't double up.
   const hideGlobalHeader =
-    /^\/chats\/[^/]+/.test(location.pathname) ||
-    /^\/c\/(?!new$)[^/]+$/.test(location.pathname);
+    /^\/chats\/[^/]+/.test(location.pathname) || /^\/c\/(?!new$)[^/]+$/.test(location.pathname);
   return (
     <html lang="en">
       <head>

@@ -76,7 +76,9 @@ export function RichText({ content }: { content: string }) {
       const code = btn.nextElementSibling?.querySelector("code")?.textContent ?? "";
       navigator.clipboard.writeText(code);
       btn.textContent = "Copied!";
-      setTimeout(() => { btn.textContent = "Copy"; }, 2000);
+      setTimeout(() => {
+        btn.textContent = "Copy";
+      }, 2000);
     };
     el.addEventListener("click", handler);
     return () => el.removeEventListener("click", handler);

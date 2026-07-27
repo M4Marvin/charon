@@ -524,7 +524,12 @@ describe("tree service", () => {
       );
 
       const { userMessage, replyMessage } = appendUserAndReply(
-        userId, chat.id, "Hello", "Hi back", undefined, db,
+        userId,
+        chat.id,
+        "Hello",
+        "Hi back",
+        undefined,
+        db,
       );
 
       const sibling = appendSibling(
@@ -538,7 +543,11 @@ describe("tree service", () => {
       expect(sibling.content).toBe("sib");
       expect(sibling.parentLocalId).toBe(userMessage.localId);
 
-      const parent = db.select().from(chatMessages).where(eq(chatMessages.localId, userMessage.localId)).get()!;
+      const parent = db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.localId, userMessage.localId))
+        .get()!;
       expect(parent.children).toEqual([replyMessage.localId, sibling.localId]);
       expect(parent.selectedChildLocalId).toBe(sibling.localId);
     });
@@ -551,14 +560,22 @@ describe("tree service", () => {
       );
 
       const { replyMessage } = appendUserAndReply(
-        userId, chat.id, "Hi", "", { isStreaming: true }, db,
+        userId,
+        chat.id,
+        "Hi",
+        "",
+        { isStreaming: true },
+        db,
       );
       acquireGenerationLock(userId, chat.id, replyMessage.localId, db);
 
       expect(() =>
         appendSibling(
-          userId, chat.id, replyMessage.localId,
-          { role: "assistant", content: "x" }, db,
+          userId,
+          chat.id,
+          replyMessage.localId,
+          { role: "assistant", content: "x" },
+          db,
         ),
       ).toThrow();
     });
@@ -588,7 +605,9 @@ describe("tree service", () => {
         { characterId: charId, title: "Test", greetings: ["Hi"] },
         db,
       );
-      expect(() => deleteBranch(userId, chat.id, 0, db, { skipIdleCheck: true })).toThrow("hidden root");
+      expect(() => deleteBranch(userId, chat.id, 0, db, { skipIdleCheck: true })).toThrow(
+        "hidden root",
+      );
     });
   });
 

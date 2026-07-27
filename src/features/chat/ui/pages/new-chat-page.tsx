@@ -34,8 +34,14 @@ export function NewChatPage() {
           <div className="flex items-center justify-center py-20">
             <div className="flex items-center gap-2 text-[--sea-ink-soft]">
               <span className="size-2 rounded-full bg-[--lagoon] animate-bounce" />
-              <span className="size-2 rounded-full bg-[--lagoon] animate-bounce" style={{ animationDelay: "150ms" }} />
-              <span className="size-2 rounded-full bg-[--lagoon] animate-bounce" style={{ animationDelay: "300ms" }} />
+              <span
+                className="size-2 rounded-full bg-[--lagoon] animate-bounce"
+                style={{ animationDelay: "150ms" }}
+              />
+              <span
+                className="size-2 rounded-full bg-[--lagoon] animate-bounce"
+                style={{ animationDelay: "300ms" }}
+              />
             </div>
           </div>
         )}

@@ -1,6 +1,12 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { makeTestDb, seedTestUser, seedSecondUser, type TestDb, type TestSqlite } from "@/db/__tests__/helpers";
+import {
+  makeTestDb,
+  seedTestUser,
+  seedSecondUser,
+  type TestDb,
+  type TestSqlite,
+} from "@/db/__tests__/helpers";
 import { listUsers, deleteUser, countAdmins } from "@/db/repositories/users";
 import { createCharacter } from "@/db/repositories/characters";
 import { createPersona } from "@/db/repositories/personas";

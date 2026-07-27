@@ -65,7 +65,9 @@ export function prepareStream(
         undefined,
         db,
       );
-      log.info("prepareStream: fallback mode (no provider)", { assistantMessageLocalId: replyMessage.localId });
+      log.info("prepareStream: fallback mode (no provider)", {
+        assistantMessageLocalId: replyMessage.localId,
+      });
       return { mode: "fallback", assistantMessageLocalId: replyMessage.localId };
     }
 

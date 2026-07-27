@@ -20,15 +20,14 @@ export async function resolveProvider(
     throw new Error("No provider configured");
   }
 
-  const provider = await getAiProviderWithGlobalFallback(
-    userId,
-    settings.defaultProviderId,
-    db,
-  );
+  const provider = await getAiProviderWithGlobalFallback(userId, settings.defaultProviderId, db);
 
   const model = settings.defaultSelectedModel ?? provider.defaultModel;
   if (!model) {
-    log.error("resolveProvider: no model configured", { settingsModel: settings.defaultSelectedModel, providerModel: provider.defaultModel });
+    log.error("resolveProvider: no model configured", {
+      settingsModel: settings.defaultSelectedModel,
+      providerModel: provider.defaultModel,
+    });
     throw new Error("No model configured");
   }
 
@@ -43,7 +42,8 @@ export async function resolveProvider(
         if (d.maxTokens !== undefined) preset.maxResponseLength = d.maxTokens as number;
         if (d.topP !== undefined) preset.topP = d.topP as number;
         if (d.contextSize !== undefined) preset.contextSize = d.contextSize as number;
-        if (d.frequencyPenalty !== undefined) preset.frequencyPenalty = d.frequencyPenalty as number;
+        if (d.frequencyPenalty !== undefined)
+          preset.frequencyPenalty = d.frequencyPenalty as number;
         if (d.presencePenalty !== undefined) preset.presencePenalty = d.presencePenalty as number;
       }
     } catch {

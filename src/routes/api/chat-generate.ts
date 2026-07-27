@@ -49,12 +49,7 @@ export const Route = createFileRoute("/api/chat-generate")({
             );
           }
 
-          const ctx = await loadGenerationContext(
-            user.id,
-            user.name,
-            chatId,
-            messageLocalId,
-          );
+          const ctx = await loadGenerationContext(user.id, user.name, chatId, messageLocalId);
 
           const promptResult = buildPromptFromContext(ctx.prompt);
 

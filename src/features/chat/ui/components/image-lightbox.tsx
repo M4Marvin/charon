@@ -10,12 +10,7 @@ interface ImageLightboxProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function ImageLightbox({
-  src,
-  alt,
-  open,
-  onOpenChange,
-}: ImageLightboxProps) {
+export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxProps) {
   const [zoomed, setZoomed] = useState(false);
 
   const toggleZoom = useCallback(() => {
@@ -24,9 +19,7 @@ export function ImageLightbox({
 
   return (
     <Dialog open={open && !!src} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-none max-h-none size-full border-0 bg-transparent p-0 shadow-none translate-x-0 translate-y-0 left-0 top-0"
-      >
+      <DialogContent className="max-w-none max-h-none size-full border-0 bg-transparent p-0 shadow-none translate-x-0 translate-y-0 left-0 top-0">
         <DialogTitle className="sr-only">Image viewer</DialogTitle>
         {src && (
           <div

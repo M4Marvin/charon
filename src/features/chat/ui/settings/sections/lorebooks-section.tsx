@@ -2,10 +2,22 @@ import { useState, useCallback } from "react";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Upload, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { useLorebooks, useToggleLorebook, useLorebookEntries, useToggleLoreEntry } from "@/hooks/useLorebooks";
+import {
+  useLorebooks,
+  useToggleLorebook,
+  useLorebookEntries,
+  useToggleLoreEntry,
+} from "@/hooks/useLorebooks";
 import { ImportLorebookDialog } from "@/components/lorebook/ImportLorebookDialog";
 
 interface SectionProps {
@@ -36,7 +48,12 @@ export function LorebooksSection(_props: SectionProps) {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <p className="text-sm font-heading text-[--sea-ink]">Lorebooks</p>
-        <Button variant="link" size="sm" className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]" asChild>
+        <Button
+          variant="link"
+          size="sm"
+          className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
+          asChild
+        >
           <Link to="/lorebooks">
             Manage lorebooks
             <ArrowRight className="size-3" />
@@ -70,9 +87,7 @@ export function LorebooksSection(_props: SectionProps) {
                   />
                 </div>
               </div>
-              {expandedId === lb.id && (
-                <ExpandedEntries lorebookId={lb.id} />
-              )}
+              {expandedId === lb.id && <ExpandedEntries lorebookId={lb.id} />}
             </div>
           ))}
         </div>
@@ -94,12 +109,16 @@ export function LorebooksSection(_props: SectionProps) {
             disabled={available.length === 0}
           >
             <SelectTrigger id="ls-add">
-              <SelectValue placeholder={available.length === 0 ? "All books enabled" : "Select lorebook"} />
+              <SelectValue
+                placeholder={available.length === 0 ? "All books enabled" : "Select lorebook"}
+              />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
                 {available.map((lb) => (
-                  <SelectItem key={lb.id} value={lb.id}>{lb.name}</SelectItem>
+                  <SelectItem key={lb.id} value={lb.id}>
+                    {lb.name}
+                  </SelectItem>
                 ))}
               </SelectGroup>
             </SelectContent>
@@ -132,14 +151,19 @@ function ExpandedEntries({ lorebookId }: { lorebookId: string }) {
   return (
     <div className="ml-5 flex flex-col">
       {entries.map((entry) => (
-        <div key={entry.id} className="flex items-center justify-between rounded px-2 py-1 hover:bg-white/5">
+        <div
+          key={entry.id}
+          className="flex items-center justify-between rounded px-2 py-1 hover:bg-white/5"
+        >
           <span className="text-[11px] text-[--sea-ink-soft] truncate max-w-[70%]">
             {entry.data.comment || `Entry #${entry.data.uid}`}
           </span>
           <Switch
             checked={!entry.userDisabled && !entry.data.disable}
             disabled={entry.data.disable}
-            onCheckedChange={(checked) => toggleEntry.mutate({ entryId: entry.id, disabled: !checked })}
+            onCheckedChange={(checked) =>
+              toggleEntry.mutate({ entryId: entry.id, disabled: !checked })
+            }
             aria-label={`Toggle ${entry.data.comment || `entry ${entry.data.uid}`}`}
           />
         </div>

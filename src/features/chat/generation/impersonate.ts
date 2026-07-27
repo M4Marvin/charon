@@ -28,7 +28,9 @@ export async function impersonateMessage(
   const messages = getMessages(userId, chatId, db);
   const hasUserMessage = messages.some((m) => m.role === "user" && m.localId !== 0);
   if (!hasUserMessage) {
-    throw new Error("Cannot impersonate: at least one user message is required in the conversation");
+    throw new Error(
+      "Cannot impersonate: at least one user message is required in the conversation",
+    );
   }
 
   const tree = treeFromNodes(messages);
@@ -97,22 +99,22 @@ export async function impersonateMessage(
     }
   }
 
-  const response = await fetchFn(
-    `${provider.provider.baseUrl}/chat/completions`,
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: provider.model,
-        messages: finalMessages,
-        stream: false,
-      }),
-    },
-  );
+  const response = await fetchFn(`${provider.provider.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: provider.model,
+      messages: finalMessages,
+      stream: false,
+    }),
+  });
 
   if (!response.ok) {
     const body = await response.text();
-    log.error("impersonateMessage: provider error", { status: response.status, body: body.substring(0, 500) });
+    log.error("impersonateMessage: provider error", {
+      status: response.status,
+      body: body.substring(0, 500),
+    });
     throw new Error(`Provider returned ${response.status}: ${body}`);
   }
 

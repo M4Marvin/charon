@@ -23,7 +23,10 @@ export function SettingsNav({ sections, activeId, onChange }: SettingsNavProps) 
   const visible = sections.filter((s) => !s.adminOnly || isAdmin);
 
   return (
-    <nav className="flex w-14 shrink-0 flex-col gap-0.5 border-r border-white/5 py-2" aria-label="Settings sections">
+    <nav
+      className="flex w-14 shrink-0 flex-col gap-0.5 border-r border-white/5 py-2"
+      aria-label="Settings sections"
+    >
       {visible.map((s) => (
         <Tooltip key={s.id} delayDuration={300}>
           <TooltipTrigger asChild>

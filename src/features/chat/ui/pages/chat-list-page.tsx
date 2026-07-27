@@ -13,8 +13,14 @@ export function ChatListPage() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex items-center gap-2 text-[--sea-ink-soft]">
           <span className="size-2 rounded-full bg-[--lagoon] animate-bounce" />
-          <span className="size-2 rounded-full bg-[--lagoon] animate-bounce" style={{ animationDelay: "150ms" }} />
-          <span className="size-2 rounded-full bg-[--lagoon] animate-bounce" style={{ animationDelay: "300ms" }} />
+          <span
+            className="size-2 rounded-full bg-[--lagoon] animate-bounce"
+            style={{ animationDelay: "150ms" }}
+          />
+          <span
+            className="size-2 rounded-full bg-[--lagoon] animate-bounce"
+            style={{ animationDelay: "300ms" }}
+          />
         </div>
       </div>
     );
@@ -59,15 +65,15 @@ export function ChatListPage() {
                 key={chat.id}
                 className="glass rounded-2xl overflow-hidden group transition-colors hover:bg-white/5"
               >
-                <Link
-                  to="/c/$id"
-                  params={{ id: chat.id }}
-                  className="block p-4"
-                >
+                <Link to="/c/$id" params={{ id: chat.id }} className="block p-4">
                   <div className="flex items-center gap-3 mb-3">
                     <Avatar className="size-12 shrink-0 rounded-xl ring-1 ring-white/10">
                       <AvatarImage
-                        src={chat.characterImagePath ? `/api/characters/${chat.characterId}/avatar` : undefined}
+                        src={
+                          chat.characterImagePath
+                            ? `/api/characters/${chat.characterId}/avatar`
+                            : undefined
+                        }
                         alt={chat.characterName}
                         className="object-cover"
                       />
@@ -76,9 +82,7 @@ export function ChatListPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <p className="font-heading text-sm text-[--sea-ink] truncate">
-                        {chat.title}
-                      </p>
+                      <p className="font-heading text-sm text-[--sea-ink] truncate">{chat.title}</p>
                       <p className="text-[11px] text-[--sea-ink-soft] truncate">
                         {chat.characterName}
                       </p>

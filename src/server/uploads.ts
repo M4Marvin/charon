@@ -16,10 +16,7 @@ export function diskPathFromStored(stored: string): string {
   return join(UPLOADS_DISK_ROOT, stored);
 }
 
-export function storedPathFromDiskComponents(
-  subdir: UploadSubdir,
-  filename: string,
-): string {
+export function storedPathFromDiskComponents(subdir: UploadSubdir, filename: string): string {
   return join(UPLOADS_PUBLIC_PREFIX, UPLOADS_SUBDIRS[subdir], filename);
 }
 

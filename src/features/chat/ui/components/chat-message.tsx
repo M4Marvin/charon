@@ -94,9 +94,7 @@ export function ChatMessage({
   const isLastAssistant = isAssistant && !(siblingIndex < siblingTotal - 1);
 
   const name = isAssistant ? characterName : isUser ? userName : "";
-  const displayContent = isStreaming
-    ? streamingText || message.content
-    : message.content;
+  const displayContent = isStreaming ? streamingText || message.content : message.content;
   const isLongMessage = displayContent.length > 600;
 
   if (isSystem) {
@@ -125,15 +123,13 @@ export function ChatMessage({
       >
         <div className="flex gap-3">
           <Avatar className="size-8 shrink-0">
-            <AvatarImage
-              src={avatarSrc ?? undefined}
-              alt={name}
-              className="object-cover"
-            />
+            <AvatarImage src={avatarSrc ?? undefined} alt={name} className="object-cover" />
             <AvatarFallback
               className={cn(
                 "rounded-lg text-sm",
-                isAssistant ? "bg-[--lagoon]/20 text-[--lagoon]" : "bg-white/10 text-[--sea-ink-soft]",
+                isAssistant
+                  ? "bg-[--lagoon]/20 text-[--lagoon]"
+                  : "bg-white/10 text-[--sea-ink-soft]",
               )}
             >
               {name.charAt(0).toUpperCase()}
@@ -150,10 +146,12 @@ export function ChatMessage({
               >
                 {name}
               </span>
-              <span className={cn(
-                "ml-auto flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity shrink-0",
-                disabled && "pointer-events-none",
-              )}>
+              <span
+                className={cn(
+                  "ml-auto flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity shrink-0",
+                  disabled && "pointer-events-none",
+                )}
+              >
                 <Button
                   variant="ghost"
                   size="icon"
@@ -220,9 +218,7 @@ export function ChatMessage({
                   >
                     Cancel
                   </Button>
-                  <span className="ml-auto text-[10px] text-muted-foreground">
-                    ⌘+Enter
-                  </span>
+                  <span className="ml-auto text-[10px] text-muted-foreground">⌘+Enter</span>
                 </div>
               </div>
             ) : isStreaming && !streamingText ? (
@@ -263,10 +259,12 @@ export function ChatMessage({
         </div>
 
         {canSwipe || isLastAssistant ? (
-          <div className={cn(
-            "mt-2 flex items-center justify-end gap-1",
-            disabled && "pointer-events-none opacity-40",
-          )}>
+          <div
+            className={cn(
+              "mt-2 flex items-center justify-end gap-1",
+              disabled && "pointer-events-none opacity-40",
+            )}
+          >
             <Button
               variant="ghost"
               size="icon"
@@ -315,8 +313,7 @@ export function ChatMessage({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete message?</AlertDialogTitle>
             <AlertDialogDescription>
-              This deletes this message and all messages after it. This cannot
-              be undone.
+              This deletes this message and all messages after it. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -3,7 +3,13 @@ import { and, eq } from "drizzle-orm";
 import { makeTestDb, seedTestUser, type TestDb } from "@/db/__tests__/helpers";
 import { makeCharacterData } from "@/db/__tests__/character-data";
 import { characters, chatMessages, aiProviders, userSettings, personas } from "@/db/schema";
-import { createChat, appendMessage, appendUserAndReply, appendSibling, swipe } from "../tree/service";
+import {
+  createChat,
+  appendMessage,
+  appendUserAndReply,
+  appendSibling,
+  swipe,
+} from "../tree/service";
 import { acquireGenerationLock } from "../tree/lock";
 import { prepareStream, finalizeStream, cancelStream } from "./service";
 import { impersonateMessage } from "./impersonate";
@@ -75,24 +81,22 @@ describe("generation service", () => {
   describe("prepareStream send", () => {
     it("creates user + placeholder, acquires lock (stream mode)", () => {
       seedProvider();
-      const result = prepareStream(userId, { chatId, mode: "send", content: "Hi" }, "Test User", db);
+      const result = prepareStream(
+        userId,
+        { chatId, mode: "send", content: "Hi" },
+        "Test User",
+        db,
+      );
 
       expect(result.mode).toBe("stream");
-      const localId = (result as { mode: "stream"; assistantMessageLocalId: number }).assistantMessageLocalId;
+      const localId = (result as { mode: "stream"; assistantMessageLocalId: number })
+        .assistantMessageLocalId;
 
-      const reply = db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.localId, localId))
-        .get()!;
+      const reply = db.select().from(chatMessages).where(eq(chatMessages.localId, localId)).get()!;
       expect(reply.content).toBe("");
       expect(reply.extra).toEqual({ isStreaming: true });
 
-      const chat = db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.localId, 0))
-        .get()!;
+      const chat = db.select().from(chatMessages).where(eq(chatMessages.localId, 0)).get()!;
       expect((chat.extra as any)?.lock).toBe("generating");
       expect((chat.extra as any)?.messageId).toBe(localId);
     });
@@ -124,12 +128,7 @@ describe("generation service", () => {
         .where(eq(userSettings.userId, userId))
         .run();
 
-      prepareStream(
-        userId,
-        { chatId, mode: "send", content: "I am {{user}}" },
-        "Test User",
-        db,
-      );
+      prepareStream(userId, { chatId, mode: "send", content: "I am {{user}}" }, "Test User", db);
 
       const userMsg = db
         .select()
@@ -148,24 +147,22 @@ describe("generation service", () => {
 
     it("returns fallback when no provider configured", () => {
       // No seedProvider — no providerId in settings
-      const result = prepareStream(userId, { chatId, mode: "send", content: "Hi" }, "Test User", db);
+      const result = prepareStream(
+        userId,
+        { chatId, mode: "send", content: "Hi" },
+        "Test User",
+        db,
+      );
 
       expect(result.mode).toBe("fallback");
-      const localId = (result as { mode: "fallback"; assistantMessageLocalId: number }).assistantMessageLocalId;
+      const localId = (result as { mode: "fallback"; assistantMessageLocalId: number })
+        .assistantMessageLocalId;
 
-      const reply = db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.localId, localId))
-        .get()!;
+      const reply = db.select().from(chatMessages).where(eq(chatMessages.localId, localId)).get()!;
       expect(reply.content.length).toBeGreaterThan(0);
       expect(reply.extra).toBeNull();
 
-      const root = db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.localId, 0))
-        .get()!;
+      const root = db.select().from(chatMessages).where(eq(chatMessages.localId, 0)).get()!;
       expect(root.extra).toBeNull();
     });
   });
@@ -178,8 +175,11 @@ describe("generation service", () => {
 
       appendUserAndReply(userId, chatId, "Hi", "First reply", undefined, db);
       const existingSibling = appendSibling(
-        userId, chatId, 3,
-        { role: "assistant", content: "Existing sibling" }, db,
+        userId,
+        chatId,
+        3,
+        { role: "assistant", content: "Existing sibling" },
+        db,
       );
 
       const result = prepareStream(
@@ -190,14 +190,11 @@ describe("generation service", () => {
       );
 
       expect(result.mode).toBe("stream");
-      const localId = (result as { mode: "stream"; assistantMessageLocalId: number }).assistantMessageLocalId;
+      const localId = (result as { mode: "stream"; assistantMessageLocalId: number })
+        .assistantMessageLocalId;
       const allIds = [3, existingSibling.localId, localId];
 
-      const userMsg = db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.localId, 2))
-        .get()!;
+      const userMsg = db.select().from(chatMessages).where(eq(chatMessages.localId, 2)).get()!;
       expect(userMsg.children).toEqual(allIds);
       expect(userMsg.selectedChildLocalId).toBe(localId);
 
@@ -215,12 +212,7 @@ describe("generation service", () => {
       seedProvider();
       appendUserAndReply(userId, chatId, "Hi", "Reply", undefined, db);
       expect(() =>
-        prepareStream(
-          userId,
-          { chatId, mode: "regenerate", messageLocalId: 2 },
-          "Test User",
-          db,
-        ),
+        prepareStream(userId, { chatId, mode: "regenerate", messageLocalId: 2 }, "Test User", db),
       ).toThrow("assistant");
     });
 
@@ -234,7 +226,12 @@ describe("generation service", () => {
     it("throws when locked", () => {
       seedProvider();
       const { replyMessage } = appendUserAndReply(
-        userId, chatId, "Hi", "", { isStreaming: true }, db,
+        userId,
+        chatId,
+        "Hi",
+        "",
+        { isStreaming: true },
+        db,
       );
       acquireGenerationLock(userId, chatId, replyMessage.localId, db);
       expect(() =>
@@ -261,7 +258,8 @@ describe("generation service", () => {
       const result = prepareStream(userId, { chatId, mode: "continue" }, "Test User", db);
 
       expect(result.mode).toBe("stream");
-      const localId = (result as { mode: "stream"; assistantMessageLocalId: number }).assistantMessageLocalId;
+      const localId = (result as { mode: "stream"; assistantMessageLocalId: number })
+        .assistantMessageLocalId;
 
       const placeholder = db
         .select()
@@ -284,13 +282,10 @@ describe("generation service", () => {
       const result = prepareStream(userId, { chatId, mode: "continue" }, "Test User", db);
 
       expect(result.mode).toBe("stream");
-      const localId = (result as { mode: "stream"; assistantMessageLocalId: number }).assistantMessageLocalId;
+      const localId = (result as { mode: "stream"; assistantMessageLocalId: number })
+        .assistantMessageLocalId;
 
-      const root = db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.localId, 0))
-        .get()!;
+      const root = db.select().from(chatMessages).where(eq(chatMessages.localId, 0)).get()!;
       expect(root.children).toEqual([1, 2, localId]);
       expect(root.selectedChildLocalId).toBe(localId);
     });
@@ -314,45 +309,45 @@ describe("generation service", () => {
   describe("finalizeStream", () => {
     it("writes content, applies macros, clears extra, releases lock", () => {
       seedProvider();
-      const result = prepareStream(userId, { chatId, mode: "send", content: "Hi" }, "Test User", db);
-      const localId = (result as { mode: "stream"; assistantMessageLocalId: number }).assistantMessageLocalId;
+      const result = prepareStream(
+        userId,
+        { chatId, mode: "send", content: "Hi" },
+        "Test User",
+        db,
+      );
+      const localId = (result as { mode: "stream"; assistantMessageLocalId: number })
+        .assistantMessageLocalId;
 
       const finalized = finalizeStream(
-        userId, chatId, localId,
-        "Final {{char}} message", "Test User", db,
+        userId,
+        chatId,
+        localId,
+        "Final {{char}} message",
+        "Test User",
+        db,
       );
 
       expect(finalized.messageLocalId).toBe(localId);
       expect(finalized.content).toBe(`Final ${charName} message`);
 
-      const msg = db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.localId, localId))
-        .get()!;
+      const msg = db.select().from(chatMessages).where(eq(chatMessages.localId, localId)).get()!;
       expect(msg.content).toBe(`Final ${charName} message`);
       expect(msg.extra).toBeNull();
 
-      const root = db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.localId, 0))
-        .get()!;
+      const root = db.select().from(chatMessages).where(eq(chatMessages.localId, 0)).get()!;
       expect((root.extra as any)?.lock).toBeUndefined();
     });
 
     it("throws on root", () => {
       seedProvider();
-      expect(() =>
-        finalizeStream(userId, chatId, 0, "x", "Test User", db),
-      ).toThrow("root");
+      expect(() => finalizeStream(userId, chatId, 0, "x", "Test User", db)).toThrow("root");
     });
 
     it("throws on non-streaming message", () => {
       seedProvider();
-      expect(() =>
-        finalizeStream(userId, chatId, 1, "x", "Test User", db),
-      ).toThrow("not a streaming placeholder");
+      expect(() => finalizeStream(userId, chatId, 1, "x", "Test User", db)).toThrow(
+        "not a streaming placeholder",
+      );
     });
   });
 
@@ -361,24 +356,22 @@ describe("generation service", () => {
   describe("cancelStream", () => {
     it("deletes placeholder and releases lock", () => {
       seedProvider();
-      const result = prepareStream(userId, { chatId, mode: "send", content: "Hi" }, "Test User", db);
-      const localId = (result as { mode: "stream"; assistantMessageLocalId: number }).assistantMessageLocalId;
+      const result = prepareStream(
+        userId,
+        { chatId, mode: "send", content: "Hi" },
+        "Test User",
+        db,
+      );
+      const localId = (result as { mode: "stream"; assistantMessageLocalId: number })
+        .assistantMessageLocalId;
 
       const cancelResult = cancelStream(userId, chatId, localId, db);
       expect(cancelResult.deletedIds).toContain(localId);
 
-      const msg = db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.localId, localId))
-        .get();
+      const msg = db.select().from(chatMessages).where(eq(chatMessages.localId, localId)).get();
       expect(msg).toBeUndefined();
 
-      const root = db
-        .select()
-        .from(chatMessages)
-        .where(eq(chatMessages.localId, 0))
-        .get()!;
+      const root = db.select().from(chatMessages).where(eq(chatMessages.localId, 0)).get()!;
       expect((root.extra as any)?.lock).toBeUndefined();
     });
 
@@ -401,7 +394,13 @@ describe("generation service", () => {
         text: async () => "",
       } as unknown as Response);
 
-      const result = await impersonateMessage(userId, chatId, "Test User", { fetchFn: mockFetch as any }, db);
+      const result = await impersonateMessage(
+        userId,
+        chatId,
+        "Test User",
+        { fetchFn: mockFetch as any },
+        db,
+      );
 
       expect(result).toEqual({ text: "I walked into the room." });
       expect(mockFetch).toHaveBeenCalledTimes(1);

@@ -77,8 +77,7 @@ export function useDeletePersona() {
 export function useUploadPersonaIcon() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string; fileBase64: string }) =>
-      uploadPersonaIcon({ data: input }),
+    mutationFn: (input: { id: string; fileBase64: string }) => uploadPersonaIcon({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: personaKeys.all });
       queryClient.removeQueries({ queryKey: personaKeys.detail(variables.id) });

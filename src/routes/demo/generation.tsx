@@ -35,9 +35,9 @@ const loadDemoContext = createServerFn({ method: "POST", strict: { output: false
     const messages = getMessages(user.id, chatId);
     if (messages.length === 0) return { error: "No messages" };
 
-    const assistantMsg = [...messages].reverse().find(
-      (m) => m.role === "assistant" && m.localId !== 0,
-    );
+    const assistantMsg = [...messages]
+      .reverse()
+      .find((m) => m.role === "assistant" && m.localId !== 0);
     if (!assistantMsg) return { error: "No assistant message" };
 
     const ctx = await loadGenerationContext(user.id, user.name, chatId, assistantMsg.localId);
@@ -66,7 +66,12 @@ const loadDemoContext = createServerFn({ method: "POST", strict: { output: false
     }
 
     return {
-      chat: { id: chatId, title: chat.title, lockState: chat.lockState, lockMessageLocalId: chat.lockMessageLocalId },
+      chat: {
+        id: chatId,
+        title: chat.title,
+        lockState: chat.lockState,
+        lockMessageLocalId: chat.lockMessageLocalId,
+      },
       tree: treeData.sort((a, b) => a.localId - b.localId),
       context: {
         userName: ctx.prompt.userName,
@@ -151,9 +156,8 @@ function TreeNode({
   nodes: FlatNode[];
   depth?: number;
 }) {
-  const parent = node.parentLocalId != null
-    ? nodes.find((n) => n.localId === node.parentLocalId)
-    : undefined;
+  const parent =
+    node.parentLocalId != null ? nodes.find((n) => n.localId === node.parentLocalId) : undefined;
   const isSelected = depth > 0 && parent?.selectedChildLocalId === node.localId;
 
   return (
@@ -169,22 +173,17 @@ function TreeNode({
         )}
       >
         <strong>#{node.localId}</strong>{" "}
-        <span className={roleColors[node.role] ?? "text-muted-foreground"}>
-          {node.role}
-        </span>{" "}
+        <span className={roleColors[node.role] ?? "text-muted-foreground"}>{node.role}</span>{" "}
         <span className="text-muted-foreground">content:</span>{" "}
         <span className="text-foreground">
           &ldquo;{node.content.substring(0, 80)}
           {node.content.length > 80 ? "\u2026" : ""}&rdquo;
         </span>
         <span className="text-muted-foreground ml-2">
-          children: [{node.children.join(",")}] sel:{" "}
-          {node.selectedChildLocalId ?? "\u2014"}
+          children: [{node.children.join(",")}] sel: {node.selectedChildLocalId ?? "\u2014"}
         </span>
         {node.extra && Object.keys(node.extra).length > 0 && (
-          <span className="text-chart-1 ml-2">
-            extra: {JSON.stringify(node.extra)}
-          </span>
+          <span className="text-chart-1 ml-2">extra: {JSON.stringify(node.extra)}</span>
         )}
       </div>
       {node.children.length > 0 &&
@@ -238,7 +237,9 @@ function GenerationDemo() {
   // ── Streaming state
   const placeholderRef = useRef<number | null>(null);
   const chatIdRef = useRef(selectedChatId);
-  useEffect(() => { chatIdRef.current = selectedChatId; }, [selectedChatId]);
+  useEffect(() => {
+    chatIdRef.current = selectedChatId;
+  }, [selectedChatId]);
   const [streamStatus, setStreamStatus] = useState<
     "idle" | "streaming" | "finalizing" | "error" | "fallback"
   >("idle");
@@ -253,7 +254,11 @@ function GenerationDemo() {
     queryFn: () => listDemoChats(),
   });
 
-  const { data: demoData, refetch: refetchDemo, isFetching: demoLoading } = useQuery({
+  const {
+    data: demoData,
+    refetch: refetchDemo,
+    isFetching: demoLoading,
+  } = useQuery({
     queryKey: ["demo-context", selectedChatId],
     queryFn: () => loadDemoContext({ data: { chatId: selectedChatId } }),
     enabled: selectedChatId.length > 0,
@@ -308,7 +313,11 @@ function GenerationDemo() {
       }
     },
     onError: (err) => {
-      /* eslint-disable-next-line no-console */ console.error("[demo][stream] onError:", err?.message ?? err, err);
+      /* eslint-disable-next-line no-console */ console.error(
+        "[demo][stream] onError:",
+        err?.message ?? err,
+        err,
+      );
       setStreamStatus("error");
       if (placeholderRef.current) {
         cancelStreamFn({
@@ -375,7 +384,7 @@ function GenerationDemo() {
   }, [selectedChatId]);
 
   const demo = demoData as Record<string, unknown> | undefined;
-  const demoTree = ((demo?.tree ?? []) as FlatNode[]) as FlatNode[];
+  const demoTree = (demo?.tree ?? []) as FlatNode[] as FlatNode[];
   const hasDemoData = demo && !("error" in demo);
   const ctx = hasDemoData ? (demo!.context as Record<string, unknown>) : null;
 
@@ -401,10 +410,15 @@ function GenerationDemo() {
             <Section title="Chat Selector">
               <select
                 value={selectedChatId}
-                onChange={(e) => { setSelectedChatId(e.target.value); cleanup(); }}
+                onChange={(e) => {
+                  setSelectedChatId(e.target.value);
+                  cleanup();
+                }}
                 className={inputBase}
               >
-                <option value="">{'\u2014'} Select a chat {'\u2014'}</option>
+                <option value="">
+                  {"\u2014"} Select a chat {"\u2014"}
+                </option>
                 {(chats as Array<Record<string, unknown>> | undefined)?.map(
                   (chat: Record<string, unknown>) => (
                     <option key={chat.id as string} value={chat.id as string}>
@@ -461,9 +475,8 @@ function GenerationDemo() {
                       </div>
                     ),
                   )}
-                  {Object.keys((demo!.modelOptions as Record<string, unknown>) ?? {}).length > 0 && (
-                    <JsonBlock data={demo!.modelOptions} label="Model Options" />
-                  )}
+                  {Object.keys((demo!.modelOptions as Record<string, unknown>) ?? {}).length >
+                    0 && <JsonBlock data={demo!.modelOptions} label="Model Options" />}
                 </Section>
 
                 <Section title="Provider">
@@ -518,7 +531,7 @@ function GenerationDemo() {
               {mode === "send" && (
                 <div className="mb-3">
                   <label className="block text-xs font-medium text-foreground mb-1">
-                    Content (supports {'{{char}}'} {'{{user}}'})
+                    Content (supports {"{{char}}"} {"{{user}}"})
                   </label>
                   <textarea
                     value={sendContent}
@@ -549,7 +562,9 @@ function GenerationDemo() {
               <div className="flex gap-2">
                 <button
                   onClick={handleGenerate}
-                  disabled={!selectedChatId || streamStatus === "streaming" || streamStatus === "finalizing"}
+                  disabled={
+                    !selectedChatId || streamStatus === "streaming" || streamStatus === "finalizing"
+                  }
                   className={cn(
                     btnBase,
                     "flex-1",
@@ -567,7 +582,10 @@ function GenerationDemo() {
                 {(streamStatus === "streaming" || streamStatus === "finalizing") && (
                   <button
                     onClick={handleStop}
-                    className={cn(btnBase, "flex-none w-24 bg-destructive text-destructive-foreground hover:bg-destructive/90")}
+                    className={cn(
+                      btnBase,
+                      "flex-none w-24 bg-destructive text-destructive-foreground hover:bg-destructive/90",
+                    )}
                   >
                     Stop
                   </button>
@@ -575,17 +593,21 @@ function GenerationDemo() {
               </div>
 
               <div className="mt-3 text-xs font-mono">
-                {streamStatus === "idle" && (
-                  <span className="text-muted-foreground">idle</span>
-                )}
+                {streamStatus === "idle" && <span className="text-muted-foreground">idle</span>}
                 {streamStatus === "streaming" && (
-                  <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded">streaming</span>
+                  <span className="bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded">
+                    streaming
+                  </span>
                 )}
                 {streamStatus === "finalizing" && (
-                  <span className="bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded">finalizing</span>
+                  <span className="bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded">
+                    finalizing
+                  </span>
                 )}
                 {streamStatus === "error" && (
-                  <span className="bg-destructive/10 text-destructive px-2 py-0.5 rounded">error</span>
+                  <span className="bg-destructive/10 text-destructive px-2 py-0.5 rounded">
+                    error
+                  </span>
                 )}
                 {streamStatus === "fallback" && (
                   <span className="bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded">
@@ -601,7 +623,9 @@ function GenerationDemo() {
                 <div className="bg-muted/50 border border-border rounded-lg p-3 min-h-[100px] max-h-[300px] overflow-auto font-mono text-xs leading-relaxed whitespace-pre-wrap">
                   {streamingText || (
                     <span className="text-muted-foreground italic">
-                      {streamStatus === "streaming" ? "Waiting for first token\u2026" : "Finalizing\u2026"}
+                      {streamStatus === "streaming"
+                        ? "Waiting for first token\u2026"
+                        : "Finalizing\u2026"}
                     </span>
                   )}
                 </div>
@@ -613,7 +637,8 @@ function GenerationDemo() {
               )}
               {streamStatus === "fallback" && (
                 <div className="bg-muted/50 border border-border rounded-lg p-3 text-muted-foreground text-sm italic">
-                  No provider configured. A default reply was written directly — no streaming needed.
+                  No provider configured. A default reply was written directly — no streaming
+                  needed.
                 </div>
               )}
               {streamStatus === "idle" && (
@@ -644,7 +669,10 @@ function GenerationDemo() {
                     {impersonateResult}
                   </pre>
                   <button
-                    onClick={() => { setSendContent(impersonateResult); setMode("send"); }}
+                    onClick={() => {
+                      setSendContent(impersonateResult);
+                      setMode("send");
+                    }}
                     className={cn(btnBase, "mt-2 bg-muted text-foreground hover:bg-muted/80")}
                   >
                     Copy to Send Input
@@ -656,31 +684,33 @@ function GenerationDemo() {
             {/* ── Workflow Guide ──────────────── */}
             <Section title="Workflow Guide">
               <ol className="text-sm m-0 pl-5 leading-relaxed text-foreground">
-                <li><strong>Select a chat</strong> from the dropdown (left panel)</li>
-                <li>Review the <strong>message tree</strong> and <strong>built prompt</strong></li>
                 <li>
-                  <strong>Generate</strong>: pick mode, click the button &mdash; the full pipeline runs
-                  automatically (prepare {'\u2192'} stream {'\u2192'} finalize). If no provider is
-                  configured, a random default reply is used instead.
+                  <strong>Select a chat</strong> from the dropdown (left panel)
                 </li>
                 <li>
-                  <strong>Regenerate</strong>: enter an assistant message&apos;s localId, creates a new
-                  sibling placeholder and streams into it.
+                  Review the <strong>message tree</strong> and <strong>built prompt</strong>
+                </li>
+                <li>
+                  <strong>Generate</strong>: pick mode, click the button &mdash; the full pipeline
+                  runs automatically (prepare {"\u2192"} stream {"\u2192"} finalize). If no provider
+                  is configured, a random default reply is used instead.
+                </li>
+                <li>
+                  <strong>Regenerate</strong>: enter an assistant message&apos;s localId, creates a
+                  new sibling placeholder and streams into it.
                 </li>
                 <li>
                   <strong>Continue</strong>: creates a new assistant message from the active leaf.
                 </li>
                 <li>
-                  <strong>Impersonate</strong>: calls the impersonation endpoint and shows the returned
-                  text. Use &ldquo;Copy to Send Input&rdquo; to send it as a user message.
+                  <strong>Impersonate</strong>: calls the impersonation endpoint and shows the
+                  returned text. Use &ldquo;Copy to Send Input&rdquo; to send it as a user message.
                 </li>
                 <li>
-                  Watch the <strong>live stream output</strong> &mdash; tokens appear in real-time as
-                  the AI generates them.
+                  Watch the <strong>live stream output</strong> &mdash; tokens appear in real-time
+                  as the AI generates them.
                 </li>
-                <li>
-                  The tree view refreshes automatically after each operation.
-                </li>
+                <li>The tree view refreshes automatically after each operation.</li>
               </ol>
             </Section>
           </div>
