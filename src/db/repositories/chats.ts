@@ -81,6 +81,8 @@ export function createChat(input: CreateChatInput, db: DB = defaultDb): Chat {
 }
 
 export function deleteChat(userId: string, id: string, db: DB = defaultDb): void {
+  // Verify ownership before deleting anything
+  getChat(userId, id, db);
   // Manually delete messages first since FK enforcement is off in dev.db
   db.delete(chatMessages).where(eq(chatMessages.chatId, id)).run();
   const result = db
