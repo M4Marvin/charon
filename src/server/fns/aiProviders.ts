@@ -14,7 +14,14 @@ import {
   type UpdateAiProviderInput,
 } from "@/db/repositories/aiProviders";
 
-export type AiProviderListItem = AiProvider;
+export type AiProviderListItem = Omit<AiProvider, "apiKey" | "defaultHeaders"> & {
+  hasApiKey: boolean;
+};
+
+function toListItem(row: AiProvider): AiProviderListItem {
+  const { apiKey, defaultHeaders, ...rest } = row;
+  return { ...rest, hasApiKey: apiKey.length > 0 };
+}
 
 // ── Validators ──────────────────────────────────────────────────────────────
 
@@ -94,15 +101,16 @@ function validateUpdateInput(data: unknown): {
 export const listAiProviders = createServerFn({ method: "GET" }).handler(
   async (): Promise<AiProviderListItem[]> => {
     const { user } = await getSession();
-    return await repoList(user.id);
+    const rows = await repoList(user.id);
+    return rows.map(toListItem);
   },
 );
 
 export const getAiProvider = createServerFn({ method: "GET", strict: { output: false } })
   .validator(validateId)
-  .handler(async ({ data }): Promise<AiProvider> => {
+  .handler(async ({ data }): Promise<AiProviderListItem> => {
     const { user } = await getSession();
-    return await repoGet(user.id, data.id);
+    return toListItem(await repoGet(user.id, data.id));
   });
 
 export const createAiProvider = createServerFn({ method: "POST" })
