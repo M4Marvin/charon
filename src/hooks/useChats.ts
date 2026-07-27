@@ -120,6 +120,7 @@ export function usePrepareStream() {
     }): Promise<PrepareStreamResult> => prepareStreamFn({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig", variables.chatId] });
     },
   });
 }
@@ -134,6 +135,7 @@ export function useFinalizeStream() {
     }): Promise<{ messageLocalId: number; content: string }> => finalizeStreamFn({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig", variables.chatId] });
     },
   });
 }
@@ -147,6 +149,7 @@ export function useCancelStream() {
     }): Promise<{ deletedIds: number[] }> => cancelStreamFn({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig", variables.chatId] });
     },
   });
 }
@@ -164,6 +167,7 @@ export function useUpdateChatSettings() {
     }): Promise<{ id: string }> => updateChatSettings({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.detail(variables.id) });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig", variables.id] });
     },
   });
 }

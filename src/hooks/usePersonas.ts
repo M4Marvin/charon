@@ -40,6 +40,7 @@ export function useCreatePersona() {
     }): Promise<{ id: string }> => createPersona({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: personaKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }
@@ -55,6 +56,7 @@ export function useUpdatePersona() {
     }): Promise<{ id: string }> => updatePersona({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: personaKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
       queryClient.removeQueries({ queryKey: personaKeys.detail(variables.id) });
     },
   });
@@ -66,6 +68,7 @@ export function useDeletePersona() {
     mutationFn: (input: { id: string }): Promise<{ id: string }> => deletePersona({ data: input }),
     onSuccess: ({ id }) => {
       void queryClient.invalidateQueries({ queryKey: personaKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
       queryClient.removeQueries({ queryKey: personaKeys.detail(id) });
     },
   });

@@ -157,6 +157,7 @@ export function useToggleLorebook() {
     }> => setLorebookEnabled({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: lorebookKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }
@@ -173,6 +174,7 @@ export function useToggleLoreEntry(lorebookId: string) {
     }> => setLoreEntryDisabled({ data: { lorebookId, ...input } }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: lorebookKeys.entries(lorebookId) });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }
