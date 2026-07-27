@@ -155,7 +155,10 @@ export function useChatGeneration(
     return () => {
       if (placeholderRef.current) {
         const oldId = chatIdRef.current;
-        cancelRef.current.mutateAsync({ chatId: oldId, messageLocalId: placeholderRef.current }).catch(() => {});
+        cancelRef.current.mutate(
+          { chatId: oldId, messageLocalId: placeholderRef.current },
+          { onError: () => {} },
+        );
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
