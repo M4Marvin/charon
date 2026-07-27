@@ -21,7 +21,26 @@ const config = defineConfig({
       'use-sync-external-store/shim',
     ],
   },
-  plugins: [devtools(), tailwindcss(), nitro(), tanstackStart(), viteReact()],
+  plugins: [
+    devtools(),
+    tailwindcss(),
+    {
+      name: 'force-nitro-image-api',
+      configureServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          const dest = req.headers['sec-fetch-dest']
+          const url = req.url || ''
+          if (dest === 'image' && (url.startsWith('/api/') || url.startsWith('/uploads/'))) {
+            req.headers['sec-fetch-dest'] = 'empty'
+          }
+          next()
+        })
+      },
+    },
+    nitro(),
+    tanstackStart(),
+    viteReact(),
+  ],
 })
 
 export default config
