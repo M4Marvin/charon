@@ -24,7 +24,7 @@ interface SectionProps {
   isAdmin: boolean;
 }
 
-export function ConnectionSection({ isStreaming }: SectionProps) {
+export function ConnectionSection({ isStreaming, isAdmin }: SectionProps) {
   const { data: settings } = useUserSettings();
   const { data: providers } = useAiProviders();
   const { data: presets } = usePresets();
@@ -159,7 +159,7 @@ export function ConnectionSection({ isStreaming }: SectionProps) {
           <Select
             value={selectedModel}
             onValueChange={handleModelChange}
-            disabled={isStreaming || !selectedProviderId}
+            disabled={isStreaming || !selectedProviderId || !isAdmin}
           >
             <SelectTrigger id="cs-model" className="flex-1">
               <SelectValue placeholder="Select model" />
@@ -201,7 +201,7 @@ export function ConnectionSection({ isStreaming }: SectionProps) {
           onChange={(e) => setModelInput(e.target.value)}
           onBlur={() => handleModelChange(modelInput)}
           placeholder="Or type model ID directly"
-          disabled={isStreaming}
+          disabled={isStreaming || !isAdmin}
         />
       </Field>
 
