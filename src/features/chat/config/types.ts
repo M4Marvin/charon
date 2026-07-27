@@ -1,5 +1,6 @@
 import type { CharacterDataV2 } from "@/lib/st-core/character/types";
 import type { LoreEntry } from "@/lib/st-core/lorebook/types";
+import type { ChatCompletionPreset } from "@/lib/chat/types";
 import type { ResolvedProvider } from "../generation/types";
 
 export type { ResolvedProvider };
@@ -27,4 +28,26 @@ export interface ChatConfig {
   provider: ResolvedProvider | null;
   persona: PersonaInfo;
   loreEntries: LoreEntry[];
+}
+
+export interface ChatConfigClient {
+  chat: ChatDetail;
+  character: CharacterDataV2;
+  settings: UserSettingsView;
+  provider: { model: string; preset: Partial<ChatCompletionPreset> } | null;
+  persona: PersonaInfo;
+  loreEntries: LoreEntry[];
+}
+
+export function toClientConfig(config: ChatConfig): ChatConfigClient {
+  return {
+    chat: config.chat,
+    character: config.character,
+    settings: config.settings,
+    provider: config.provider
+      ? { model: config.provider.model, preset: config.provider.preset }
+      : null,
+    persona: config.persona,
+    loreEntries: config.loreEntries,
+  };
 }

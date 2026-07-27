@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import { substituteMessageMacros } from "@/lib/chat/substitute-message-macros";
-import type { ChatConfig } from "@/features/chat/config/types";
+import type { ChatConfigClient } from "@/features/chat/config/types";
 
-export function useChatMacros(config: ChatConfig | undefined) {
+export function useChatMacros(config: ChatConfigClient | undefined) {
   return useCallback(
     (text: string) => {
       if (!config || !text) return text;
