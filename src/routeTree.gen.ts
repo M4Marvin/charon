@@ -28,7 +28,9 @@ import { Route as LorebooksNewRouteImport } from './routes/lorebooks/new'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as CharactersIdEditRouteImport } from './routes/characters/$id_.edit'
-import { Route as UploadsTypeIdRouteImport } from './routes/uploads/$type/$id'
+import { Route as ApiBackgroundsIdImageRouteImport } from './routes/api/backgrounds/$id/image'
+import { Route as ApiCharactersIdAvatarRouteImport } from './routes/api/characters/$id/avatar'
+import { Route as ApiPersonasIdIconRouteImport } from './routes/api/personas/$id/icon'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -125,9 +127,19 @@ const CharactersIdEditRoute = CharactersIdEditRouteImport.update({
   path: '/characters/$id/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UploadsTypeIdRoute = UploadsTypeIdRouteImport.update({
-  id: '/uploads/$type/$id',
-  path: '/uploads/$type/$id',
+const ApiBackgroundsIdImageRoute = ApiBackgroundsIdImageRouteImport.update({
+  id: '/api/backgrounds/$id/image',
+  path: '/api/backgrounds/$id/image',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCharactersIdAvatarRoute = ApiCharactersIdAvatarRouteImport.update({
+  id: '/api/characters/$id/avatar',
+  path: '/api/characters/$id/avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPersonasIdIconRoute = ApiPersonasIdIconRouteImport.update({
+  id: '/api/personas/$id/icon',
+  path: '/api/personas/$id/icon',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -151,7 +163,9 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/characters/$id/edit': typeof CharactersIdEditRoute
-  '/uploads/$type/$id': typeof UploadsTypeIdRoute
+  '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
+  '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
+  '/api/personas/$id/icon': typeof ApiPersonasIdIconRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -173,7 +187,9 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/characters/$id/edit': typeof CharactersIdEditRoute
-  '/uploads/$type/$id': typeof UploadsTypeIdRoute
+  '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
+  '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
+  '/api/personas/$id/icon': typeof ApiPersonasIdIconRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -196,7 +212,9 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/characters/$id_/edit': typeof CharactersIdEditRoute
-  '/uploads/$type/$id': typeof UploadsTypeIdRoute
+  '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
+  '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
+  '/api/personas/$id/icon': typeof ApiPersonasIdIconRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -220,7 +238,9 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/api/auth/$'
     | '/characters/$id/edit'
-    | '/uploads/$type/$id'
+    | '/api/backgrounds/$id/image'
+    | '/api/characters/$id/avatar'
+    | '/api/personas/$id/icon'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -242,7 +262,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/auth/$'
     | '/characters/$id/edit'
-    | '/uploads/$type/$id'
+    | '/api/backgrounds/$id/image'
+    | '/api/characters/$id/avatar'
+    | '/api/personas/$id/icon'
   id:
     | '__root__'
     | '/'
@@ -264,7 +286,9 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/api/auth/$'
     | '/characters/$id_/edit'
-    | '/uploads/$type/$id'
+    | '/api/backgrounds/$id/image'
+    | '/api/characters/$id/avatar'
+    | '/api/personas/$id/icon'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -287,7 +311,9 @@ export interface RootRouteChildren {
   SettingsIndexRoute: typeof SettingsIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   CharactersIdEditRoute: typeof CharactersIdEditRoute
-  UploadsTypeIdRoute: typeof UploadsTypeIdRoute
+  ApiBackgroundsIdImageRoute: typeof ApiBackgroundsIdImageRoute
+  ApiCharactersIdAvatarRoute: typeof ApiCharactersIdAvatarRoute
+  ApiPersonasIdIconRoute: typeof ApiPersonasIdIconRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -425,11 +451,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CharactersIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/uploads/$type/$id': {
-      id: '/uploads/$type/$id'
-      path: '/uploads/$type/$id'
-      fullPath: '/uploads/$type/$id'
-      preLoaderRoute: typeof UploadsTypeIdRouteImport
+    '/api/backgrounds/$id/image': {
+      id: '/api/backgrounds/$id/image'
+      path: '/api/backgrounds/$id/image'
+      fullPath: '/api/backgrounds/$id/image'
+      preLoaderRoute: typeof ApiBackgroundsIdImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/characters/$id/avatar': {
+      id: '/api/characters/$id/avatar'
+      path: '/api/characters/$id/avatar'
+      fullPath: '/api/characters/$id/avatar'
+      preLoaderRoute: typeof ApiCharactersIdAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/personas/$id/icon': {
+      id: '/api/personas/$id/icon'
+      path: '/api/personas/$id/icon'
+      fullPath: '/api/personas/$id/icon'
+      preLoaderRoute: typeof ApiPersonasIdIconRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -455,7 +495,9 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsIndexRoute: SettingsIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   CharactersIdEditRoute: CharactersIdEditRoute,
-  UploadsTypeIdRoute: UploadsTypeIdRoute,
+  ApiBackgroundsIdImageRoute: ApiBackgroundsIdImageRoute,
+  ApiCharactersIdAvatarRoute: ApiCharactersIdAvatarRoute,
+  ApiPersonasIdIconRoute: ApiPersonasIdIconRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

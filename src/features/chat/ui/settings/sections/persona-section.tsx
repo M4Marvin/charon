@@ -16,7 +16,6 @@ import { Label } from "@/components/ui/label";
 import { usePersonas, useCreatePersona, useUpdatePersona, useDeletePersona, useUploadPersonaIcon } from "@/hooks/usePersonas";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
 import { ConfirmDialog } from "../confirm-dialog";
-import { UploadedImage } from "@/components/ui/uploaded-image";
 
 interface SectionProps {
   chatId: string;
@@ -180,13 +179,13 @@ export function PersonaSection(_props: SectionProps) {
                 <Label>Icon</Label>
                 <div className="flex items-center gap-3">
                   {displayIconPath ? (
-                    <UploadedImage
-                      storedPath={displayIconPath}
+                    <img
+                      src={`/api/personas/${dialog.id}/icon`}
                       alt=""
-                      width={64}
-                      height={64}
-                      layout="fixed"
                       className="size-16 rounded-lg object-cover border border-border"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
                     />
                   ) : (
                     <div className="size-16 rounded-lg bg-muted flex items-center justify-center border border-border">

@@ -35,7 +35,7 @@ export function CustomImagePanel({
     [onUploadImage],
   );
 
-  const displaySrc = customImageSrc ?? (imageSrc ? `/${imageSrc}` : null);
+  const displaySrc = customImageSrc ?? imageSrc;
   const isCustom = customImageSrc !== null;
   const hasImage = displaySrc !== null;
   const label = isCustom ? "Custom" : "Scene";

@@ -2,7 +2,6 @@ import { ArrowLeft, Settings, User, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { uploadsUrl } from "@/lib/uploads-url";
 
 interface ChatHeaderProps {
   characterName: string;
@@ -42,7 +41,7 @@ export function ChatHeader({
       <div className="flex items-center gap-3 min-w-0">
         <Avatar className="size-7 shrink-0">
           <AvatarImage
-            src={uploadsUrl(avatarSrc) ?? undefined}
+            src={avatarSrc ?? undefined}
             alt={characterName}
             className="object-cover"
           />

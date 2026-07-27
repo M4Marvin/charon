@@ -2,7 +2,6 @@ import { useState, useLayoutEffect, useRef, useCallback } from "react";
 import { ChevronLeft, ChevronRight, RotateCw, Pencil, Trash2, Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { uploadsUrl } from "@/lib/uploads-url";
 import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
@@ -127,7 +126,7 @@ export function ChatMessage({
         <div className="flex gap-3">
           <Avatar className="size-8 shrink-0">
             <AvatarImage
-              src={uploadsUrl(avatarSrc) ?? undefined}
+              src={avatarSrc ?? undefined}
               alt={name}
               className="object-cover"
             />

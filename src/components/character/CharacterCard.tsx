@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { CharacterListItem } from "@/server/fns/characters";
-import { UploadedImage } from "@/components/ui/uploaded-image";
 
 export function CharacterCard({
   character,
@@ -49,12 +48,9 @@ export function CharacterCard({
 
       <CardContent className="flex gap-2 p-2">
         {character.imagePath ? (
-          <UploadedImage
-            storedPath={character.imagePath}
+          <img
+            src={`/api/characters/${character.id}/avatar`}
             alt={character.name}
-            width={80}
-            height={80}
-            layout="fixed"
             className="size-20 shrink-0 rounded-md object-cover"
             onError={(e) => {
               e.currentTarget.style.display = "none";

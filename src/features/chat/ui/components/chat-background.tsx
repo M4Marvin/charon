@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback } from "react";
-import { uploadsUrl } from "@/lib/uploads-url";
 
 interface ChatBackgroundProps {
   src: string | null;
@@ -24,13 +23,13 @@ export function ChatBackground({ src, fallbackSrc }: ChatBackgroundProps) {
         <>
           {prevSrc.current && !loaded && (
             <img
-              src={uploadsUrl(prevSrc.current) ?? undefined}
+              src={prevSrc.current ?? undefined}
               alt=""
               className="absolute inset-0 size-full object-cover brightness-[0.8] blur-sm scale-110"
             />
           )}
           <img
-            src={uploadsUrl(effectiveSrc) ?? undefined}
+            src={effectiveSrc ?? undefined}
             alt=""
             onLoad={onLoad}
             className="absolute inset-0 size-full object-cover brightness-[0.8] blur-sm scale-110 transition-opacity duration-700"

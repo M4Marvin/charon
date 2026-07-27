@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { useBackgrounds, useUploadBackground, useDeleteBackground } from "@/hooks/useBackgrounds";
 import { useChatConfig, useUpdateChatOverrides } from "@/hooks/useChatConfig";
 import { ConfirmDialog } from "../confirm-dialog";
-import { UploadedImage } from "@/components/ui/uploaded-image";
 
 interface SectionProps {
   chatId: string;
@@ -70,12 +69,9 @@ export function SceneSection({ chatId, isAdmin, isStreaming }: SectionProps) {
             }`}
             aria-label={`${bg.name}${bg.id === selectedId ? " (selected)" : ""}`}
           >
-            <UploadedImage
-              storedPath={bg.path}
+            <img
+              src={`/api/backgrounds/${bg.id}/image`}
               alt={bg.name}
-              width={160}
-              height={90}
-              layout="fixed"
               className="size-full object-cover"
             />
             {isAdmin && (

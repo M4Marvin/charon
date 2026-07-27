@@ -30,3 +30,18 @@ export async function ensureUploadsDirs(): Promise<void> {
     });
   }
 }
+
+export function contentTypeForPath(storedPath: string): string {
+  const ext = storedPath.match(/\.(\w+)$/)?.[1]?.toLowerCase();
+  switch (ext) {
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "webp":
+      return "image/webp";
+    default:
+      return "image/png";
+  }
+}

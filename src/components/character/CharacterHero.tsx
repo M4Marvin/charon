@@ -1,7 +1,6 @@
 import { Calendar, MessageCircle, MessageSquareText, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { CharacterDetail } from "@/db/repositories/characters";
-import { UploadedImage } from "@/components/ui/uploaded-image";
 
 export function CharacterHero({ character }: { character: CharacterDetail }) {
   const data = character.data;
@@ -12,24 +11,25 @@ export function CharacterHero({ character }: { character: CharacterDetail }) {
     <div className="flex flex-col sm:flex-row gap-6">
       <div className="shrink-0">
         {hasAvatar ? (
-          <UploadedImage
-            storedPath={character.imagePath}
-            alt={character.name}
-            width={240}
-            height={320}
-            layout="constrained"
-            className="w-60 sm:w-60 rounded-xl object-cover aspect-3/4 shadow-lg border border-border"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-              e.currentTarget.nextElementSibling?.classList.remove("hidden");
-            }}
-          />
-        ) : null}
-        <div
-          className={`${hasAvatar ? "hidden" : ""} w-60 aspect-3/4 rounded-xl bg-muted flex items-center justify-center shadow-lg border border-border`}
-        >
-          <User className="size-12 text-muted-foreground/40" />
-        </div>
+          <div className="relative">
+            <img
+              src={`/api/characters/${character.id}/avatar`}
+              alt={character.name}
+              className="w-60 sm:w-60 rounded-xl object-cover aspect-3/4 shadow-lg border border-border"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+                e.currentTarget.nextElementSibling?.classList.remove("hidden");
+              }}
+            />
+            <div className="hidden w-60 aspect-3/4 rounded-xl bg-muted flex items-center justify-center shadow-lg border border-border">
+              <User className="size-12 text-muted-foreground/40" />
+            </div>
+          </div>
+        ) : (
+          <div className="w-60 aspect-3/4 rounded-xl bg-muted flex items-center justify-center shadow-lg border border-border">
+            <User className="size-12 text-muted-foreground/40" />
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col min-w-0 justify-center gap-3">

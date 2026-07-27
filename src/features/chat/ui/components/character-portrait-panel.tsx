@@ -1,7 +1,6 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { UploadedImage } from "@/components/ui/uploaded-image";
 
 interface CharacterPortraitPanelProps {
   open: boolean;
@@ -37,12 +36,9 @@ export function CharacterPortraitPanel({
       >
         <div className="aspect-[3/4] max-h-[70dvh] relative flex items-center justify-center bg-[--bg-base]/60">
           {imageSrc ? (
-            <UploadedImage
-              storedPath={imageSrc}
+            <img
+              src={imageSrc}
               alt={name}
-              width={600}
-              height={800}
-              layout="constrained"
               className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (

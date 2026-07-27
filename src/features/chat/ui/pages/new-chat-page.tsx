@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
 import { useCharacters } from "@/hooks/useCharacters";
 import { useCreateChat } from "@/hooks/useChats";
-import { uploadsUrl } from "@/lib/uploads-url";
 
 export function NewChatPage() {
   const navigate = useNavigate();
@@ -68,7 +67,7 @@ export function NewChatPage() {
               <CardHeader className="items-center gap-3 pb-3">
                 <Avatar className="size-20 shrink-0 rounded-2xl ring-1 ring-white/10 transition-transform group-hover:scale-105">
                   <AvatarImage
-                    src={uploadsUrl(char.imagePath) ?? undefined}
+                    src={char.imagePath ? `/api/characters/${char.id}/avatar` : undefined}
                     alt={char.name}
                     className="object-cover"
                   />

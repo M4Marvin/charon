@@ -70,9 +70,9 @@ export function ChatPage() {
   const hasMessages = activePath.length > 0;
   const composerDisabled = config?.chat.lockState === "generating" && activePlaceholderId === null;
 
-  const userAvatarSrc = persona?.iconPath ?? null;
-  const characterAvatarSrc = character?.imagePath ?? null;
-  const backgroundSrc = background?.path ?? null;
+  const userAvatarUrl = persona?.iconPath ? `/api/personas/${persona.id}/icon` : null;
+  const characterAvatarUrl = character?.imagePath ? `/api/characters/${character.id}/avatar` : null;
+  const backgroundUrl = background?.path ? `/api/backgrounds/${background.id}/image` : null;
 
   const handleSend = useCallback(() => {
     if (generation.isStreaming) return;
@@ -223,11 +223,11 @@ export function ChatPage() {
 
   return (
     <div className="flex h-dvh w-full flex-col overflow-hidden" style={{ background: "var(--bg-base)" }}>
-      <ChatBackground src={backgroundSrc} fallbackSrc={characterAvatarSrc} />
+      <ChatBackground src={backgroundUrl} fallbackSrc={characterAvatarUrl} />
 
       <ChatHeader
         characterName={config.character.name}
-        avatarSrc={characterAvatarSrc}
+        avatarSrc={characterAvatarUrl}
         isGenerating={generation.isStreaming}
         onBack={() => navigate({ to: "/c" })}
         portraitOpen={portraitOpen}
@@ -243,8 +243,8 @@ export function ChatPage() {
         streamingText={generation.streamingText}
         characterName={config.character.name}
         userName={config.persona.name}
-        characterAvatarSrc={characterAvatarSrc}
-        userAvatarSrc={userAvatarSrc}
+        characterAvatarSrc={characterAvatarUrl}
+        userAvatarSrc={userAvatarUrl}
         disabled={isBusy}
         onSwipe={handleSwipe}
         onRegenerate={handleRegenerate}
@@ -255,20 +255,20 @@ export function ChatPage() {
       <CharacterPortraitPanel
         open={portraitOpen}
         name={config.character.name}
-        imageSrc={characterAvatarSrc}
+        imageSrc={characterAvatarUrl}
         isStreaming={generation.isStreaming}
         onClose={() => setPortraitOpen(false)}
-        onImageClick={() => characterAvatarSrc && openLightbox(`/${characterAvatarSrc}`)}
+        onImageClick={() => characterAvatarUrl && openLightbox(characterAvatarUrl)}
       />
 
       <CustomImagePanel
         open={sceneOpen}
-        imageSrc={backgroundSrc}
+        imageSrc={backgroundUrl}
         customImageSrc={customImage}
         onClose={() => setSceneOpen(false)}
         onImageClick={() => {
           if (customImage) openLightbox(customImage);
-          else if (backgroundSrc) openLightbox(`/${backgroundSrc}`);
+          else if (backgroundUrl) openLightbox(backgroundUrl);
         }}
         onUploadImage={handleUploadImage}
         onClearImage={handleClearImage}
