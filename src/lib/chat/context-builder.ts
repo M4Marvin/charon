@@ -4,6 +4,9 @@ import type { StoryStringParams } from "@/lib/st-core/context/types.js";
 import type { ChatMessage } from "@/lib/st-core/shared/types.js";
 import type { LoreGlobalData } from "@/lib/st-core/lorebook/types.js";
 import { convertBookEntries, scanLoreEntries, toLoreEntryView } from "./lorebook.js";
+import { createLogger } from "@/features/logging";
+
+const log = createLogger("chat:context-builder");
 import { toModelMessages } from "./pre-process.js";
 import type {
   ModelMessage,
@@ -179,7 +182,7 @@ export function buildMessages(
   // all roles with a misleading "User message" error.
   const filtered = messages.filter((m) => m.content.length > 0);
   if (filtered.length < messages.length) {
-    console.log("[context-builder] dropped empty-content messages", {
+    log.debug("dropped empty-content messages", {
       before: messages.length,
       after: filtered.length,
       dropped: messages.length - filtered.length,
