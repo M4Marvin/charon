@@ -8,25 +8,19 @@
 - **Auth:** better-auth (email+password)
 - **AI:** `@tanstack/ai*` — Anthropic, OpenAI, Gemini, Ollama adapters
 - **UI:** shadcn/ui, Tailwind CSS v4
-- **Package manager:** bun
+- **Package manager:** pnpm
 
 ## Setup
 
 ```bash
-bun install
+pnpm install
 echo 'DATABASE_URL="dev.db"' > .env
 echo 'BETTER_AUTH_SECRET="your-64-char-secret"' >> .env
 echo 'ENCRYPTION_KEY="your-32-char-secret"' >> .env
-bun run dev
+pnpm run dev
 ```
 
-Don't have bun?
-
-```bash
-curl -fsSL https://bun.sh/install | bash
-```
-
-Or see [bun.sh](https://bun.sh) for other install methods.
+Don't have pnpm? `npm install -g pnpm` or see [pnpm.io](https://pnpm.io/installation).
 
 ## Project layout
 
@@ -45,14 +39,17 @@ src/
     session.ts            # Auth helpers (isAdmin)
   routes/
     c/                    # Chat routes (/c, /c/new, /c/$id)
-    api/chat-generate.ts  # SSE streaming endpoint
+    api/
+      chat-generate.ts    # SSE streaming endpoint
+      characters/$id/avatar.ts
+      backgrounds/$id/image.ts
+      personas/$id/icon.ts
     admin/, characters/, settings/, lorebooks/, demo/
-  components/ui/          # shadcn/ui components + uploaded-image wrapper
+  components/ui/          # shadcn/ui components
   hooks/                  # TanStack Query hooks
   lib/
     st-core/              # SillyTavern core libs (DO NOT EDIT — see below)
     markdown.ts           # Showdown + DOMPurify render pipeline
-    uploads-url.ts        # URL builder for /uploads/<type>/<uuid>.png
   features/logging/       # Structured logger
 scripts/
   migrate-data.ts         # Legacy SillyTavern importer
@@ -110,19 +107,19 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 
 | Task | Command |
 |---|---|---|
-| Dev server | `bun run dev` |
-| Run tests | `bun run test` |
-| Lint | `bun run lint` |
-| Format | `bun run format` |
-| Typecheck | `bunx tsc --noEmit` |
-| DB generate | `bun run db:generate` |
-| DB migrate | `bun run db:migrate` |
-| DB push | `bun run db:push` |
-| DB studio | `bun run db:studio` |
+| Dev server | `pnpm run dev` |
+| Run tests | `pnpm run test` |
+| Lint | `pnpm run lint` |
+| Format | `pnpm run format` |
+| Typecheck | `pnpm exec tsc --noEmit` |
+| DB generate | `pnpm run db:generate` |
+| DB migrate | `pnpm run db:migrate` |
+| DB push | `pnpm run db:push` |
+| DB studio | `pnpm run db:studio` |
 
 ## Tests
 
-412 tests across 23 files. All pass. Uses in-memory SQLite for integration tests. Run with `bun run test`.
+412 tests across 23 files. All pass. Uses in-memory SQLite for integration tests. Run with `pnpm run test`.
 
 ## Known typecheck noise
 
@@ -134,3 +131,75 @@ Don't fix unless asked:
 ## Remaining todos
 
 - [ ] Encrypt stored provider API keys at rest (currently plain text in `ai_providers.api_key`).
+
+## Image rendering
+
+### Data flow
+
+```
+DB stores "uploads/{type}/{uuid}.png" (storedPath)
+        ↓
+Component constructs URL: "/api/{entity}/{id}/{field}"
+        ↓
+<img src={url} onError={hideImgShowFallback} />
+        ↓
+Browser → GET /api/{entity}/{id}/{field}
+        ↓
+1. getSession() → 401 if unauth
+2. repo.getXxx(user.id, params.id) → 404 if missing
+3. diskPathFromStored(record.imagePath) → "data/uploads/{type}/{uuid}.png"
+4. readFile(diskPath) → bytes
+5. Response(bytes, { content-type: <from extension>, cache-control: "private, max-age=300" })
+```
+
+### API routes
+
+| Route | DB field | User-scoped | File |
+|---|---|---|---|
+| `/api/characters/$id/avatar` | `character.imagePath` | Yes | `routes/api/characters/$id/avatar.ts` |
+| `/api/backgrounds/$id/image` | `background.path` | No (global) | `routes/api/backgrounds/$id/image.ts` |
+| `/api/personas/$id/icon` | `persona.iconPath` | Yes | `routes/api/personas/$id/icon.ts` |
+
+### URL construction
+
+**Components with direct record access** construct the URL inline:
+
+```tsx
+const src = record.imagePath ? `/api/characters/${record.id}/avatar` : null;
+```
+
+**Chat components** receive pre-built URL strings via props from `chat-page.tsx` (the central hub). No component ever calls a path-to-URL conversion function — URLs are always built at the data source.
+
+### Fallback pattern
+
+Every `<img>` must handle two states: **no path** (null src → placeholder) and **load error** (broken img → fallback).
+
+```tsx
+{src ? (
+  <img
+    src={src}
+    alt={name}
+    className="..."
+    onError={(e) => {
+      e.currentTarget.style.display = "none";
+      e.currentTarget.nextElementSibling?.classList.remove("hidden");
+    }}
+  />
+) : null}
+<div className="hidden ..."><FallbackIcon /></div>
+```
+
+For Radix `Avatar`, the `<AvatarFallback>` handles the error state automatically — just pass the URL directly to `<AvatarImage src={...}>`.
+
+### Server-side helpers (`src/server/uploads.ts`)
+
+| Function | Purpose |
+|---|---|
+| `storedPathFromDiskComponents(subdir, filename)` | `"uploads/avatars/uuid.png"` |
+| `diskPathFromStored(stored)` | `"data/uploads/avatars/uuid.png"` |
+| `contentTypeForPath(storedPath)` | `"image/png"` / `"image/jpeg"` / `"image/webp"` |
+| `ensureUploadsDirs()` | Creates `data/uploads/avatars/`, etc. |
+
+### Custom (ephemeral) images
+
+User-uploaded images in chat (via `CustomImagePanel`) bypass the API entirely — they're stored as Base64 data URIs in a Zustand store and rendered directly as `<img src={dataUrl}>`.

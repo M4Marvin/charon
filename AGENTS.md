@@ -8,8 +8,8 @@
 # Project state
 See `CONTRIBUTING.md` for project layout, architecture, commands, and conventions. Read it after this file.
 
-# bun
-Package manager used for all Node.js operations. Install: `curl -fsSL https://bun.sh/install | bash`
+# pnpm
+Package manager used for all Node.js operations. Install: `npm install -g pnpm` or see [pnpm.io](https://pnpm.io/installation).
 
 # TanStack Start
 Full-stack React framework: TanStack Router + Vite.
