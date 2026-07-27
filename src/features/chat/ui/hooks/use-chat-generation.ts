@@ -71,7 +71,7 @@ export function useChatGeneration(
   const aiChat = useAiChat({
     connection,
     onFinish: () => {
-      const text = extractAssistantText(aiChat.messages);
+      const text = extractAssistantText(aiChatRef.current.messages);
       const ph = placeholderRef.current;
       const cid = chatIdRef.current;
 
@@ -94,7 +94,7 @@ export function useChatGeneration(
           useChatUiStore.getState().clearPlaceholder();
           setStatus("idle");
           setStreamingText("");
-          void aiChat.setMessages([]);
+          void aiChatRef.current.setMessages([]);
         })
         .catch(() => {
           cancelRef.current.mutateAsync({ chatId: cid, messageLocalId: ph }).catch(() => {});
@@ -146,6 +146,10 @@ export function useChatGeneration(
     void aiChatRef.current.sendMessage(".");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lockMessageLocalId]);
+
+  useEffect(() => {
+    resumeRef.current = false;
+  }, [chatId]);
 
   useEffect(() => {
     return () => {
