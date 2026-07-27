@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect } from "react";
+import { useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 
@@ -153,53 +153,6 @@ export function ChatPage() {
   const handleClearImage = useCallback(() => {
     clearCustomImage(chatId);
   }, [chatId, clearCustomImage]);
-
-  useEffect(() => {
-    const isTypingTarget = (el: EventTarget | null) => {
-      if (!(el instanceof HTMLElement)) return false;
-      const tag = el.tagName;
-      return (
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        tag === "SELECT" ||
-        el.isContentEditable
-      );
-    };
-
-    const lastAssistant = [...activePath].reverse().find((e) => e.message.role === "assistant");
-
-    const handler = (e: KeyboardEvent) => {
-      const mod = e.ctrlKey || e.metaKey;
-      const typing = isTypingTarget(e.target);
-
-      if (!mod || !e.shiftKey) return;
-      if (isBusy) return;
-
-      if (e.key.toLowerCase() === "r" && !typing) {
-        if (!lastAssistant) return;
-        e.preventDefault();
-        generation.start("regenerate", { messageLocalId: lastAssistant.message.localId });
-        return;
-      }
-
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        if (typing) return;
-        if (!lastAssistant) return;
-        e.preventDefault();
-        handleSwipe(lastAssistant.message.localId, e.key === "ArrowLeft" ? "prev" : "next");
-        return;
-      }
-
-      if (e.key.toLowerCase() === "i") {
-        e.preventDefault();
-        handleImpersonate();
-        return;
-      }
-    };
-
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [activePath, isBusy, generation, handleSwipe, handleImpersonate]);
 
   if (configLoading || messagesLoading) {
     return (
