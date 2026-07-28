@@ -41,7 +41,7 @@ function NewCharacterPage() {
       setPreviewErr("Only PNG files are supported.");
       return;
     }
-    if (f.size > 5 * 1024 * 1024) {
+    if (f.size > 50 * 1024 * 1024) {
       setPreviewErr("File too large (max 5 MB).");
       return;
     }
@@ -109,7 +109,7 @@ function NewCharacterPage() {
             <div>
               <p className="text-headline">Choose a PNG character card</p>
               <p className="text-2 text-sm mt-1">
-                V2 or V3 card. Max 5 MB. Drag &amp; drop or click to browse.
+                V2 or V3 card. Max 50 MB. Drag &amp; drop or click to browse.
               </p>
             </div>
             <input
