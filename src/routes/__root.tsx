@@ -66,10 +66,17 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   errorComponent: RootErrorComponent,
   notFoundComponent: RootNotFoundComponent,
   beforeLoad: async ({ location }) => {
-    const publicPaths = ["/", "/signin", "/signup"];
+    const publicPrefixes = ["/", "/signin", "/signup"];
     const isApiRoute = location.pathname.startsWith("/api/");
     const isAssetRoute = location.pathname.startsWith("/assets/");
-    if (publicPaths.includes(location.pathname) || isApiRoute || isAssetRoute) return;
+    if (
+      publicPrefixes.some(
+        (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
+      ) ||
+      isApiRoute ||
+      isAssetRoute
+    )
+      return;
 
     const session = await getSession();
     if (!session) {
