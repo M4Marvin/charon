@@ -769,6 +769,23 @@
     background-image: none;
     -webkit-text-fill-color: currentColor;
   }
+  .rt-msg-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .scroll-fade,
+  .scroll-fade-y,
+  .scroll-fade-x,
+  .scroll-fade-t,
+  .scroll-fade-b,
+  .scroll-fade-l,
+  .scroll-fade-r,
+  .scroll-fade-s,
+  .scroll-fade-e {
+    --scroll-fade-mask: none;
+    animation: none;
+  }
 }
 
 @utility glass {
@@ -840,6 +857,20 @@
   --link-bg-hover: rgba(24, 44, 49, 0.8);
   --hero-a: rgba(96, 215, 207, 0.18);
   --hero-b: rgba(110, 200, 154, 0.12);
+
+  /* ── Semantic ui-overhaul tokens ── */
+  --bg-surface: #111a24;
+  --bg-raised: #182635;
+  --border-subtle: rgba(157, 178, 196, 0.12);
+  --text-1: #e8eff6;
+  --text-2: #9db2c4;
+  --text-3: #6b8093;
+  --brand: #2dd4bf;
+  --brand-strong: #5eead4;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --success: #34d399;
+  --info: #60a5fa;
 
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
@@ -977,6 +1008,49 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-raised: var(--bg-raised);
+  --color-border-subtle: var(--border-subtle);
+  --color-text-1: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-info: var(--info);
+}
+
+@utility focus-ring {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+@utility text-display {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  @media (width >= 48rem) {
+    font-size: 1.75rem;
+    line-height: 2.125rem;
+  }
+}
+
+@utility text-title {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+}
+
+@utility text-headline {
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 600;
 }
 
 html,
