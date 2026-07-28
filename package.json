@@ -59,7 +59,7 @@
     "@unpic/react": "^1.0.2",
     "arktype": "^2.2.3",
     "better-auth": "^1.6.23",
-    "better-sqlite3": "^12.11.1",
+    "better-sqlite3": "^13.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
