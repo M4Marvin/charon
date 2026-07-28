@@ -16,6 +16,7 @@ import {
   getChat as repoGetChat,
   insertMessage as repoInsertMessage,
   listChats as repoListChats,
+  listChatsByCharacter as repoListChatsByCharacter,
   listMessages as repoListMessages,
   updateChat as repoUpdateChat,
   type ChatWithCharacter,
@@ -70,6 +71,16 @@ export const listChats = createServerFn({ method: "GET", strict: { output: false
     return repoListChats(user.id);
   },
 );
+
+export const listChatsByCharacter = createServerFn({
+  method: "GET",
+  strict: { output: false },
+})
+  .validator((data) => Schema.decodeUnknownSync(GetChat)(data))
+  .handler(async ({ data }): Promise<ChatListItem[]> => {
+    const { user } = await getSession();
+    return repoListChatsByCharacter(user.id, data.id);
+  });
 
 export const getChat = createServerFn({ method: "GET", strict: { output: false } })
   .validator((data) => Schema.decodeUnknownSync(GetChat)(data))
