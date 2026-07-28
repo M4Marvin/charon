@@ -952,19 +952,40 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --color-bg-base: var(--bg-base);
-  --color-bg-surface: var(--bg-surface);
-  --color-bg-raised: var(--bg-raised);
-  --color-border-subtle: var(--border-subtle);
-  --color-text-1: var(--text-1);
-  --color-text-2: var(--text-2);
-  --color-text-3: var(--text-3);
   --color-brand: var(--brand);
   --color-brand-strong: var(--brand-strong);
   --color-danger: var(--danger);
   --color-warning: var(--warning);
   --color-success: var(--success);
   --color-info: var(--info);
+}
+
+@utility text-1 {
+  color: var(--text-1);
+}
+
+@utility text-2 {
+  color: var(--text-2);
+}
+
+@utility text-3 {
+  color: var(--text-3);
+}
+
+@utility bg-base {
+  background-color: var(--bg-base);
+}
+
+@utility bg-surface {
+  background-color: var(--bg-surface);
+}
+
+@utility bg-raised {
+  background-color: var(--bg-raised);
+}
+
+@utility border-subtle {
+  border-color: var(--border-subtle);
 }
 
 @utility focus-ring {

@@ -1,6 +1,6 @@
 const tones = {
   success: "bg-success",
-  muted: "bg-text-3",
+  muted: "bg-[var(--text-3)]",
   danger: "bg-danger",
 } as const;
 

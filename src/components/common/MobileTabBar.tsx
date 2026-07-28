@@ -17,7 +17,7 @@ export function MobileTabBar() {
           Characters
         </Link>
         <Link to="/c/new" className={base}>
-          <div className="flex size-10 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-lg">
+          <div className="flex size-10 items-center justify-center rounded-full bg-brand text-primary-foreground shadow-lg">
             <Plus className="size-5" />
           </div>
         </Link>
