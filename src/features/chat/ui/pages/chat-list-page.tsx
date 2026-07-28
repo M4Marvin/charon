@@ -122,42 +122,46 @@ export function ChatListPage() {
                     </h3>
                     <div className="space-y-1">
                       {items.map((chat) => (
-                        <Link
+                        <div
                           key={chat.id}
-                          to="/c/$id"
-                          params={{ id: chat.id }}
-                          className="flex items-center gap-3 rounded-xl px-3 py-3 -mx-3 hover:bg-surface transition-colors group no-underline min-h-16"
+                          className="group relative flex items-center gap-3 rounded-xl px-3 py-3 -mx-3 hover:bg-surface transition-colors min-h-16"
                         >
-                          <Avatar className="size-12 shrink-0 rounded-xl">
-                            <AvatarImage
-                              src={
-                                chat.characterImagePath
-                                  ? `/api/characters/${chat.characterId}/avatar`
-                                  : undefined
-                              }
-                              alt={chat.characterName}
-                              className="object-cover"
-                            />
-                            <AvatarFallback className="rounded-xl bg-brand/20 text-brand text-lg">
-                              {chat.characterName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-baseline justify-between gap-2">
-                              <p className="text-headline truncate">{chat.title}</p>
-                              <span className="text-3 text-xs shrink-0 tabular-nums">
-                                <RelativeTime date={chat.updatedAt} />
-                              </span>
+                          <Link
+                            to="/c/$id"
+                            params={{ id: chat.id }}
+                            className="flex items-center gap-3 flex-1 min-w-0 focus-ring rounded-xl no-underline"
+                          >
+                            <Avatar className="size-12 shrink-0 rounded-xl">
+                              <AvatarImage
+                                src={
+                                  chat.characterImagePath
+                                    ? `/api/characters/${chat.characterId}/avatar`
+                                    : undefined
+                                }
+                                alt={chat.characterName}
+                                className="object-cover"
+                              />
+                              <AvatarFallback className="rounded-xl bg-brand/20 text-brand text-lg">
+                                {chat.characterName.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-baseline justify-between gap-2">
+                                <p className="text-headline truncate">{chat.title}</p>
+                                <span className="text-3 text-xs shrink-0 tabular-nums">
+                                  <RelativeTime date={chat.updatedAt} />
+                                </span>
+                              </div>
+                              <p className="text-2 text-sm truncate">{chat.characterName}</p>
+                              {chat.lastMessagePreview ? (
+                                <p className="text-3 text-sm line-clamp-1">
+                                  {chat.lastMessagePreview}
+                                </p>
+                              ) : (
+                                <p className="text-3 text-sm italic">No messages yet</p>
+                              )}
                             </div>
-                            <p className="text-2 text-sm truncate">{chat.characterName}</p>
-                            {chat.lastMessagePreview ? (
-                              <p className="text-3 text-sm line-clamp-1">
-                                {chat.lastMessagePreview}
-                              </p>
-                            ) : (
-                              <p className="text-3 text-sm italic">No messages yet</p>
-                            )}
-                          </div>
+                          </Link>
                           <RowActionsMenu
                             label={`Actions for ${chat.title}`}
                             items={[
@@ -168,7 +172,7 @@ export function ChatListPage() {
                               },
                             ]}
                           />
-                        </Link>
+                        </div>
                       ))}
                     </div>
                   </section>

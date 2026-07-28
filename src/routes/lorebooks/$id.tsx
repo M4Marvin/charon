@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { StatusDot } from "@/components/common/StatusDot";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
 import {
+  useDeleteLorebookEntry,
   useDeleteLorebook,
   useLorebook,
   useLorebookEntries,
@@ -32,8 +33,10 @@ function LorebookDetailPage() {
   const { data: lorebook, isLoading, error } = useLorebook(id);
   const { data: entries } = useLorebookEntries(id);
   const deleteLb = useDeleteLorebook();
+  const deleteEntry = useDeleteLorebookEntry(id);
   const [dialog, setDialog] = useState<DialogState>({ kind: "closed" });
   const [delOpen, setDelOpen] = useState(false);
+  const [delEntryId, setDelEntryId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [showFilter, setShowFilter] = useState<"all" | "on" | "off">("all");
 
@@ -137,6 +140,7 @@ function LorebookDetailPage() {
               lorebookId={id}
               entry={entry}
               onEdit={() => setDialog({ kind: "edit", entry })}
+              onDelete={() => setDelEntryId(entry.id)}
             />
           ))}
         </div>
@@ -176,6 +180,28 @@ function LorebookDetailPage() {
           );
         }}
       />
+      <ConfirmDialog
+        open={delEntryId !== null}
+        onOpenChange={(o) => !o && setDelEntryId(null)}
+        title="Delete entry"
+        description="This entry will be permanently removed from the lorebook."
+        destructive
+        loading={deleteEntry.isPending}
+        onConfirm={() => {
+          if (!delEntryId) return;
+          deleteEntry.mutate(
+            { entryId: delEntryId },
+            {
+              onSuccess: () => {
+                toast.success("Entry deleted");
+                setDelEntryId(null);
+              },
+              onError: (err) =>
+                toast.error(`Delete failed: ${err instanceof Error ? err.message : String(err)}`),
+            },
+          );
+        }}
+      />
     </main>
   );
 }
@@ -184,10 +210,12 @@ function EntryRow({
   lorebookId,
   entry,
   onEdit,
+  onDelete,
 }: {
   lorebookId: string;
   entry: LoreEntryListItem;
   onEdit: () => void;
+  onDelete: () => void;
 }) {
   const toggle = useToggleLoreEntry(lorebookId);
   const authorDisabled = entry.data.disable === true;
@@ -236,9 +264,13 @@ function EntryRow({
         >
           <span className={`transition-transform ${expanded ? "rotate-90" : ""}`}>▸</span>
         </button>
-        <Button variant="ghost" size="sm" onClick={onEdit}>
-          Edit
-        </Button>
+        <RowActionsMenu
+          label={`Actions for ${entry.data.comment || `Entry ${entry.uid}`}`}
+          items={[
+            { label: "Edit", onSelect: onEdit },
+            { label: "Delete", destructive: true, onSelect: onDelete },
+          ]}
+        />
       </div>
       {expanded ? (
         <div className="border-t px-4 py-3">

@@ -60,6 +60,7 @@ function CharacterEditPage() {
   const { data: character, isLoading, error } = useCharacter(id);
   const updateMutation = useUpdateCharacterData();
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (session && isDemo) {
@@ -88,37 +89,44 @@ function CharacterEditPage() {
     },
     validators: { onSubmit: editSchema },
     onSubmit: async ({ value }) => {
-      const data = character!.data;
-      const talkNum = (() => {
-        const n = Number(value.talkativeness);
-        return isNaN(n) || n < 0 || n > 100 ? undefined : n;
-      })();
-      await updateMutation.mutateAsync({
-        id,
-        data: {
-          ...data,
-          name: value.name,
-          description: value.description,
-          personality: value.personality,
-          scenario: value.scenario,
-          first_mes: value.first_mes,
-          alternate_greetings: value.alternate_greetings.filter(Boolean),
-          mes_example: value.mes_example,
-          creator_notes: value.creator_notes,
-          system_prompt: value.system_prompt,
-          post_history_instructions: value.post_history_instructions,
-          creator: value.creator,
-          character_version: value.character_version,
-          tags: value.tags,
-          extensions: {
-            ...data.extensions,
-            ...(talkNum !== undefined ? { talkativeness: talkNum } : {}),
+      setSaveError(null);
+      try {
+        const data = character!.data;
+        const talkNum = (() => {
+          const n = Number(value.talkativeness);
+          return isNaN(n) || n < 0 || n > 100 ? undefined : n;
+        })();
+        await updateMutation.mutateAsync({
+          id,
+          data: {
+            ...data,
+            name: value.name,
+            description: value.description,
+            personality: value.personality,
+            scenario: value.scenario,
+            first_mes: value.first_mes,
+            alternate_greetings: value.alternate_greetings.filter(Boolean),
+            mes_example: value.mes_example,
+            creator_notes: value.creator_notes,
+            system_prompt: value.system_prompt,
+            post_history_instructions: value.post_history_instructions,
+            creator: value.creator,
+            character_version: value.character_version,
+            tags: value.tags,
+            extensions: {
+              ...data.extensions,
+              ...(talkNum !== undefined ? { talkativeness: talkNum } : {}),
+            },
           },
-        },
-        tagline: value.tagline || null,
-      });
-      toast.success("Character saved");
-      void navigate({ to: "/characters/$id", params: { id } });
+          tagline: value.tagline || null,
+        });
+        toast.success("Character saved");
+        void navigate({ to: "/characters/$id", params: { id } });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setSaveError(msg);
+        toast.error(`Save failed: ${msg}`);
+      }
     },
   });
 
@@ -178,6 +186,7 @@ function CharacterEditPage() {
   return (
     <main className="mx-auto max-w-[1200px] px-4 py-8 pb-24">
       <PageHeader title={`Editing ${character.name}`} backTo={`/characters/${id}`} />
+      {saveError ? <ErrorBanner message={saveError} /> : null}
       <form onSubmit={handleSubmit}>
         <div className="lg:grid lg:grid-cols-[200px_1fr] lg:gap-10">
           <SectionNav sections={SECTIONS} />
