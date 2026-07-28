@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Lorebook, LoreEntry } from "@/db/schema";
+import type { LoreConfig } from "@/lib/st-core/lorebook";
 import {
   createLorebook,
   createLorebookEntry,
@@ -56,7 +57,7 @@ export function useUpdateLorebook() {
       id: string;
       name?: string;
       description?: string | null;
-      config?: unknown;
+      config?: LoreConfig;
     }): Promise<Lorebook> => updateLorebook({ data: input }),
     onSuccess: (lorebook) => {
       void queryClient.invalidateQueries({ queryKey: lorebookKeys.all });
