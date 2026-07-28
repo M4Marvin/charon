@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bot, BookOpen, Puzzle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSession } from "@/lib/auth.functions";
+import { authClient } from "@/lib/auth-client";
 
 const features = [
   {
@@ -32,21 +31,9 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
-  const [userName, setUserName] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: session, isPending } = authClient.useSession();
 
-  useEffect(() => {
-    getSession()
-      .then((session) => {
-        setUserName(session?.user?.name ?? null);
-      })
-      .catch(() => {
-        setUserName(null);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
+  if (isPending) {
     return (
       <div className="flex min-h-[80vh] items-center justify-center">
         <p className="text-muted-foreground text-sm">Loading...</p>
@@ -54,10 +41,10 @@ function LandingPage() {
     );
   }
 
-  if (userName) {
+  if (session?.user) {
     return (
       <main className="mx-auto flex min-h-[80vh] max-w-3xl flex-col items-center justify-center px-4 text-center">
-        <h1 className="mb-3 text-3xl font-semibold tracking-tight">Welcome back, {userName}</h1>
+        <h1 className="mb-3 text-3xl font-semibold tracking-tight">Welcome back, {session.user.name}</h1>
         <p className="text-muted-foreground mb-8 max-w-md text-sm">
           Jump back into your conversations or start a new one.
         </p>
