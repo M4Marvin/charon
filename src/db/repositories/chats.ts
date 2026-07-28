@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { db as defaultDb, type DB } from "@/db";
 import {
   chats,
@@ -15,6 +15,54 @@ export type ChatWithCharacter = Chat & {
   lastMessagePreview: string | null;
   userMessageCount: number;
 };
+
+type ChatJoinRow = {
+  chat: Chat;
+  characterName: string | null;
+  characterImagePath: string | null;
+};
+
+/**
+ * Enriches chat join rows with last-message preview and user message count
+ * using two batched queries instead of N+1 per-chat queries.
+ */
+function enrichChats(rows: ChatJoinRow[], db: DB): ChatWithCharacter[] {
+  if (rows.length === 0) return [];
+
+  const chatIds = rows.map((r) => r.chat.id);
+
+  // Batched: user message counts per chat (role = 'user' only)
+  const userCounts = db
+    .select({ chatId: chatMessages.chatId, c: count() })
+    .from(chatMessages)
+    .where(and(inArray(chatMessages.chatId, chatIds), eq(chatMessages.role, "user")))
+    .groupBy(chatMessages.chatId)
+    .all();
+  const userCountMap = new Map(userCounts.map((uc) => [uc.chatId, uc.c]));
+
+  // Batched: latest message preview per chat via correlated subquery
+  const previews = db
+    .select({ chatId: chatMessages.chatId, content: chatMessages.content })
+    .from(chatMessages)
+    .where(
+      and(
+        inArray(chatMessages.chatId, chatIds),
+        sql`${chatMessages.localId} = (
+          SELECT MAX(cm.local_id) FROM chat_messages cm WHERE cm.chat_id = ${chatMessages.chatId}
+        )`,
+      ),
+    )
+    .all();
+  const previewMap = new Map(previews.map((p) => [p.chatId, p.content.slice(0, 140)]));
+
+  return rows.map((r) => ({
+    ...r.chat,
+    characterName: r.characterName ?? "Unknown",
+    characterImagePath: r.characterImagePath ?? null,
+    lastMessagePreview: previewMap.get(r.chat.id) ?? null,
+    userMessageCount: userCountMap.get(r.chat.id) ?? 0,
+  }));
+}
 
 export type CreateChatInput = {
   id: string;
@@ -43,27 +91,7 @@ export function listChats(userId: string, db: DB = defaultDb): ChatWithCharacter
     .where(eq(chats.userId, userId))
     .orderBy(desc(chats.updatedAt))
     .all();
-  return rows.map((r) => {
-    const previewRow = db
-      .select({ content: chatMessages.content })
-      .from(chatMessages)
-      .where(eq(chatMessages.chatId, r.chat.id))
-      .orderBy(desc(chatMessages.localId))
-      .limit(1)
-      .get();
-    const userCount = db
-      .select({ c: count() })
-      .from(chatMessages)
-      .where(and(eq(chatMessages.chatId, r.chat.id), eq(chatMessages.role, "user")))
-      .get();
-    return {
-      ...r.chat,
-      characterName: r.characterName ?? "Unknown",
-      characterImagePath: r.characterImagePath ?? null,
-      lastMessagePreview: previewRow?.content.slice(0, 140) ?? null,
-      userMessageCount: userCount?.c ?? 0,
-    };
-  });
+  return enrichChats(rows, db);
 }
 
 export function listChatsByCharacter(
@@ -82,27 +110,7 @@ export function listChatsByCharacter(
     .where(and(eq(chats.userId, userId), eq(chats.characterId, characterId)))
     .orderBy(desc(chats.updatedAt))
     .all();
-  return rows.map((r) => {
-    const previewRow = db
-      .select({ content: chatMessages.content })
-      .from(chatMessages)
-      .where(eq(chatMessages.chatId, r.chat.id))
-      .orderBy(desc(chatMessages.localId))
-      .limit(1)
-      .get();
-    const userCount = db
-      .select({ c: count() })
-      .from(chatMessages)
-      .where(and(eq(chatMessages.chatId, r.chat.id), eq(chatMessages.role, "user")))
-      .get();
-    return {
-      ...r.chat,
-      characterName: r.characterName ?? "Unknown",
-      characterImagePath: r.characterImagePath ?? null,
-      lastMessagePreview: previewRow?.content.slice(0, 140) ?? null,
-      userMessageCount: userCount?.c ?? 0,
-    };
-  });
+  return enrichChats(rows, db);
 }
 
 export function getChat(userId: string, id: string, db: DB = defaultDb): Chat {
