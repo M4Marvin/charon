@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Copy, MessageCircle, Calendar, User } from "lucide-react";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { Copy, MessageCircle, MessagesSquare, Calendar, User } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,11 +22,12 @@ import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { StatChip } from "@/components/common/StatChip";
+import { RelativeTime } from "@/components/common/RelativeTime";
 import { SkeletonForm } from "@/components/common/Skeletons";
 import { authClient } from "@/lib/auth-client";
 import type { CharacterDetail } from "@/db/repositories/characters";
 import { useCharacter, useDeleteCharacter, useUpdateCharacter } from "@/hooks/useCharacters";
-import { useCreateChat } from "@/hooks/useChats";
+import { useCreateChat, useChatsByCharacter } from "@/hooks/useChats";
 
 export const Route = createFileRoute("/characters/$id")({
   component: CharacterDetailPage,
@@ -51,6 +52,7 @@ function CharacterDetailPage() {
   const { data: character, isLoading, error } = useCharacter(id);
   const deleteMutation = useDeleteCharacter();
   const createChatMutation = useCreateChat();
+  const { data: characterChats } = useChatsByCharacter(id);
   const [renameOpen, setRenameOpen] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
 
@@ -152,7 +154,7 @@ function CharacterDetailPage() {
             ) : null}
             <div className="flex flex-wrap items-center gap-3">
               <StatChip
-                icon={MessageCircle}
+                icon={MessagesSquare}
                 value={character.chatCount}
                 label={character.chatCount === 1 ? "chat" : "chats"}
               />
@@ -194,16 +196,74 @@ function CharacterDetailPage() {
             />
           ) : null}
         </div>
-        {/* Mobile sticky start chat */}
+
+        {/* Continue existing chats */}
+        {characterChats && characterChats.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-2 text-sm font-medium">Continue chat</h3>
+            <div className="space-y-1">
+              {characterChats.slice(0, 5).map((chat) => (
+                <Link
+                  key={chat.id}
+                  to="/c/$id"
+                  params={{ id: chat.id }}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 -mx-3 hover:bg-surface transition-colors no-underline"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-headline truncate">{chat.title}</p>
+                    {chat.lastMessagePreview ? (
+                      <p className="text-3 text-sm line-clamp-1">
+                        {chat.lastMessagePreview}
+                      </p>
+                    ) : (
+                      <p className="text-3 text-sm italic">No messages yet</p>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span className="text-3 text-xs tabular-nums">
+                      <RelativeTime date={chat.updatedAt} />
+                    </span>
+                    {chat.userMessageCount > 0 && (
+                      <p className="text-3 text-xs tabular-nums">{chat.userMessageCount} turns</p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Mobile sticky */}
         <div className="fixed bottom-16 left-0 right-0 z-30 border-t bg-popover/95 px-4 py-3 backdrop-blur-sm md:hidden">
-          <Button
-            onClick={handleStartChat}
-            disabled={createChatMutation.isPending}
-            className="w-full"
-          >
-            <MessageCircle className="size-4" />
-            Start Chat
-          </Button>
+          {characterChats && characterChats.length > 0 ? (
+            <div className="flex gap-2">
+              <Button
+                asChild
+                className="flex-1"
+              >
+                <Link to="/c/$id" params={{ id: characterChats[0].id }}>
+                  <MessageCircle className="size-4" />
+                  Continue
+                </Link>
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleStartChat}
+                disabled={createChatMutation.isPending}
+              >
+                New
+              </Button>
+            </div>
+          ) : (
+            <Button
+              onClick={handleStartChat}
+              disabled={createChatMutation.isPending}
+              className="w-full"
+            >
+              <MessageCircle className="size-4" />
+              Start Chat
+            </Button>
+          )}
         </div>
       </div>
 
