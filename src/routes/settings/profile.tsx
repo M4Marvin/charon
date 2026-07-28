@@ -21,9 +21,18 @@ function ProfilePage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!currentPw || !newPw || !confirmPw) { setError("All fields are required."); return; }
-    if (newPw !== confirmPw) { setError("New passwords don't match."); return; }
-    if (newPw.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (!currentPw || !newPw || !confirmPw) {
+      setError("All fields are required.");
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setError("New passwords don't match.");
+      return;
+    }
+    if (newPw.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
     setError(null);
     setSaving(true);
     try {
@@ -32,9 +41,14 @@ function ProfilePage() {
         newPassword: newPw,
         revokeOtherSessions: true,
       });
-      if (apiErr) { setError(apiErr.message ?? "Failed to change password"); return; }
+      if (apiErr) {
+        setError(apiErr.message ?? "Failed to change password");
+        return;
+      }
       toast.success("Password changed");
-      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to change password");
     } finally {
@@ -55,17 +69,37 @@ function ProfilePage() {
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor="cpw">Current password</Label>
-            <Input id="cpw" type="password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} autoComplete="current-password" />
+            <Input
+              id="cpw"
+              type="password"
+              value={currentPw}
+              onChange={(e) => setCurrentPw(e.target.value)}
+              autoComplete="current-password"
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="npw">New password</Label>
-            <Input id="npw" type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} autoComplete="new-password" />
+            <Input
+              id="npw"
+              type="password"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              autoComplete="new-password"
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="cpw2">Confirm new password</Label>
-            <Input id="cpw2" type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} autoComplete="new-password" />
+            <Input
+              id="cpw2"
+              type="password"
+              value={confirmPw}
+              onChange={(e) => setConfirmPw(e.target.value)}
+              autoComplete="new-password"
+            />
           </div>
-          <Button type="submit" disabled={saving}>{saving ? "Saving…" : "Change Password"}</Button>
+          <Button type="submit" disabled={saving}>
+            {saving ? "Saving…" : "Change Password"}
+          </Button>
         </form>
       </div>
     </div>

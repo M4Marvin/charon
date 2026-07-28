@@ -49,9 +49,7 @@ export function SectionNav({ sections }: SectionNavProps) {
             type="button"
             onClick={() => handleClick(s.id)}
             className={`block w-full text-left text-sm py-1.5 px-3 rounded-md transition-colors ${
-              active === s.id
-                ? "text-brand-strong font-medium"
-                : "text-2 hover:text-1"
+              active === s.id ? "text-brand-strong font-medium" : "text-2 hover:text-1"
             }`}
           >
             {s.label}

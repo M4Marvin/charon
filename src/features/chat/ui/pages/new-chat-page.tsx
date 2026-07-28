@@ -25,9 +25,7 @@ export function NewChatPage() {
     if (!search.trim()) return characters;
     const q = search.toLowerCase();
     return characters.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.creatorNotes.toLowerCase().includes(q),
+      (c) => c.name.toLowerCase().includes(q) || c.creatorNotes.toLowerCase().includes(q),
     );
   }, [characters, search]);
 
@@ -47,7 +45,9 @@ export function NewChatPage() {
 
   const recent = useMemo(() => {
     if (!characters) return [];
-    return recentIds.map((id) => characters.find((c) => c.id === id)).filter(Boolean) as typeof characters;
+    return recentIds
+      .map((id) => characters.find((c) => c.id === id))
+      .filter(Boolean) as typeof characters;
   }, [characters, recentIds]);
 
   const handleSelect = async (characterId: string) => {
@@ -91,7 +91,11 @@ export function NewChatPage() {
     return (
       <main className="mx-auto max-w-[1200px] px-4 py-8">
         <PageHeader title="New Chat" backTo="/c" />
-        <EmptyState icon={Users} title="No characters yet" description="Import a character card to start chatting.">
+        <EmptyState
+          icon={Users}
+          title="No characters yet"
+          description="Import a character card to start chatting."
+        >
           <Button asChild>
             <Link to="/characters/new">Import Character</Link>
           </Button>
@@ -165,7 +169,9 @@ function CharacterCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
         <div className="absolute bottom-0 inset-x-0 p-3">
           <p className="text-headline text-white truncate text-shadow-readable">{character.name}</p>
-          <p className="text-xs text-white/70 line-clamp-1">{character.creatorNotes || character.creator || null}</p>
+          <p className="text-xs text-white/70 line-clamp-1">
+            {character.creatorNotes || character.creator || null}
+          </p>
         </div>
         <Badge className="absolute top-2 right-2 text-[10px]" variant="secondary">
           {character.spec === "chara_card_v3" ? "V3" : "V2"}

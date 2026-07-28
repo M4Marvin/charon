@@ -16,12 +16,7 @@ export function ModelCombobox({ providerId, value, onChange, disabled }: ModelCo
   const [query, setQuery] = useState(value);
   const ref = useRef<HTMLDivElement>(null);
 
-  const {
-    data: models = [],
-    isLoading,
-    error,
-    refetch,
-  } = useProviderModels(providerId);
+  const { data: models = [], isLoading, error, refetch } = useProviderModels(providerId);
 
   useEffect(() => setQuery(value), [value]);
 
@@ -37,7 +32,7 @@ export function ModelCombobox({ providerId, value, onChange, disabled }: ModelCo
     ? models.filter((m) => m.id.toLowerCase().includes(query.toLowerCase()))
     : models;
 
-  const showDropdown = open && (!disabled);
+  const showDropdown = open && !disabled;
 
   return (
     <div ref={ref} className="relative">
@@ -76,7 +71,12 @@ export function ModelCombobox({ providerId, value, onChange, disabled }: ModelCo
               <span className="min-w-0 break-all">
                 {error instanceof Error ? error.message : "Failed to load"}
               </span>
-              <Button size="sm" variant="link" className="ml-auto h-auto px-1 py-0 text-xs" onClick={() => refetch()}>
+              <Button
+                size="sm"
+                variant="link"
+                className="ml-auto h-auto px-1 py-0 text-xs"
+                onClick={() => refetch()}
+              >
                 Retry
               </Button>
             </div>

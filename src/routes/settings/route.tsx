@@ -13,11 +13,13 @@ function SettingsLayout() {
   const links = [
     { to: "/settings/preferences", label: "Preferences" },
     { to: "/settings/profile", label: "Profile" },
-    ...(isAdmin ? [
-      { to: "/settings/providers", label: "Providers" },
-      { to: "/settings/presets", label: "Presets" },
-      { to: "/settings/demo", label: "Demo Provider" },
-    ] : []),
+    ...(isAdmin
+      ? [
+          { to: "/settings/providers", label: "Providers" },
+          { to: "/settings/presets", label: "Presets" },
+          { to: "/settings/demo", label: "Demo Provider" },
+        ]
+      : []),
   ];
 
   return (

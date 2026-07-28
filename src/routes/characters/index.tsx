@@ -6,7 +6,13 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
@@ -42,7 +48,11 @@ function sortCharacters(items: CharacterListItem[], key: SortKey): CharacterList
   }
 }
 
-function filterCharacters(items: CharacterListItem[], q: string, tags: string[]): CharacterListItem[] {
+function filterCharacters(
+  items: CharacterListItem[],
+  q: string,
+  tags: string[],
+): CharacterListItem[] {
   let result = items;
   if (q.trim()) {
     const query = q.toLowerCase().trim();
@@ -109,7 +119,11 @@ function CharactersPage() {
       ) : error ? (
         <ErrorBanner message={(error as Error).message ?? "Failed to load characters"} />
       ) : !data || data.length === 0 ? (
-        <EmptyState icon={UserRoundCog} title="No characters yet" description="Import a PNG character card to get started.">
+        <EmptyState
+          icon={UserRoundCog}
+          title="No characters yet"
+          description="Import a PNG character card to get started."
+        >
           {!isDemo ? (
             <Button asChild>
               <Link to="/characters/new">Import PNG</Link>
@@ -131,11 +145,7 @@ function CharactersPage() {
                 />
               </div>
               {tagCounts.length > 0 ? (
-                <TagFilterPopover
-                  tags={tagCounts}
-                  selected={activeTags}
-                  onChange={setActiveTags}
-                />
+                <TagFilterPopover tags={tagCounts} selected={activeTags} onChange={setActiveTags} />
               ) : null}
               <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
                 <SelectTrigger className="w-auto min-w-[140px] gap-1.5">
@@ -170,7 +180,12 @@ function CharactersPage() {
                     </button>
                   </Badge>
                 ))}
-                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setActiveTags([])}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setActiveTags([])}
+                >
                   Clear
                 </Button>
               </div>
@@ -180,7 +195,15 @@ function CharactersPage() {
           {sorted.length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-2 text-sm">No characters match your filters.</p>
-              <Button variant="link" size="sm" onClick={() => { setSearch(""); setActiveTags([]); }} className="mt-1">
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => {
+                  setSearch("");
+                  setActiveTags([]);
+                }}
+                className="mt-1"
+              >
                 Clear filters
               </Button>
             </div>
@@ -270,7 +293,11 @@ function CharacterCard({
           ) : null}
           <div className="flex items-center gap-1.5 mt-2">
             {character.tags.slice(0, 3).map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0 leading-tight">
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="text-[10px] px-1.5 py-0 leading-tight"
+              >
                 {tag}
               </Badge>
             ))}
@@ -288,7 +315,8 @@ function CharacterCard({
             items={[
               {
                 label: "Edit",
-                onSelect: () => void navigate({ to: "/characters/$id/edit", params: { id: character.id } }),
+                onSelect: () =>
+                  void navigate({ to: "/characters/$id/edit", params: { id: character.id } }),
               },
               {
                 label: "Delete",

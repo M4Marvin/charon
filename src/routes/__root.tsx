@@ -49,7 +49,11 @@ function RootErrorComponent({ error }: ErrorComponentProps) {
 function RootNotFoundComponent() {
   return (
     <div className="flex h-dvh items-center justify-center bg-base">
-      <EmptyState icon={Compass} title="Page not found" description="The page you're looking for doesn't exist." />
+      <EmptyState
+        icon={Compass}
+        title="Page not found"
+        description="The page you're looking for doesn't exist."
+      />
     </div>
   );
 }

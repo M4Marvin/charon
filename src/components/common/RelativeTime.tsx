@@ -10,8 +10,6 @@ export function RelativeTime({ date }: { date: Date }) {
   }
 
   return (
-    <time dateTime={date.toISOString()}>
-      {formatDistanceToNow(date, { addSuffix: true })}
-    </time>
+    <time dateTime={date.toISOString()}>{formatDistanceToNow(date, { addSuffix: true })}</time>
   );
 }

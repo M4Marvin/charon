@@ -38,9 +38,7 @@ export function ChatListPage() {
     if (!search.trim()) return chats;
     const q = search.toLowerCase();
     return chats.filter(
-      (c) =>
-        c.title.toLowerCase().includes(q) ||
-        c.characterName.toLowerCase().includes(q),
+      (c) => c.title.toLowerCase().includes(q) || c.characterName.toLowerCase().includes(q),
     );
   }, [chats, search]);
 
@@ -87,7 +85,11 @@ export function ChatListPage() {
       />
 
       {filtered.length === 0 && !search.trim() ? (
-        <EmptyState icon={MessageCircle} title="No chats yet" description="Start a conversation to see it here.">
+        <EmptyState
+          icon={MessageCircle}
+          title="No chats yet"
+          description="Start a conversation to see it here."
+        >
           <Button asChild>
             <Link to="/c/new">Start your first chat</Link>
           </Button>
@@ -128,7 +130,11 @@ export function ChatListPage() {
                         >
                           <Avatar className="size-12 shrink-0 rounded-xl">
                             <AvatarImage
-                              src={chat.characterImagePath ? `/api/characters/${chat.characterId}/avatar` : undefined}
+                              src={
+                                chat.characterImagePath
+                                  ? `/api/characters/${chat.characterId}/avatar`
+                                  : undefined
+                              }
                               alt={chat.characterName}
                               className="object-cover"
                             />
@@ -145,7 +151,9 @@ export function ChatListPage() {
                             </div>
                             <p className="text-2 text-sm truncate">{chat.characterName}</p>
                             {chat.lastMessagePreview ? (
-                              <p className="text-3 text-sm line-clamp-1">{chat.lastMessagePreview}</p>
+                              <p className="text-3 text-sm line-clamp-1">
+                                {chat.lastMessagePreview}
+                              </p>
                             ) : (
                               <p className="text-3 text-sm italic">No messages yet</p>
                             )}

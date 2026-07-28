@@ -22,7 +22,10 @@ function LorebooksPage() {
   if (isLoading) {
     return (
       <main className="mx-auto max-w-[1200px] px-4 py-8">
-        <PageHeader title="Lorebooks" subtitle="Manage lorebooks and their keyword-triggered entries." />
+        <PageHeader
+          title="Lorebooks"
+          subtitle="Manage lorebooks and their keyword-triggered entries."
+        />
         <div className="space-y-1">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />
@@ -48,8 +51,12 @@ function LorebooksPage() {
         subtitle="Manage lorebooks and their keyword-triggered entries."
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setImportOpen(true)}>Import</Button>
-            <Button asChild><Link to="/lorebooks/new">New Lorebook</Link></Button>
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              Import
+            </Button>
+            <Button asChild>
+              <Link to="/lorebooks/new">New Lorebook</Link>
+            </Button>
           </div>
         }
       />
@@ -74,16 +81,26 @@ function LorebooksPage() {
               />
               <div className="flex-1 min-w-0">
                 <p className="text-headline truncate">{lb.name}</p>
-                {lb.description ? <p className="text-2 text-sm line-clamp-1">{lb.description}</p> : null}
+                {lb.description ? (
+                  <p className="text-2 text-sm line-clamp-1">{lb.description}</p>
+                ) : null}
               </div>
-              <Badge variant="secondary" className="shrink-0">{lb.entryCount} {lb.entryCount === 1 ? "entry" : "entries"}</Badge>
+              <Badge variant="secondary" className="shrink-0">
+                {lb.entryCount} {lb.entryCount === 1 ? "entry" : "entries"}
+              </Badge>
               <ChevronRight className="size-4 text-3 shrink-0" />
             </Link>
           ))}
         </div>
       ) : (
-        <EmptyState icon={BookOpen} title="No lorebooks yet" description="Create one to start adding keyword-triggered entries.">
-          <Button asChild><Link to="/lorebooks/new">New Lorebook</Link></Button>
+        <EmptyState
+          icon={BookOpen}
+          title="No lorebooks yet"
+          description="Create one to start adding keyword-triggered entries."
+        >
+          <Button asChild>
+            <Link to="/lorebooks/new">New Lorebook</Link>
+          </Button>
         </EmptyState>
       )}
 

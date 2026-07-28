@@ -111,6 +111,9 @@ export function useCreateLorebookEntry(lorebookId: string) {
       content: string;
       key: string[];
       keysecondary?: string[];
+      order?: number;
+      disable?: boolean;
+      constant?: boolean;
     }): Promise<{ id: string; uid: number }> =>
       createLorebookEntry({ data: { lorebookId, ...input } }),
     onSuccess: () => {

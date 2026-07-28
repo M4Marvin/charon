@@ -23,9 +23,7 @@ export function TagFilterPopover({ tags, selected, onChange }: TagFilterPopoverP
   }, [tags, search]);
 
   function toggle(tag: string) {
-    onChange(
-      selected.includes(tag) ? selected.filter((t) => t !== tag) : [...selected, tag],
-    );
+    onChange(selected.includes(tag) ? selected.filter((t) => t !== tag) : [...selected, tag]);
   }
 
   return (

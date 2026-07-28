@@ -35,9 +35,7 @@ export function ChipInput({ value, onChange, suggestions, placeholder }: ChipInp
 
   const visible = suggestions?.filter(
     (s) =>
-      text.trim().length > 0 &&
-      s.toLowerCase().includes(text.toLowerCase()) &&
-      !value.includes(s),
+      text.trim().length > 0 && s.toLowerCase().includes(text.toLowerCase()) && !value.includes(s),
   );
 
   return (

@@ -137,8 +137,14 @@ function SignupPage() {
                         </button>
                       </div>
                       <div className="mt-2 space-y-1">
-                        <div className={`flex items-center gap-1.5 text-xs ${pwLen >= 8 ? "text-success" : "text-2"}`}>
-                          {pwLen >= 8 ? <Check className="size-3" /> : <span className="ml-4">—</span>}
+                        <div
+                          className={`flex items-center gap-1.5 text-xs ${pwLen >= 8 ? "text-success" : "text-2"}`}
+                        >
+                          {pwLen >= 8 ? (
+                            <Check className="size-3" />
+                          ) : (
+                            <span className="ml-4">—</span>
+                          )}
                           At least 8 characters
                         </div>
                       </div>
@@ -181,7 +187,10 @@ function SignupPage() {
                     </Button>
                     <p className="text-center text-sm text-2">
                       Already have an account?{" "}
-                      <Link to="/signin" className="text-brand hover:text-brand-strong underline underline-offset-4">
+                      <Link
+                        to="/signin"
+                        className="text-brand hover:text-brand-strong underline underline-offset-4"
+                      >
                         Sign in
                       </Link>
                     </p>

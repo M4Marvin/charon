@@ -31,21 +31,27 @@ export default function Header() {
               <Link
                 to="/c"
                 className="text-2 hover:text-1 no-underline transition-colors inline-flex items-center h-14"
-                activeProps={{ className: "!text-brand-strong shadow-[inset_0_-2px_0_0_var(--brand)]" }}
+                activeProps={{
+                  className: "!text-brand-strong shadow-[inset_0_-2px_0_0_var(--brand)]",
+                }}
               >
                 Chats
               </Link>
               <Link
                 to="/characters"
                 className="text-2 hover:text-1 no-underline transition-colors inline-flex items-center h-14"
-                activeProps={{ className: "!text-brand-strong shadow-[inset_0_-2px_0_0_var(--brand)]" }}
+                activeProps={{
+                  className: "!text-brand-strong shadow-[inset_0_-2px_0_0_var(--brand)]",
+                }}
               >
                 Characters
               </Link>
               <Link
                 to="/lorebooks"
                 className="text-2 hover:text-1 no-underline transition-colors inline-flex items-center h-14"
-                activeProps={{ className: "!text-brand-strong shadow-[inset_0_-2px_0_0_var(--brand)]" }}
+                activeProps={{
+                  className: "!text-brand-strong shadow-[inset_0_-2px_0_0_var(--brand)]",
+                }}
               >
                 Lorebooks
               </Link>

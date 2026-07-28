@@ -2,7 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { MessageCircle, Users, BookOpen, Plus } from "lucide-react";
 
 export function MobileTabBar() {
-  const base = "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-lg text-[11px] leading-none transition-colors no-underline";
+  const base =
+    "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-lg text-[11px] leading-none transition-colors no-underline";
   const active = "text-brand-strong font-medium";
 
   return (

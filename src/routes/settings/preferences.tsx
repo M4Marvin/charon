@@ -8,9 +8,12 @@ export const Route = createFileRoute("/settings/preferences")({
 
 function PreferencesPage() {
   const {
-    blockExternalMedia, setBlockExternalMedia,
-    highlightDialogue, setHighlightDialogue,
-    autoFixMarkdown, setAutoFixMarkdown,
+    blockExternalMedia,
+    setBlockExternalMedia,
+    highlightDialogue,
+    setHighlightDialogue,
+    autoFixMarkdown,
+    setAutoFixMarkdown,
   } = useRichTextSettings();
 
   return (
@@ -20,7 +23,9 @@ function PreferencesPage() {
         <label className="flex items-center justify-between gap-4 rounded-lg p-3 hover:bg-surface">
           <div>
             <p className="text-sm font-medium">Block external media</p>
-            <p className="text-2 text-xs">Prevent loading images from external URLs in chat messages.</p>
+            <p className="text-2 text-xs">
+              Prevent loading images from external URLs in chat messages.
+            </p>
           </div>
           <Switch checked={blockExternalMedia} onCheckedChange={setBlockExternalMedia} />
         </label>
@@ -34,7 +39,9 @@ function PreferencesPage() {
         <label className="flex items-center justify-between gap-4 rounded-lg p-3 hover:bg-surface">
           <div>
             <p className="text-sm font-medium">Auto-fix Markdown</p>
-            <p className="text-2 text-xs">Automatically correct common Markdown issues in messages.</p>
+            <p className="text-2 text-xs">
+              Automatically correct common Markdown issues in messages.
+            </p>
           </div>
           <Switch checked={autoFixMarkdown} onCheckedChange={setAutoFixMarkdown} />
         </label>

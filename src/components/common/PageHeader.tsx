@@ -24,7 +24,9 @@ export function PageHeader({ title, subtitle, backTo, actions }: PageHeaderProps
           <h1 className="text-display">{title}</h1>
           {subtitle ? <p className="text-2 text-sm">{subtitle}</p> : null}
         </div>
-      ) : <div className="flex-1" />}
+      ) : (
+        <div className="flex-1" />
+      )}
       {actions ? <div className="flex items-center gap-2 shrink-0">{actions}</div> : null}
     </div>
   );

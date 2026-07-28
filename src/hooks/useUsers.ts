@@ -74,7 +74,8 @@ export function useInviteUser() {
         email: `${input.username}@demo.local`,
         password: input.password,
         name: input.name,
-      });
+        username: input.username,
+      } as any);
       if (error) throw new Error(error.message ?? "Failed to create user");
     },
     onSuccess: () => {

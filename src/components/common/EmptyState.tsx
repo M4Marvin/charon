@@ -1,4 +1,11 @@
-import { Empty, EmptyHeader, EmptyContent, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyContent,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyMedia,
+} from "@/components/ui/empty";
 import type { LucideIcon } from "lucide-react";
 
 interface EmptyStateProps {
