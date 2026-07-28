@@ -13,6 +13,8 @@ import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import TanstackQueryProvider from "../integrations/tanstack-query/root-provider";
 
 import Header from "@/components/Header";
+import { EmptyState } from "@/components/common/EmptyState";
+import { TriangleAlert, Compass } from "lucide-react";
 import { MobileTabBar } from "@/components/common/MobileTabBar";
 import { DemoBanner } from "@/components/common/DemoBanner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -31,36 +33,23 @@ interface MyRouterContext {
 
 function RootErrorComponent({ error }: ErrorComponentProps) {
   return (
-    <div
-      className="flex h-dvh items-center justify-center"
-      style={{ background: "var(--bg-base)" }}
-    >
-      <div className="glass rounded-2xl px-8 py-10 text-center max-w-sm">
-        <p className="font-heading text-xl text-red-400 mb-2">Something went wrong</p>
-        <p className="text-sm text-[--sea-ink-soft] leading-relaxed mb-4">{error.message}</p>
+    <div className="flex h-dvh items-center justify-center bg-base">
+      <EmptyState icon={TriangleAlert} title="Something went wrong" description={error.message}>
         <button
           onClick={() => window.location.reload()}
-          className="text-sm text-[--lagoon] hover:underline"
+          className="text-sm text-brand hover:underline cursor-pointer"
         >
           Reload page
         </button>
-      </div>
+      </EmptyState>
     </div>
   );
 }
 
 function RootNotFoundComponent() {
   return (
-    <div
-      className="flex h-dvh items-center justify-center"
-      style={{ background: "var(--bg-base)" }}
-    >
-      <div className="glass rounded-2xl px-8 py-10 text-center max-w-sm">
-        <p className="font-heading text-xl text-[--sea-ink] mb-2">Page not found</p>
-        <p className="text-sm text-[--sea-ink-soft] leading-relaxed">
-          The page you're looking for doesn't exist.
-        </p>
-      </div>
+    <div className="flex h-dvh items-center justify-center bg-base">
+      <EmptyState icon={Compass} title="Page not found" description="The page you're looking for doesn't exist." />
     </div>
   );
 }
