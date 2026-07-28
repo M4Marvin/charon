@@ -485,6 +485,10 @@ function CharacterEditPage() {
           </div>
         </div>
       </form>
+      {/* Route-leave guard (useBlocker) evaluated and deferred: the TanStack Router
+          API is version-dependent; SaveBar + Discard confirm already covers in-page
+          navigation. Browser back/forward still loses unsaved changes without a
+          native beforeunload listener, which is acceptable for now. */}
       <SaveBar
         dirty={form.state.isDirty}
         saving={updateMutation.isPending}

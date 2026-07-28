@@ -96,23 +96,23 @@ export default function Header() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem asChild>
+                    <Link to="/settings">
+                      <Settings className="size-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
                   {session.user.role === "admin" ? (
                     <>
-                      <DropdownMenuItem asChild>
-                        <Link to="/settings">
-                          <Settings className="size-4" />
-                          Settings
-                        </Link>
-                      </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to="/admin/users">
                           <Shield className="size-4" />
                           Admin
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
                     </>
                   ) : null}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => {
                       authClient.signOut({

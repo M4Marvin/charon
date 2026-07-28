@@ -29,13 +29,17 @@ function NewCharacterPage() {
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [previewB64, setPreviewB64] = useState<string>("");
   const [previewErr, setPreviewErr] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const importMutation = useImportCharacter();
 
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0] ?? null;
+  const processFile = async (f: File | null) => {
     setFile(f);
     setPreviewErr(null);
     if (!f) return;
+    if (f.type !== "" && f.type !== "image/png") {
+      setPreviewErr("Only PNG files are supported.");
+      return;
+    }
     if (f.size > 5 * 1024 * 1024) {
       setPreviewErr("File too large (max 5 MB).");
       return;
@@ -59,6 +63,10 @@ function NewCharacterPage() {
     }
   };
 
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    processFile(e.target.files?.[0] ?? null);
+  };
+
   const handleImport = async () => {
     if (!previewB64) return;
     const res = await importMutation.mutateAsync({ pngBase64: previewB64 });
@@ -80,11 +88,27 @@ function NewCharacterPage() {
 
       {step === "pick" ? (
         <div className="space-y-4">
-          <label className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 text-center cursor-pointer hover:bg-surface transition-colors">
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              processFile(e.dataTransfer.files?.[0] ?? null);
+            }}
+            className={`flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 text-center cursor-pointer hover:bg-surface transition-colors ${
+              dragOver ? "border-brand bg-brand/5" : ""
+            }`}
+          >
             <Upload className="size-10 text-3" />
             <div>
               <p className="text-headline">Choose a PNG character card</p>
-              <p className="text-2 text-sm mt-1">V2 or V3 card. Max 5 MB.</p>
+              <p className="text-2 text-sm mt-1">
+                V2 or V3 card. Max 5 MB. Drag &amp; drop or click to browse.
+              </p>
             </div>
             <input
               type="file"
@@ -96,7 +120,7 @@ function NewCharacterPage() {
             <Button type="button" variant="outline" size="sm" asChild>
               <span>Browse files</span>
             </Button>
-          </label>
+          </div>
           {previewErr ? <ErrorBanner message={previewErr} /> : null}
         </div>
       ) : null}
