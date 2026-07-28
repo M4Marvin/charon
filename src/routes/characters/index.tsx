@@ -1,12 +1,19 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Search, UserRoundCog, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { CharacterCard } from "@/components/character/CharacterCard";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/common/PageHeader";
+import { EmptyState } from "@/components/common/EmptyState";
+import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { SkeletonCardGrid } from "@/components/common/Skeletons";
+import { RowActionsMenu } from "@/components/common/RowActionsMenu";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { TagFilterPopover } from "@/components/common/TagFilterPopover";
 import { useCharacters, useDeleteCharacter } from "@/hooks/useCharacters";
 import { authClient } from "@/lib/auth-client";
 import type { CharacterListItem } from "@/server/fns/characters";
@@ -15,21 +22,12 @@ export const Route = createFileRoute("/characters/")({
   component: CharactersPage,
 });
 
-type SortKey =
-  | "updatedAt-desc"
-  | "updatedAt-asc"
-  | "name-asc"
-  | "name-desc"
-  | "chats-desc"
-  | "chats-asc";
+type SortKey = "updatedAt-desc" | "name-asc" | "chats-desc";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "updatedAt-desc", label: "Recently updated" },
-  { value: "updatedAt-asc", label: "Oldest updated" },
   { value: "name-asc", label: "Name A–Z" },
-  { value: "name-desc", label: "Name Z–A" },
   { value: "chats-desc", label: "Most chats" },
-  { value: "chats-asc", label: "Fewest chats" },
 ];
 
 function sortCharacters(items: CharacterListItem[], key: SortKey): CharacterListItem[] {
@@ -37,24 +35,14 @@ function sortCharacters(items: CharacterListItem[], key: SortKey): CharacterList
   switch (key) {
     case "updatedAt-desc":
       return sorted.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-    case "updatedAt-asc":
-      return sorted.sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime());
     case "name-asc":
       return sorted.sort((a, b) => a.name.localeCompare(b.name));
-    case "name-desc":
-      return sorted.sort((a, b) => b.name.localeCompare(a.name));
     case "chats-desc":
       return sorted.sort((a, b) => b.chatCount - a.chatCount);
-    case "chats-asc":
-      return sorted.sort((a, b) => a.chatCount - b.chatCount);
   }
 }
 
-function filterCharacters(
-  items: CharacterListItem[],
-  q: string,
-  tags: string[],
-): CharacterListItem[] {
+function filterCharacters(items: CharacterListItem[], q: string, tags: string[]): CharacterListItem[] {
   let result = items;
   if (q.trim()) {
     const query = q.toLowerCase().trim();
@@ -78,26 +66,22 @@ function CharactersPage() {
   const deleteMutation = useDeleteCharacter();
 
   const [search, setSearch] = useState("");
-  const [tagSearch, setTagSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("updatedAt-desc");
   const [activeTags, setActiveTags] = useState<string[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const allTags = useMemo(() => {
-    if (!data) return [];
-    const tagSet = new Set<string>();
+  const tagCounts = useMemo(() => {
+    if (!data) return [] as { name: string; count: number }[];
+    const counts = new Map<string, number>();
     for (const c of data) {
       for (const t of c.tags) {
-        if (t) tagSet.add(t);
+        if (t) counts.set(t, (counts.get(t) ?? 0) + 1);
       }
     }
-    return [...tagSet].sort((a, b) => a.localeCompare(b));
+    return [...counts.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [data]);
-
-  const filteredTags = useMemo(() => {
-    if (!tagSearch.trim()) return allTags;
-    const q = tagSearch.toLowerCase().trim();
-    return allTags.filter((t) => t.toLowerCase().includes(q));
-  }, [allTags, tagSearch]);
 
   const filtered = useMemo(
     () => (data ? filterCharacters(data, search, activeTags) : []),
@@ -106,164 +90,215 @@ function CharactersPage() {
 
   const sorted = useMemo(() => sortCharacters(filtered, sortKey), [filtered, sortKey]);
 
-  function toggleTag(tag: string) {
-    setActiveTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
-  }
-
-  function addTag(tag: string) {
-    setActiveTags((prev) => (prev.includes(tag) ? prev : [...prev, tag]));
-  }
-
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Characters</h1>
-          <p className="text-muted-foreground text-sm">Import and manage your character cards.</p>
-        </div>
-        {!isDemo && (
-          <Button asChild>
-            <Link to="/characters/new">Import PNG</Link>
-          </Button>
-        )}
-      </div>
+    <main className="mx-auto max-w-[1200px] px-4 py-8">
+      <PageHeader
+        title="Characters"
+        subtitle="Import and manage your character cards."
+        actions={
+          !isDemo ? (
+            <Button asChild>
+              <Link to="/characters/new">Import PNG</Link>
+            </Button>
+          ) : undefined
+        }
+      />
 
-      {!isLoading && !error && data && data.length > 0 ? (
+      {isLoading ? (
+        <SkeletonCardGrid count={6} />
+      ) : error ? (
+        <ErrorBanner message={(error as Error).message ?? "Failed to load characters"} />
+      ) : !data || data.length === 0 ? (
+        <EmptyState icon={UserRoundCog} title="No characters yet" description="Import a PNG character card to get started.">
+          {!isDemo ? (
+            <Button asChild>
+              <Link to="/characters/new">Import PNG</Link>
+            </Button>
+          ) : null}
+        </EmptyState>
+      ) : (
         <>
-          <div className="flex flex-col gap-3 mb-4">
+          {/* Toolbar */}
+          <div className="mb-4 space-y-3">
             <div className="flex items-center gap-2">
               <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  className="pl-8"
-                  placeholder="Search name, creator notes, creator..."
+                  className="pl-9"
+                  placeholder="Search name, creator, notes..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <div className="flex items-center gap-1.5">
-                <SlidersHorizontal className="size-4 text-muted-foreground" />
-                <select
-                  className="border border-input rounded-md bg-background px-2 py-1.5 text-sm"
-                  value={sortKey}
-                  onChange={(e) => setSortKey(e.target.value as SortKey)}
-                >
+              {tagCounts.length > 0 ? (
+                <TagFilterPopover
+                  tags={tagCounts}
+                  selected={activeTags}
+                  onChange={setActiveTags}
+                />
+              ) : null}
+              <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+                <SelectTrigger className="w-auto min-w-[140px] gap-1.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
                   {SORT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
+                    <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
-                    </option>
+                    </SelectItem>
                   ))}
-                </select>
-              </div>
+                </SelectContent>
+              </Select>
             </div>
 
-            {allTags.length > 0 ? (
-              <div className="flex items-center gap-2 min-w-0">
-                {/* Selected tags on the left */}
-                {activeTags.length > 0 ? (
-                  <div className="flex items-center gap-1 shrink-0">
-                    {activeTags.map((tag) => (
-                      <Badge
-                        key={tag}
-                        variant="default"
-                        className="cursor-pointer text-xs shrink-0"
-                        onClick={() => toggleTag(tag)}
-                      >
-                        {tag}
-                        <X className="ml-0.5 size-3" />
-                      </Badge>
-                    ))}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-xs shrink-0"
-                      onClick={() => setActiveTags([])}
+            {activeTags.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-1">
+                {activeTags.map((tag) => (
+                  <Badge
+                    key={tag}
+                    variant="secondary"
+                    className="cursor-pointer gap-1 pr-1 text-xs"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTags(activeTags.filter((t) => t !== tag))}
+                      className="ml-0.5 inline-flex size-3.5 items-center justify-center rounded-sm hover:bg-muted-foreground/20"
+                      aria-label={`Remove ${tag}`}
                     >
-                      Clear
-                    </Button>
-                  </div>
-                ) : null}
-
-                {/* Scrollable available tags row */}
-                <div
-                  className="flex-1 overflow-x-auto flex items-center gap-1 min-w-0"
-                  style={{ scrollbarWidth: "none" }}
-                >
-                  {filteredTags.map((tag) => {
-                    const isActive = activeTags.includes(tag);
-                    return (
-                      <Badge
-                        key={tag}
-                        variant={isActive ? "default" : "secondary"}
-                        className="cursor-pointer text-xs shrink-0"
-                        onClick={() => toggleTag(tag)}
-                      >
-                        {tag}
-                      </Badge>
-                    );
-                  })}
-                </div>
-
-                {/* Tag search input on the right */}
-                <div className="relative w-36 shrink-0">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
-                  <Input
-                    className="pl-6 h-7 text-xs"
-                    placeholder="Filter tags..."
-                    value={tagSearch}
-                    onChange={(e) => setTagSearch(e.target.value)}
-                  />
-                </div>
+                      <X className="size-3" />
+                    </button>
+                  </Badge>
+                ))}
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setActiveTags([])}>
+                  Clear
+                </Button>
               </div>
             ) : null}
           </div>
 
           {sorted.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <p className="text-muted-foreground text-sm">No characters match your filters.</p>
-              </CardContent>
-            </Card>
+            <div className="py-12 text-center">
+              <p className="text-2 text-sm">No characters match your filters.</p>
+              <Button variant="link" size="sm" onClick={() => { setSearch(""); setActiveTags([]); }} className="mt-1">
+                Clear filters
+              </Button>
+            </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 items-start">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 items-start">
               {sorted.map((char) => (
                 <CharacterCard
                   key={char.id}
                   character={char}
                   isDemo={isDemo}
                   isDeleting={deleteMutation.isPending}
-                  onTagClick={addTag}
-                  onDelete={(id, name) => {
-                    if (window.confirm(`Delete character "${name}"?`)) {
-                      deleteMutation.mutate(
-                        { id },
-                        {
-                          onError: (err) =>
-                            toast.error(
-                              `Failed to delete: ${err instanceof Error ? err.message : String(err)}`,
-                            ),
-                        },
-                      );
-                    }
-                  }}
+                  onDelete={() => setDeletingId(char.id)}
                 />
               ))}
             </div>
           )}
         </>
-      ) : isLoading ? (
-        <p className="text-muted-foreground text-sm">Loading...</p>
-      ) : error ? (
-        <p className="text-destructive text-sm">Failed to load: {error.message}</p>
-      ) : (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground text-sm">
-              No characters yet. Import a PNG character card to get started.
-            </p>
-          </CardContent>
-        </Card>
       )}
+
+      <ConfirmDialog
+        open={deletingId !== null}
+        onOpenChange={(o) => !o && setDeletingId(null)}
+        title="Delete character"
+        description="This will permanently delete the character and all associated chats and messages. This action cannot be undone."
+        destructive
+        loading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (!deletingId) return;
+          deleteMutation.mutate(
+            { id: deletingId },
+            {
+              onSuccess: () => {
+                toast.success("Character deleted");
+                setDeletingId(null);
+              },
+              onError: (err) =>
+                toast.error(`Delete failed: ${err instanceof Error ? err.message : String(err)}`),
+            },
+          );
+        }}
+      />
     </main>
+  );
+}
+
+function CharacterCard({
+  character,
+  isDemo,
+  onDelete,
+}: {
+  character: CharacterListItem;
+  isDemo: boolean;
+  isDeleting: boolean;
+  onDelete: () => void;
+}) {
+  const navigate = useNavigate();
+
+  return (
+    <div className="group relative rounded-xl border bg-card overflow-hidden transition-shadow hover:shadow-lg">
+      <Link
+        to="/characters/$id"
+        params={{ id: character.id }}
+        className="block focus-ring rounded-xl"
+      >
+        {/* Image */}
+        <div className="aspect-[3/4] bg-muted relative overflow-hidden">
+          {character.imagePath ? (
+            <img
+              src={`/api/characters/${character.id}/avatar`}
+              alt={character.name}
+              className="size-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center bg-raised">
+              <span className="text-3 text-4xl font-heading">{character.name.charAt(0)}</span>
+            </div>
+          )}
+        </div>
+        {/* Body */}
+        <div className="p-3">
+          <h3 className="text-headline truncate">{character.name}</h3>
+          {character.creatorNotes ? (
+            <p className="text-2 text-sm line-clamp-2 mt-0.5">{character.creatorNotes}</p>
+          ) : null}
+          <div className="flex items-center gap-1.5 mt-2">
+            {character.tags.slice(0, 3).map((tag) => (
+              <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0 leading-tight">
+                {tag}
+              </Badge>
+            ))}
+            {character.tags.length > 3 ? (
+              <span className="text-3 text-[10px]">+{character.tags.length - 3}</span>
+            ) : null}
+          </div>
+        </div>
+      </Link>
+
+      {!isDemo ? (
+        <div className="absolute top-2 right-2">
+          <RowActionsMenu
+            label={`Actions for ${character.name}`}
+            items={[
+              {
+                label: "Edit",
+                onSelect: () => void navigate({ to: "/characters/$id/edit", params: { id: character.id } }),
+              },
+              {
+                label: "Delete",
+                destructive: true,
+                onSelect: onDelete,
+              },
+            ]}
+          />
+        </div>
+      ) : null}
+    </div>
   );
 }
