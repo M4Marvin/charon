@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowLeft, Search, Trash2 } from "lucide-react";
@@ -68,6 +68,8 @@ function AdminUsersPage() {
   const currentUserId = session?.user?.id;
   const [search, setSearch] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
 
   const filtered = useMemo(() => {
     if (!users) return [];
@@ -150,6 +152,7 @@ function AdminUsersPage() {
                   <UserRow
                     key={u.id}
                     user={u}
+                    hydrated={hydrated}
                     isCurrentUser={u.id === currentUserId}
                     deletingId={deletingId}
                     onDeleteClick={() => setDeletingId(u.id)}
@@ -169,6 +172,7 @@ function AdminUsersPage() {
 function UserRow({
   user,
   isCurrentUser,
+  hydrated,
   deletingId,
   onDeleteClick,
   onDeleteConfirm,
@@ -176,6 +180,7 @@ function UserRow({
 }: {
   user: UserListItem;
   isCurrentUser: boolean;
+  hydrated: boolean;
   deletingId: string | null;
   onDeleteClick: () => void;
   onDeleteConfirm: () => void;
@@ -220,7 +225,9 @@ function UserRow({
         )}
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">
-        {formatDate(new Date(user.createdAt))}
+        {hydrated
+          ? formatDate(new Date(user.createdAt))
+          : formatDateFull(new Date(user.createdAt))}
       </TableCell>
       <TableCell>
         {!isCurrentUser && (
