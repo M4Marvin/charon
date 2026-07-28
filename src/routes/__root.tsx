@@ -13,6 +13,8 @@ import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import TanstackQueryProvider from "../integrations/tanstack-query/root-provider";
 
 import Header from "@/components/Header";
+import { MobileTabBar } from "@/components/common/MobileTabBar";
+import { DemoBanner } from "@/components/common/DemoBanner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import appCss from "@/styles.css?url";
@@ -109,12 +111,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const { queryClient } = Route.useRouteContext();
+  const { queryClient, user } = Route.useRouteContext();
   const location = useLocation();
-  // The chat page renders its own fixed header (back chevron / character
-  // name / gear). Hide the global nav there so it doesn't double up.
   const hideGlobalHeader =
     /^\/chats\/[^/]+/.test(location.pathname) || /^\/c\/(?!new$)[^/]+$/.test(location.pathname);
+  const isAuthed = Boolean(user);
   return (
     <html lang="en">
       <head>
@@ -123,9 +124,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <TooltipProvider>
           {!hideGlobalHeader && <Header />}
-          <RichTextSettingsProvider>
-            <TanstackQueryProvider queryClient={queryClient}>{children}</TanstackQueryProvider>
-          </RichTextSettingsProvider>
+          {!hideGlobalHeader && isAuthed && user?.role !== "admin" && <DemoBanner />}
+          <div className={isAuthed && !hideGlobalHeader ? "pb-20 md:pb-0" : undefined}>
+            <RichTextSettingsProvider>
+              <TanstackQueryProvider queryClient={queryClient}>{children}</TanstackQueryProvider>
+            </RichTextSettingsProvider>
+          </div>
+          {isAuthed && !hideGlobalHeader && <MobileTabBar />}
           <Toaster />
           <TanStackDevtools
             config={{
