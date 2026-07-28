@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SettingsRouteRouteImport } from './routes/settings/route'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
@@ -24,6 +25,11 @@ import { Route as LorebooksIndexRouteImport } from './routes/lorebooks/index'
 import { Route as LorebooksIdRouteImport } from './routes/lorebooks/$id'
 import { Route as LorebooksNewRouteImport } from './routes/lorebooks/new'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
+import { Route as SettingsDemoRouteImport } from './routes/settings/demo'
+import { Route as SettingsPreferencesRouteImport } from './routes/settings/preferences'
+import { Route as SettingsPresetsRouteImport } from './routes/settings/presets'
+import { Route as SettingsProfileRouteImport } from './routes/settings/profile'
+import { Route as SettingsProvidersRouteImport } from './routes/settings/providers'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as CharactersIdEditRouteImport } from './routes/characters/$id_.edit'
 import { Route as ApiBackgroundsIdImageRouteImport } from './routes/api/backgrounds/$id/image'
@@ -33,6 +39,11 @@ import { Route as ApiPersonasIdIconRouteImport } from './routes/api/personas/$id
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRouteRoute = SettingsRouteRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SigninRoute = SigninRouteImport.update({
@@ -101,9 +112,34 @@ const LorebooksNewRoute = LorebooksNewRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
-  id: '/settings/',
-  path: '/settings/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRouteRoute,
+} as any)
+const SettingsDemoRoute = SettingsDemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => SettingsRouteRoute,
+} as any)
+const SettingsPreferencesRoute = SettingsPreferencesRouteImport.update({
+  id: '/preferences',
+  path: '/preferences',
+  getParentRoute: () => SettingsRouteRoute,
+} as any)
+const SettingsPresetsRoute = SettingsPresetsRouteImport.update({
+  id: '/presets',
+  path: '/presets',
+  getParentRoute: () => SettingsRouteRoute,
+} as any)
+const SettingsProfileRoute = SettingsProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => SettingsRouteRoute,
+} as any)
+const SettingsProvidersRoute = SettingsProvidersRouteImport.update({
+  id: '/providers',
+  path: '/providers',
+  getParentRoute: () => SettingsRouteRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -133,6 +169,7 @@ const ApiPersonasIdIconRoute = ApiPersonasIdIconRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/settings': typeof SettingsRouteRouteWithChildren
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/admin/users': typeof AdminUsersRoute
@@ -143,6 +180,11 @@ export interface FileRoutesByFullPath {
   '/characters/new': typeof CharactersNewRoute
   '/lorebooks/$id': typeof LorebooksIdRoute
   '/lorebooks/new': typeof LorebooksNewRoute
+  '/settings/demo': typeof SettingsDemoRoute
+  '/settings/preferences': typeof SettingsPreferencesRoute
+  '/settings/presets': typeof SettingsPresetsRoute
+  '/settings/profile': typeof SettingsProfileRoute
+  '/settings/providers': typeof SettingsProvidersRoute
   '/c/': typeof CIndexRoute
   '/characters/': typeof CharactersIndexRoute
   '/lorebooks/': typeof LorebooksIndexRoute
@@ -165,6 +207,11 @@ export interface FileRoutesByTo {
   '/characters/new': typeof CharactersNewRoute
   '/lorebooks/$id': typeof LorebooksIdRoute
   '/lorebooks/new': typeof LorebooksNewRoute
+  '/settings/demo': typeof SettingsDemoRoute
+  '/settings/preferences': typeof SettingsPreferencesRoute
+  '/settings/presets': typeof SettingsPresetsRoute
+  '/settings/profile': typeof SettingsProfileRoute
+  '/settings/providers': typeof SettingsProvidersRoute
   '/c': typeof CIndexRoute
   '/characters': typeof CharactersIndexRoute
   '/lorebooks': typeof LorebooksIndexRoute
@@ -178,6 +225,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/settings': typeof SettingsRouteRouteWithChildren
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
   '/admin/users': typeof AdminUsersRoute
@@ -188,6 +236,11 @@ export interface FileRoutesById {
   '/characters/new': typeof CharactersNewRoute
   '/lorebooks/$id': typeof LorebooksIdRoute
   '/lorebooks/new': typeof LorebooksNewRoute
+  '/settings/demo': typeof SettingsDemoRoute
+  '/settings/preferences': typeof SettingsPreferencesRoute
+  '/settings/presets': typeof SettingsPresetsRoute
+  '/settings/profile': typeof SettingsProfileRoute
+  '/settings/providers': typeof SettingsProvidersRoute
   '/c/': typeof CIndexRoute
   '/characters/': typeof CharactersIndexRoute
   '/lorebooks/': typeof LorebooksIndexRoute
@@ -202,6 +255,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/settings'
     | '/signin'
     | '/signup'
     | '/admin/users'
@@ -212,6 +266,11 @@ export interface FileRouteTypes {
     | '/characters/new'
     | '/lorebooks/$id'
     | '/lorebooks/new'
+    | '/settings/demo'
+    | '/settings/preferences'
+    | '/settings/presets'
+    | '/settings/profile'
+    | '/settings/providers'
     | '/c/'
     | '/characters/'
     | '/lorebooks/'
@@ -234,6 +293,11 @@ export interface FileRouteTypes {
     | '/characters/new'
     | '/lorebooks/$id'
     | '/lorebooks/new'
+    | '/settings/demo'
+    | '/settings/preferences'
+    | '/settings/presets'
+    | '/settings/profile'
+    | '/settings/providers'
     | '/c'
     | '/characters'
     | '/lorebooks'
@@ -246,6 +310,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/settings'
     | '/signin'
     | '/signup'
     | '/admin/users'
@@ -256,6 +321,11 @@ export interface FileRouteTypes {
     | '/characters/new'
     | '/lorebooks/$id'
     | '/lorebooks/new'
+    | '/settings/demo'
+    | '/settings/preferences'
+    | '/settings/presets'
+    | '/settings/profile'
+    | '/settings/providers'
     | '/c/'
     | '/characters/'
     | '/lorebooks/'
@@ -269,6 +339,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SettingsRouteRoute: typeof SettingsRouteRouteWithChildren
   SigninRoute: typeof SigninRoute
   SignupRoute: typeof SignupRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -282,7 +353,6 @@ export interface RootRouteChildren {
   CIndexRoute: typeof CIndexRoute
   CharactersIndexRoute: typeof CharactersIndexRoute
   LorebooksIndexRoute: typeof LorebooksIndexRoute
-  SettingsIndexRoute: typeof SettingsIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   CharactersIdEditRoute: typeof CharactersIdEditRoute
   ApiBackgroundsIdImageRoute: typeof ApiBackgroundsIdImageRoute
@@ -297,6 +367,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signin': {
@@ -392,10 +469,45 @@ declare module '@tanstack/react-router' {
     }
     '/settings/': {
       id: '/settings/'
-      path: '/settings'
+      path: '/'
       fullPath: '/settings/'
       preLoaderRoute: typeof SettingsIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof SettingsRouteRoute
+    }
+    '/settings/demo': {
+      id: '/settings/demo'
+      path: '/demo'
+      fullPath: '/settings/demo'
+      preLoaderRoute: typeof SettingsDemoRouteImport
+      parentRoute: typeof SettingsRouteRoute
+    }
+    '/settings/preferences': {
+      id: '/settings/preferences'
+      path: '/preferences'
+      fullPath: '/settings/preferences'
+      preLoaderRoute: typeof SettingsPreferencesRouteImport
+      parentRoute: typeof SettingsRouteRoute
+    }
+    '/settings/presets': {
+      id: '/settings/presets'
+      path: '/presets'
+      fullPath: '/settings/presets'
+      preLoaderRoute: typeof SettingsPresetsRouteImport
+      parentRoute: typeof SettingsRouteRoute
+    }
+    '/settings/profile': {
+      id: '/settings/profile'
+      path: '/profile'
+      fullPath: '/settings/profile'
+      preLoaderRoute: typeof SettingsProfileRouteImport
+      parentRoute: typeof SettingsRouteRoute
+    }
+    '/settings/providers': {
+      id: '/settings/providers'
+      path: '/providers'
+      fullPath: '/settings/providers'
+      preLoaderRoute: typeof SettingsProvidersRouteImport
+      parentRoute: typeof SettingsRouteRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -435,8 +547,31 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface SettingsRouteRouteChildren {
+  SettingsDemoRoute: typeof SettingsDemoRoute
+  SettingsPreferencesRoute: typeof SettingsPreferencesRoute
+  SettingsPresetsRoute: typeof SettingsPresetsRoute
+  SettingsProfileRoute: typeof SettingsProfileRoute
+  SettingsProvidersRoute: typeof SettingsProvidersRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
+}
+
+const SettingsRouteRouteChildren: SettingsRouteRouteChildren = {
+  SettingsDemoRoute: SettingsDemoRoute,
+  SettingsPreferencesRoute: SettingsPreferencesRoute,
+  SettingsPresetsRoute: SettingsPresetsRoute,
+  SettingsProfileRoute: SettingsProfileRoute,
+  SettingsProvidersRoute: SettingsProvidersRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
+}
+
+const SettingsRouteRouteWithChildren = SettingsRouteRoute._addFileChildren(
+  SettingsRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SettingsRouteRoute: SettingsRouteRouteWithChildren,
   SigninRoute: SigninRoute,
   SignupRoute: SignupRoute,
   AdminUsersRoute: AdminUsersRoute,
@@ -450,7 +585,6 @@ const rootRouteChildren: RootRouteChildren = {
   CIndexRoute: CIndexRoute,
   CharactersIndexRoute: CharactersIndexRoute,
   LorebooksIndexRoute: LorebooksIndexRoute,
-  SettingsIndexRoute: SettingsIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   CharactersIdEditRoute: CharactersIdEditRoute,
   ApiBackgroundsIdImageRoute: ApiBackgroundsIdImageRoute,
