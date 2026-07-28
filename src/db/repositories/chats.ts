@@ -66,6 +66,45 @@ export function listChats(userId: string, db: DB = defaultDb): ChatWithCharacter
   });
 }
 
+export function listChatsByCharacter(
+  userId: string,
+  characterId: string,
+  db: DB = defaultDb,
+): ChatWithCharacter[] {
+  const rows = db
+    .select({
+      chat: chats,
+      characterName: characters.name,
+      characterImagePath: characters.imagePath,
+    })
+    .from(chats)
+    .leftJoin(characters, eq(chats.characterId, characters.id))
+    .where(and(eq(chats.userId, userId), eq(chats.characterId, characterId)))
+    .orderBy(desc(chats.updatedAt))
+    .all();
+  return rows.map((r) => {
+    const previewRow = db
+      .select({ content: chatMessages.content })
+      .from(chatMessages)
+      .where(eq(chatMessages.chatId, r.chat.id))
+      .orderBy(desc(chatMessages.localId))
+      .limit(1)
+      .get();
+    const userCount = db
+      .select({ c: count() })
+      .from(chatMessages)
+      .where(and(eq(chatMessages.chatId, r.chat.id), eq(chatMessages.role, "user")))
+      .get();
+    return {
+      ...r.chat,
+      characterName: r.characterName ?? "Unknown",
+      characterImagePath: r.characterImagePath ?? null,
+      lastMessagePreview: previewRow?.content.slice(0, 140) ?? null,
+      userMessageCount: userCount?.c ?? 0,
+    };
+  });
+}
+
 export function getChat(userId: string, id: string, db: DB = defaultDb): Chat {
   const row = db
     .select()
