@@ -1,9 +1,18 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import { Plus, Search, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -12,7 +21,7 @@ import { SkeletonRows } from "@/components/common/Skeletons";
 import { RelativeTime } from "@/components/common/RelativeTime";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
-import { useChats, useDeleteChat } from "@/hooks/useChats";
+import { useChats, useDeleteChat, useRenameChat } from "@/hooks/useChats";
 
 function dayGroup(date: Date): string {
   const now = new Date();
@@ -30,8 +39,13 @@ function dayGroup(date: Date): string {
 export function ChatListPage() {
   const { data: chats, isLoading, error } = useChats();
   const deleteChat = useDeleteChat();
+  const renameChat = useRenameChat();
   const [search, setSearch] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [renamingChat, setRenamingChat] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
 
   const filtered = useMemo(() => {
     if (!chats) return [];
@@ -152,7 +166,14 @@ export function ChatListPage() {
                                   <RelativeTime date={chat.updatedAt} />
                                 </span>
                               </div>
-                              <p className="text-2 text-sm truncate">{chat.characterName}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-2 text-sm truncate">{chat.characterName}</p>
+                                {chat.userMessageCount > 0 && (
+                                  <span className="text-3 text-xs tabular-nums shrink-0">
+                                    · {chat.userMessageCount} turns
+                                  </span>
+                                )}
+                              </div>
                               {chat.lastMessagePreview ? (
                                 <p className="text-3 text-sm line-clamp-1">
                                   {chat.lastMessagePreview}
@@ -165,6 +186,11 @@ export function ChatListPage() {
                           <RowActionsMenu
                             label={`Actions for ${chat.title}`}
                             items={[
+                              {
+                                label: "Rename",
+                                onSelect: () =>
+                                  setRenamingChat({ id: chat.id, title: chat.title }),
+                              },
                               {
                                 label: "Delete",
                                 destructive: true,
@@ -205,6 +231,104 @@ export function ChatListPage() {
           );
         }}
       />
+
+      <RenameChatDialog
+        chat={renamingChat}
+        loading={renameChat.isPending}
+        onClose={() => setRenamingChat(null)}
+        onRename={(id, title) => {
+          renameChat.mutate(
+            { id, title },
+            {
+              onSuccess: () => {
+                toast.success("Chat renamed");
+                setRenamingChat(null);
+              },
+              onError: (err) =>
+                toast.error(`Rename failed: ${err instanceof Error ? err.message : String(err)}`),
+            },
+          );
+        }}
+      />
     </main>
+  );
+}
+
+function RenameChatDialog({
+  chat,
+  loading,
+  onClose,
+  onRename,
+}: {
+  chat: { id: string; title: string } | null;
+  loading: boolean;
+  onClose: () => void;
+  onRename: (id: string, title: string) => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  if (!chat) return null;
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const trimmed = title.trim();
+    if (!trimmed) {
+      setError("Title cannot be empty.");
+      return;
+    }
+    if (trimmed === chat.title) {
+      onClose();
+      return;
+    }
+    setError(null);
+    onRename(chat.id, trimmed);
+  };
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Rename Chat</DialogTitle>
+          <DialogDescription>Enter a new title for this chat.</DialogDescription>
+        </DialogHeader>
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.stopPropagation();
+          }}
+        >
+          <div className="space-y-2">
+            <Label htmlFor="rename-title">Title</Label>
+            <Input
+              id="rename-title"
+              defaultValue={chat.title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                setError(null);
+              }}
+              disabled={loading}
+              autoFocus
+              required
+            />
+          </div>
+          {error ? <p className="text-destructive text-sm">{error}</p> : null}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
