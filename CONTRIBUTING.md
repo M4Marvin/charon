@@ -119,7 +119,7 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 
 ## Tests
 
-412 tests across 23 files. All pass. Uses in-memory SQLite for integration tests. Run with `pnpm run test`.
+422 tests across 24 files. All pass. Uses in-memory SQLite for integration tests. Run with `pnpm run test`.
 
 ## Known typecheck noise
 
