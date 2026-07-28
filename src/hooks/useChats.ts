@@ -5,6 +5,7 @@ import {
   getChat,
   getChatMessages,
   listChats,
+  listChatsByCharacter,
   updateChatSettings,
 } from "@/server/fns/chats";
 import {
@@ -24,6 +25,7 @@ import type { PrepareStreamResult } from "@/features/chat/generation/types";
 export const chatKeys = {
   all: ["chats"] as const,
   list: () => [...chatKeys.all, "list"] as const,
+  byCharacter: (characterId: string) => [...chatKeys.all, "character", characterId] as const,
   detail: (id: string) => [...chatKeys.all, "detail", id] as const,
   messages: (id: string) => [...chatKeys.all, "messages", id] as const,
 };
@@ -32,6 +34,14 @@ export function useChats() {
   return useQuery({
     queryKey: chatKeys.list(),
     queryFn: () => listChats(),
+  });
+}
+
+export function useChatsByCharacter(characterId: string) {
+  return useQuery({
+    queryKey: chatKeys.byCharacter(characterId),
+    queryFn: () => listChatsByCharacter({ data: { id: characterId } }),
+    enabled: characterId.length > 0,
   });
 }
 
@@ -159,6 +169,7 @@ export function useUpdateChatSettings() {
   return useMutation({
     mutationFn: (input: {
       id: string;
+      title?: string | null;
       characterDescription?: string | null;
       characterPersonality?: string | null;
       characterScenario?: string | null;
@@ -168,6 +179,17 @@ export function useUpdateChatSettings() {
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.detail(variables.id) });
       void queryClient.invalidateQueries({ queryKey: ["chatConfig", variables.id] });
+    },
+  });
+}
+
+export function useRenameChat() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; title: string }) =>
+      updateChatSettings({ data: input }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: chatKeys.all });
     },
   });
 }

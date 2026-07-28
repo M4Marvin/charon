@@ -194,6 +194,7 @@ export const updateChatSettings = createServerFn({ method: "POST", strict: { out
   .handler(async ({ data }): Promise<{ id: string }> => {
     const { user } = await getSession();
     const patch: Parameters<typeof repoUpdateChat>[2] = {};
+    if (data.title !== undefined) patch.title = data.title ?? "";
     if (data.characterDescription !== undefined)
       patch.characterDescription = data.characterDescription ?? "";
     if (data.characterPersonality !== undefined)

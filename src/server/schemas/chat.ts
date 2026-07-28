@@ -21,6 +21,7 @@ export const CreateChat = Schema.Struct({ characterId: Schema.String });
 
 export const UpdateChatSettings = Schema.Struct({
   id: Schema.String,
+  title: NullableOptionalString,
   characterDescription: NullableOptionalString,
   characterPersonality: NullableOptionalString,
   characterScenario: NullableOptionalString,
