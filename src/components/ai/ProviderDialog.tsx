@@ -47,9 +47,9 @@ export function ProviderDialog({ state, onClose, onCreate, onUpdate }: ProviderD
     if (editing) {
       setName(editing.name);
       setBaseUrl(editing.baseUrl);
-      setApiKey(editing.apiKey);
+      setApiKey("");
       setDefaultModel(editing.defaultModel ?? "");
-      setHeadersText(editing.defaultHeaders ? JSON.stringify(editing.defaultHeaders, null, 2) : "");
+      setHeadersText("");
     } else {
       setName("");
       setBaseUrl("");
@@ -87,6 +87,7 @@ export function ProviderDialog({ state, onClose, onCreate, onUpdate }: ProviderD
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
+              placeholder={editing ? "Leave blank to keep unchanged" : ""}
             />
           </div>
           <div className="space-y-1">
@@ -103,7 +104,7 @@ export function ProviderDialog({ state, onClose, onCreate, onUpdate }: ProviderD
               id="p-headers"
               value={headersText}
               onChange={(e) => setHeadersText(e.target.value)}
-              placeholder='{"X-Header": "value"}'
+              placeholder={editing ? "Leave blank to keep unchanged" : '{"X-Header": "value"}'}
               rows={3}
             />
           </div>
@@ -128,9 +129,9 @@ export function ProviderDialog({ state, onClose, onCreate, onUpdate }: ProviderD
                   id: editing.id,
                   name,
                   baseUrl,
-                  apiKey,
+                  ...(apiKey ? { apiKey } : {}),
                   defaultModel: defaultModel || null,
-                  defaultHeaders: defaultHeaders ?? null,
+                  ...(defaultHeaders ? { defaultHeaders } : {}),
                 });
               } else {
                 onCreate({

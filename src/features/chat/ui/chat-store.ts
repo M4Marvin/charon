@@ -8,7 +8,6 @@ export interface ChatUiState {
   portraitOpen: boolean;
   sceneOpen: boolean;
   lightboxSrc: string | null;
-  shortcutsOpen: boolean;
   customImages: Record<string, string>;
 
   setSettingsOpen: (open: boolean) => void;
@@ -23,7 +22,6 @@ export interface ChatUiState {
   setSceneOpen: (open: boolean) => void;
   openLightbox: (src: string) => void;
   closeLightbox: () => void;
-  setShortcutsOpen: (open: boolean) => void;
   setCustomImage: (chatId: string, dataUrl: string) => void;
   clearCustomImage: (chatId: string) => void;
 }
@@ -37,7 +35,6 @@ export const useChatUiStore = create<ChatUiState>()(
       portraitOpen: false,
       sceneOpen: false,
       lightboxSrc: null,
-      shortcutsOpen: false,
       customImages: {},
 
       setSettingsOpen: (open) => set({ settingsOpen: open }),
@@ -58,7 +55,6 @@ export const useChatUiStore = create<ChatUiState>()(
       setSceneOpen: (open) => set({ sceneOpen: open }),
       openLightbox: (src) => set({ lightboxSrc: src }),
       closeLightbox: () => set({ lightboxSrc: null }),
-      setShortcutsOpen: (open) => set({ shortcutsOpen: open }),
       setCustomImage: (chatId, dataUrl) =>
         set((s) => ({ customImages: { ...s.customImages, [chatId]: dataUrl } })),
       clearCustomImage: (chatId) =>
@@ -89,5 +85,4 @@ export const selectActivePlaceholderId = (s: ChatUiState) => s.activePlaceholder
 export const selectPortraitOpen = (s: ChatUiState) => s.portraitOpen;
 export const selectSceneOpen = (s: ChatUiState) => s.sceneOpen;
 export const selectLightboxSrc = (s: ChatUiState) => s.lightboxSrc;
-export const selectShortcutsOpen = (s: ChatUiState) => s.shortcutsOpen;
 export const selectCustomImages = (s: ChatUiState) => s.customImages;

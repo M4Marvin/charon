@@ -3,7 +3,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { getSession } from "@/server/session";
 import { prepareStream, finalizeStream, cancelStream } from "./service";
 import { impersonateMessage } from "./impersonate";
-import type { PrepareStreamInput } from "./types";
 
 const PrepareStreamSchema = Schema.Struct({
   chatId: Schema.String,
@@ -27,7 +26,7 @@ export const prepareStreamFn = createServerFn({ method: "POST", strict: { output
   .validator((data) => Schema.decodeUnknownSync(PrepareStreamSchema)(data))
   .handler(async ({ data }) => {
     const { user } = await getSession();
-    return prepareStream(user.id, data as PrepareStreamInput, user.name);
+    return prepareStream(user.id, data, user.name);
   });
 
 export const finalizeStreamFn = createServerFn({ method: "POST", strict: { output: false } })

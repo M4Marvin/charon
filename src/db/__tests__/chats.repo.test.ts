@@ -375,4 +375,119 @@ describe("chats repo", () => {
       expect(root.selectedChildLocalId).toBe(1);
     });
   });
+
+  describe("list ordering and preview", () => {
+    it("returns null preview when no messages exist", () => {
+      repoCreateChat({ id: "chat-1", userId, characterId: charId, title: "Empty chat" }, db);
+      const chats = repoListChats(userId, db);
+      expect(chats).toHaveLength(1);
+      expect(chats[0]!.lastMessagePreview).toBeNull();
+    });
+
+    it("returns latest message content as preview", () => {
+      repoCreateChat({ id: "chat-1", userId, characterId: charId, title: "Chat" }, db);
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 1,
+          parentLocalId: null,
+          children: [],
+          selectedChildLocalId: null,
+          role: "assistant",
+          content: "First",
+          extra: null,
+        },
+        db,
+      );
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 2,
+          parentLocalId: null,
+          children: [],
+          selectedChildLocalId: null,
+          role: "assistant",
+          content: "Last message",
+          extra: null,
+        },
+        db,
+      );
+      const chats = repoListChats(userId, db);
+      expect(chats[0]!.lastMessagePreview).toBe("Last message");
+    });
+
+    it("orders by most recent activity (latest message first)", () => {
+      repoCreateChat({ id: "chat-old", userId, characterId: charId, title: "Older" }, db);
+      repoInsertMessage(
+        userId,
+        "chat-old",
+        {
+          chatId: "chat-old",
+          localId: 1,
+          parentLocalId: null,
+          children: [],
+          selectedChildLocalId: null,
+          role: "assistant",
+          content: "Old msg",
+          extra: null,
+        },
+        db,
+      );
+      const start = Date.now();
+      while (Date.now() === start.valueOf()) {
+        /* busy-wait ~1ms */
+      }
+      repoCreateChat({ id: "chat-new", userId, characterId: charId, title: "Newer" }, db);
+      repoInsertMessage(
+        userId,
+        "chat-new",
+        {
+          chatId: "chat-new",
+          localId: 1,
+          parentLocalId: null,
+          children: [],
+          selectedChildLocalId: null,
+          role: "assistant",
+          content: "New msg",
+          extra: null,
+        },
+        db,
+      );
+      const chats = repoListChats(userId, db);
+      expect(chats).toHaveLength(2);
+      expect(chats[0]!.id).toBe("chat-new");
+      expect(chats[1]!.id).toBe("chat-old");
+    });
+
+    it("bumps updatedAt when a message is inserted", () => {
+      repoCreateChat({ id: "chat-1", userId, characterId: charId, title: "Chat" }, db);
+      const before = repoGetChat(userId, "chat-1", db).updatedAt;
+      // small delay guarantees timestamp change
+      const start = Date.now();
+      while (Date.now() === start.valueOf()) {
+        /* busy-wait ~1ms */
+      }
+      repoInsertMessage(
+        userId,
+        "chat-1",
+        {
+          chatId: "chat-1",
+          localId: 1,
+          parentLocalId: null,
+          children: [],
+          selectedChildLocalId: null,
+          role: "assistant",
+          content: "Hello!",
+          extra: null,
+        },
+        db,
+      );
+      const after = repoGetChat(userId, "chat-1", db).updatedAt;
+      expect(after.getTime()).toBeGreaterThan(before.getTime());
+    });
+  });
 });

@@ -84,11 +84,7 @@ export function Composer({
               disabled={disabled || isStreaming || impersonatePending}
               aria-label="Impersonate"
             >
-              {impersonatePending ? (
-                <Spinner className="size-4" />
-              ) : (
-                <Wand className="size-4" />
-              )}
+              {impersonatePending ? <Spinner className="size-4" /> : <Wand className="size-4" />}
             </Button>
 
             {isStreaming ? (

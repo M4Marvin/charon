@@ -6,10 +6,7 @@ import {
 } from "@/db/repositories/userLorebookSettings";
 import { listEntries as repoListEntries } from "@/db/repositories/lorebooks";
 
-export function getEnabledLoreEntries(
-  userId: string,
-  db: DB = defaultDb,
-): LoreEntry[] {
+export function getEnabledLoreEntries(userId: string, db: DB = defaultDb): LoreEntry[] {
   try {
     const enabledIds = listEnabledLorebookIds(userId, db);
     if (enabledIds.length === 0) return [];

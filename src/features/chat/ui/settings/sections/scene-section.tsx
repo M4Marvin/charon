@@ -77,7 +77,10 @@ export function SceneSection({ chatId, isAdmin, isStreaming }: SectionProps) {
             {isAdmin && (
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); setDeleteTarget(bg.id); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteTarget(bg.id);
+                }}
                 className="absolute top-0.5 right-0.5 z-10 size-6 rounded-full bg-black/60 flex items-center justify-center text-white/50 hover:text-white hover:bg-black/80"
                 aria-label={`Delete ${bg.name}`}
               >
@@ -90,7 +93,13 @@ export function SceneSection({ chatId, isAdmin, isStreaming }: SectionProps) {
 
       <div className="flex items-center gap-2">
         {selectedId && (
-          <Button variant="ghost" size="sm" className="text-[11px]" onClick={() => handleSelect(null)} aria-label="Clear background">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-[11px]"
+            onClick={() => handleSelect(null)}
+            aria-label="Clear background"
+          >
             <X className="size-3.5 mr-1" />
             Clear scene
           </Button>
@@ -127,7 +136,9 @@ export function SceneSection({ chatId, isAdmin, isStreaming }: SectionProps) {
 
       <ConfirmDialog
         open={deleteTarget !== null}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
         title="Delete background?"
         description="This removes the background image from your library. Chats using it will be unaffected."
         onConfirm={handleDeleteBg}

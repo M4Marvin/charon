@@ -66,6 +66,24 @@ export function RichText({ content }: { content: string }) {
     });
   }, [html, onNodeAdded]);
 
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const btn = target.closest("[data-code-copy]") as HTMLElement | null;
+      if (!btn) return;
+      const code = btn.nextElementSibling?.querySelector("code")?.textContent ?? "";
+      navigator.clipboard.writeText(code);
+      btn.textContent = "Copied!";
+      setTimeout(() => {
+        btn.textContent = "Copy";
+      }, 2000);
+    };
+    el.addEventListener("click", handler);
+    return () => el.removeEventListener("click", handler);
+  }, []);
+
   if (!mounted || !html) return null;
 
   return <div ref={ref} className={`${scopeId} rt-mes-text`} />;

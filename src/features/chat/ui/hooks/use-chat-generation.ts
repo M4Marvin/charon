@@ -41,7 +41,7 @@ export function useChatGeneration(
 
   const chatIdRef = useRef(chatId);
   const placeholderRef = useRef<number | null>(null);
-  const resumeRef = useRef(false);
+  const recoveredForRef = useRef<string | null>(null);
 
   useEffect(() => {
     chatIdRef.current = chatId;
@@ -71,7 +71,7 @@ export function useChatGeneration(
   const aiChat = useAiChat({
     connection,
     onFinish: () => {
-      const text = extractAssistantText(aiChat.messages);
+      const text = extractAssistantText(aiChatRef.current.messages);
       const ph = placeholderRef.current;
       const cid = chatIdRef.current;
 
@@ -94,7 +94,7 @@ export function useChatGeneration(
           useChatUiStore.getState().clearPlaceholder();
           setStatus("idle");
           setStreamingText("");
-          void aiChat.setMessages([]);
+          void aiChatRef.current.setMessages([]);
         })
         .catch(() => {
           cancelRef.current.mutateAsync({ chatId: cid, messageLocalId: ph }).catch(() => {});
@@ -132,12 +132,12 @@ export function useChatGeneration(
   }, [aiChat.messages, status]);
 
   useEffect(() => {
-    if (resumeRef.current) return;
     if (!lockMessageLocalId) return;
+    if (recoveredForRef.current === chatId) return;
     const placeholder = useChatUiStore.getState().activePlaceholderId;
     if (placeholder) return;
 
-    resumeRef.current = true;
+    recoveredForRef.current = chatId;
     placeholderRef.current = lockMessageLocalId;
     useChatUiStore.getState().setPlaceholder(lockMessageLocalId);
     setStatus("streaming");
@@ -145,13 +145,16 @@ export function useChatGeneration(
     void aiChatRef.current.setMessages([]);
     void aiChatRef.current.sendMessage(".");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lockMessageLocalId]);
+  }, [lockMessageLocalId, chatId]);
 
   useEffect(() => {
     return () => {
       if (placeholderRef.current) {
         const oldId = chatIdRef.current;
-        cancelRef.current.mutateAsync({ chatId: oldId, messageLocalId: placeholderRef.current }).catch(() => {});
+        cancelRef.current.mutate(
+          { chatId: oldId, messageLocalId: placeholderRef.current },
+          { onError: () => {} },
+        );
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

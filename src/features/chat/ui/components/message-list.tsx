@@ -93,9 +93,7 @@ export function MessageList({
     return (
       <div className="flex flex-col items-center justify-center px-6 pt-32">
         <div className="glass rounded-2xl px-8 py-10 text-center max-w-xs">
-          <p className="font-heading text-xl text-[--sea-ink] mb-2">
-            {characterName}
-          </p>
+          <p className="font-heading text-xl text-[--sea-ink] mb-2">{characterName}</p>
           <p className="text-sm text-[--sea-ink-soft] leading-relaxed">
             Start the story by sending a message.
           </p>
@@ -117,8 +115,7 @@ export function MessageList({
           <MessageScrollerContent className="mx-auto max-w-3xl flex flex-col gap-3 pb-6">
             {entries.map((entry) => {
               const isPlaceholder =
-                activePlaceholderId !== null &&
-                entry.message.localId === activePlaceholderId;
+                activePlaceholderId !== null && entry.message.localId === activePlaceholderId;
               const isUserMessage = entry.message.role === "user";
 
               return (

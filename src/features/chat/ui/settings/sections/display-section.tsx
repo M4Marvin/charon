@@ -26,7 +26,11 @@ export function DisplaySection(_props: SectionProps) {
         <FieldLabel htmlFor="ds-highlight" className="text-xs text-[--sea-ink-soft] cursor-pointer">
           Highlight dialogue
         </FieldLabel>
-        <Switch id="ds-highlight" checked={highlightDialogue} onCheckedChange={setHighlightDialogue} />
+        <Switch
+          id="ds-highlight"
+          checked={highlightDialogue}
+          onCheckedChange={setHighlightDialogue}
+        />
       </Field>
 
       <Field className="flex items-center justify-between gap-3">
@@ -40,7 +44,11 @@ export function DisplaySection(_props: SectionProps) {
         <FieldLabel htmlFor="ds-media" className="text-xs text-[--sea-ink-soft] cursor-pointer">
           Block external media
         </FieldLabel>
-        <Switch id="ds-media" checked={blockExternalMedia} onCheckedChange={setBlockExternalMedia} />
+        <Switch
+          id="ds-media"
+          checked={blockExternalMedia}
+          onCheckedChange={setBlockExternalMedia}
+        />
       </Field>
     </div>
   );

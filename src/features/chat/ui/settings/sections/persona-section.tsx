@@ -1,7 +1,14 @@
 import { useState, useCallback, useRef } from "react";
 import { Plus, Pencil, Trash2, Image as ImageIcon, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -13,7 +20,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { usePersonas, useCreatePersona, useUpdatePersona, useDeletePersona, useUploadPersonaIcon } from "@/hooks/usePersonas";
+import {
+  usePersonas,
+  useCreatePersona,
+  useUpdatePersona,
+  useDeletePersona,
+  useUploadPersonaIcon,
+} from "@/hooks/usePersonas";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
 import { ConfirmDialog } from "../confirm-dialog";
 
@@ -32,7 +45,11 @@ export function PersonaSection(_props: SectionProps) {
   const deletePersona = useDeletePersona();
   const uploadPersonaIcon = useUploadPersonaIcon();
 
-  const [dialog, setDialog] = useState<{ kind: "create" } | { kind: "edit"; id: string; name: string; description: string; iconPath: string | null } | null>(null);
+  const [dialog, setDialog] = useState<
+    | { kind: "create" }
+    | { kind: "edit"; id: string; name: string; description: string; iconPath: string | null }
+    | null
+  >(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -90,9 +107,15 @@ export function PersonaSection(_props: SectionProps) {
     const trimmed = name.trim();
     if (!trimmed) return;
     if (dialog?.kind === "create") {
-      createPersona.mutate({ name: trimmed, description: description.trim() || undefined }, { onSuccess: closeDialog });
+      createPersona.mutate(
+        { name: trimmed, description: description.trim() || undefined },
+        { onSuccess: closeDialog },
+      );
     } else if (dialog?.kind === "edit") {
-      updatePersona.mutate({ id: dialog.id, name: trimmed, description: description.trim() || null }, { onSuccess: closeDialog });
+      updatePersona.mutate(
+        { id: dialog.id, name: trimmed, description: description.trim() || null },
+        { onSuccess: closeDialog },
+      );
     }
   }, [dialog, name, description, createPersona, updatePersona, closeDialog]);
 
@@ -118,12 +141,20 @@ export function PersonaSection(_props: SectionProps) {
               <SelectGroup>
                 <SelectItem value="_none">None (account name)</SelectItem>
                 {personas?.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
                 ))}
               </SelectGroup>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" className="size-9 shrink-0" onClick={openCreate} aria-label="Create persona">
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-9 shrink-0"
+            onClick={openCreate}
+            aria-label="Create persona"
+          >
             <Plus className="size-4" />
           </Button>
           <Button
@@ -131,7 +162,15 @@ export function PersonaSection(_props: SectionProps) {
             size="icon"
             className="size-9 shrink-0"
             disabled={!selectedId}
-            onClick={() => selectedPersona && openEdit(selectedPersona.id, selectedPersona.name, selectedPersona.description, selectedPersona.iconPath)}
+            onClick={() =>
+              selectedPersona &&
+              openEdit(
+                selectedPersona.id,
+                selectedPersona.name,
+                selectedPersona.description,
+                selectedPersona.iconPath,
+              )
+            }
             aria-label="Edit persona"
           >
             <Pencil className="size-4" />
@@ -149,7 +188,12 @@ export function PersonaSection(_props: SectionProps) {
         </div>
       </Field>
 
-      <Dialog open={dialog !== null} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+      <Dialog
+        open={dialog !== null}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{dialog?.kind === "edit" ? "Edit persona" : "New persona"}</DialogTitle>
@@ -214,7 +258,9 @@ export function PersonaSection(_props: SectionProps) {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={closeDialog}>Cancel</Button>
+            <Button variant="outline" onClick={closeDialog}>
+              Cancel
+            </Button>
             <Button onClick={handleSave} disabled={!name.trim()}>
               {dialog?.kind === "edit" ? "Save" : "Create"}
             </Button>
@@ -224,7 +270,9 @@ export function PersonaSection(_props: SectionProps) {
 
       <ConfirmDialog
         open={deleteId !== null}
-        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDeleteId(null);
+        }}
         title="Delete persona?"
         description="This cannot be undone."
         onConfirm={handleDelete}

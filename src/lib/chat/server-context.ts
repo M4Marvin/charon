@@ -12,6 +12,9 @@ import {
   truncateToContext,
 } from "./pre-process.js";
 import { buildOptions } from "./pipeline.js";
+import { createLogger } from "@/features/logging";
+
+const log = createLogger("chat:pipeline");
 
 function v2ToPipelineCharacter(v2: CharacterDataV2): PipelineCharacter {
   return {
@@ -108,18 +111,10 @@ export function buildChatPrompt(input: BuildChatPromptInput): BuildChatPromptRes
     userPostHistoryInstructions,
   );
 
-  const summarize = (s: string) => {
-    const words = s.split(/\s+/).filter(Boolean);
-    const first = words.slice(0, 5).join(" ");
-    const last = words.slice(-5).join(" ");
-    return { wordCount: words.length, first: words.length <= 10 ? s : first + "...", last: words.length <= 10 ? "" : "..." + last };
-  };
-
-  console.log("[pipeline] context-assembly", {
+  log.debug("context-assembly", {
     msgCount: assembled.length,
-    systemPrompts: assembled.filter((m) => m.role === "system").map((m) => summarize(m.content)),
-    activatedLore: loreScan.activated.map((e) => summarize(e.content)),
-    postHistory: summarize(userPostHistoryInstructions ?? pipelineChar.post_history_instructions ?? ""),
+    systemPromptCount: assembled.filter((m) => m.role === "system").length,
+    activatedLoreCount: loreScan.activated.length,
   });
 
   // Pre-process
@@ -127,24 +122,24 @@ export function buildChatPrompt(input: BuildChatPromptInput): BuildChatPromptRes
   if (preset.squashSystemMessages) {
     const before = msgs.length;
     msgs = squashSystemMessages(msgs);
-    console.log("[pipeline] squash-system-messages", {
+    log.debug("squash-system-messages", {
       before,
       after: msgs.length,
       merged: before - msgs.length,
     });
   }
   msgs = applyCharacterNames(msgs, preset.characterNamesBehavior, pipelineChar.name, userName);
-  console.log("[pipeline] character-names", { behavior: preset.characterNamesBehavior });
+  log.debug("character-names", { behavior: preset.characterNamesBehavior });
   if (preset.continuePostfix) msgs = applyContinuePostfix(msgs, preset.continuePostfix);
   if (preset.continuePrefill) msgs = applyContinuePrefill(msgs, preset.continuePrefill);
-  console.log("[pipeline] continue", {
+  log.debug("continue", {
     postfix: !!preset.continuePostfix,
     prefill: !!preset.continuePrefill,
   });
   const tokensBefore = msgs.reduce((n, m) => n + counter.count(m.content), 0);
   const trimmed = truncateToContext(msgs, preset.contextSize, (t) => counter.count(t));
   msgs = trimmed.messages;
-  console.log("[pipeline] truncate", {
+  log.debug("truncate", {
     budget: preset.contextSize,
     tokensBefore,
     tokensAfter: trimmed.tokens,

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Lorebook, LoreEntry } from "@/db/schema";
+import type { LoreConfig } from "@/lib/st-core/lorebook";
 import {
   createLorebook,
   createLorebookEntry,
@@ -56,7 +57,7 @@ export function useUpdateLorebook() {
       id: string;
       name?: string;
       description?: string | null;
-      config?: unknown;
+      config?: LoreConfig;
     }): Promise<Lorebook> => updateLorebook({ data: input }),
     onSuccess: (lorebook) => {
       void queryClient.invalidateQueries({ queryKey: lorebookKeys.all });
@@ -110,6 +111,9 @@ export function useCreateLorebookEntry(lorebookId: string) {
       content: string;
       key: string[];
       keysecondary?: string[];
+      order?: number;
+      disable?: boolean;
+      constant?: boolean;
     }): Promise<{ id: string; uid: number }> =>
       createLorebookEntry({ data: { lorebookId, ...input } }),
     onSuccess: () => {
@@ -157,6 +161,7 @@ export function useToggleLorebook() {
     }> => setLorebookEnabled({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: lorebookKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }
@@ -173,6 +178,7 @@ export function useToggleLoreEntry(lorebookId: string) {
     }> => setLoreEntryDisabled({ data: { lorebookId, ...input } }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: lorebookKeys.entries(lorebookId) });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }

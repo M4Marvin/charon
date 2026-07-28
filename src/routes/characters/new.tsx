@@ -1,9 +1,15 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState, type ChangeEvent } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Upload, ArrowLeft, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/common/PageHeader";
+import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { authClient } from "@/lib/auth-client";
 import { fileToBase64, useImportCharacter } from "@/hooks/useCharacters";
+import { previewCharacter } from "@/server/fns/characters";
+import type { PreviewResult } from "@/server/fns/characters";
 
 export const Route = createFileRoute("/characters/new")({
   component: NewCharacterPage,
@@ -15,105 +21,200 @@ function NewCharacterPage() {
   const isDemo = session?.user?.role !== "admin";
 
   useEffect(() => {
-    if (session && isDemo) {
-      void navigate({ to: "/characters" });
-    }
+    if (session && isDemo) void navigate({ to: "/characters" });
   }, [session, isDemo, navigate]);
+
+  const [step, setStep] = useState<"pick" | "preview">("pick");
   const [file, setFile] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ field: string; message: string }[]>([]);
+  const [preview, setPreview] = useState<PreviewResult | null>(null);
+  const [previewB64, setPreviewB64] = useState<string>("");
+  const [previewErr, setPreviewErr] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
   const importMutation = useImportCharacter();
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const next = e.target.files?.[0] ?? null;
-    setFile(next);
-    setError(null);
-    setFieldErrors([]);
+  const processFile = async (f: File | null) => {
+    setFile(f);
+    setPreviewErr(null);
+    if (!f) return;
+    if (f.type !== "" && f.type !== "image/png") {
+      setPreviewErr("Only PNG files are supported.");
+      return;
+    }
+    if (f.size > 5 * 1024 * 1024) {
+      setPreviewErr("File too large (max 5 MB).");
+      return;
+    }
+    try {
+      const b64 = await fileToBase64(f);
+      setPreviewB64(b64);
+      const res = await previewCharacter({ data: { pngBase64: b64 } });
+      if (!res.ok) {
+        const msg =
+          res.error.kind === "validation"
+            ? res.error.errors.map((e) => `${e.field}: ${e.message}`).join(", ")
+            : res.error.message;
+        setPreviewErr(msg);
+        return;
+      }
+      setPreview(res.data);
+      setStep("preview");
+    } catch (err) {
+      setPreviewErr(err instanceof Error ? err.message : "Failed to read file");
+    }
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!file) {
-      setError("Please choose a PNG file.");
-      return;
-    }
-    setError(null);
-    setFieldErrors([]);
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    processFile(e.target.files?.[0] ?? null);
+  };
 
-    let pngBase64: string;
-    try {
-      pngBase64 = await fileToBase64(file);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to read file");
-      return;
-    }
-
-    const result = await importMutation.mutateAsync({ pngBase64 });
-    if (result.ok) {
-      void navigate({ to: "/characters" });
+  const handleImport = async () => {
+    if (!previewB64) return;
+    const res = await importMutation.mutateAsync({ pngBase64: previewB64 });
+    if (res.ok) {
+      toast.success(`Imported ${res.character.name}`);
+      void navigate({ to: "/characters/$id", params: { id: res.character.id } });
     } else {
-      if (result.error.kind === "validation") {
-        setFieldErrors(result.error.errors);
+      if (res.error.kind === "validation") {
+        setPreviewErr(res.error.errors.map((e) => `${e.field}: ${e.message}`).join(", "));
       } else {
-        setError(result.error.message);
+        setPreviewErr(res.error.message);
       }
     }
   };
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
-      <div className="mb-6">
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/characters">← Back</Link>
-        </Button>
-      </div>
+    <main className="mx-auto max-w-[768px] px-4 py-8">
+      <PageHeader title="Import Character" backTo="/characters" />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Import Character</CardTitle>
-          <CardDescription>
-            Upload a V2 PNG character card. The avatar and metadata will be extracted automatically.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+      {step === "pick" ? (
+        <div className="space-y-4">
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              processFile(e.dataTransfer.files?.[0] ?? null);
+            }}
+            className={`flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 text-center cursor-pointer hover:bg-surface transition-colors ${
+              dragOver ? "border-brand bg-brand/5" : ""
+            }`}
+          >
+            <Upload className="size-10 text-3" />
             <div>
-              <label htmlFor="png" className="mb-2 block text-sm font-medium">
-                Character card PNG
-              </label>
-              <input
-                id="png"
-                type="file"
-                accept="image/png"
-                onChange={handleFileChange}
-                disabled={importMutation.isPending}
-                className="border-input bg-background text-sm file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-secondary/80 block w-full rounded-md border px-3 py-2"
-              />
+              <p className="text-headline">Choose a PNG character card</p>
+              <p className="text-2 text-sm mt-1">
+                V2 or V3 card. Max 5 MB. Drag &amp; drop or click to browse.
+              </p>
             </div>
+            <input
+              type="file"
+              accept="image/png"
+              onChange={handleFileChange}
+              disabled={importMutation.isPending}
+              className="hidden"
+            />
+            <Button type="button" variant="outline" size="sm" asChild>
+              <span>Browse files</span>
+            </Button>
+          </div>
+          {previewErr ? <ErrorBanner message={previewErr} /> : null}
+        </div>
+      ) : null}
 
-            {error ? <p className="text-destructive text-sm">{error}</p> : null}
-
-            {fieldErrors.length > 0 ? (
-              <ul className="text-destructive space-y-1 text-sm">
-                {fieldErrors.map((e, i) => (
-                  <li key={i}>
-                    <span className="font-mono text-xs">{e.field || "(root)"}</span>: {e.message}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-
-            <div className="flex justify-end gap-2">
-              <Button asChild variant="ghost" type="button">
-                <Link to="/characters">Cancel</Link>
-              </Button>
-              <Button type="submit" disabled={!file || importMutation.isPending}>
-                {importMutation.isPending ? "Importing..." : "Import"}
-              </Button>
+      {step === "preview" && preview ? (
+        <div className="space-y-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setStep("pick");
+              setPreview(null);
+            }}
+          >
+            <ArrowLeft className="size-4" /> Choose different file
+          </Button>
+          {/* Preview card */}
+          <div className="rounded-xl border bg-card p-6">
+            <div className="flex gap-4">
+              {file ? (
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt={preview.preview.name}
+                  className="size-32 aspect-[3/4] rounded-lg object-cover border shrink-0"
+                />
+              ) : null}
+              <div className="min-w-0">
+                <h2 className="text-headline">{preview.preview.name}</h2>
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {preview.preview.creator ? (
+                    <Badge variant="secondary" className="text-xs">
+                      {preview.preview.creator}
+                    </Badge>
+                  ) : null}
+                  <Badge variant="outline" className="text-xs">
+                    {preview.preview.spec} v{preview.preview.specVersion}
+                  </Badge>
+                </div>
+                {preview.preview.descriptionExcerpt ? (
+                  <p className="text-2 text-sm mt-2 line-clamp-2">
+                    {preview.preview.descriptionExcerpt}
+                  </p>
+                ) : null}
+                {preview.preview.tags.length > 0 ? (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {preview.preview.tags.map((t) => (
+                      <Badge key={t} variant="secondary" className="text-[10px]">
+                        {t}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="text-2 text-xs mt-2">
+                  {preview.preview.greetingCount} greetings · {preview.preview.lorebookEntryCount}{" "}
+                  lorebook entries
+                </div>
+              </div>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+          {preview.preview.warnings.length > 0 ? (
+            <div className="rounded-lg border bg-warning/10 p-3 text-xs text-warning space-y-1">
+              {preview.preview.warnings.map((w, i) => (
+                <p key={i}>
+                  <AlertTriangle className="size-3 inline" /> {w}
+                </p>
+              ))}
+            </div>
+          ) : null}
+          {preview.duplicateOf ? (
+            <div className="rounded-lg border bg-warning/10 p-3 text-sm">
+              <p>
+                <strong className="text-warning">Duplicate detected:</strong> You already have a
+                character named <strong>{preview.duplicateOf.name}</strong>. Importing will create a
+                separate copy.
+              </p>
+            </div>
+          ) : null}
+          {previewErr ? <ErrorBanner message={previewErr} /> : null}
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setStep("pick");
+                setPreview(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleImport} disabled={importMutation.isPending}>
+              {importMutation.isPending ? "Importing…" : "Import"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -4,6 +4,7 @@ import {
   createRootRouteWithContext,
   redirect,
   useLocation,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
@@ -12,6 +13,10 @@ import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import TanstackQueryProvider from "../integrations/tanstack-query/root-provider";
 
 import Header from "@/components/Header";
+import { EmptyState } from "@/components/common/EmptyState";
+import { TriangleAlert, Compass } from "lucide-react";
+import { MobileTabBar } from "@/components/common/MobileTabBar";
+import { DemoBanner } from "@/components/common/DemoBanner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import appCss from "@/styles.css?url";
@@ -19,24 +24,61 @@ import appCss from "@/styles.css?url";
 import type { QueryClient } from "@tanstack/react-query";
 import { RichTextSettingsProvider } from "@/lib/richtext-settings";
 import { getSession } from "@/lib/auth.functions";
+import type { User } from "@/db/schema";
 
 interface MyRouterContext {
   queryClient: QueryClient;
-  user?: { id: string; name: string; email: string };
+  user?: User;
+}
+
+function RootErrorComponent({ error }: ErrorComponentProps) {
+  return (
+    <div className="flex h-dvh items-center justify-center bg-base">
+      <EmptyState icon={TriangleAlert} title="Something went wrong" description={error.message}>
+        <button
+          onClick={() => window.location.reload()}
+          className="text-sm text-brand hover:underline cursor-pointer"
+        >
+          Reload page
+        </button>
+      </EmptyState>
+    </div>
+  );
+}
+
+function RootNotFoundComponent() {
+  return (
+    <div className="flex h-dvh items-center justify-center bg-base">
+      <EmptyState
+        icon={Compass}
+        title="Page not found"
+        description="The page you're looking for doesn't exist."
+      />
+    </div>
+  );
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
+  errorComponent: RootErrorComponent,
+  notFoundComponent: RootNotFoundComponent,
   beforeLoad: async ({ location }) => {
-    const publicPaths = ["/", "/signin", "/signup"];
+    const publicPrefixes = ["/", "/signin", "/signup"];
     const isApiRoute = location.pathname.startsWith("/api/");
     const isAssetRoute = location.pathname.startsWith("/assets/");
-    if (publicPaths.includes(location.pathname) || isApiRoute || isAssetRoute) return;
+    if (
+      publicPrefixes.some(
+        (p) => location.pathname === p || location.pathname.startsWith(`${p}/`),
+      ) ||
+      isApiRoute ||
+      isAssetRoute
+    )
+      return;
 
     const session = await getSession();
     if (!session) {
       throw redirect({ to: "/signin" });
     }
-    return { user: session.user as { id: string; name: string; email: string } };
+    return { user: session.user as User };
   },
   head: () => ({
     meta: [
@@ -62,13 +104,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const { queryClient } = Route.useRouteContext();
+  const { queryClient, user } = Route.useRouteContext();
   const location = useLocation();
-  // The chat page renders its own fixed header (back chevron / character
-  // name / gear). Hide the global nav there so it doesn't double up.
   const hideGlobalHeader =
-    /^\/chats\/[^/]+/.test(location.pathname) ||
-    /^\/c\/(?!new$)[^/]+$/.test(location.pathname);
+    /^\/chats\/[^/]+/.test(location.pathname) || /^\/c\/(?!new$)[^/]+$/.test(location.pathname);
+  const isAuthed = Boolean(user);
   return (
     <html lang="en">
       <head>
@@ -77,9 +117,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <TooltipProvider>
           {!hideGlobalHeader && <Header />}
-          <RichTextSettingsProvider>
-            <TanstackQueryProvider queryClient={queryClient}>{children}</TanstackQueryProvider>
-          </RichTextSettingsProvider>
+          {!hideGlobalHeader && isAuthed && user?.role !== "admin" && <DemoBanner />}
+          <div className={isAuthed && !hideGlobalHeader ? "pb-20 md:pb-0" : undefined}>
+            <RichTextSettingsProvider>
+              <TanstackQueryProvider queryClient={queryClient}>{children}</TanstackQueryProvider>
+            </RichTextSettingsProvider>
+          </div>
+          {isAuthed && !hideGlobalHeader && <MobileTabBar />}
           <Toaster />
           <TanStackDevtools
             config={{

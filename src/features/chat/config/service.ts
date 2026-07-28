@@ -15,9 +15,7 @@ export function hasProvider(userId: string, db: DB = defaultDb): boolean {
   return !!settings?.defaultProviderId;
 }
 
-function toSettingsView(
-  settings: ReturnType<typeof getUserSettings> | null,
-): UserSettingsView {
+function toSettingsView(settings: ReturnType<typeof getUserSettings> | null): UserSettingsView {
   return {
     defaultProviderId: settings?.defaultProviderId ?? null,
     defaultPresetId: settings?.defaultPresetId ?? null,

@@ -1,15 +1,28 @@
-import { useMemo, useCallback, useEffect } from "react";
+import { useMemo, useCallback } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 
-import { useChatMessages, useSwipeMessage, useDeleteMessage, useEditMessage, useImpersonateMessage } from "@/hooks/useChats";
+import {
+  useChatMessages,
+  useSwipeMessage,
+  useDeleteMessage,
+  useEditMessage,
+  useImpersonateMessage,
+} from "@/hooks/useChats";
 import { useChatConfig } from "@/hooks/useChatConfig";
 import { useCharacter } from "@/hooks/useCharacters";
 import { useBackground } from "@/hooks/useBackgrounds";
 import { usePersona } from "@/hooks/usePersonas";
 import { computeActivePathFromMessages } from "@/features/chat/tree/active-path";
 import { useChatGeneration } from "../hooks/use-chat-generation";
-import { useChatUiStore, selectActivePlaceholderId, selectSettingsOpen, selectPortraitOpen, selectSceneOpen, selectLightboxSrc } from "../chat-store";
+import {
+  useChatUiStore,
+  selectActivePlaceholderId,
+  selectSettingsOpen,
+  selectPortraitOpen,
+  selectSceneOpen,
+  selectLightboxSrc,
+} from "../chat-store";
 import { useChatMacros } from "../macros";
 import { fileToDownscaledDataUrl } from "../custom-image";
 import { ChatBackground } from "../components/chat-background";
@@ -89,15 +102,15 @@ export function ChatPage() {
 
   const handleSwipe = useCallback(
     (messageLocalId: number, direction: "next" | "prev") => {
-      if (isBusy) return;
+      if (isBusy || generation.isStreaming) return;
       swipeMutation.mutate({ chatId, messageLocalId, direction });
     },
-    [chatId, isBusy, swipeMutation],
+    [chatId, isBusy, generation.isStreaming, swipeMutation],
   );
 
   const handleRegenerate = useCallback(
     (messageLocalId: number) => {
-      if (isBusy) return;
+      if (isBusy || generation.isStreaming) return;
       generation.start("regenerate", { messageLocalId });
     },
     [isBusy, generation],
@@ -105,26 +118,26 @@ export function ChatPage() {
 
   const handleEdit = useCallback(
     (messageLocalId: number, content: string) => {
-      if (isBusy) return;
+      if (isBusy || generation.isStreaming) return;
       const final = substitute(content);
       editMutation.mutate({ chatId, messageLocalId, content: final });
     },
-    [chatId, isBusy, substitute, editMutation],
+    [chatId, isBusy, generation.isStreaming, substitute, editMutation],
   );
 
   const handleDelete = useCallback(
     (messageLocalId: number) => {
-      if (isBusy) return;
+      if (isBusy || generation.isStreaming) return;
       deleteMsgMutation.mutate(
         { chatId, messageLocalId },
         { onSuccess: () => toast.success("Message deleted") },
       );
     },
-    [chatId, isBusy, deleteMsgMutation],
+    [chatId, isBusy, generation.isStreaming, deleteMsgMutation],
   );
 
   const handleImpersonate = useCallback(() => {
-    if (isBusy) return;
+    if (isBusy || generation.isStreaming) return;
     impersonateMutation.mutate(
       { chatId },
       {
@@ -136,7 +149,7 @@ export function ChatPage() {
         },
       },
     );
-  }, [chatId, isBusy, impersonateMutation, setInput]);
+  }, [chatId, isBusy, generation.isStreaming, impersonateMutation, setInput]);
 
   const handleUploadImage = useCallback(
     async (file: File) => {
@@ -154,60 +167,22 @@ export function ChatPage() {
     clearCustomImage(chatId);
   }, [chatId, clearCustomImage]);
 
-  useEffect(() => {
-    const isTypingTarget = (el: EventTarget | null) => {
-      if (!(el instanceof HTMLElement)) return false;
-      const tag = el.tagName;
-      return (
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        tag === "SELECT" ||
-        el.isContentEditable
-      );
-    };
-
-    const lastAssistant = [...activePath].reverse().find((e) => e.message.role === "assistant");
-
-    const handler = (e: KeyboardEvent) => {
-      const mod = e.ctrlKey || e.metaKey;
-      const typing = isTypingTarget(e.target);
-
-      if (!mod || !e.shiftKey) return;
-      if (isBusy) return;
-
-      if (e.key.toLowerCase() === "r" && !typing) {
-        if (!lastAssistant) return;
-        e.preventDefault();
-        generation.start("regenerate", { messageLocalId: lastAssistant.message.localId });
-        return;
-      }
-
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        if (typing) return;
-        if (!lastAssistant) return;
-        e.preventDefault();
-        handleSwipe(lastAssistant.message.localId, e.key === "ArrowLeft" ? "prev" : "next");
-        return;
-      }
-
-      if (e.key.toLowerCase() === "i") {
-        e.preventDefault();
-        handleImpersonate();
-        return;
-      }
-    };
-
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [activePath, isBusy, generation, handleSwipe, handleImpersonate]);
-
   if (configLoading || messagesLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
+      <div
+        className="fixed inset-0 flex items-center justify-center"
+        style={{ background: "var(--bg-base)" }}
+      >
         <div className="flex items-center gap-2 text-[--sea-ink-soft]">
           <span className="size-2 rounded-full bg-[--lagoon] animate-bounce" />
-          <span className="size-2 rounded-full bg-[--lagoon] animate-bounce" style={{ animationDelay: "150ms" }} />
-          <span className="size-2 rounded-full bg-[--lagoon] animate-bounce" style={{ animationDelay: "300ms" }} />
+          <span
+            className="size-2 rounded-full bg-[--lagoon] animate-bounce"
+            style={{ animationDelay: "150ms" }}
+          />
+          <span
+            className="size-2 rounded-full bg-[--lagoon] animate-bounce"
+            style={{ animationDelay: "300ms" }}
+          />
         </div>
       </div>
     );
@@ -215,14 +190,20 @@ export function ChatPage() {
 
   if (!config) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center" style={{ background: "var(--bg-base)" }}>
+      <div
+        className="fixed inset-0 flex items-center justify-center"
+        style={{ background: "var(--bg-base)" }}
+      >
         <p className="text-red-400">Chat not found.</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-dvh w-full flex-col overflow-hidden" style={{ background: "var(--bg-base)" }}>
+    <div
+      className="flex h-dvh w-full flex-col overflow-hidden"
+      style={{ background: "var(--bg-base)" }}
+    >
       <ChatBackground src={backgroundUrl} fallbackSrc={characterAvatarUrl} />
 
       <ChatHeader
@@ -277,7 +258,9 @@ export function ChatPage() {
       <ImageLightbox
         src={lightboxSrc}
         open={lightboxSrc !== null}
-        onOpenChange={(open) => { if (!open) closeLightbox(); }}
+        onOpenChange={(open) => {
+          if (!open) closeLightbox();
+        }}
       />
 
       <Composer
@@ -292,11 +275,7 @@ export function ChatPage() {
         characterName={config.character.name}
       />
 
-      <SettingsPanel
-        chatId={chatId}
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-      />
+      <SettingsPanel chatId={chatId} open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }

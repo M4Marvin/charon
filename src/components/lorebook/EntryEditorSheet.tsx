@@ -1,31 +1,36 @@
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { ChipInput } from "@/components/common/ChipInput";
 import { useCreateLorebookEntry, useUpdateLorebookEntry } from "@/hooks/useLorebooks";
-import type { LoreEntry } from "@/db/schema";
+import { ApproxTokenCounter } from "@/lib/st-core/shared";
+import type { LoreEntryListItem } from "@/server/fns/lorebooks";
 
-export type EntryEditorDialogProps =
+const counter = new ApproxTokenCounter();
+
+type Props =
   | { lorebookId: string; mode: "create"; onClose: () => void }
-  | { lorebookId: string; mode: "edit"; entry: LoreEntry; onClose: () => void };
+  | { lorebookId: string; mode: "edit"; entry: LoreEntryListItem; onClose: () => void };
 
-export function EntryEditorDialog(props: EntryEditorDialogProps) {
+export function EntryEditorSheet(props: Props) {
   const { lorebookId, mode, onClose } = props;
   const initial = props.mode === "edit" ? props.entry : null;
 
   const [comment, setComment] = useState(initial?.data.comment ?? "");
+  const [keys, setKeys] = useState(initial?.data.key ?? ([] as string[]));
+  const [secondary, setSecondary] = useState(initial?.data.keysecondary ?? ([] as string[]));
   const [content, setContent] = useState(initial?.data.content ?? "");
-  const [keysText, setKeysText] = useState((initial?.data.key ?? []).join(", "));
-  const [secondaryText, setSecondaryText] = useState((initial?.data.keysecondary ?? []).join(", "));
   const [order, setOrder] = useState(String(initial?.data.order ?? 100));
   const [disable, setDisable] = useState(initial?.data.disable ?? false);
   const [constant, setConstant] = useState(initial?.data.constant ?? false);
@@ -35,15 +40,15 @@ export function EntryEditorDialog(props: EntryEditorDialogProps) {
   const updateMutation = useUpdateLorebookEntry(lorebookId);
   const isPending = createMutation.isPending || updateMutation.isPending;
 
+  const tokenCount = useMemo(() => counter.count(content), [content]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-
     if (!content.trim()) {
       setError("Content is required.");
       return;
     }
-    const keys = parseKeys(keysText);
     if (keys.length === 0 && !constant) {
       setError("At least one keyword is required (or set Constant).");
       return;
@@ -53,31 +58,32 @@ export function EntryEditorDialog(props: EntryEditorDialogProps) {
       setError("Order must be a number.");
       return;
     }
-    const secondary = parseKeys(secondaryText);
-
     try {
       if (mode === "create") {
+        const orderNum = Number.parseInt(order, 10);
         await createMutation.mutateAsync({
           comment: comment.trim(),
           content: content.trim(),
           key: keys,
           keysecondary: secondary,
-        });
-      } else {
-        const nextData = {
-          ...initial!.data,
-          comment: comment.trim(),
-          content: content.trim(),
-          key: keys,
-          keysecondary: secondary,
-          order: orderNum,
+          order: Number.isNaN(orderNum) ? undefined : orderNum,
           disable,
           constant,
-        };
+        });
+      } else {
         await updateMutation.mutateAsync({
           entryId: initial!.id,
-          data: nextData,
           uid: initial!.uid,
+          data: {
+            ...initial!.data,
+            comment: comment.trim(),
+            content: content.trim(),
+            key: keys,
+            keysecondary: secondary,
+            order: orderNum,
+            disable,
+            constant,
+          },
         });
       }
       onClose();
@@ -87,16 +93,16 @@ export function EntryEditorDialog(props: EntryEditorDialogProps) {
   };
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{mode === "create" ? "New Entry" : "Edit Entry"}</DialogTitle>
-          <DialogDescription>
+    <Sheet open onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{mode === "create" ? "New Entry" : "Edit Entry"}</SheetTitle>
+          <SheetDescription>
             Keywords activate the entry. Content is injected into the prompt when matched.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
+          </SheetDescription>
+        </SheetHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <div className="space-y-1.5">
             <Label htmlFor="comment">Comment</Label>
             <Input
               id="comment"
@@ -106,40 +112,29 @@ export function EntryEditorDialog(props: EntryEditorDialogProps) {
               disabled={isPending}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="keys">Keywords (comma-separated)</Label>
-            <Input
-              id="keys"
-              value={keysText}
-              onChange={(e) => setKeysText(e.target.value)}
-              placeholder="dragon, wyrm, drake"
-              disabled={isPending}
-            />
+          <div className="space-y-1.5">
+            <Label>Keywords</Label>
+            <ChipInput value={keys} onChange={setKeys} placeholder="dragon, wyrm, drake" />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="secondary">Secondary keys (optional)</Label>
-            <Input
-              id="secondary"
-              value={secondaryText}
-              onChange={(e) => setSecondaryText(e.target.value)}
-              placeholder="fire, scales"
-              disabled={isPending}
-            />
+          <div className="space-y-1.5">
+            <Label>Secondary keys</Label>
+            <ChipInput value={secondary} onChange={setSecondary} placeholder="fire, scales" />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="content">Content</Label>
             <Textarea
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="The lore text injected into the prompt..."
-              disabled={isPending}
               rows={6}
               required
+              disabled={isPending}
             />
+            <p className="text-3 text-xs text-right">~{tokenCount} tokens</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="order">Order</Label>
               <Input
                 id="order"
@@ -150,47 +145,26 @@ export function EntryEditorDialog(props: EntryEditorDialogProps) {
             </div>
             <div className="space-y-2 pt-6">
               <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={constant}
-                  onChange={(e) => setConstant(e.target.checked)}
-                  disabled={isPending}
-                  className="size-4"
-                />
+                <Switch checked={constant} onCheckedChange={setConstant} disabled={isPending} />
                 Constant (always active)
               </label>
               <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={disable}
-                  onChange={(e) => setDisable(e.target.checked)}
-                  disabled={isPending}
-                  className="size-4"
-                />
+                <Switch checked={disable} onCheckedChange={setDisable} disabled={isPending} />
                 Disabled
               </label>
             </div>
           </div>
-
-          {error ? <p className="text-destructive text-sm">{error}</p> : null}
-
-          <DialogFooter>
+          {error ? <p className="text-danger text-sm">{error}</p> : null}
+          <SheetFooter>
             <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
               Cancel
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Saving..." : mode === "create" ? "Create" : "Save"}
+              {isPending ? "Saving…" : mode === "create" ? "Create" : "Save"}
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
-}
-
-function parseKeys(text: string): string[] {
-  return text
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
 }

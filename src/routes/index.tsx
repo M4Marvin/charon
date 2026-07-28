@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { Bot, BookOpen, Puzzle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSession } from "@/lib/auth.functions";
 
 const features = [
@@ -28,56 +26,19 @@ const features = [
 ];
 
 export const Route = createFileRoute("/")({
+  beforeLoad: async () => {
+    const session = await getSession();
+    if (session) throw redirect({ to: "/c" });
+  },
   component: LandingPage,
 });
 
 function LandingPage() {
-  const [userName, setUserName] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getSession()
-      .then((session) => {
-        setUserName(session?.user?.name ?? null);
-      })
-      .catch(() => {
-        setUserName(null);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex min-h-[80vh] items-center justify-center">
-        <p className="text-muted-foreground text-sm">Loading...</p>
-      </div>
-    );
-  }
-
-  if (userName) {
-    return (
-      <main className="mx-auto flex min-h-[80vh] max-w-3xl flex-col items-center justify-center px-4 text-center">
-        <h1 className="mb-3 text-3xl font-semibold tracking-tight">Welcome back, {userName}</h1>
-        <p className="text-muted-foreground mb-8 max-w-md text-sm">
-          Jump back into your conversations or start a new one.
-        </p>
-        <div className="flex gap-4">
-          <Button asChild size="lg">
-            <Link to="/c">Go to Chats</Link>
-          </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link to="/c/new">New Chat</Link>
-          </Button>
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <main className="mx-auto max-w-5xl px-4 py-16">
+    <main className="mx-auto max-w-[1200px] px-4 py-20">
       <div className="mb-16 text-center">
-        <h1 className="mb-4 text-4xl font-bold tracking-tight">Charon</h1>
-        <p className="text-muted-foreground mx-auto mb-8 max-w-2xl text-lg">
+        <h1 className="text-display mb-4">Charon</h1>
+        <p className="text-2 mx-auto mb-8 max-w-2xl text-base">
           A modern AI character chat platform. Import V2 character cards, configure lorebooks,
           connect any LLM provider, and have immersive conversations with branching narratives.
         </p>
@@ -85,23 +46,19 @@ function LandingPage() {
           <Button asChild size="lg">
             <Link to="/signup">Get Started</Link>
           </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link to="/signin">Sign In</Link>
+          <Button asChild variant="ghost" size="lg">
+            <Link to="/signin">Sign in</Link>
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="mx-auto grid max-w-2xl gap-4 sm:grid-cols-3">
         {features.map((f) => (
-          <Card key={f.title}>
-            <CardHeader>
-              <f.icon className="mb-2 size-8 text-primary" />
-              <CardTitle>{f.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription className="text-sm">{f.description}</CardDescription>
-            </CardContent>
-          </Card>
+          <div key={f.title} className="rounded-xl border bg-card p-6 text-center">
+            <f.icon className="mx-auto mb-3 size-8 text-brand" />
+            <h3 className="text-headline mb-1">{f.title}</h3>
+            <p className="text-2 text-sm">{f.description}</p>
+          </div>
         ))}
       </div>
     </main>

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db as defaultDb, type DB } from "@/db";
 import {
   chats,
@@ -12,6 +12,7 @@ import {
 export type ChatWithCharacter = Chat & {
   characterName: string;
   characterImagePath: string | null;
+  lastMessagePreview: string | null;
 };
 
 export type CreateChatInput = {
@@ -39,13 +40,23 @@ export function listChats(userId: string, db: DB = defaultDb): ChatWithCharacter
     .from(chats)
     .leftJoin(characters, eq(chats.characterId, characters.id))
     .where(eq(chats.userId, userId))
-    .orderBy(asc(chats.createdAt))
+    .orderBy(desc(chats.updatedAt))
     .all();
-  return rows.map((r) => ({
-    ...r.chat,
-    characterName: r.characterName ?? "Unknown",
-    characterImagePath: r.characterImagePath ?? null,
-  }));
+  return rows.map((r) => {
+    const previewRow = db
+      .select({ content: chatMessages.content })
+      .from(chatMessages)
+      .where(eq(chatMessages.chatId, r.chat.id))
+      .orderBy(desc(chatMessages.localId))
+      .limit(1)
+      .get();
+    return {
+      ...r.chat,
+      characterName: r.characterName ?? "Unknown",
+      characterImagePath: r.characterImagePath ?? null,
+      lastMessagePreview: previewRow?.content.slice(0, 140) ?? null,
+    };
+  });
 }
 
 export function getChat(userId: string, id: string, db: DB = defaultDb): Chat {
@@ -81,6 +92,8 @@ export function createChat(input: CreateChatInput, db: DB = defaultDb): Chat {
 }
 
 export function deleteChat(userId: string, id: string, db: DB = defaultDb): void {
+  // Verify ownership before deleting anything
+  getChat(userId, id, db);
   // Manually delete messages first since FK enforcement is off in dev.db
   db.delete(chatMessages).where(eq(chatMessages.chatId, id)).run();
   const result = db
@@ -116,6 +129,10 @@ export function getMessage(
     .get();
 }
 
+function touchChat(chatId: string, db: DB = defaultDb): void {
+  db.update(chats).set({ updatedAt: new Date() }).where(eq(chats.id, chatId)).run();
+}
+
 export function insertMessage(
   userId: string,
   chatId: string,
@@ -124,6 +141,7 @@ export function insertMessage(
 ): void {
   getChat(userId, chatId, db);
   db.insert(chatMessages).values(msg).run();
+  touchChat(chatId, db);
 }
 
 export function updateMessage(
@@ -138,6 +156,7 @@ export function updateMessage(
     .set(patch)
     .where(and(eq(chatMessages.chatId, chatId), eq(chatMessages.localId, localId)))
     .run();
+  touchChat(chatId, db);
 }
 
 export function updateChat(
@@ -187,4 +206,5 @@ export function deleteMessages(
   db.delete(chatMessages)
     .where(and(eq(chatMessages.chatId, chatId), inArray(chatMessages.localId, localIds)))
     .run();
+  touchChat(chatId, db);
 }

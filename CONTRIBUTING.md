@@ -119,7 +119,7 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 
 ## Tests
 
-412 tests across 23 files. All pass. Uses in-memory SQLite for integration tests. Run with `pnpm run test`.
+422 tests across 24 files. All pass. Uses in-memory SQLite for integration tests. Run with `pnpm run test`.
 
 ## Known typecheck noise
 
@@ -203,3 +203,56 @@ For Radix `Avatar`, the `<AvatarFallback>` handles the error state automatically
 ### Custom (ephemeral) images
 
 User-uploaded images in chat (via `CustomImagePanel`) bypass the API entirely — they're stored as Base64 data URIs in a Zustand store and rendered directly as `<img src={dataUrl}>`.
+
+## Design system
+
+### Tokens
+
+All UI uses a dark-first "deep ocean" palette defined in `src/styles.css`.
+
+| Token | Usage |
+|---|---|
+| `--bg-base` / `--bg-surface` / `--bg-raised` | App background, card/panel surface, popover/elevated surface |
+| `--text-1` / `--text-2` / `--text-3` | Primary (14.5:1), secondary, captions-only (never body text) |
+| `--brand` / `--brand-strong` | Primary actions, focus, links |
+| `--danger` / `--warning` / `--success` / `--info` | Status only, always paired with icon |
+
+Use Tailwind `@utility` classes: `text-1`, `text-2`, `text-3`, `bg-base`, `bg-surface`, `bg-raised`, `text-brand`, `text-brand-strong`, `focus-ring`.
+
+Type scale: `text-display` (Fraunces, page titles), `text-title` (section headers), `text-headline` (card/dialog titles). Body/small/caption use stock `text-sm`/`text-xs`.
+
+### Five canonical feedback states (all pages must use)
+
+| State | Component | Import |
+|---|---|---|
+| Loading (any) | `SkeletonRows` / `SkeletonCardGrid` / `SkeletonForm` | `@/components/common/Skeletons` |
+| Empty | `EmptyState` | `@/components/common/EmptyState` |
+| Error (query) | `ErrorBanner` | `@/components/common/ErrorBanner` |
+| Error (mutation) | `toast.error()` from `sonner` | — |
+| Destructive confirm | `ConfirmDialog` | `@/components/common/ConfirmDialog` |
+
+### Banned patterns
+
+- `window.confirm()` — use `ConfirmDialog`
+- Native `<select>` — use `ui/select`
+- Native `<input type="checkbox">` — use `ui/switch`
+- `role="link"` wrappers around buttons — use real `Link` + sibling menus
+- Hardcoded `text-white/` / `bg-white/` — use semantic tokens
+- New one-off loaders, spinners, or "Loading..." text — use `Skeletons`
+
+### Common components
+
+Live in `src/components/common/`. All follow shadcn conventions (spread props, `data-slot`, `cn()` utility).
+
+| Component | Purpose |
+|---|---|
+| `PageHeader` | Page title + subtitle + back button + action slot |
+| `RowActionsMenu` | `⋯` dropdown (40px target) |
+| `RelativeTime` | SSR-safe relative timestamp |
+| `ChipInput` | Token input (Enter/comma commit, backspace remove) |
+| `TagFilterPopover` | Checkbox filter popover with search + counts |
+| `ModelCombobox` | Searchable model picker with free-text + refresh |
+| `SectionNav` | Scroll-spy section navigation (left rail desktop, chip scroller mobile) |
+| `SaveBar` | Sticky bottom save bar with dirty-state awareness |
+| `DemoBanner` | Dismissible info banner for demo users |
+| `MobileTabBar` | Fixed bottom navigation (Chats · Characters · New · Lorebooks) |

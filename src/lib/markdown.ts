@@ -371,10 +371,7 @@ function addCopyToCodeBlocks(html: string): string {
     const btn = document.createElement("button");
     btn.className = "code-copy-button";
     btn.textContent = "Copy";
-    btn.setAttribute(
-      "onclick",
-      "var c=this.nextElementSibling.querySelector('code')?.textContent||'';navigator.clipboard.writeText(c);this.textContent='Copied!';setTimeout(function(){this.textContent='Copy'}.bind(this),2000)",
-    );
+    btn.setAttribute("data-code-copy", "");
 
     pre.replaceWith(wrapper);
     wrapper.appendChild(btn);

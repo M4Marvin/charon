@@ -31,6 +31,7 @@ export function useUpdateUserSettings() {
     }): Promise<UserSettingsView> => updateUserSettings({ data: input }),
     onSuccess: (data) => {
       queryClient.setQueryData(userSettingsKeys.current(), data);
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }

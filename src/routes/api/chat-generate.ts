@@ -7,14 +7,14 @@ import {
   loadGenerationContext,
   buildPromptFromContext,
 } from "@/features/chat/generation/prompt-context";
+import { createLogger } from "@/features/logging";
+
+const log = createLogger("api:chat-generate");
 
 export const Route = createFileRoute("/api/chat-generate")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        // eslint-disable-next-line no-console
-        console.log("[chat-generate] handler invoked");
-
         try {
           const { user } = await getSession();
 
@@ -33,11 +33,9 @@ export const Route = createFileRoute("/api/chat-generate")({
           const chatId = (data.chatId ?? "") as string;
           const messageLocalId = data.assistantMessageLocalId as number | undefined;
 
-          // eslint-disable-next-line no-console
-          console.log("[chat-generate] request", {
+          log.debug("chat-generate request", {
             chatId,
             assistantMessageLocalId: messageLocalId,
-            keys: Object.keys(body),
           });
 
           if (!chatId || messageLocalId == null) {
@@ -51,12 +49,7 @@ export const Route = createFileRoute("/api/chat-generate")({
             );
           }
 
-          const ctx = await loadGenerationContext(
-            user.id,
-            user.name,
-            chatId,
-            messageLocalId,
-          );
+          const ctx = await loadGenerationContext(user.id, user.name, chatId, messageLocalId);
 
           const promptResult = buildPromptFromContext(ctx.prompt);
 
@@ -83,22 +76,9 @@ export const Route = createFileRoute("/api/chat-generate")({
 
           return toServerSentEventsResponse(stream);
         } catch (err) {
-          let rawBody = "";
-          try {
-            const clone = request.clone();
-            rawBody = await clone.text();
-          } catch {
-            // body already consumed
-          }
-
-          // eslint-disable-next-line no-console
-          console.error("[chat-generate] ERROR", {
+          log.error("chat-generate error", {
             message: err instanceof Error ? err.message : String(err),
             name: err instanceof Error ? err.name : undefined,
-            stack: err instanceof Error ? err.stack : undefined,
-            rawBody: rawBody.substring(0, 500),
-            cause: (err as any)?.cause,
-            status: (err as any)?.status,
           });
 
           return new Response(

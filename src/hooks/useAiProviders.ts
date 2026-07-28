@@ -42,6 +42,7 @@ export function useCreateAiProvider() {
     }): Promise<{ id: string }> => createAiProvider({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: aiProviderKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }
@@ -60,6 +61,7 @@ export function useUpdateAiProvider() {
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: aiProviderKeys.all });
       void queryClient.invalidateQueries({ queryKey: aiProviderKeys.detail(variables.id) });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }
@@ -72,6 +74,7 @@ export function useDeleteAiProvider() {
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: aiProviderKeys.all });
       queryClient.removeQueries({ queryKey: aiProviderKeys.detail(variables.id) });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }
