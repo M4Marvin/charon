@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Upload, ArrowLeft, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -30,6 +30,7 @@ function NewCharacterPage() {
   const [previewB64, setPreviewB64] = useState<string>("");
   const [previewErr, setPreviewErr] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const importMutation = useImportCharacter();
 
   const processFile = async (f: File | null) => {
@@ -89,6 +90,7 @@ function NewCharacterPage() {
       {step === "pick" ? (
         <div className="space-y-4">
           <div
+            onClick={() => fileInputRef.current?.click()}
             onDragOver={(e) => {
               e.preventDefault();
               setDragOver(true);
@@ -111,14 +113,23 @@ function NewCharacterPage() {
               </p>
             </div>
             <input
+              ref={fileInputRef}
               type="file"
               accept="image/png"
               onChange={handleFileChange}
               disabled={importMutation.isPending}
               className="hidden"
             />
-            <Button type="button" variant="outline" size="sm" asChild>
-              <span>Browse files</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+            >
+              Browse files
             </Button>
           </div>
           {previewErr ? <ErrorBanner message={previewErr} /> : null}
