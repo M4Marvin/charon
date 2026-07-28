@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { db as defaultDb, type DB } from "@/db";
 import {
   chats,
@@ -13,6 +13,7 @@ export type ChatWithCharacter = Chat & {
   characterName: string;
   characterImagePath: string | null;
   lastMessagePreview: string | null;
+  userMessageCount: number;
 };
 
 export type CreateChatInput = {
@@ -50,11 +51,17 @@ export function listChats(userId: string, db: DB = defaultDb): ChatWithCharacter
       .orderBy(desc(chatMessages.localId))
       .limit(1)
       .get();
+    const userCount = db
+      .select({ c: count() })
+      .from(chatMessages)
+      .where(and(eq(chatMessages.chatId, r.chat.id), eq(chatMessages.role, "user")))
+      .get();
     return {
       ...r.chat,
       characterName: r.characterName ?? "Unknown",
       characterImagePath: r.characterImagePath ?? null,
       lastMessagePreview: previewRow?.content.slice(0, 140) ?? null,
+      userMessageCount: userCount?.c ?? 0,
     };
   });
 }
