@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Shield, Search } from "lucide-react";
+import { Shield, Search, Copy, UserPlus } from "lucide-react";
 import { getSession } from "@/lib/auth.functions";
 import { authClient } from "@/lib/auth-client";
 import {
@@ -10,6 +10,7 @@ import {
   useSetUserRole,
   useBanUser,
   useUnbanUser,
+  useInviteUser,
   type UserListItem,
 } from "@/hooks/useUsers";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -19,7 +20,17 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
 import { RelativeTime } from "@/components/common/RelativeTime";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -43,12 +54,21 @@ function AdminUsersPage() {
   const setRole = useSetUserRole();
   const banUser = useBanUser();
   const unbanUser = useUnbanUser();
+  const inviteUser = useInviteUser();
   const { data: session } = authClient.useSession();
   const myId = session?.user?.id;
   const [search, setSearch] = useState("");
   const [delId, setDelId] = useState<string | null>(null);
   const [banTarget, setBanTarget] = useState<UserListItem | null>(null);
   const [banReason, setBanReason] = useState("");
+  const [banExpiry, setBanExpiry] = useState("");
+
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteUsername, setInviteUsername] = useState("");
+  const [invitePassword, setInvitePassword] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteDone, setInviteDone] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (!users) return [];
@@ -116,6 +136,21 @@ function AdminUsersPage() {
             </button>
           ))}
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setInviteDone(false);
+            setInviteError(null);
+            setInviteUsername("");
+            setInvitePassword("");
+            setInviteName("");
+            setInviteOpen(true);
+          }}
+        >
+          <UserPlus className="size-4" />
+          Invite
+        </Button>
       </div>
 
       {!users || users.length === 0 ? (
@@ -151,6 +186,7 @@ function AdminUsersPage() {
                     onBan={() => {
                       setBanTarget(u);
                       setBanReason("");
+                      setBanExpiry("");
                     }}
                     onUnban={() => unbanUser.mutate({ userId: u.id })}
                   />
@@ -252,6 +288,7 @@ function AdminUsersPage() {
               value={banReason}
               onChange={(e) => setBanReason(e.target.value)}
             />
+            <Input type="date" value={banExpiry} onChange={(e) => setBanExpiry(e.target.value)} />
           </div>
         }
         confirmLabel="Ban"
@@ -260,11 +297,16 @@ function AdminUsersPage() {
         onConfirm={() => {
           if (!banTarget) return;
           banUser.mutate(
-            { userId: banTarget.id, reason: banReason || undefined },
+            {
+              userId: banTarget.id,
+              reason: banReason || undefined,
+              expiresAt: banExpiry ? new Date(banExpiry) : undefined,
+            },
             {
               onSuccess: () => {
                 toast.success("User banned");
                 setBanTarget(null);
+                setBanExpiry("");
               },
               onError: (err) =>
                 toast.error(`Ban failed: ${err instanceof Error ? err.message : String(err)}`),
@@ -272,6 +314,141 @@ function AdminUsersPage() {
           );
         }}
       />
+      <Dialog open={inviteOpen} onOpenChange={(o) => !o && setInviteOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite User</DialogTitle>
+            <DialogDescription>
+              {inviteDone
+                ? "User created. Copy the credentials before closing."
+                : "Create a new user account. The user can sign in immediately."}
+            </DialogDescription>
+          </DialogHeader>
+          {inviteDone ? (
+            <div className="space-y-3">
+              <div className="rounded-lg border p-3 bg-muted/50">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-2 text-xs">Username</p>
+                    <p className="text-sm font-mono">{inviteUsername}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 shrink-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(inviteUsername);
+                      toast.success("Username copied");
+                    }}
+                    aria-label="Copy username"
+                  >
+                    <Copy className="size-3.5" />
+                  </Button>
+                </div>
+              </div>
+              <div className="rounded-lg border p-3 bg-muted/50">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-2 text-xs">Password</p>
+                    <p className="text-sm font-mono">{invitePassword}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 shrink-0"
+                    onClick={() => {
+                      navigator.clipboard.writeText(invitePassword);
+                      toast.success("Password copied");
+                    }}
+                    aria-label="Copy password"
+                  >
+                    <Copy className="size-3.5" />
+                  </Button>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  onClick={() => {
+                    setInviteOpen(false);
+                    setInviteDone(false);
+                  }}
+                >
+                  Done
+                </Button>
+              </DialogFooter>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="invite-username">Username</Label>
+                  <Input
+                    id="invite-username"
+                    value={inviteUsername}
+                    onChange={(e) => setInviteUsername(e.target.value)}
+                    placeholder="newuser"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="invite-password">Password</Label>
+                  <Input
+                    id="invite-password"
+                    type="text"
+                    value={invitePassword}
+                    onChange={(e) => setInvitePassword(e.target.value)}
+                    placeholder="Minimum 8 characters"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="invite-name">Display name (optional)</Label>
+                  <Input
+                    id="invite-name"
+                    value={inviteName}
+                    onChange={(e) => setInviteName(e.target.value)}
+                    placeholder={inviteUsername || "Display name"}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              {inviteError ? <p className="text-danger text-sm">{inviteError}</p> : null}
+              <DialogFooter>
+                <Button
+                  variant="ghost"
+                  onClick={() => setInviteOpen(false)}
+                  disabled={inviteUser.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={
+                    inviteUser.isPending ||
+                    !inviteUsername.trim() ||
+                    !invitePassword ||
+                    invitePassword.length < 8
+                  }
+                  onClick={async () => {
+                    setInviteError(null);
+                    try {
+                      await inviteUser.mutateAsync({
+                        username: inviteUsername.trim(),
+                        password: invitePassword,
+                        name: inviteName.trim() || inviteUsername.trim(),
+                      });
+                      setInviteDone(true);
+                    } catch (err) {
+                      setInviteError(err instanceof Error ? err.message : "Failed to create user");
+                    }
+                  }}
+                >
+                  {inviteUser.isPending ? "Creating…" : "Create User"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

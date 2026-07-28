@@ -40,11 +40,12 @@ export function useSetUserRole() {
 export function useBanUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { userId: string; reason?: string }) => {
+    mutationFn: async (input: { userId: string; reason?: string; expiresAt?: Date }) => {
       const { error } = await authClient.admin.banUser({
         userId: input.userId,
         banReason: input.reason,
-      });
+        banExpiresAt: input.expiresAt,
+      } as any);
       if (error) throw new Error(error.message ?? "Failed to ban user");
     },
     onSuccess: () => {
