@@ -29,6 +29,7 @@ import {
   type PresetListItem,
 } from "@/hooks/usePresets";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
+import { useGlobalAiConfig, useUpdateGlobalAiConfig } from "@/hooks/useGlobalAiConfig";
 import { ProviderDialog } from "@/components/ai/ProviderDialog";
 import { PresetDialog } from "@/components/preset/PresetDialog";
 import { authClient } from "@/lib/auth-client";
@@ -446,45 +447,55 @@ function PresetsSection() {
 }
 
 function DemoAiConfigSection() {
+  const { data: config, isLoading, error } = useGlobalAiConfig();
+  const updateMutation = useUpdateGlobalAiConfig();
+
   const [baseUrl, setBaseUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [defaultModel, setDefaultModel] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const { getGlobalAiConfig } = await import("@/server/fns/admin");
-        const config = await getGlobalAiConfig();
-        setBaseUrl(config.baseUrl);
-        setApiKey(config.apiKey);
-        setDefaultModel(config.defaultModel ?? "");
-      } catch {
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  const handleSave = useCallback(async () => {
-    setSaving(true);
-    try {
-      const { updateGlobalAiConfig } = await import("@/server/fns/admin");
-      await updateGlobalAiConfig({ data: { baseUrl, apiKey, defaultModel } });
-      toast.success("Demo AI provider updated");
-    } catch {
-      toast.error("Failed to update");
-    } finally {
-      setSaving(false);
+    if (config) {
+      setBaseUrl(config.baseUrl);
+      setApiKey(config.apiKey);
+      setDefaultModel(config.defaultModel ?? "");
     }
-  }, [baseUrl, apiKey, defaultModel]);
+  }, [config]);
 
-  if (loading) {
+  const handleSave = useCallback(() => {
+    updateMutation.mutate(
+      { baseUrl, apiKey, defaultModel },
+      {
+        onSuccess: () => toast.success("Demo AI provider updated"),
+        onError: (e) =>
+          toast.error(
+            `Failed to update: ${e instanceof Error ? e.message : String(e)}`,
+          ),
+      },
+    );
+  }, [baseUrl, apiKey, defaultModel, updateMutation]);
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Spinner />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-medium">Demo AI Provider</h2>
+          <p className="text-muted-foreground text-xs">
+            All demo users share this provider. Changes take effect immediately.
+          </p>
+        </div>
+        <div className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Failed to load config: {error instanceof Error ? error.message : String(error)}
+        </div>
+      </section>
     );
   }
 
@@ -522,8 +533,8 @@ function DemoAiConfigSection() {
             placeholder="gpt-4o-mini"
           />
         </div>
-        <Button onClick={handleSave} disabled={saving} className="w-full">
-          {saving ? "Saving..." : "Save"}
+        <Button onClick={handleSave} disabled={updateMutation.isPending} className="w-full">
+          {updateMutation.isPending ? "Saving..." : "Save"}
         </Button>
       </div>
     </section>
