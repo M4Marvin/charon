@@ -15,7 +15,7 @@ export type CharacterCardItem = Pick<
 
 export type CharacterDetail = Character & {
   chatCount: number;
-  totalMessageCount: number;
+  userMessageCount: number;
 };
 
 export type CreateCharacterInput = {
@@ -82,17 +82,20 @@ export function getCharacterDetail(
     .select({
       character: characters,
       chatCount: sql<number>`count(distinct ${chats.id})`.as("chatCount"),
-      totalMessageCount: sql<number>`count(${chatMessages.localId})`.as("totalMessageCount"),
+      userMessageCount: sql<number>`count(${chatMessages.localId})`.as("userMessageCount"),
     })
     .from(characters)
     .leftJoin(chats, eq(chats.characterId, characters.id))
-    .leftJoin(chatMessages, eq(chatMessages.chatId, chats.id))
+    .leftJoin(
+      chatMessages,
+      and(eq(chatMessages.chatId, chats.id), eq(chatMessages.role, "user")),
+    )
     .where(and(eq(characters.id, id), eq(characters.userId, userId)))
     .groupBy(characters.id)
     .get();
 
   if (!row) throw new Error("Character not found");
-  return { ...row.character, chatCount: row.chatCount, totalMessageCount: row.totalMessageCount };
+  return { ...row.character, chatCount: row.chatCount, userMessageCount: row.userMessageCount };
 }
 
 export function createCharacter(input: CreateCharacterInput, db: DB = defaultDb): Character {

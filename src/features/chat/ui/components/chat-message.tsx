@@ -57,7 +57,6 @@ export function ChatMessage({
   const [editContent, setEditContent] = useState(message.content);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [expanded, setExpanded] = useState(false);
 
   const editRef = useRef<HTMLTextAreaElement>(null);
 
@@ -95,7 +94,6 @@ export function ChatMessage({
 
   const name = isAssistant ? characterName : isUser ? userName : "";
   const displayContent = isStreaming ? streamingText || message.content : message.content;
-  const isLongMessage = displayContent.length > 600;
 
   if (isSystem) {
     return (
@@ -232,26 +230,10 @@ export function ChatMessage({
                 ))}
               </div>
             ) : (
-              <div>
-                <div
-                  className={cn(
-                    "text-sm leading-6",
-                    !expanded && isLongMessage && "line-clamp-[10]",
-                  )}
-                >
-                  <RichText content={displayContent} />
-                  {isStreaming && streamingText && (
-                    <span className="inline-block w-[2px] h-[1.15em] bg-[--lagoon] animate-pulse align-baseline ml-0.5" />
-                  )}
-                </div>
-                {isLongMessage && !isStreaming && (
-                  <button
-                    type="button"
-                    onClick={() => setExpanded((v) => !v)}
-                    className="mt-1 text-[11px] text-[--lagoon]/70 hover:text-[--lagoon] transition-colors"
-                  >
-                    {expanded ? "Show less" : "Show more"}
-                  </button>
+              <div className="text-sm leading-6">
+                <RichText content={displayContent} />
+                {isStreaming && streamingText && (
+                  <span className="inline-block w-[2px] h-[1.15em] bg-[--lagoon] animate-pulse align-baseline ml-0.5" />
                 )}
               </div>
             )}

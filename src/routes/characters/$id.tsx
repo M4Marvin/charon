@@ -158,8 +158,8 @@ function CharacterDetailPage() {
               />
               <StatChip
                 icon={MessageCircle}
-                value={character.totalMessageCount}
-                label={character.totalMessageCount === 1 ? "message" : "messages"}
+                value={character.userMessageCount}
+                label={character.userMessageCount === 1 ? "turn" : "turns"}
               />
               <StatChip
                 icon={Calendar}
