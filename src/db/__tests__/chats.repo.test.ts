@@ -437,6 +437,10 @@ describe("chats repo", () => {
         },
         db,
       );
+      const start = Date.now();
+      while (Date.now() === start.valueOf()) {
+        /* busy-wait ~1ms */
+      }
       repoCreateChat({ id: "chat-new", userId, characterId: charId, title: "Newer" }, db);
       repoInsertMessage(
         userId,

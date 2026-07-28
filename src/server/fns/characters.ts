@@ -16,11 +16,13 @@ import { validateId } from "@/server/validators";
 import { diskPathFromStored } from "@/server/uploads";
 import {
   importCharacterCard,
+  previewCharacterCard,
   type ImportError,
   type ImportResult,
+  type PreviewResult,
 } from "@/server/services/character/importer";
 
-export type { ImportError, ImportResult };
+export type { ImportError, ImportResult, PreviewResult };
 
 export type CharacterListItem = Pick<
   Character,
@@ -100,6 +102,25 @@ export const importCharacter = createServerFn({ method: "POST" })
 
     return importCharacterCard(data.pngBase64, user.id);
   });
+
+export const previewCharacter = createServerFn({ method: "POST" })
+  .validator(validateImportInput)
+  .handler(
+    async ({
+      data,
+    }): Promise<{ ok: true; data: PreviewResult } | { ok: false; error: ImportError }> => {
+      const { user } = await getSession();
+
+      if (!isAdmin(user)) {
+        return {
+          ok: false,
+          error: { kind: "demo_restricted", message: "Demo users cannot import characters." },
+        };
+      }
+
+      return previewCharacterCard(data.pngBase64, user.id);
+    },
+  );
 
 export const updateCharacter = createServerFn({ method: "POST", strict: { output: false } })
   .validator(validateUpdateInput)
