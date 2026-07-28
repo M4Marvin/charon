@@ -1,27 +1,19 @@
 import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  useDeleteLorebookEntry,
-  useLorebook,
-  useLorebookEntries,
-  useToggleLoreEntry,
-} from "@/hooks/useLorebooks";
-import { EntryEditorDialog } from "@/components/lorebook/EntryEditorDialog";
-import type { LoreEntry } from "@/db/schema";
+import { PageHeader } from "@/components/common/PageHeader";
+import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { StatusDot } from "@/components/common/StatusDot";
+import { RowActionsMenu } from "@/components/common/RowActionsMenu";
+import { useDeleteLorebook, useLorebook, useLorebookEntries, useToggleLoreEntry } from "@/hooks/useLorebooks";
+import { EntryEditorSheet } from "@/components/lorebook/EntryEditorSheet";
+import type { LoreEntryListItem } from "@/server/fns/lorebooks";
 
-type DialogState = { kind: "closed" } | { kind: "create" } | { kind: "edit"; entry: LoreEntry };
+type DialogState = { kind: "closed" } | { kind: "create" } | { kind: "edit"; entry: LoreEntryListItem };
 
 export const Route = createFileRoute("/lorebooks/$id")({
   component: LorebookDetailPage,
@@ -31,173 +23,140 @@ function LorebookDetailPage() {
   const { id } = Route.useParams();
   const { data: lorebook, isLoading, error } = useLorebook(id);
   const { data: entries } = useLorebookEntries(id);
+  const deleteLb = useDeleteLorebook();
   const [dialog, setDialog] = useState<DialogState>({ kind: "closed" });
+  const [delOpen, setDelOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showFilter, setShowFilter] = useState<"all" | "on" | "off">("all");
+
+  if (isLoading) {
+    return (
+      <main className="mx-auto max-w-[1200px] px-4 py-8">
+        <PageHeader backTo="/lorebooks" />
+        <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" />)}</div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="mx-auto max-w-[1200px] px-4 py-8">
+        <PageHeader title="Lorebook" backTo="/lorebooks" />
+        <ErrorBanner message={(error as Error).message ?? "Failed to load lorebook"} />
+      </main>
+    );
+  }
+
+  if (!lorebook) {
+    return (
+      <main className="mx-auto max-w-[1200px] px-4 py-8">
+        <PageHeader title="Lorebook" backTo="/lorebooks" />
+        <ErrorBanner message="Lorebook not found." />
+      </main>
+    );
+  }
+
+  const entryList = entries ?? [];
+  const filtered = entryList.filter((e) => {
+    if (showFilter === "on") return !e.data.disable && !e.userDisabled;
+    if (showFilter === "off") return e.data.disable || e.userDisabled;
+    return true;
+  });
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <Button asChild variant="ghost" size="sm" className="mb-2 -ml-3">
-            <Link to="/lorebooks">← Back</Link>
-          </Button>
-          {isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading...</p>
-          ) : error ? (
-            <p className="text-destructive text-sm">Failed to load: {error.message}</p>
-          ) : lorebook ? (
-            <>
-              <h1 className="text-2xl font-semibold tracking-tight">{lorebook.name}</h1>
-              {lorebook.description ? (
-                <p className="text-muted-foreground text-sm">{lorebook.description}</p>
-              ) : null}
-              <div className="mt-2 flex items-center gap-2">
-                <Badge variant="secondary">
-                  {entries?.length ?? 0} {(entries?.length ?? 0) === 1 ? "entry" : "entries"}
-                </Badge>
-                <Badge variant="outline">
-                  depth {lorebook.config.depth} · scan {lorebook.config.scanDepth}
-                </Badge>
-              </div>
-            </>
-          ) : null}
+    <main className="mx-auto max-w-[1200px] px-4 py-8">
+      <PageHeader
+        title={lorebook.name}
+        backTo="/lorebooks"
+        subtitle={lorebook.description ?? undefined}
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">{entryList.length} {entryList.length === 1 ? "entry" : "entries"}</Badge>
+            <Badge variant="outline">depth {lorebook.config.depth} · scan {lorebook.config.scanDepth}</Badge>
+          </div>
+        }
+      />
+
+      <div className="mb-4 flex items-center gap-2">
+        <input
+          className="border bg-transparent rounded-md px-3 py-1.5 text-sm flex-1 max-w-sm"
+          placeholder="Search entries..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <div className="inline-flex rounded-md border">
+          {(["all", "on", "off"] as const).map((f) => (
+            <button key={f} type="button" onClick={() => setShowFilter(f)}
+              className={`px-3 py-1.5 text-xs ${showFilter === f ? "bg-brand/20 text-brand-strong font-medium" : "text-2 hover:text-1"}`}
+            >{f === "all" ? "All" : f === "on" ? "On" : "Off"}</button>
+          ))}
         </div>
-        <Button onClick={() => setDialog({ kind: "create" })}>New Entry</Button>
+        <Button size="sm" onClick={() => setDialog({ kind: "create" })}>New Entry</Button>
+        <RowActionsMenu
+          label="Lorebook actions"
+          items={[{ label: "Delete lorebook", destructive: true, onSelect: () => setDelOpen(true) }]}
+        />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Entries</CardTitle>
-          <CardDescription>
-            Each entry's keywords activate it; its content is injected when triggered.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!entries || entries.length === 0 ? (
-            <p className="text-muted-foreground py-6 text-center text-sm">
-              No entries yet. Click "New Entry" to add one.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">UID</TableHead>
-                  <TableHead>Comment</TableHead>
-                  <TableHead>Keys</TableHead>
-                  <TableHead className="w-16">Order</TableHead>
-                  <TableHead className="w-32">On</TableHead>
-                  <TableHead className="w-32 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="font-mono text-xs">{entry.uid}</TableCell>
-                    <TableCell className="line-clamp-1 max-w-md">
-                      {entry.data.comment || (
-                        <span className="text-muted-foreground italic">no comment</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="line-clamp-1 max-w-xs font-mono text-xs">
-                      {entry.data.key.join(", ") || (
-                        <span className="text-muted-foreground italic">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{entry.data.order}</TableCell>
-                    <TableCell>
-                      <EntryToggleCell lorebookId={id} entry={entry} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setDialog({ kind: "edit", entry })}
-                        >
-                          Edit
-                        </Button>
-                        <DeleteEntryButton lorebookId={id} entryId={entry.id} />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {entryList.length === 0 ? (
+        <p className="py-12 text-center text-2 text-sm">No entries yet. Click "New Entry" to add one.</p>
+      ) : filtered.length === 0 ? (
+        <p className="py-12 text-center text-2 text-sm">No entries match the current filter.</p>
+      ) : (
+        <div className="space-y-1">
+          {filtered.map((entry) => (
+            <EntryRow key={entry.id} lorebookId={id} entry={entry} onEdit={() => setDialog({ kind: "edit", entry })} />
+          ))}
+        </div>
+      )}
 
-      {dialog.kind === "create" ? (
-        <EntryEditorDialog
-          lorebookId={id}
-          mode="create"
-          onClose={() => setDialog({ kind: "closed" })}
-        />
-      ) : null}
-      {dialog.kind === "edit" ? (
-        <EntryEditorDialog
-          lorebookId={id}
-          mode="edit"
-          entry={dialog.entry}
-          onClose={() => setDialog({ kind: "closed" })}
-        />
-      ) : null}
+      {dialog.kind === "create" ? <EntryEditorSheet lorebookId={id} mode="create" onClose={() => setDialog({ kind: "closed" })} /> : null}
+      {dialog.kind === "edit" ? <EntryEditorSheet lorebookId={id} mode="edit" entry={dialog.entry} onClose={() => setDialog({ kind: "closed" })} /> : null}
+
+      <ConfirmDialog open={delOpen} onOpenChange={(o) => !o && setDelOpen(false)} title="Delete lorebook"
+        description="This will permanently delete this lorebook and all its entries. This action cannot be undone."
+        destructive loading={deleteLb.isPending}
+        onConfirm={() => { deleteLb.mutate({ id: lorebook.id }, { onSuccess: () => toast.success("Lorebook deleted"), onError: (err) => toast.error(`Delete failed: ${err instanceof Error ? err.message : String(err)}`) }); }} />
     </main>
   );
 }
 
-function DeleteEntryButton({ lorebookId, entryId }: { lorebookId: string; entryId: string }) {
-  const deleteMutation = useDeleteLorebookEntry(lorebookId);
-  return (
-    <Button
-      size="sm"
-      variant="ghost"
-      disabled={deleteMutation.isPending}
-      onClick={() => {
-        if (window.confirm("Delete this entry?")) {
-          deleteMutation.mutate({ entryId });
-        }
-      }}
-    >
-      Delete
-    </Button>
-  );
-}
-
-// Per-entry enable toggle. Effective on = !data.disable && !userDisabled.
-// AND semantics: if the author disabled the entry, the per-user switch is
-// locked off (it can't re-enable a globally-disabled entry).
-function EntryToggleCell({
-  lorebookId,
-  entry,
-}: {
-  lorebookId: string;
-  entry: LoreEntry & { userDisabled: boolean };
-}) {
+function EntryRow({ lorebookId, entry, onEdit }: { lorebookId: string; entry: LoreEntryListItem; onEdit: () => void }) {
   const toggle = useToggleLoreEntry(lorebookId);
   const authorDisabled = entry.data.disable === true;
   const userDisabled = entry.userDisabled === true;
   const effectiveOn = !authorDisabled && !userDisabled;
-
-  if (authorDisabled) {
-    return (
-      <div className="flex items-center gap-2">
-        <Switch checked={false} disabled aria-label="Disabled by author" />
-        <span className="text-muted-foreground text-xs">author</span>
-      </div>
-    );
-  }
+  const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="flex items-center gap-2">
-      <Switch
-        checked={effectiveOn}
-        disabled={toggle.isPending}
-        onCheckedChange={(checked) => toggle.mutate({ entryId: entry.id, disabled: !checked })}
-        aria-label={`Toggle ${entry.data.comment || `entry ${entry.uid}`}`}
-      />
-      <span className="text-muted-foreground text-xs">
-        {userDisabled ? "you" : effectiveOn ? "on" : "off"}
-      </span>
+    <div className="rounded-lg border bg-card">
+      <div className="flex items-center gap-3 px-4 py-3 min-h-14">
+        {authorDisabled ? <StatusDot tone="danger" label="Disabled by author" /> : userDisabled ? <StatusDot tone="muted" label="Disabled by you" /> : <StatusDot tone="success" label="Active" />}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm truncate">{entry.data.comment || `Entry ${entry.uid}`}</p>
+          {entry.data.key.length > 0 ? (
+            <div className="flex gap-1 mt-0.5">
+              {entry.data.key.slice(0, 3).map((k) => <Badge key={k} variant="secondary" className="text-[10px]">{k}</Badge>)}
+              {entry.data.key.length > 3 ? <span className="text-3 text-[10px]">+{entry.data.key.length - 3}</span> : null}
+            </div>
+          ) : null}
+        </div>
+        <Badge variant="outline" className="shrink-0 text-[10px] font-mono">{entry.data.order}</Badge>
+        <Switch
+          checked={effectiveOn}
+          disabled={toggle.isPending || authorDisabled}
+          onCheckedChange={(c) => toggle.mutate({ entryId: entry.id, disabled: !c })}
+        />
+        <button type="button" onClick={() => setExpanded(!expanded)} className="text-2 hover:text-1 shrink-0 size-8 flex items-center justify-center" aria-label={expanded ? "Collapse" : "Expand"}>
+          <span className={`transition-transform ${expanded ? "rotate-90" : ""}`}>▸</span>
+        </button>
+        <Button variant="ghost" size="sm" onClick={onEdit}>Edit</Button>
+      </div>
+      {expanded ? (
+        <div className="border-t px-4 py-3">
+          <p className="text-2 text-sm line-clamp-3">{entry.data.content}</p>
+        </div>
+      ) : null}
     </div>
   );
 }
