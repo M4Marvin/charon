@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 
 interface PageHeaderProps {
-  title: string;
+  title?: string;
   subtitle?: string;
   backTo?: string;
   actions?: React.ReactNode;
@@ -19,10 +19,12 @@ export function PageHeader({ title, subtitle, backTo, actions }: PageHeaderProps
           </Link>
         </Button>
       ) : null}
-      <div className="flex-1 min-w-0">
-        <h1 className="text-display">{title}</h1>
-        {subtitle ? <p className="text-2 text-sm">{subtitle}</p> : null}
-      </div>
+      {title ? (
+        <div className="flex-1 min-w-0">
+          <h1 className="text-display">{title}</h1>
+          {subtitle ? <p className="text-2 text-sm">{subtitle}</p> : null}
+        </div>
+      ) : <div className="flex-1" />}
       {actions ? <div className="flex items-center gap-2 shrink-0">{actions}</div> : null}
     </div>
   );
