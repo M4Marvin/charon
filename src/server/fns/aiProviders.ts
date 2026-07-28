@@ -19,7 +19,7 @@ export type AiProviderListItem = Omit<AiProvider, "apiKey" | "defaultHeaders"> &
 };
 
 function toListItem(row: AiProvider): AiProviderListItem {
-  const { apiKey, defaultHeaders, ...rest } = row;
+  const { apiKey, defaultHeaders: _defaultHeaders, ...rest } = row;
   return { ...rest, hasApiKey: apiKey.length > 0 };
 }
 
