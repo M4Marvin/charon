@@ -110,6 +110,9 @@ export const characters = sqliteTable(
     specVersion: text("spec_version").notNull().default("2.0"),
     imagePath: text("image_path"),
     tagline: text("tagline"),
+    creator: text("creator").notNull().default(""),
+    creatorNotes: text("creator_notes").notNull().default(""),
+    tags: text("tags", { mode: "json" }).$type<string[]>().notNull().default(sql`'[]'`),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -117,7 +120,11 @@ export const characters = sqliteTable(
       .notNull()
       .$defaultFn(() => new Date()),
   },
-  (table) => [index("characters_user_id_idx").on(table.userId)],
+  (table) => [
+    index("characters_user_id_idx").on(table.userId),
+    index("characters_user_updated_idx").on(table.userId, table.updatedAt),
+    index("characters_user_name_idx").on(table.userId, table.name),
+  ],
 );
 
 export const lorebooks = sqliteTable(

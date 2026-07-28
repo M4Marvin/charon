@@ -113,6 +113,20 @@
       "when": 1784157070676,
       "tag": "0015_character_fields_not_null",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1785265561445,
+      "tag": "0017_easy_doomsday",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1785265627102,
+      "tag": "0018_backfill-character-fields",
+      "breakpoints": true
     }
   ]
 }
