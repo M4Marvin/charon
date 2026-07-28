@@ -20,10 +20,11 @@ import appCss from "@/styles.css?url";
 import type { QueryClient } from "@tanstack/react-query";
 import { RichTextSettingsProvider } from "@/lib/richtext-settings";
 import { getSession } from "@/lib/auth.functions";
+import type { User } from "@/db/schema";
 
 interface MyRouterContext {
   queryClient: QueryClient;
-  user?: { id: string; name: string; email: string };
+  user?: User;
 }
 
 function RootErrorComponent({ error }: ErrorComponentProps) {
@@ -82,7 +83,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     if (!session) {
       throw redirect({ to: "/signin" });
     }
-    return { user: session.user as { id: string; name: string; email: string } };
+    return { user: session.user as User };
   },
   head: () => ({
     meta: [
