@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Search, SlidersHorizontal, X } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -234,7 +235,15 @@ function CharactersPage() {
                   onTagClick={addTag}
                   onDelete={(id, name) => {
                     if (window.confirm(`Delete character "${name}"?`)) {
-                      deleteMutation.mutate({ id });
+                      deleteMutation.mutate(
+                        { id },
+                        {
+                          onError: (err) =>
+                            toast.error(
+                              `Failed to delete: ${err instanceof Error ? err.message : String(err)}`,
+                            ),
+                        },
+                      );
                     }
                   }}
                 />

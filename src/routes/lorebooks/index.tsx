@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -90,7 +91,15 @@ function LorebooksPage() {
                   disabled={deleteMutation.isPending}
                   onClick={() => {
                     if (window.confirm(`Delete lorebook "${lb.name}"? This removes all entries.`)) {
-                      deleteMutation.mutate({ id: lb.id });
+                      deleteMutation.mutate(
+                        { id: lb.id },
+                        {
+                          onError: (err) =>
+                            toast.error(
+                              `Failed to delete: ${err instanceof Error ? err.message : String(err)}`,
+                            ),
+                        },
+                      );
                     }
                   }}
                 >

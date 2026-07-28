@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Copy, MessageSquareText, Telescope } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,8 +41,14 @@ function CharacterDetailPage() {
 
   const handleStartChat = async () => {
     if (!character || createChatMutation.isPending) return;
-    const result = await createChatMutation.mutateAsync({ characterId: character.id });
-    void navigate({ to: "/c/$id", params: { id: result.id } });
+    try {
+      const result = await createChatMutation.mutateAsync({ characterId: character.id });
+      void navigate({ to: "/c/$id", params: { id: result.id } });
+    } catch (err) {
+      toast.error(
+        `Failed to start chat: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   };
 
   return (
@@ -70,7 +77,13 @@ function CharacterDetailPage() {
               if (window.confirm(`Delete character "${character.name}"?`)) {
                 deleteMutation.mutate(
                   { id: character.id },
-                  { onSuccess: () => void navigate({ to: "/characters" }) },
+                  {
+                    onSuccess: () => void navigate({ to: "/characters" }),
+                    onError: (err) =>
+                      toast.error(
+                        `Failed to delete: ${err instanceof Error ? err.message : String(err)}`,
+                      ),
+                  },
                 );
               }
             }}

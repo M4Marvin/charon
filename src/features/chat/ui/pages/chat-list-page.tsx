@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useChats, useDeleteChat } from "@/hooks/useChats";
@@ -103,7 +104,15 @@ export function ChatListPage() {
                     onClick={(e) => {
                       e.preventDefault();
                       if (window.confirm("Delete this chat?")) {
-                        deleteChat.mutate({ id: chat.id });
+                        deleteChat.mutate(
+                          { id: chat.id },
+                          {
+                            onError: (err) =>
+                              toast.error(
+                                `Failed to delete: ${err instanceof Error ? err.message : String(err)}`,
+                              ),
+                          },
+                        );
                       }
                     }}
                     aria-label="Delete chat"

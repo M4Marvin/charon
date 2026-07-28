@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { useCharacters } from "@/hooks/useCharacters";
 import { useCreateChat } from "@/hooks/useChats";
 
@@ -14,8 +15,14 @@ export function NewChatPage() {
   const createChat = useCreateChat();
 
   const handleSelect = async (characterId: string) => {
-    const chat = await createChat.mutateAsync({ characterId });
-    navigate({ to: "/c/$id", params: { id: chat.id } });
+    try {
+      const chat = await createChat.mutateAsync({ characterId });
+      navigate({ to: "/c/$id", params: { id: chat.id } });
+    } catch (err) {
+      toast.error(
+        `Failed to create chat: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   };
 
   return (
