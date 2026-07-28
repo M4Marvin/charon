@@ -14,8 +14,6 @@ async function bootstrap() {
   }
 }
 
-void bootstrap();
-
 /**
  * Returns true if the user has admin role.
  */
@@ -32,6 +30,7 @@ export function isAdmin(user: { role?: string | null }): boolean {
  * Throws if no valid session exists.
  */
 export async function getSession() {
+  await bootstrap();
   const headers = getRequest().headers;
   const session = await auth.api.getSession({ headers });
   if (!session) throw new Error("Unauthorized");
@@ -44,6 +43,7 @@ export async function getSession() {
  * Must be called within a request context.
  */
 export async function tryGetSession() {
+  await bootstrap();
   const headers = getRequest().headers;
   return await auth.api.getSession({ headers });
 }
