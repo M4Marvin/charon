@@ -43,6 +43,13 @@ export function ModelCombobox({ providerId, value, onChange, disabled }: ModelCo
             setQuery(e.target.value);
             setOpen(true);
           }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && query) {
+              e.preventDefault();
+              onChange(query);
+              setOpen(false);
+            }
+          }}
           onFocus={() => providerId !== "" && setOpen(true)}
           placeholder={!providerId ? "Select a provider first" : "Enter or pick a model"}
           disabled={disabled || !providerId}
