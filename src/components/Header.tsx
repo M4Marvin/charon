@@ -70,7 +70,7 @@ export default function Header() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link to="/characters" search={{} as any}>New chat</Link>
+                    <Link to="/characters">New chat</Link>
                   </DropdownMenuItem>
                   {session.user.role === "admin" ? (
                     <>

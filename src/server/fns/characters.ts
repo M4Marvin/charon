@@ -42,9 +42,9 @@ const UpdateDataInput = type({
 });
 
 const SearchInput = type({
-  q: "string?",
-  tags: "string?",
-  sort: "string?",
+  "q?": "string",
+  "tags?": "string",
+  "sort?": "string",
   offset: "string > 0",
   limit: "string > 0",
 });

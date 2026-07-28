@@ -29,16 +29,18 @@ export function useCharacterSearch(params: {
 }) {
   return useInfiniteQuery({
     queryKey: characterKeys.search(params),
-    queryFn: ({ pageParam }) =>
-      searchCharacters({
+    queryFn: ({ pageParam }) => {
+      const tagsParam = params.tags?.length ? params.tags.join(",") : undefined;
+      return searchCharacters({
         data: {
-          q: params.q,
-          tags: params.tags?.join(","),
-          sort: params.sort,
+          ...(params.q ? { q: params.q } : {}),
+          ...(tagsParam ? { tags: tagsParam } : {}),
+          ...(params.sort ? { sort: params.sort } : {}),
           offset: String(pageParam),
           limit: String(PAGE_SIZE),
         },
-      }),
+      });
+    },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
       const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);

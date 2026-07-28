@@ -299,7 +299,7 @@ function CharactersPage() {
                 variant="outline"
                 onClick={() => {
                   setSearchInput("");
-                  navigate({ search: {} as any, replace: true });
+                  navigate({ search: (_prev) => ({}), replace: true });
                 }}
               >
                 Clear filters
