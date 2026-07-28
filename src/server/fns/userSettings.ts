@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 import { createServerFn } from "@tanstack/react-start";
-import { getSession, isAdmin } from "@/server/session";
+import { getSession } from "@/server/session";
 import {
   getUserSettings as repoGetUserSettings,
   upsertUserSettings as repoUpsertUserSettings,
@@ -57,7 +57,7 @@ export const updateUserSettings = createServerFn({ method: "POST", strict: { out
     const patch: UserSettingsPatch = {};
     if (data.defaultProviderId !== undefined) patch.defaultProviderId = data.defaultProviderId;
     if (data.defaultPresetId !== undefined) patch.defaultPresetId = data.defaultPresetId;
-    if (data.defaultSelectedModel !== undefined && isAdmin(user))
+    if (data.defaultSelectedModel !== undefined)
       patch.defaultSelectedModel = data.defaultSelectedModel;
     if (data.defaultPersonaId !== undefined) patch.defaultPersonaId = data.defaultPersonaId;
     if (data.systemPrompt !== undefined) patch.systemPrompt = data.systemPrompt;
