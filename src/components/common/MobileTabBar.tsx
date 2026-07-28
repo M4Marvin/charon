@@ -13,7 +13,7 @@ export function MobileTabBar() {
           <MessageCircle className="size-5" />
           Chats
         </Link>
-        <Link to="/characters" className={base} activeProps={{ className: `${base} ${active}` }}>
+        <Link to="/characters" search={{} as any} className={base} activeProps={{ className: `${base} ${active}` }}>
           <Users className="size-5" />
           Characters
         </Link>

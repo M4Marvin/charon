@@ -5,7 +5,6 @@ import {
   deleteCharacter,
   getCharacter,
   importCharacter,
-  listCharacters,
   searchCharacters,
   characterTagCounts,
   updateCharacter,
@@ -15,19 +14,11 @@ import {
 
 export const characterKeys = {
   all: ["characters"] as const,
-  list: () => [...characterKeys.all, "list"] as const,
   search: (params: { q?: string; tags?: string[]; sort?: string }) =>
     [...characterKeys.all, "search", params] as const,
   tagCounts: () => [...characterKeys.all, "tagCounts"] as const,
   detail: (id: string) => [...characterKeys.all, "detail", id] as const,
 };
-
-export function useCharacters() {
-  return useQuery({
-    queryKey: characterKeys.list(),
-    queryFn: () => listCharacters(),
-  });
-}
 
 const PAGE_SIZE = 60;
 

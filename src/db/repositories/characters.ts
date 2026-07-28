@@ -35,34 +35,6 @@ export function listCharacters(userId: string, db: DB = defaultDb): Character[] 
   return db.select().from(characters).where(eq(characters.userId, userId)).all();
 }
 
-export function listCharacterCards(userId: string, db: DB = defaultDb): CharacterCardItem[] {
-  const rows = db
-    .select({
-      character: characters,
-      chatCount: count(chats.id),
-    })
-    .from(characters)
-    .leftJoin(chats, eq(chats.characterId, characters.id))
-    .where(eq(characters.userId, userId))
-    .groupBy(characters.id)
-    .orderBy(desc(characters.updatedAt))
-    .all();
-  return rows.map((r) => ({
-    id: r.character.id,
-    name: r.character.name,
-    spec: r.character.spec,
-    specVersion: r.character.specVersion,
-    imagePath: r.character.imagePath,
-    tagline: r.character.tagline,
-    createdAt: r.character.createdAt,
-    updatedAt: r.character.updatedAt,
-    tags: r.character.data.tags,
-    creatorNotes: r.character.data.creator_notes,
-    creator: r.character.data.creator,
-    chatCount: r.chatCount,
-  }));
-}
-
 function escapeLike(pattern: string): string {
   return pattern.replace(/[%_\\]/g, "\\$&");
 }

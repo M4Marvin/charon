@@ -6,7 +6,6 @@ import {
   deleteCharacter as repoDelete,
   getCharacter as repoGet,
   getCharacterDetail as repoGetDetail,
-  listCharacterCards as repoListCards,
   searchCharacterCards as repoSearchCards,
   characterTagCounts as repoTagCounts,
   updateCharacter as repoUpdate,
@@ -91,13 +90,6 @@ function validateSearchInput(data: unknown): SearchParams {
 }
 
 // ── Server functions ────────────────────────────────────────────────────────
-
-export const listCharacters = createServerFn({ method: "GET" }).handler(
-  async (): Promise<CharacterListItem[]> => {
-    const { user } = await getSession();
-    return repoListCards(user.id);
-  },
-);
 
 export const getCharacter = createServerFn({ method: "GET", strict: { output: false } })
   .validator(validateId)

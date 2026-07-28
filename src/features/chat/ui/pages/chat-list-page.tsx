@@ -90,7 +90,7 @@ export function ChatListPage() {
         title="Chats"
         actions={
           <Button asChild size="sm" className="gap-1.5">
-            <Link to="/characters">
+            <Link to="/characters" search={{} as any}>
               <Plus className="size-4" />
               New Chat
             </Link>

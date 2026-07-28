@@ -3,7 +3,6 @@ import {
   createCharacter,
   deleteCharacter,
   getCharacter,
-  listCharacterCards,
   listCharacters,
   searchCharacterCards,
   characterTagCounts,
@@ -164,81 +163,6 @@ describe("characters repository", () => {
       const mine = listCharacters(userId, db);
       expect(mine).toHaveLength(1);
       expect(mine[0]?.id).toBe("char-1");
-    });
-  });
-
-  describe("listCharacterCards", () => {
-    it("returns empty array when user has no characters", () => {
-      expect(listCharacterCards(userId, db)).toEqual([]);
-    });
-
-    it("returns enriched fields from character data", () => {
-      const data = makeCharacterData({
-        tags: ["fantasy", "elf"],
-        creator_notes: "A creator note",
-        creator: "authorName",
-      });
-      createCharacter({ id: "char-1", userId, name: "Elara", data }, db);
-      const cards = listCharacterCards(userId, db);
-      expect(cards).toHaveLength(1);
-      const card = cards[0]!;
-      expect(card.tags).toEqual(["fantasy", "elf"]);
-      expect(card.creatorNotes).toBe("A creator note");
-      expect(card.creator).toBe("authorName");
-    });
-
-    it("returns chatCount of 0 when character has no chats", () => {
-      createCharacter({ id: "char-1", userId, name: "X", data: makeCharacterData() }, db);
-      const cards = listCharacterCards(userId, db);
-      expect(cards[0]!.chatCount).toBe(0);
-    });
-
-    it("returns correct chatCount when character has chats", () => {
-      createCharacter({ id: "char-1", userId, name: "X", data: makeCharacterData() }, db);
-      const now = new Date();
-      db.insert(chats)
-        .values({
-          id: "chat-1",
-          userId,
-          characterId: "char-1",
-          title: "C1",
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-      db.insert(chats)
-        .values({
-          id: "chat-2",
-          userId,
-          characterId: "char-1",
-          title: "C2",
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-      const cards = listCharacterCards(userId, db);
-      expect(cards[0]!.chatCount).toBe(2);
-    });
-
-    it("sorts by updatedAt descending", async () => {
-      createCharacter({ id: "char-1", userId, name: "Older", data: makeCharacterData() }, db);
-      await new Promise((r) => setTimeout(r, 10));
-      createCharacter({ id: "char-2", userId, name: "Newer", data: makeCharacterData() }, db);
-      const cards = listCharacterCards(userId, db);
-      expect(cards[0]!.name).toBe("Newer");
-      expect(cards[1]!.name).toBe("Older");
-    });
-
-    it("returns only the calling user's characters", () => {
-      const otherId = seedSecondUser(db);
-      createCharacter({ id: "char-1", userId, name: "mine", data: makeCharacterData() }, db);
-      createCharacter(
-        { id: "char-2", userId: otherId, name: "theirs", data: makeCharacterData() },
-        db,
-      );
-      const cards = listCharacterCards(userId, db);
-      expect(cards).toHaveLength(1);
-      expect(cards[0]!.id).toBe("char-1");
     });
   });
 

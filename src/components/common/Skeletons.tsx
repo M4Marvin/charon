@@ -12,7 +12,7 @@ export function SkeletonRows({ rows }: { rows: number }) {
 
 export function SkeletonCardGrid({ count }: { count: number }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {Array.from({ length: count }).map((_, i) => (
         <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
       ))}
