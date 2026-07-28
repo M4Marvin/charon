@@ -63,6 +63,110 @@ export function listCharacterCards(userId: string, db: DB = defaultDb): Characte
   }));
 }
 
+function escapeLike(pattern: string): string {
+  return pattern.replace(/[%_\\]/g, "\\$&");
+}
+
+export type SearchParams = {
+  q?: string;
+  tags?: string[];
+  sort?: "name-asc" | "chats-desc" | "updatedAt-desc";
+  offset: number;
+  limit: number;
+};
+
+export function searchCharacterCards(
+  userId: string,
+  opts: SearchParams,
+  db: DB = defaultDb,
+): { items: CharacterCardItem[]; total: number } {
+  const conditions: ReturnType<typeof sql>[] = [eq(characters.userId, userId)];
+
+  if (opts.q && opts.q.trim()) {
+    const q = `%${escapeLike(opts.q.trim())}%`;
+    conditions.push(
+      sql`(${characters.name} LIKE ${q} ESCAPE '\\'
+          OR ${characters.creator} LIKE ${q} ESCAPE '\\'
+          OR ${characters.creatorNotes} LIKE ${q} ESCAPE '\\'
+          OR ${characters.tagline} LIKE ${q} ESCAPE '\\')`,
+    );
+  }
+
+  if (opts.tags && opts.tags.length > 0) {
+    for (const tag of opts.tags) {
+      conditions.push(
+        sql`EXISTS (SELECT 1 FROM json_each(${characters.tags}) WHERE json_each.value = ${tag})`,
+      );
+    }
+  }
+
+  const where = and(...conditions) as ReturnType<typeof and>;
+
+  const totalRow = db
+    .select({ count: count() })
+    .from(characters)
+    .where(where)
+    .get();
+  const total = totalRow?.count ?? 0;
+
+  let orderBy;
+  switch (opts.sort) {
+    case "name-asc":
+      orderBy = sql`${characters.name} COLLATE NOCASE ASC`;
+      break;
+    case "chats-desc":
+      orderBy = desc(count(chats.id));
+      break;
+    default:
+      orderBy = desc(characters.updatedAt);
+  }
+
+  const rows = db
+    .select({
+      character: characters,
+      chatCount: count(chats.id),
+    })
+    .from(characters)
+    .leftJoin(chats, eq(chats.characterId, characters.id))
+    .where(where)
+    .groupBy(characters.id)
+    .orderBy(orderBy)
+    .limit(opts.limit)
+    .offset(opts.offset)
+    .all();
+
+  const items: CharacterCardItem[] = rows.map((r) => ({
+    id: r.character.id,
+    name: r.character.name,
+    spec: r.character.spec,
+    specVersion: r.character.specVersion,
+    imagePath: r.character.imagePath,
+    tagline: r.character.tagline,
+    createdAt: r.character.createdAt,
+    updatedAt: r.character.updatedAt,
+    tags: r.character.tags as string[],
+    creatorNotes: r.character.creatorNotes,
+    creator: r.character.creator,
+    chatCount: r.chatCount,
+  }));
+
+  return { items, total };
+}
+
+export function characterTagCounts(
+  userId: string,
+  db: DB = defaultDb,
+): { name: string; count: number }[] {
+  type Row = { name: string; count: number };
+  return db.all<Row>(
+    sql`SELECT json_each.value AS name, count(*) AS count
+        FROM characters, json_each(characters.tags)
+        WHERE characters.user_id = ${userId}
+        GROUP BY json_each.value
+        ORDER BY json_each.value`,
+  );
+}
+
 export function getCharacter(userId: string, id: string, db: DB = defaultDb): Character {
   const row = db
     .select()
@@ -98,6 +202,14 @@ export function getCharacterDetail(
   return { ...row.character, chatCount: row.chatCount, userMessageCount: row.userMessageCount };
 }
 
+export function derivedColumns(data: CharacterDataV2) {
+  return {
+    creator: data.creator ?? "",
+    creatorNotes: data.creator_notes ?? "",
+    tags: data.tags ?? [],
+  };
+}
+
 export function createCharacter(input: CreateCharacterInput, db: DB = defaultDb): Character {
   const now = new Date();
   const row = db
@@ -111,6 +223,7 @@ export function createCharacter(input: CreateCharacterInput, db: DB = defaultDb)
       tagline: input.tagline ?? null,
       spec: input.spec ?? "chara_card_v2",
       specVersion: input.specVersion ?? "2.0",
+      ...derivedColumns(input.data),
       createdAt: now,
       updatedAt: now,
     })
@@ -128,9 +241,10 @@ export function updateCharacter(
   >,
   db: DB = defaultDb,
 ): Character {
+  const derived = patch.data ? derivedColumns(patch.data) : {};
   const row = db
     .update(characters)
-    .set({ ...patch, updatedAt: new Date() })
+    .set({ ...patch, ...derived, updatedAt: new Date() })
     .where(and(eq(characters.id, id), eq(characters.userId, userId)))
     .returning()
     .get();

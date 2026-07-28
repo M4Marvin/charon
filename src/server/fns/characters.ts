@@ -7,8 +7,12 @@ import {
   getCharacter as repoGet,
   getCharacterDetail as repoGetDetail,
   listCharacterCards as repoListCards,
+  searchCharacterCards as repoSearchCards,
+  characterTagCounts as repoTagCounts,
   updateCharacter as repoUpdate,
+  type CharacterCardItem,
   type CharacterDetail,
+  type SearchParams,
 } from "@/db/repositories/characters";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import { getSession, isAdmin } from "@/server/session";
@@ -24,15 +28,9 @@ import {
 
 export type { ImportError, ImportResult, PreviewResult };
 
-export type CharacterListItem = Pick<
-  Character,
-  "id" | "name" | "spec" | "specVersion" | "imagePath" | "tagline" | "createdAt" | "updatedAt"
-> & {
-  tags: string[];
-  creatorNotes: string;
-  creator: string;
-  chatCount: number;
-};
+export type { CharacterCardItem };
+
+export type CharacterListItem = CharacterCardItem;
 
 // ── Validators (clean signatures, arktype under the hood) ───────────────────
 
@@ -42,6 +40,14 @@ const UpdateDataInput = type({
   id: "string > 0",
   data: "unknown",
   tagline: "string | null | undefined",
+});
+
+const SearchInput = type({
+  q: "string?",
+  tags: "string?",
+  sort: "string?",
+  offset: "string > 0",
+  limit: "string > 0",
 });
 
 function validateImportInput(data: unknown): { pngBase64: string } {
@@ -70,6 +76,18 @@ function validateUpdateDataInput(data: unknown): {
     throw new Error("Invalid update data input");
   }
   return result as { id: string; data: CharacterDataV2; tagline?: string | null };
+}
+
+function validateSearchInput(data: unknown): SearchParams {
+  const result = SearchInput(data);
+  if (result instanceof type.errors) throw new Error("Invalid search input");
+  return {
+    q: result.q,
+    tags: result.tags ? result.tags.split(",").filter(Boolean) : undefined,
+    sort: result.sort as SearchParams["sort"],
+    offset: Number(result.offset),
+    limit: Number(result.limit),
+  };
 }
 
 // ── Server functions ────────────────────────────────────────────────────────
@@ -166,3 +184,17 @@ export const deleteCharacter = createServerFn({ method: "POST" })
 
     return { id: data.id };
   });
+
+export const searchCharacters = createServerFn({ method: "GET" })
+  .validator(validateSearchInput)
+  .handler(async ({ data }) => {
+    const { user } = await getSession();
+    return repoSearchCards(user.id, data);
+  });
+
+export const characterTagCounts = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const { user } = await getSession();
+    return repoTagCounts(user.id);
+  },
+);

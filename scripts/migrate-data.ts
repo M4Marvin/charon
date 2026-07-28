@@ -24,6 +24,7 @@ import {
   personas,
   userSettings,
 } from "@/db/schema";
+import { derivedColumns } from "@/db/repositories/characters";
 import {
   parseCharacterCard,
   validateCharacterCard,
@@ -281,6 +282,7 @@ async function migrateCharacters(
           imagePath: avatarPath,
           spec,
           specVersion,
+          ...derivedColumns(data),
           createdAt: now,
           updatedAt: now,
         })

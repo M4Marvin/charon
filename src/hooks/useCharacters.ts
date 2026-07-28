@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import type { Character } from "@/db/schema";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import {
@@ -6,6 +6,8 @@ import {
   getCharacter,
   importCharacter,
   listCharacters,
+  searchCharacters,
+  characterTagCounts,
   updateCharacter,
   updateCharacterData,
   type ImportResult,
@@ -14,6 +16,9 @@ import {
 export const characterKeys = {
   all: ["characters"] as const,
   list: () => [...characterKeys.all, "list"] as const,
+  search: (params: { q?: string; tags?: string[]; sort?: string }) =>
+    [...characterKeys.all, "search", params] as const,
+  tagCounts: () => [...characterKeys.all, "tagCounts"] as const,
   detail: (id: string) => [...characterKeys.all, "detail", id] as const,
 };
 
@@ -21,6 +26,43 @@ export function useCharacters() {
   return useQuery({
     queryKey: characterKeys.list(),
     queryFn: () => listCharacters(),
+  });
+}
+
+const PAGE_SIZE = 60;
+
+export function useCharacterSearch(params: {
+  q?: string;
+  tags?: string[];
+  sort?: "name-asc" | "chats-desc" | "updatedAt-desc";
+}) {
+  return useInfiniteQuery({
+    queryKey: characterKeys.search(params),
+    queryFn: ({ pageParam }) =>
+      searchCharacters({
+        data: {
+          q: params.q,
+          tags: params.tags?.join(","),
+          sort: params.sort,
+          offset: String(pageParam),
+          limit: String(PAGE_SIZE),
+        },
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);
+      return loaded < lastPage.total ? loaded : undefined;
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useCharacterTagCounts() {
+  return useQuery({
+    queryKey: characterKeys.tagCounts(),
+    queryFn: () => characterTagCounts(),
+    staleTime: 60_000,
   });
 }
 

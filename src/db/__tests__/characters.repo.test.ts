@@ -5,11 +5,15 @@ import {
   getCharacter,
   listCharacterCards,
   listCharacters,
+  searchCharacterCards,
+  characterTagCounts,
+  derivedColumns,
   updateCharacter,
 } from "@/db/repositories/characters";
 import { makeCharacterData } from "@/db/__tests__/character-data";
 import { makeTestDb, seedSecondUser, seedTestUser, type TestDb } from "@/db/__tests__/helpers";
 import { chats } from "@/db/schema";
+import type { CharacterDataV2 } from "@/lib/st-core/character";
 
 describe("characters repository", () => {
   let db: TestDb;
@@ -300,6 +304,261 @@ describe("characters repository", () => {
     it("throws when deleting another user's character", () => {
       const otherId = seedSecondUser(db);
       expect(() => deleteCharacter(otherId, "char-1", db)).toThrow("Character not found");
+    });
+  });
+
+  describe("derivedColumns", () => {
+    it("extracts creator, creator_notes, tags from data", () => {
+      const data = makeCharacterData({
+        creator: "author",
+        creator_notes: "notes",
+        tags: ["a", "b"],
+      });
+      expect(derivedColumns(data)).toEqual({
+        creator: "author",
+        creatorNotes: "notes",
+        tags: ["a", "b"],
+      });
+    });
+
+    it("defaults missing fields to empty strings / array", () => {
+      const minimal = makeCharacterData({
+        creator: undefined,
+        creator_notes: undefined,
+        tags: undefined,
+      } as Partial<CharacterDataV2>);
+      expect(derivedColumns(minimal).creator).toBe("");
+      expect(derivedColumns(minimal).creatorNotes).toBe("");
+      expect(derivedColumns(minimal).tags).toEqual([]);
+    });
+  });
+
+  describe("createCharacter with derivedColumns", () => {
+    it("populates denormalized columns on write", () => {
+      const data = makeCharacterData({
+        creator: "author",
+        creator_notes: "notes",
+        tags: ["fantasy"],
+      });
+      const row = createCharacter({ id: "char-1", userId, name: "Test", data }, db);
+      expect(row.creator).toBe("author");
+      expect(row.creatorNotes).toBe("notes");
+      expect(row.tags).toEqual(["fantasy"]);
+    });
+  });
+
+  describe("updateCharacter with derivedColumns", () => {
+    it("re-derives columns when data is present in patch", () => {
+      const data = makeCharacterData({ creator: "old" });
+      createCharacter({ id: "char-1", userId, name: "Test", data }, db);
+
+      const newData = makeCharacterData({ creator: "new", tags: ["elf"] });
+      updateCharacter(userId, "char-1", { data: newData, name: newData.name }, db);
+
+      const updated = getCharacter(userId, "char-1", db);
+      expect(updated.creator).toBe("new");
+      expect(updated.tags).toEqual(["elf"]);
+    });
+
+    it("does not touch columns when data is absent from patch", () => {
+      const data = makeCharacterData({ creator: "original" });
+      createCharacter({ id: "char-1", userId, name: "OldName", data }, db);
+      const before = getCharacter(userId, "char-1", db);
+
+      updateCharacter(userId, "char-1", { name: "NewName" }, db);
+
+      const after = getCharacter(userId, "char-1", db);
+      expect(after.name).toBe("NewName");
+      expect(after.creator).toBe(before.creator);
+    });
+  });
+
+  describe("searchCharacterCards", () => {
+    it("returns empty array when user has no characters", () => {
+      const result = searchCharacterCards(userId, { offset: 0, limit: 10 }, db);
+      expect(result.items).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it("matches name with case-insensitive LIKE", () => {
+      const data = makeCharacterData({ name: "Elara Vance" });
+      createCharacter({ id: "char-1", userId, name: "Elara Vance", data }, db);
+      const result = searchCharacterCards(userId, { q: "elara", offset: 0, limit: 10 }, db);
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]!.name).toBe("Elara Vance");
+    });
+
+    it("matches creator", () => {
+      const data = makeCharacterData({ creator: "authorName" });
+      createCharacter({ id: "char-1", userId, name: "X", data }, db);
+      const result = searchCharacterCards(userId, { q: "author", offset: 0, limit: 10 }, db);
+      expect(result.items).toHaveLength(1);
+    });
+
+    it("matches creator_notes", () => {
+      const data = makeCharacterData({ creator_notes: "special notes here" });
+      createCharacter({ id: "char-1", userId, name: "X", data }, db);
+      const result = searchCharacterCards(userId, { q: "special", offset: 0, limit: 10 }, db);
+      expect(result.items).toHaveLength(1);
+    });
+
+    it("filters by single tag (AND semantics with one tag)", () => {
+      const data = makeCharacterData({ tags: ["fantasy"] });
+      createCharacter({ id: "char-1", userId, name: "A", data }, db);
+      const result = searchCharacterCards(userId, { tags: ["fantasy"], offset: 0, limit: 10 }, db);
+      expect(result.items).toHaveLength(1);
+    });
+
+    it("applies AND semantics for multiple tags", () => {
+      createCharacter(
+        { id: "char-1", userId, name: "A", data: makeCharacterData({ tags: ["fantasy", "elf"] }) },
+        db,
+      );
+      createCharacter(
+        { id: "char-2", userId, name: "B", data: makeCharacterData({ tags: ["fantasy"] }) },
+        db,
+      );
+      const result = searchCharacterCards(
+        userId,
+        { tags: ["fantasy", "elf"], offset: 0, limit: 10 },
+        db,
+      );
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]!.name).toBe("A");
+    });
+
+    it("sorts by updatedAt descending (default)", async () => {
+      const data = makeCharacterData();
+      createCharacter({ id: "char-1", userId, name: "Older", data }, db);
+      await new Promise((r) => setTimeout(r, 10));
+      createCharacter({ id: "char-2", userId, name: "Newer", data }, db);
+      const result = searchCharacterCards(userId, { offset: 0, limit: 10 }, db);
+      expect(result.items[0]!.name).toBe("Newer");
+      expect(result.items[1]!.name).toBe("Older");
+    });
+
+    it("sorts by name ascending", () => {
+      createCharacter(
+        { id: "char-1", userId, name: "Zelda", data: makeCharacterData() },
+        db,
+      );
+      createCharacter(
+        { id: "char-2", userId, name: "Alice", data: makeCharacterData() },
+        db,
+      );
+      const result = searchCharacterCards(
+        userId,
+        { sort: "name-asc", offset: 0, limit: 10 },
+        db,
+      );
+      expect(result.items[0]!.name).toBe("Alice");
+      expect(result.items[1]!.name).toBe("Zelda");
+    });
+
+    it("sorts by chat count descending", () => {
+      const data = makeCharacterData();
+      createCharacter({ id: "char-1", userId, name: "Few", data }, db);
+      createCharacter({ id: "char-2", userId, name: "Many", data }, db);
+      const now = new Date();
+      db.insert(chats).values({ id: "chat-1", userId, characterId: "char-2", title: "C", createdAt: now, updatedAt: now }).run();
+      db.insert(chats).values({ id: "chat-2", userId, characterId: "char-2", title: "C2", createdAt: now, updatedAt: now }).run();
+      const result = searchCharacterCards(
+        userId,
+        { sort: "chats-desc", offset: 0, limit: 10 },
+        db,
+      );
+      expect(result.items[0]!.name).toBe("Many");
+      expect(result.items[0]!.chatCount).toBe(2);
+    });
+
+    it("paginates with offset and limit", () => {
+      const data = makeCharacterData();
+      createCharacter({ id: "char-1", userId, name: "A", data }, db);
+      createCharacter({ id: "char-2", userId, name: "B", data }, db);
+      createCharacter({ id: "char-3", userId, name: "C", data }, db);
+      const result = searchCharacterCards(userId, { offset: 1, limit: 1 }, db);
+      expect(result.items).toHaveLength(1);
+      expect(result.total).toBe(3);
+    });
+
+    it("returns correct total count for filtered result", () => {
+      createCharacter(
+        { id: "char-1", userId, name: "Alice", data: makeCharacterData() },
+        db,
+      );
+      createCharacter(
+        { id: "char-2", userId, name: "Bob", data: makeCharacterData() },
+        db,
+      );
+      const result = searchCharacterCards(userId, { q: "Alice", offset: 0, limit: 10 }, db);
+      expect(result.items).toHaveLength(1);
+      expect(result.total).toBe(1);
+    });
+
+    it("scopes results to the calling user", () => {
+      const otherId = seedSecondUser(db);
+      createCharacter(
+        { id: "char-1", userId: otherId, name: "theirs", data: makeCharacterData() },
+        db,
+      );
+      const result = searchCharacterCards(userId, { offset: 0, limit: 10 }, db);
+      expect(result.items).toHaveLength(0);
+      expect(result.total).toBe(0);
+    });
+
+    it("reads tags from denormalized column (not data JSON)", () => {
+      const data = makeCharacterData({ tags: ["denorm"] });
+      createCharacter({ id: "char-1", userId, name: "X", data }, db);
+      const result = searchCharacterCards(userId, { tags: ["denorm"], offset: 0, limit: 10 }, db);
+      expect(result.items).toHaveLength(1);
+    });
+
+    it("escapes LIKE wildcards in search query", () => {
+      const data = makeCharacterData({ creator: "100% real" });
+      createCharacter({ id: "char-1", userId, name: "X", data }, db);
+      const result = searchCharacterCards(userId, { q: "100%", offset: 0, limit: 10 }, db);
+      expect(result.items).toHaveLength(1);
+    });
+  });
+
+  describe("characterTagCounts", () => {
+    it("returns empty array when user has no characters", () => {
+      expect(characterTagCounts(userId, db)).toEqual([]);
+    });
+
+    it("counts tags across all user's characters", () => {
+      createCharacter(
+        { id: "char-1", userId, name: "A", data: makeCharacterData({ tags: ["fantasy", "elf"] }) },
+        db,
+      );
+      createCharacter(
+        { id: "char-2", userId, name: "B", data: makeCharacterData({ tags: ["fantasy", "gm"] }) },
+        db,
+      );
+      const counts = characterTagCounts(userId, db);
+      const fantasy = counts.find((c) => c.name === "fantasy");
+      expect(fantasy?.count).toBe(2);
+      const elf = counts.find((c) => c.name === "elf");
+      expect(elf?.count).toBe(1);
+    });
+
+    it("sorts tags alphabetically", () => {
+      createCharacter(
+        { id: "char-1", userId, name: "X", data: makeCharacterData({ tags: ["zebra", "alpha"] }) },
+        db,
+      );
+      const counts = characterTagCounts(userId, db);
+      expect(counts[0]!.name).toBe("alpha");
+      expect(counts[1]!.name).toBe("zebra");
+    });
+
+    it("scopes to the calling user", () => {
+      const otherId = seedSecondUser(db);
+      createCharacter(
+        { id: "char-1", userId: otherId, name: "X", data: makeCharacterData({ tags: ["theirs"] }) },
+        db,
+      );
+      expect(characterTagCounts(userId, db)).toEqual([]);
     });
   });
 });
