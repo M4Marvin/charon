@@ -61,7 +61,7 @@ function ProfilePage() {
       <h2 className="text-title">Profile</h2>
       <div className="rounded-lg border p-4">
         <Label className="text-xs text-2">Username</Label>
-        <p className="text-sm mt-0.5">{session?.user?.name ?? "—"}</p>
+        <p className="text-sm mt-0.5">{session?.user?.username ?? session?.user?.name ?? "—"}</p>
       </div>
       <div className="rounded-lg border p-4 space-y-4">
         <h3 className="text-headline">Change Password</h3>

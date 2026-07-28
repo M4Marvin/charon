@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
@@ -97,24 +99,21 @@ function LorebookDetailPage() {
       />
 
       <div className="mb-4 flex items-center gap-2">
-        <input
-          className="border bg-transparent rounded-md px-3 py-1.5 text-sm flex-1 max-w-sm"
+        <Input
+          className="flex-1 max-w-sm"
           placeholder="Search entries..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <div className="inline-flex rounded-md border">
-          {(["all", "on", "off"] as const).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setShowFilter(f)}
-              className={`px-3 py-1.5 text-xs ${showFilter === f ? "bg-brand/20 text-brand-strong font-medium" : "text-2 hover:text-1"}`}
-            >
-              {f === "all" ? "All" : f === "on" ? "On" : "Off"}
-            </button>
-          ))}
-        </div>
+        <ToggleGroup
+          type="single"
+          value={showFilter}
+          onValueChange={(v) => v && setShowFilter(v as typeof showFilter)}
+        >
+          <ToggleGroupItem value="all">All</ToggleGroupItem>
+          <ToggleGroupItem value="on">On</ToggleGroupItem>
+          <ToggleGroupItem value="off">Off</ToggleGroupItem>
+        </ToggleGroup>
         <Button size="sm" onClick={() => setDialog({ kind: "create" })}>
           New Entry
         </Button>

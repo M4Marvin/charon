@@ -47,7 +47,7 @@ export function ChipInput({ value, onChange, suggestions, placeholder }: ChipInp
             <button
               type="button"
               onClick={() => onChange(value.filter((c) => c !== chip))}
-              className="inline-flex size-4 items-center justify-center rounded-sm hover:bg-muted-foreground/20"
+              className="inline-flex size-6 items-center justify-center rounded-sm hover:bg-muted-foreground/20"
               aria-label={`Remove ${chip}`}
             >
               <X className="size-3" />

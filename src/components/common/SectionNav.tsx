@@ -35,7 +35,10 @@ export function SectionNav({ sections }: SectionNavProps) {
   const handleClick = useCallback((id: string) => {
     const el = document.getElementById(id);
     if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
+      const prefersReduced =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      el.scrollIntoView({ behavior: prefersReduced ? "auto" : "smooth" });
     }
   }, []);
 
