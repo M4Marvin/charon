@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, RotateCw } from "lucide-react";
+import { TriangleAlert, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -168,7 +168,7 @@ export function PresetDialog({
                 </div>
                 {modelsError && !modelsLoading && (
                   <div className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
-                    <AlertTriangle className="size-3 shrink-0" />
+                    <TriangleAlert className="size-3 shrink-0" />
                     <span className="min-w-0 break-all">
                       {modelsError instanceof Error ? modelsError.message : "Failed to load models"}
                     </span>

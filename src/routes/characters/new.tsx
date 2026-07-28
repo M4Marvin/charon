@@ -1,6 +1,6 @@
 import { useEffect, useState, type ChangeEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Upload, ArrowLeft, AlertTriangle } from "lucide-react";
+import { Upload, ArrowLeft, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -184,7 +184,7 @@ function NewCharacterPage() {
             <div className="rounded-lg border bg-warning/10 p-3 text-xs text-warning space-y-1">
               {preview.preview.warnings.map((w, i) => (
                 <p key={i}>
-                  <AlertTriangle className="size-3 inline" /> {w}
+                  <TriangleAlert className="size-3 inline" /> {w}
                 </p>
               ))}
             </div>

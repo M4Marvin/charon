@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, RotateCw, AlertTriangle } from "lucide-react";
+import { Search, RotateCw, TriangleAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useProviderModels } from "@/hooks/useProviderModels";
@@ -74,7 +74,7 @@ export function ModelCombobox({ providerId, value, onChange, disabled }: ModelCo
             <p className="px-3 py-2 text-xs text-muted-foreground">Loading models...</p>
           ) : error ? (
             <div className="flex items-center gap-1.5 px-3 py-2 text-xs text-danger">
-              <AlertTriangle className="size-3 shrink-0" />
+              <TriangleAlert className="size-3 shrink-0" />
               <span className="min-w-0 break-all">
                 {error instanceof Error ? error.message : "Failed to load"}
               </span>

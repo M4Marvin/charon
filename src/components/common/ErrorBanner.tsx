@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
@@ -10,7 +10,7 @@ interface ErrorBannerProps {
 export function ErrorBanner({ message, onRetry }: ErrorBannerProps) {
   return (
     <Alert variant="destructive">
-      <AlertTriangle className="size-4" />
+      <TriangleAlert className="size-4" />
       <AlertTitle>Error</AlertTitle>
       <AlertDescription>
         <p className="mb-2">{message}</p>
