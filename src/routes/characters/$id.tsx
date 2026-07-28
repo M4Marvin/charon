@@ -45,9 +45,7 @@ function CharacterDetailPage() {
       const result = await createChatMutation.mutateAsync({ characterId: character.id });
       void navigate({ to: "/c/$id", params: { id: result.id } });
     } catch (err) {
-      toast.error(
-        `Failed to start chat: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      toast.error(`Failed to start chat: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 

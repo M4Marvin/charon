@@ -468,9 +468,7 @@ function DemoAiConfigSection() {
       {
         onSuccess: () => toast.success("Demo AI provider updated"),
         onError: (e) =>
-          toast.error(
-            `Failed to update: ${e instanceof Error ? e.message : String(e)}`,
-          ),
+          toast.error(`Failed to update: ${e instanceof Error ? e.message : String(e)}`),
       },
     );
   }, [baseUrl, apiKey, defaultModel, updateMutation]);

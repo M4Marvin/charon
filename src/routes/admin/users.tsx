@@ -225,9 +225,7 @@ function UserRow({
         )}
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">
-        {hydrated
-          ? formatDate(new Date(user.createdAt))
-          : formatDateFull(new Date(user.createdAt))}
+        {hydrated ? formatDate(new Date(user.createdAt)) : formatDateFull(new Date(user.createdAt))}
       </TableCell>
       <TableCell>
         {!isCurrentUser && (

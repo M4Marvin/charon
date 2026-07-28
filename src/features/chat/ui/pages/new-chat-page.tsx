@@ -19,9 +19,7 @@ export function NewChatPage() {
       const chat = await createChat.mutateAsync({ characterId });
       navigate({ to: "/c/$id", params: { id: chat.id } });
     } catch (err) {
-      toast.error(
-        `Failed to create chat: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      toast.error(`Failed to create chat: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 

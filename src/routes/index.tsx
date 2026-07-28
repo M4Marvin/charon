@@ -44,7 +44,9 @@ function LandingPage() {
   if (session?.user) {
     return (
       <main className="mx-auto flex min-h-[80vh] max-w-3xl flex-col items-center justify-center px-4 text-center">
-        <h1 className="mb-3 text-3xl font-semibold tracking-tight">Welcome back, {session.user.name}</h1>
+        <h1 className="mb-3 text-3xl font-semibold tracking-tight">
+          Welcome back, {session.user.name}
+        </h1>
         <p className="text-muted-foreground mb-8 max-w-md text-sm">
           Jump back into your conversations or start a new one.
         </p>
