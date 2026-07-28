@@ -50,7 +50,7 @@ function SignupPage() {
         toast.error(result.error.message || "Sign up failed");
         return;
       }
-      await navigate({ to: "/c" });
+      await navigate({ to: "/chat" });
     },
   });
 

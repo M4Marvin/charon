@@ -9,7 +9,7 @@ export function MobileTabBar() {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-popover/95 backdrop-blur-sm md:hidden">
       <div className="mx-auto flex h-16 max-w-lg items-center justify-around pb-[env(safe-area-inset-bottom)]">
-        <Link to="/c" className={base} activeProps={{ className: `${base} ${active}` }}>
+        <Link to="/chat" className={base} activeProps={{ className: `${base} ${active}` }}>
           <MessageCircle className="size-5" />
           Chats
         </Link>
@@ -17,7 +17,7 @@ export function MobileTabBar() {
           <Users className="size-5" />
           Characters
         </Link>
-        <Link to="/c/new" className={base}>
+        <Link to="/characters" className={base}>
           <div className="flex size-10 items-center justify-center rounded-full bg-brand text-primary-foreground shadow-lg">
             <Plus className="size-5" />
           </div>

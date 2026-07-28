@@ -90,7 +90,7 @@ export function ChatListPage() {
         title="Chats"
         actions={
           <Button asChild size="sm" className="gap-1.5">
-            <Link to="/c/new">
+            <Link to="/characters">
               <Plus className="size-4" />
               New Chat
             </Link>
@@ -105,7 +105,7 @@ export function ChatListPage() {
           description="Start a conversation to see it here."
         >
           <Button asChild>
-            <Link to="/c/new">Start your first chat</Link>
+            <Link to="/characters">Start your first chat</Link>
           </Button>
         </EmptyState>
       ) : (
@@ -141,7 +141,7 @@ export function ChatListPage() {
                           className="group relative flex items-center gap-3 rounded-xl px-3 py-3 -mx-3 hover:bg-surface transition-colors min-h-16"
                         >
                           <Link
-                            to="/c/$id"
+                            to="/chat/$id"
                             params={{ id: chat.id }}
                             className="flex items-center gap-3 flex-1 min-w-0 focus-ring rounded-xl no-underline"
                           >

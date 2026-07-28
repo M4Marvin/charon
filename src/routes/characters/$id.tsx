@@ -60,7 +60,7 @@ function CharacterDetailPage() {
     if (!character || createChatMutation.isPending) return;
     try {
       const result = await createChatMutation.mutateAsync({ characterId: character.id });
-      void navigate({ to: "/c/$id", params: { id: result.id } });
+      void navigate({ to: "/chat/$id", params: { id: result.id } });
     } catch (err) {
       toast.error(`Failed to start chat: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -205,7 +205,7 @@ function CharacterDetailPage() {
               {characterChats.slice(0, 5).map((chat) => (
                 <Link
                   key={chat.id}
-                  to="/c/$id"
+                  to="/chat/$id"
                   params={{ id: chat.id }}
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 -mx-3 hover:bg-surface transition-colors no-underline"
                 >
@@ -241,7 +241,7 @@ function CharacterDetailPage() {
                 asChild
                 className="flex-1"
               >
-                <Link to="/c/$id" params={{ id: characterChats[0].id }}>
+                <Link to="/chat/$id" params={{ id: characterChats[0].id }}>
                   <MessageCircle className="size-4" />
                   Continue
                 </Link>

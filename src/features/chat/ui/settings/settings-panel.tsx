@@ -56,7 +56,7 @@ export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps
       { id: chatId },
       {
         onSuccess: () => {
-          navigate({ to: "/c" });
+          navigate({ to: "/chat" });
         },
       },
     );

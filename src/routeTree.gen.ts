@@ -15,12 +15,11 @@ import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as ApiChatGenerateRouteImport } from './routes/api/chat-generate'
-import { Route as CIndexRouteImport } from './routes/c/index'
-import { Route as CIdRouteImport } from './routes/c/$id'
-import { Route as CNewRouteImport } from './routes/c/new'
 import { Route as CharactersIndexRouteImport } from './routes/characters/index'
 import { Route as CharactersIdRouteImport } from './routes/characters/$id'
 import { Route as CharactersNewRouteImport } from './routes/characters/new'
+import { Route as ChatIndexRouteImport } from './routes/chat/index'
+import { Route as ChatIdRouteImport } from './routes/chat/$id'
 import { Route as LorebooksIndexRouteImport } from './routes/lorebooks/index'
 import { Route as LorebooksIdRouteImport } from './routes/lorebooks/$id'
 import { Route as LorebooksNewRouteImport } from './routes/lorebooks/new'
@@ -66,21 +65,6 @@ const ApiChatGenerateRoute = ApiChatGenerateRouteImport.update({
   path: '/api/chat-generate',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CIndexRoute = CIndexRouteImport.update({
-  id: '/c/',
-  path: '/c/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CIdRoute = CIdRouteImport.update({
-  id: '/c/$id',
-  path: '/c/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CNewRoute = CNewRouteImport.update({
-  id: '/c/new',
-  path: '/c/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const CharactersIndexRoute = CharactersIndexRouteImport.update({
   id: '/characters/',
   path: '/characters/',
@@ -94,6 +78,16 @@ const CharactersIdRoute = CharactersIdRouteImport.update({
 const CharactersNewRoute = CharactersNewRouteImport.update({
   id: '/characters/new',
   path: '/characters/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatIndexRoute = ChatIndexRouteImport.update({
+  id: '/chat/',
+  path: '/chat/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatIdRoute = ChatIdRouteImport.update({
+  id: '/chat/$id',
+  path: '/chat/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LorebooksIndexRoute = LorebooksIndexRouteImport.update({
@@ -174,10 +168,9 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/chat-generate': typeof ApiChatGenerateRoute
-  '/c/$id': typeof CIdRoute
-  '/c/new': typeof CNewRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
+  '/chat/$id': typeof ChatIdRoute
   '/lorebooks/$id': typeof LorebooksIdRoute
   '/lorebooks/new': typeof LorebooksNewRoute
   '/settings/demo': typeof SettingsDemoRoute
@@ -185,8 +178,8 @@ export interface FileRoutesByFullPath {
   '/settings/presets': typeof SettingsPresetsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/providers': typeof SettingsProvidersRoute
-  '/c/': typeof CIndexRoute
   '/characters/': typeof CharactersIndexRoute
+  '/chat/': typeof ChatIndexRoute
   '/lorebooks/': typeof LorebooksIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -201,10 +194,9 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/chat-generate': typeof ApiChatGenerateRoute
-  '/c/$id': typeof CIdRoute
-  '/c/new': typeof CNewRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
+  '/chat/$id': typeof ChatIdRoute
   '/lorebooks/$id': typeof LorebooksIdRoute
   '/lorebooks/new': typeof LorebooksNewRoute
   '/settings/demo': typeof SettingsDemoRoute
@@ -212,8 +204,8 @@ export interface FileRoutesByTo {
   '/settings/presets': typeof SettingsPresetsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/providers': typeof SettingsProvidersRoute
-  '/c': typeof CIndexRoute
   '/characters': typeof CharactersIndexRoute
+  '/chat': typeof ChatIndexRoute
   '/lorebooks': typeof LorebooksIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -230,10 +222,9 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/chat-generate': typeof ApiChatGenerateRoute
-  '/c/$id': typeof CIdRoute
-  '/c/new': typeof CNewRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
+  '/chat/$id': typeof ChatIdRoute
   '/lorebooks/$id': typeof LorebooksIdRoute
   '/lorebooks/new': typeof LorebooksNewRoute
   '/settings/demo': typeof SettingsDemoRoute
@@ -241,8 +232,8 @@ export interface FileRoutesById {
   '/settings/presets': typeof SettingsPresetsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/providers': typeof SettingsProvidersRoute
-  '/c/': typeof CIndexRoute
   '/characters/': typeof CharactersIndexRoute
+  '/chat/': typeof ChatIndexRoute
   '/lorebooks/': typeof LorebooksIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -260,10 +251,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/admin/users'
     | '/api/chat-generate'
-    | '/c/$id'
-    | '/c/new'
     | '/characters/$id'
     | '/characters/new'
+    | '/chat/$id'
     | '/lorebooks/$id'
     | '/lorebooks/new'
     | '/settings/demo'
@@ -271,8 +261,8 @@ export interface FileRouteTypes {
     | '/settings/presets'
     | '/settings/profile'
     | '/settings/providers'
-    | '/c/'
     | '/characters/'
+    | '/chat/'
     | '/lorebooks/'
     | '/settings/'
     | '/api/auth/$'
@@ -287,10 +277,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/admin/users'
     | '/api/chat-generate'
-    | '/c/$id'
-    | '/c/new'
     | '/characters/$id'
     | '/characters/new'
+    | '/chat/$id'
     | '/lorebooks/$id'
     | '/lorebooks/new'
     | '/settings/demo'
@@ -298,8 +287,8 @@ export interface FileRouteTypes {
     | '/settings/presets'
     | '/settings/profile'
     | '/settings/providers'
-    | '/c'
     | '/characters'
+    | '/chat'
     | '/lorebooks'
     | '/settings'
     | '/api/auth/$'
@@ -315,10 +304,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/admin/users'
     | '/api/chat-generate'
-    | '/c/$id'
-    | '/c/new'
     | '/characters/$id'
     | '/characters/new'
+    | '/chat/$id'
     | '/lorebooks/$id'
     | '/lorebooks/new'
     | '/settings/demo'
@@ -326,8 +314,8 @@ export interface FileRouteTypes {
     | '/settings/presets'
     | '/settings/profile'
     | '/settings/providers'
-    | '/c/'
     | '/characters/'
+    | '/chat/'
     | '/lorebooks/'
     | '/settings/'
     | '/api/auth/$'
@@ -344,14 +332,13 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   AdminUsersRoute: typeof AdminUsersRoute
   ApiChatGenerateRoute: typeof ApiChatGenerateRoute
-  CIdRoute: typeof CIdRoute
-  CNewRoute: typeof CNewRoute
   CharactersIdRoute: typeof CharactersIdRoute
   CharactersNewRoute: typeof CharactersNewRoute
+  ChatIdRoute: typeof ChatIdRoute
   LorebooksIdRoute: typeof LorebooksIdRoute
   LorebooksNewRoute: typeof LorebooksNewRoute
-  CIndexRoute: typeof CIndexRoute
   CharactersIndexRoute: typeof CharactersIndexRoute
+  ChatIndexRoute: typeof ChatIndexRoute
   LorebooksIndexRoute: typeof LorebooksIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   CharactersIdEditRoute: typeof CharactersIdEditRoute
@@ -404,27 +391,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatGenerateRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/c/': {
-      id: '/c/'
-      path: '/c'
-      fullPath: '/c/'
-      preLoaderRoute: typeof CIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/c/$id': {
-      id: '/c/$id'
-      path: '/c/$id'
-      fullPath: '/c/$id'
-      preLoaderRoute: typeof CIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/c/new': {
-      id: '/c/new'
-      path: '/c/new'
-      fullPath: '/c/new'
-      preLoaderRoute: typeof CNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/characters/': {
       id: '/characters/'
       path: '/characters'
@@ -444,6 +410,20 @@ declare module '@tanstack/react-router' {
       path: '/characters/new'
       fullPath: '/characters/new'
       preLoaderRoute: typeof CharactersNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat/': {
+      id: '/chat/'
+      path: '/chat'
+      fullPath: '/chat/'
+      preLoaderRoute: typeof ChatIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat/$id': {
+      id: '/chat/$id'
+      path: '/chat/$id'
+      fullPath: '/chat/$id'
+      preLoaderRoute: typeof ChatIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lorebooks/': {
@@ -576,14 +556,13 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   AdminUsersRoute: AdminUsersRoute,
   ApiChatGenerateRoute: ApiChatGenerateRoute,
-  CIdRoute: CIdRoute,
-  CNewRoute: CNewRoute,
   CharactersIdRoute: CharactersIdRoute,
   CharactersNewRoute: CharactersNewRoute,
+  ChatIdRoute: ChatIdRoute,
   LorebooksIdRoute: LorebooksIdRoute,
   LorebooksNewRoute: LorebooksNewRoute,
-  CIndexRoute: CIndexRoute,
   CharactersIndexRoute: CharactersIndexRoute,
+  ChatIndexRoute: ChatIndexRoute,
   LorebooksIndexRoute: LorebooksIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   CharactersIdEditRoute: CharactersIdEditRoute,

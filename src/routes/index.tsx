@@ -28,7 +28,7 @@ const features = [
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
     const session = await getSession();
-    if (session) throw redirect({ to: "/c" });
+    if (session) throw redirect({ to: "/chat" });
   },
   component: LandingPage,
 });

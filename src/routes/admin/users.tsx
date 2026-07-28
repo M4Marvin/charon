@@ -43,7 +43,7 @@ import {
 export const Route = createFileRoute("/admin/users")({
   beforeLoad: async () => {
     const session = await getSession();
-    if (!session || session.user.role !== "admin") throw redirect({ to: "/c" });
+    if (!session || session.user.role !== "admin") throw redirect({ to: "/chat" });
   },
   component: AdminUsersPage,
 });

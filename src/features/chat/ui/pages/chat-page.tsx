@@ -35,7 +35,7 @@ import { ImageLightbox } from "../components/image-lightbox";
 import { SettingsPanel } from "../settings/settings-panel";
 
 export function ChatPage() {
-  const { id: chatId } = useParams({ from: "/c/$id" });
+  const { id: chatId } = useParams({ from: "/chat/$id" });
   const navigate = useNavigate();
 
   const activePlaceholderId = useChatUiStore(selectActivePlaceholderId);
@@ -210,7 +210,7 @@ export function ChatPage() {
         characterName={config.character.name}
         avatarSrc={characterAvatarUrl}
         isGenerating={generation.isStreaming}
-        onBack={() => navigate({ to: "/c" })}
+        onBack={() => navigate({ to: "/chat" })}
         portraitOpen={portraitOpen}
         sceneOpen={sceneOpen}
         onTogglePortrait={() => setPortraitOpen(!portraitOpen)}

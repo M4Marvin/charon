@@ -21,7 +21,7 @@ export default function Header() {
       <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between">
         <div className="flex items-center gap-8">
           <Link
-            to="/c"
+            to="/chat"
             className="text-sm font-semibold tracking-tight text-foreground no-underline"
           >
             Charon
@@ -29,7 +29,7 @@ export default function Header() {
           {!isPending && session?.user ? (
             <nav className="hidden md:flex items-center gap-6 text-sm">
               <Link
-                to="/c"
+                to="/chat"
                 className="text-2 hover:text-1 no-underline transition-colors inline-flex items-center h-14"
                 activeProps={{
                   className: "!text-brand-strong shadow-[inset_0_-2px_0_0_var(--brand)]",
@@ -70,7 +70,7 @@ export default function Header() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link to="/c/new">New chat</Link>
+                    <Link to="/characters">New chat</Link>
                   </DropdownMenuItem>
                   {session.user.role === "admin" ? (
                     <>

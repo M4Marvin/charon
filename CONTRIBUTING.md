@@ -38,7 +38,7 @@ src/
     validators.ts         # ArkType input schemas
     session.ts            # Auth helpers (isAdmin)
   routes/
-    c/                    # Chat routes (/c, /c/new, /c/$id)
+    chat/                 # Chat routes (/chat, /chat/$id)
     api/
       chat-generate.ts    # SSE streaming endpoint
       characters/$id/avatar.ts
@@ -68,7 +68,7 @@ UI (presentation) → Generation (AI calls) → Tree (structure) → Data (persi
 - **Lock** — generation mutex stored on root message `extra` field. Self-healing stale recovery (5 min).
 - **Generation** — `prepareStream`/`finalizeStream`/`cancelStream`, impersonation, provider resolution, prompt assembly.
 - **Config** — per-user defaults and per-chat overrides for provider, model, preset, lorebooks, persona, prompts.
-- **UI** — pages (`/c`, `/c/new`, `/c/$id`), components (composer, message list, side panels, settings), hooks.
+- **UI** — pages (`/c`, `/c/$id`), components (composer, message list, side panels, settings), hooks.
 
 ## st-core (`src/lib/st-core/`)
 
