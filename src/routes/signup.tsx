@@ -16,7 +16,7 @@ const signupSchema = z
       .string()
       .min(3, "Username must be at least 3 characters")
       .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
-    password: z.string().min(4, "Password must be at least 4 characters"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
