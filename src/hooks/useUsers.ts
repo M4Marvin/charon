@@ -41,7 +41,10 @@ export function useBanUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: { userId: string; reason?: string }) => {
-      const { error } = await authClient.admin.banUser({ userId: input.userId, banReason: input.reason });
+      const { error } = await authClient.admin.banUser({
+        userId: input.userId,
+        banReason: input.reason,
+      });
       if (error) throw new Error(error.message ?? "Failed to ban user");
     },
     onSuccess: () => {
