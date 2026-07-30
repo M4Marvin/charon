@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, Link, stripSearchParams } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useNavigate } from "@tanstack/react-router";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { type } from "arktype";
@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -25,6 +24,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { TagFilterPopover } from "@/components/common/TagFilterPopover";
 import { useCharacterSearch, useCharacterTagCounts, useDeleteCharacter } from "@/hooks/useCharacters";
 import { authClient } from "@/lib/auth-client";
+import { RelativeTime } from "@/components/common/RelativeTime";
 import type { CharacterListItem } from "@/server/fns/characters";
 
 const searchSchema = type({
@@ -35,9 +35,6 @@ const searchSchema = type({
 
 export const Route = createFileRoute("/characters/")({
   validateSearch: searchSchema,
-  search: {
-    middlewares: [stripSearchParams({ sort: "updatedAt-desc" })],
-  },
   component: CharactersPage,
 });
 
@@ -49,8 +46,22 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "chats-desc", label: "Most chats" },
 ];
 
-const GAP = 12;
 const CARD_BODY_HEIGHT = 88;
+const GAP = 12;
+
+function getLaneCount(vw: number): number {
+  const cw = Math.min(vw - 32, 1200);
+  if (cw >= 1280) return 5;
+  if (cw >= 1024) return 4;
+  if (cw >= 640) return 3;
+  return 2;
+}
+
+function getCardHeight(lanes: number, vw: number): number {
+  const cw = Math.min(vw - 32, 1200);
+  const laneW = (cw - (lanes - 1) * GAP) / lanes;
+  return Math.ceil(laneW * (4 / 3) + CARD_BODY_HEIGHT);
+}
 
 function CharactersPage() {
   const { data: session } = authClient.useSession();
@@ -61,6 +72,7 @@ function CharactersPage() {
 
   const [searchInput, setSearchInput] = useState(searchParams.q ?? "");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(1280);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -82,6 +94,10 @@ function CharactersPage() {
 
   const { data: tagCounts } = useCharacterTagCounts();
 
+  useEffect(() => {
+    setSearchInput(searchParams.q ?? "");
+  }, [searchParams.q]);
+
   const updateSearch = useCallback(
     (value: string) => {
       setSearchInput(value);
@@ -92,6 +108,8 @@ function CharactersPage() {
     },
     [navigate],
   );
+
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   const updateTags = useCallback(
     (newTags: string[]) => {
@@ -131,47 +149,41 @@ function CharactersPage() {
     return () => window.removeEventListener("keydown", handleKeydown);
   }, [searchInput, updateSearch]);
 
-  const gridRef = useRef<HTMLDivElement>(null);
-  const [lanes, setLanes] = useState(3);
-  const rowHeightRef = useRef(200);
-
   useEffect(() => {
-    const el = gridRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver(() => {
-      const w = el.clientWidth;
-      let l = 2;
-      if (w >= 640) l = 3;
-      if (w >= 1024) l = 4;
-      if (w >= 1280) l = 5;
-      setLanes(l);
-      const laneW = (w - (l - 1) * GAP) / l;
-      rowHeightRef.current = laneW * (4 / 3) + CARD_BODY_HEIGHT + GAP;
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
+    if (typeof window === "undefined") return;
+    setViewportWidth(window.innerWidth);
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  const lanes = getLaneCount(viewportWidth);
+  const cardHeight = getCardHeight(lanes, viewportWidth);
+  const lanePct = 100 / lanes;
+  const cw = Math.min(viewportWidth - 32, 1200);
+  const laneW = Math.ceil((cw - (lanes - 1) * GAP) / lanes);
+  const bodyHeight = cardHeight - laneW;
 
   const items = useMemo(() => searchData?.pages.flatMap((p) => p.items) ?? [], [searchData]);
   const total = searchData?.pages[0]?.total ?? 0;
 
-  const rows = Math.ceil((items.length + (hasNextPage ? lanes : 0)) / lanes);
-
   const virtualizer = useWindowVirtualizer({
-    count: rows,
-    estimateSize: () => rowHeightRef.current,
+    count: items.length,
+    lanes,
+    gap: GAP,
+    estimateSize: () => cardHeight,
     overscan: 4,
   });
 
   const virtualItems = virtualizer.getVirtualItems();
   const lastVirtualIndex = virtualItems.length > 0 ? virtualItems[virtualItems.length - 1]!.index : -1;
-  const shouldFetch = lastVirtualIndex >= Math.ceil(items.length / lanes) - 2;
+  const shouldFetch = lastVirtualIndex >= items.length - lanes * 2;
 
   useEffect(() => {
-    if (shouldFetch && hasNextPage && !isFetchingNextPage) {
+    if (shouldFetch && hasNextPage && !isFetching) {
       fetchNextPage();
     }
-  }, [shouldFetch, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [shouldFetch, hasNextPage, isFetching, fetchNextPage]);
 
   const isInitialLoading = isLoading && !searchData;
   const isEmpty = !isLoading && total === 0 && !q && tags.length === 0;
@@ -206,7 +218,7 @@ function CharactersPage() {
       ) : null}
 
       {isInitialLoading ? (
-        <SkeletonCardGrid count={15} />
+        <SkeletonCardGrid count={15} lanes={lanes} />
       ) : isEmpty ? (
         <EmptyState
           icon={UserRoundCog}
@@ -307,57 +319,32 @@ function CharactersPage() {
             </EmptyState>
           ) : (
             <div
-              ref={gridRef}
               className={isRefiltering ? "opacity-60 transition-opacity duration-150" : ""}
               role="list"
               style={{ height: virtualizer.getTotalSize(), position: "relative" }}
             >
-              {virtualItems.map((virtualRow) => {
-                const rowStart = virtualRow.index * lanes;
-
-                if (virtualRow.index >= Math.ceil(items.length / lanes)) {
-                  return (
-                    <div
-                      key={`skel-${virtualRow.index}`}
-                      aria-hidden
-                      className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-                      style={{
-                        position: "absolute",
-                        top: virtualRow.start,
-                        left: 0,
-                        right: 0,
-                      }}
-                    >
-                      {Array.from({ length: lanes }).map((_, i) => (
-                        <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
-                      ))}
-                    </div>
-                  );
-                }
-
+              {virtualItems.map((item) => {
+                const char = items[item.index];
+                if (!char) return null;
                 return (
                   <div
-                    key={virtualRow.index}
-                    className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+                    key={char.id}
+                    role="listitem"
                     style={{
                       position: "absolute",
-                      top: virtualRow.start,
-                      left: 0,
-                      right: 0,
+                      top: item.start,
+                      left: `${(item.lane / lanes) * 100}%`,
+                      width: `${lanePct}%`,
+                      paddingRight: item.lane < lanes - 1 ? GAP : undefined,
+                      boxSizing: "border-box",
                     }}
                   >
-                    {Array.from({ length: lanes }).map((_, i) => {
-                      const item = items[rowStart + i];
-                      if (!item) return <div key={i} aria-hidden />;
-                      return (
-                        <CharacterCard
-                          key={item.id}
-                          character={item}
-                          isDemo={isDemo}
-                          onDelete={() => setDeletingId(item.id)}
-                        />
-                      );
-                    })}
+                    <CharacterCard
+                      character={char}
+                      isDemo={isDemo}
+                      bodyHeight={bodyHeight}
+                      onDelete={() => setDeletingId(char.id)}
+                    />
                   </div>
                 );
               })}
@@ -395,29 +382,52 @@ function CharactersPage() {
 function CharacterCard({
   character,
   isDemo,
+  bodyHeight,
   onDelete,
 }: {
   character: CharacterListItem;
   isDemo: boolean;
+  bodyHeight: number;
   onDelete: () => void;
 }) {
   const navigate = useNavigate();
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const img = imgRef.current;
+    if (!img) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    img.style.transform = `scale(1.08) translate(${x * -8}px, ${y * -8}px)`;
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (imgRef.current) imgRef.current.style.transform = "";
+  }, []);
+
+  const excerpt = character.tagline || character.creatorNotes;
 
   return (
-    <div role="listitem" className="group relative rounded-xl border border-subtle overflow-hidden transition-shadow hover:shadow-lg hover:border-brand/40">
+    <div
+      className="group relative rounded-xl border border-subtle overflow-hidden transition-shadow hover:shadow-lg hover:border-brand/40"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
       <Link
         to="/characters/$id"
         params={{ id: character.id }}
         className="block focus-ring rounded-xl"
       >
-        <div className="relative aspect-[3/4] bg-muted overflow-hidden">
+        <div className="relative aspect-square bg-muted overflow-hidden">
           {character.imagePath ? (
             <img
+              ref={imgRef}
               src={`/api/characters/${character.id}/avatar`}
               alt={character.name}
               loading="lazy"
               decoding="async"
-              className="size-full object-cover motion-safe:group-hover:scale-[1.02] transition-transform"
+              className="size-full object-cover motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
               }}
@@ -427,27 +437,34 @@ function CharacterCard({
               <span className="text-4xl font-heading text-3">{character.name.charAt(0)}</span>
             </div>
           )}
-          {character.chatCount > 0 ? (
-            <div className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-md bg-base/70 backdrop-blur px-1.5 py-0.5 text-[10px] text-2 tabular-nums">
+        </div>
+        <div className="p-2 flex flex-col" style={{ height: bodyHeight }}>
+          <h3 className="text-sm font-semibold truncate">{character.name}</h3>
+          {excerpt ? (
+            <p className="text-2 text-xs line-clamp-2 leading-snug mt-0.5">{excerpt}</p>
+          ) : (
+            <p className="text-2 text-xs">&nbsp;</p>
+          )}
+          {character.creator ? (
+            <p className="text-3 text-[11px] truncate mt-0.5">by {character.creator}</p>
+          ) : null}
+          <div className="mt-auto">
+            <div className="flex items-center gap-1.5 overflow-hidden">
+              {character.tags.slice(0, 3).map((tag) => (
+                <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0 leading-tight shrink-0">
+                  {tag}
+                </Badge>
+              ))}
+              {character.tags.length > 3 ? (
+                <span className="text-2 text-[10px] shrink-0">+{character.tags.length - 3}</span>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-1 text-3 text-[10px] tabular-nums mt-1">
               <MessagesSquare className="size-3" />
               {character.chatCount}
+              <span aria-hidden className="mx-0.5">·</span>
+              <RelativeTime date={character.updatedAt} />
             </div>
-          ) : null}
-        </div>
-        <div className="h-[88px] p-2 flex flex-col justify-between">
-          <div>
-            <h3 className="text-sm font-semibold truncate">{character.name}</h3>
-            <p className="text-2 text-xs line-clamp-2">{character.creatorNotes || " "}</p>
-          </div>
-          <div className="flex items-center gap-1.5 overflow-hidden">
-            {character.tags.slice(0, 3).map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0 leading-tight shrink-0">
-                {tag}
-              </Badge>
-            ))}
-            {character.tags.length > 3 ? (
-              <span className="text-2 text-[10px] shrink-0">+{character.tags.length - 3}</span>
-            ) : null}
           </div>
         </div>
       </Link>
