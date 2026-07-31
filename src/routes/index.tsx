@@ -1,5 +1,6 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { Bot, BookOpen, Puzzle } from "lucide-react";
+import { Logo } from "@/components/common/Logo";
 
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth.functions";
@@ -37,6 +38,9 @@ function LandingPage() {
   return (
     <main className="mx-auto max-w-[1200px] px-4 py-20">
       <div className="mb-16 text-center">
+        <div className="mb-6 flex justify-center">
+          <Logo className="size-16" />
+        </div>
         <h1 className="text-display mb-4">Charon</h1>
         <p className="text-2 mx-auto mb-8 max-w-2xl text-base">
           A modern AI character chat platform. Import V2 character cards, configure lorebooks,

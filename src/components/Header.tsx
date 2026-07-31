@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Logo } from "@/components/common/Logo";
 import { authClient } from "@/lib/auth-client";
 
 export default function Header() {
@@ -22,9 +23,12 @@ export default function Header() {
         <div className="flex items-center gap-8">
           <Link
             to="/chat"
-            className="text-sm font-semibold tracking-tight text-foreground no-underline"
+            className="flex items-center gap-2 no-underline"
           >
-            Charon
+            <Logo className="size-7" />
+            <span className="text-sm font-semibold tracking-tight text-foreground">
+              Charon
+            </span>
           </Link>
           {!isPending && session?.user ? (
             <nav className="hidden md:flex items-center gap-6 text-sm">
