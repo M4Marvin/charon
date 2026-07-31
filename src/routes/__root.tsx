@@ -19,6 +19,7 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { TriangleAlert, Compass } from "lucide-react";
 import { MobileTabBar } from "@/components/common/MobileTabBar";
 import { DemoBanner } from "@/components/common/DemoBanner";
+import { CommandMenu } from "@/components/common/CommandMenu";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import appCss from "@/styles.css?url";
@@ -206,6 +207,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 </RichTextSettingsProvider>
               </div>
               {isAuthed && !hideGlobalHeader && <MobileTabBar />}
+              {isAuthed && <CommandMenu isAdmin={user?.role === "admin"} />}
               <Toaster />
             </ErrorBoundary>
             <TanStackDevtools
