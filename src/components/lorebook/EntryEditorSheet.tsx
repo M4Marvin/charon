@@ -1,4 +1,6 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useState } from "react";
+import { useForm } from "@tanstack/react-form";
+import { z } from "zod";
 import {
   Sheet,
   SheetContent,
@@ -8,16 +10,39 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field";
 import { ChipInput } from "@/components/common/ChipInput";
 import { useCreateLorebookEntry, useUpdateLorebookEntry } from "@/hooks/useLorebooks";
 import { ApproxTokenCounter } from "@/lib/st-core/shared";
 import type { LoreEntryListItem } from "@/server/fns/lorebooks";
 
 const counter = new ApproxTokenCounter();
+
+const entrySchema = z
+  .object({
+    comment: z.string(),
+    keys: z.array(z.string()),
+    secondary: z.array(z.string()),
+    content: z.string().min(1, "Content is required."),
+    order: z.string().refine(
+      (v) => !Number.isNaN(Number.parseInt(v, 10)),
+      "Order must be a number.",
+    ),
+    disable: z.boolean(),
+    constant: z.boolean(),
+  })
+  .superRefine((val, ctx) => {
+    if (!val.constant && val.keys.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["keys"],
+        message: "At least one keyword is required (or set Constant).",
+      });
+    }
+  });
 
 type Props =
   | { lorebookId: string; mode: "create"; onClose: () => void }
@@ -27,73 +52,59 @@ export function EntryEditorSheet(props: Props) {
   const { lorebookId, mode, onClose } = props;
   const initial = props.mode === "edit" ? props.entry : null;
 
-  const [comment, setComment] = useState(initial?.data.comment ?? "");
-  const [keys, setKeys] = useState(initial?.data.key ?? ([] as string[]));
-  const [secondary, setSecondary] = useState(initial?.data.keysecondary ?? ([] as string[]));
-  const [content, setContent] = useState(initial?.data.content ?? "");
-  const [order, setOrder] = useState(String(initial?.data.order ?? 100));
-  const [disable, setDisable] = useState(initial?.data.disable ?? false);
-  const [constant, setConstant] = useState(initial?.data.constant ?? false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const createMutation = useCreateLorebookEntry(lorebookId);
   const updateMutation = useUpdateLorebookEntry(lorebookId);
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const tokenCount = useMemo(() => counter.count(content), [content]);
-
-  const hasContentError = error === "Content is required.";
-  const hasOrderError = error === "Order must be a number.";
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!content.trim()) {
-      setError("Content is required.");
-      return;
-    }
-    if (keys.length === 0 && !constant) {
-      setError("At least one keyword is required (or set Constant).");
-      return;
-    }
-    const orderNum = Number.parseInt(order, 10);
-    if (Number.isNaN(orderNum)) {
-      setError("Order must be a number.");
-      return;
-    }
-    try {
-      if (mode === "create") {
-        const orderNum = Number.parseInt(order, 10);
-        await createMutation.mutateAsync({
-          comment: comment.trim(),
-          content: content.trim(),
-          key: keys,
-          keysecondary: secondary,
-          order: Number.isNaN(orderNum) ? undefined : orderNum,
-          disable,
-          constant,
-        });
-      } else {
-        await updateMutation.mutateAsync({
-          entryId: initial!.id,
-          uid: initial!.uid,
-          data: {
-            ...initial!.data,
-            comment: comment.trim(),
-            content: content.trim(),
-            key: keys,
-            keysecondary: secondary,
+  const form = useForm({
+    defaultValues: {
+      comment: initial?.data.comment ?? "",
+      keys: (initial?.data.key ?? []) as string[],
+      secondary: (initial?.data.keysecondary ?? []) as string[],
+      content: initial?.data.content ?? "",
+      order: String(initial?.data.order ?? 100),
+      disable: initial?.data.disable ?? false,
+      constant: initial?.data.constant ?? false,
+    },
+    validators: { onSubmit: entrySchema },
+    onSubmit: async ({ value }) => {
+      setSubmitError(null);
+      const orderNum = Number.parseInt(value.order, 10);
+      try {
+        if (mode === "create") {
+          await createMutation.mutateAsync({
+            comment: value.comment.trim(),
+            content: value.content.trim(),
+            key: value.keys,
+            keysecondary: value.secondary,
             order: orderNum,
-            disable,
-            constant,
-          },
-        });
+            disable: value.disable,
+            constant: value.constant,
+          });
+        } else {
+          await updateMutation.mutateAsync({
+            entryId: initial!.id,
+            uid: initial!.uid,
+            data: {
+              ...initial!.data,
+              comment: value.comment.trim(),
+              content: value.content.trim(),
+              key: value.keys,
+              keysecondary: value.secondary,
+              order: orderNum,
+              disable: value.disable,
+              constant: value.constant,
+            },
+          });
+        }
+        onClose();
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : "Failed to save entry");
       }
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save entry");
-    }
-  };
+    },
+  });
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
@@ -104,76 +115,163 @@ export function EntryEditorSheet(props: Props) {
             Keywords activate the entry. Content is injected into the prompt when matched.
           </SheetDescription>
         </SheetHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="comment">Comment</Label>
-            <Input
-              id="comment"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Short description for the author"
-              disabled={isPending}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="entry-keys">Keywords</Label>
-            <ChipInput
-              id="entry-keys"
-              value={keys}
-              onChange={setKeys}
-              placeholder="dragon, wyrm, drake"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="entry-secondary">Secondary keys</Label>
-            <ChipInput
-              id="entry-secondary"
-              value={secondary}
-              onChange={setSecondary}
-              placeholder="fire, scales"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="content">Content</Label>
-            <Textarea
-              id="content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="The lore text injected into the prompt..."
-              rows={6}
-              required
-              disabled={isPending}
-              aria-invalid={hasContentError}
-              aria-describedby={hasContentError ? "entry-form-error" : undefined}
-            />
-            <p className="text-3 text-xs text-right">~{tokenCount} tokens</p>
-          </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void form.handleSubmit();
+          }}
+          className="space-y-4 mt-4"
+        >
+          <form.Field
+            name="comment"
+            children={(field) => (
+              <Field data-invalid={field.state.meta.isTouched && !field.state.meta.isValid}>
+                <FieldLabel htmlFor="entry-comment">Comment</FieldLabel>
+                <Input
+                  id="entry-comment"
+                  name={field.name}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="Short description for the author"
+                  disabled={isPending}
+                />
+              </Field>
+            )}
+          />
+          <form.Field
+            name="keys"
+            children={(field) => {
+              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor="entry-keys">Keywords</FieldLabel>
+                  <ChipInput
+                    id="entry-keys"
+                    value={field.state.value}
+                    onChange={(v) => field.handleChange(v)}
+                    placeholder="dragon, wyrm, drake"
+                  />
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              );
+            }}
+          />
+          <form.Field
+            name="secondary"
+            children={(field) => {
+              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor="entry-secondary">Secondary keys</FieldLabel>
+                  <ChipInput
+                    id="entry-secondary"
+                    value={field.state.value}
+                    onChange={(v) => field.handleChange(v)}
+                    placeholder="fire, scales"
+                  />
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              );
+            }}
+          />
+          <form.Field
+            name="content"
+            children={(field) => {
+              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+              return (
+                <Field data-invalid={isInvalid}>
+                  <FieldLabel htmlFor="entry-content">Content</FieldLabel>
+                  <Textarea
+                    id="entry-content"
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder="The lore text injected into the prompt..."
+                    rows={6}
+                    disabled={isPending}
+                    aria-invalid={isInvalid}
+                  />
+                  <p className="text-3 text-xs text-right">~{counter.count(field.state.value)} tokens</p>
+                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                </Field>
+              );
+            }}
+          />
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="order">Order</Label>
-              <Input
-                id="order"
-                value={order}
-                onChange={(e) => setOrder(e.target.value)}
-                disabled={isPending}
-                aria-invalid={hasOrderError}
-                aria-describedby={hasOrderError ? "entry-form-error" : undefined}
+            <form.Field
+              name="order"
+              children={(field) => {
+                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+                return (
+                  <Field data-invalid={isInvalid}>
+                    <FieldLabel htmlFor="entry-order">Order</FieldLabel>
+                    <Input
+                      id="entry-order"
+                      name={field.name}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      disabled={isPending}
+                      aria-invalid={isInvalid}
+                    />
+                    {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                  </Field>
+                );
+              }}
+            />
+            <div className="space-y-2 pt-6">
+              <form.Field
+                name="constant"
+                children={(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+                  return (
+                    <Field orientation="horizontal" data-invalid={isInvalid} className="gap-2">
+                      <FieldContent>
+                        <FieldLabel htmlFor="entry-constant">Constant (always active)</FieldLabel>
+                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                      </FieldContent>
+                      <Switch
+                        id="entry-constant"
+                        name={field.name}
+                        checked={field.state.value}
+                        onCheckedChange={field.handleChange}
+                        disabled={isPending}
+                        aria-invalid={isInvalid}
+                      />
+                    </Field>
+                  );
+                }}
+              />
+              <form.Field
+                name="disable"
+                children={(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+                  return (
+                    <Field orientation="horizontal" data-invalid={isInvalid} className="gap-2">
+                      <FieldContent>
+                        <FieldLabel htmlFor="entry-disable">Disabled</FieldLabel>
+                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                      </FieldContent>
+                      <Switch
+                        id="entry-disable"
+                        name={field.name}
+                        checked={field.state.value}
+                        onCheckedChange={field.handleChange}
+                        disabled={isPending}
+                        aria-invalid={isInvalid}
+                      />
+                    </Field>
+                  );
+                }}
               />
             </div>
-            <div className="space-y-2 pt-6">
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={constant} onCheckedChange={setConstant} disabled={isPending} />
-                Constant (always active)
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={disable} onCheckedChange={setDisable} disabled={isPending} />
-                Disabled
-              </label>
-            </div>
           </div>
-          {error ? (
-            <p id="entry-form-error" role="alert" className="text-danger text-sm">
-              {error}
+          {submitError ? (
+            <p role="alert" className="text-danger text-sm">
+              {submitError}
             </p>
           ) : null}
           <SheetFooter>

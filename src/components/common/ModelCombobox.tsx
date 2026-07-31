@@ -71,7 +71,11 @@ export function ModelCombobox({ providerId, value, onChange, disabled, ariaLabel
         ) : null}
       </div>
       {showDropdown ? (
-        <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-48 overflow-auto rounded-lg border bg-popover shadow-lg">
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute inset-x-0 top-full z-50 mt-1 max-h-48 overflow-auto rounded-lg border bg-popover shadow-lg"
+        >
           {isLoading && filtered.length === 0 ? (
             <p className="px-3 py-2 text-xs text-muted-foreground">Loading models...</p>
           ) : error ? (
