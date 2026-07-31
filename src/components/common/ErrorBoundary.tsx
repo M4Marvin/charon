@@ -27,11 +27,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             description={this.state.error.message}
           >
             <button
-              onClick={() => {
-                this.setState({ error: null });
-                window.location.reload();
-              }}
+              onClick={() => this.setState({ error: null })}
               className="text-sm text-brand hover:underline cursor-pointer"
+            >
+              Try again
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-sm text-2 hover:text-1 underline underline-offset-4 cursor-pointer"
             >
               Reload page
             </button>

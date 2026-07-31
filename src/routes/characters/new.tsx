@@ -93,7 +93,8 @@ function NewCharacterPage() {
 
       {step === "pick" ? (
         <div className="space-y-4">
-          <div
+          <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             onDragOver={(e) => {
               e.preventDefault();
@@ -105,7 +106,8 @@ function NewCharacterPage() {
               setDragOver(false);
               processFile(e.dataTransfer.files?.[0] ?? null);
             }}
-            className={`flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 text-center cursor-pointer hover:bg-surface transition-colors ${
+            disabled={importMutation.isPending}
+            className={`flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-transparent p-12 text-center hover:bg-surface transition-colors disabled:pointer-events-none disabled:opacity-50 ${
               dragOver ? "border-brand bg-brand/5" : ""
             }`}
           >
@@ -116,26 +118,15 @@ function NewCharacterPage() {
                 V2 or V3 card. Max 50 MB. Drag &amp; drop or click to browse.
               </p>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png"
-              onChange={handleFileChange}
-              disabled={importMutation.isPending}
-              className="hidden"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current?.click();
-              }}
-            >
-              Browse files
-            </Button>
-          </div>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png"
+            onChange={handleFileChange}
+            disabled={importMutation.isPending}
+            className="hidden"
+          />
           {fieldErrors ? <FieldErrorList errors={fieldErrors} /> : null}
           {previewErr ? <ErrorBanner message={previewErr} /> : null}
         </div>

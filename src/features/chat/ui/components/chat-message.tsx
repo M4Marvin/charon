@@ -195,6 +195,7 @@ export function ChatMessage({
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  aria-label="Edit message"
                   className="min-h-[60px] resize-none border-0 bg-transparent p-0 text-sm leading-6 text-foreground focus-visible:ring-0"
                   style={{ maxHeight: TEXTAREA_MAX_HEIGHT }}
                 />
@@ -205,7 +206,7 @@ export function ChatMessage({
                     className="h-7 gap-1 text-xs"
                     onClick={handleSaveEdit}
                   >
-                    <Check className="size-3" />
+                    <Check className="size-3" data-icon="inline-start" />
                     Save
                   </Button>
                   <Button

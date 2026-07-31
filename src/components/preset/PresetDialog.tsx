@@ -217,6 +217,7 @@ export function PresetDialog({
               </span>
             </div>
             <Slider
+              aria-label="Temperature"
               value={[temperature]}
               onValueChange={(v) => setTemperature(v[0]!)}
               min={0}
@@ -238,6 +239,7 @@ export function PresetDialog({
               </span>
             </div>
             <Slider
+              aria-label="Top P"
               value={[topP]}
               onValueChange={(v) => setTopP(v[0]!)}
               min={0}
@@ -249,10 +251,11 @@ export function PresetDialog({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <div>
-                <Label>Max tokens</Label>
+                <Label htmlFor="pr-max-tokens">Max tokens</Label>
                 <p className="text-muted-foreground text-xs">Maximum response length in tokens</p>
               </div>
               <Input
+                id="pr-max-tokens"
                 type="number"
                 value={maxTokens}
                 onChange={(e) => setMaxTokens(Number(e.target.value))}
@@ -260,6 +263,7 @@ export function PresetDialog({
               />
             </div>
             <Slider
+              aria-label="Max tokens"
               value={[maxTokens]}
               onValueChange={(v) => setMaxTokens(v[0]!)}
               min={0}
@@ -271,12 +275,13 @@ export function PresetDialog({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <div>
-                <Label>Context size</Label>
+                <Label htmlFor="pr-context-size">Context size</Label>
                 <p className="text-muted-foreground text-xs">
                   Token budget for the prompt context window
                 </p>
               </div>
               <Input
+                id="pr-context-size"
                 type="number"
                 value={contextSize}
                 onChange={(e) => setContextSize(Number(e.target.value))}
@@ -284,6 +289,7 @@ export function PresetDialog({
               />
             </div>
             <Slider
+              aria-label="Context size"
               value={[contextSize]}
               onValueChange={(v) => setContextSize(v[0]!)}
               min={0}
@@ -303,6 +309,7 @@ export function PresetDialog({
               </span>
             </div>
             <Slider
+              aria-label="Frequency penalty"
               value={[frequencyPenalty]}
               onValueChange={(v) => setFrequencyPenalty(v[0]!)}
               min={-2}
@@ -322,6 +329,7 @@ export function PresetDialog({
               </span>
             </div>
             <Slider
+              aria-label="Presence penalty"
               value={[presencePenalty]}
               onValueChange={(v) => setPresencePenalty(v[0]!)}
               min={-2}

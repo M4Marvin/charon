@@ -387,7 +387,7 @@ function AdminUsersPage() {
                     value={inviteUsername}
                     onChange={(e) => setInviteUsername(e.target.value)}
                     placeholder="newuser"
-                    autoComplete="off"
+                    autoComplete="username"
                   />
                 </div>
                 <div className="space-y-1.5">

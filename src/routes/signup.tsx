@@ -101,8 +101,9 @@ function SignupPage() {
                         placeholder="your_username"
                         autoComplete="username"
                         aria-invalid={isInvalid}
+                        aria-describedby={isInvalid ? `${field.name}-error` : undefined}
                       />
-                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                      {isInvalid && <FieldError id={`${field.name}-error`} errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}
@@ -125,6 +126,7 @@ function SignupPage() {
                           type={showPw ? "text" : "password"}
                           autoComplete="new-password"
                           aria-invalid={isInvalid}
+                          aria-describedby={isInvalid ? `${field.name}-error` : undefined}
                           className="pr-10"
                         />
                         <button
@@ -148,7 +150,7 @@ function SignupPage() {
                           At least 8 characters
                         </div>
                       </div>
-                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                      {isInvalid && <FieldError id={`${field.name}-error`} errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}
@@ -170,10 +172,11 @@ function SignupPage() {
                           type={showPw ? "text" : "password"}
                           autoComplete="new-password"
                           aria-invalid={isInvalid}
+                          aria-describedby={isInvalid ? `${field.name}-error` : undefined}
                           className="pr-10"
                         />
                       </div>
-                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                      {isInvalid && <FieldError id={`${field.name}-error`} errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}
