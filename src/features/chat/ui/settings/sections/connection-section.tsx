@@ -100,7 +100,7 @@ export function ConnectionSection({ isStreaming, isAdmin }: SectionProps) {
         >
           <Link to="/settings">
             Manage providers & presets
-            <ArrowRight className="size-3" />
+            <ArrowRight className="size-3" data-icon="inline-end" />
           </Link>
         </Button>
       </div>

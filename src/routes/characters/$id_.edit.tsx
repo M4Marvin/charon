@@ -230,12 +230,14 @@ function CharacterEditPage() {
                   children={(f: any) => (
                     <Field>
                       <FieldLabel htmlFor={f.name}>Creator</FieldLabel>
-                      <Input
-                        id={f.name}
-                        value={f.state.value}
-                        onBlur={f.handleBlur}
-                        onChange={(e) => f.handleChange(e.target.value)}
-                      />
+                    <Input
+                      id={f.name}
+                      value={f.state.value}
+                      onBlur={f.handleBlur}
+                      onChange={(e) => f.handleChange(e.target.value)}
+                      minLength={1}
+                      maxLength={64}
+                    />
                     </Field>
                   )}
                 />
@@ -345,6 +347,7 @@ function CharacterEditPage() {
                             children={(sub: any) => (
                               <div className="flex-1 flex gap-2 items-start">
                                 <Textarea
+                                  aria-label={`Alternate greeting ${idx + 1}`}
                                   value={sub.state.value}
                                   onBlur={sub.handleBlur}
                                   onChange={(e) => sub.handleChange(e.target.value)}
@@ -469,6 +472,7 @@ function CharacterEditPage() {
                     <div className="flex items-center gap-3">
                       <Slider
                         className="flex-1"
+                        aria-label="Talkativeness"
                         value={[Number(field.state.value)]}
                         onValueChange={(v) => field.handleChange(String(v[0]))}
                         min={0}

@@ -66,7 +66,7 @@ function ProfilePage() {
       <div className="rounded-lg border p-4 space-y-4">
         <h3 className="text-headline">Change Password</h3>
         {error ? <ErrorBanner message={error} /> : null}
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3" noValidate>
           <div className="space-y-1.5">
             <Label htmlFor="cpw">Current password</Label>
             <Input
@@ -75,6 +75,7 @@ function ProfilePage() {
               value={currentPw}
               onChange={(e) => setCurrentPw(e.target.value)}
               autoComplete="current-password"
+              minLength={1}
             />
           </div>
           <div className="space-y-1.5">
@@ -85,6 +86,7 @@ function ProfilePage() {
               value={newPw}
               onChange={(e) => setNewPw(e.target.value)}
               autoComplete="new-password"
+              minLength={8}
             />
           </div>
           <div className="space-y-1.5">
@@ -95,6 +97,7 @@ function ProfilePage() {
               value={confirmPw}
               onChange={(e) => setConfirmPw(e.target.value)}
               autoComplete="new-password"
+              minLength={8}
             />
           </div>
           <Button type="submit" disabled={saving}>

@@ -54,6 +54,7 @@ export function RenameChatDialog({ chat, loading, onClose, onRename }: RenameCha
         <form
           onSubmit={handleSubmit}
           className="space-y-4"
+          noValidate
           onKeyDown={(e) => {
             if (e.key === "Enter") e.stopPropagation();
           }}
@@ -70,6 +71,7 @@ export function RenameChatDialog({ chat, loading, onClose, onRename }: RenameCha
               disabled={loading}
               autoFocus
               required
+              minLength={1}
             />
           </div>
           {error ? <p className="text-destructive text-sm">{error}</p> : null}

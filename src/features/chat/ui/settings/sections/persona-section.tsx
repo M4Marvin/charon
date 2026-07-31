@@ -242,8 +242,9 @@ export function PersonaSection(_props: SectionProps) {
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadPersonaIcon.isPending}
                     className="flex items-center gap-1.5"
+                    aria-live="polite"
                   >
-                    <Upload className="size-3.5" />
+                    <Upload className="size-3.5" data-icon="inline-start" />
                     {uploadPersonaIcon.isPending ? "Uploading..." : "Upload"}
                   </Button>
                   <input
@@ -252,6 +253,7 @@ export function PersonaSection(_props: SectionProps) {
                     accept="image/png"
                     className="hidden"
                     onChange={handleFileChange}
+                    aria-label="Upload persona icon"
                   />
                 </div>
               </div>

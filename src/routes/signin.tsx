@@ -71,7 +71,7 @@ function SigninPage() {
 
           {error ? <ErrorBanner message={error} /> : null}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <FieldGroup>
               <form.Field
                 name="username"
@@ -89,10 +89,11 @@ function SigninPage() {
                         type="text"
                         placeholder="demo"
                         autoComplete="username"
+                        minLength={1}
                         aria-invalid={isInvalid}
-                        aria-describedby={isInvalid ? `${field.name}-error` : undefined}
+                        aria-describedby="username-error"
                       />
-                      {isInvalid && <FieldError id={`${field.name}-error`} errors={field.state.meta.errors} />}
+                      {isInvalid && <FieldError id="username-error" errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}
@@ -113,8 +114,9 @@ function SigninPage() {
                           onChange={(e) => field.handleChange(e.target.value)}
                           type={showPw ? "text" : "password"}
                           autoComplete="current-password"
+                          minLength={1}
                           aria-invalid={isInvalid}
-                          aria-describedby={isInvalid ? `${field.name}-error` : undefined}
+                          aria-describedby="password-error"
                           className="pr-10"
                         />
                         <button
@@ -126,7 +128,7 @@ function SigninPage() {
                           {showPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                         </button>
                       </div>
-                      {isInvalid && <FieldError id={`${field.name}-error`} errors={field.state.meta.errors} />}
+                      {isInvalid && <FieldError id="password-error" errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}

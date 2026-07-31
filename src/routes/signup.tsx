@@ -82,7 +82,7 @@ function SignupPage() {
 
           {error ? <ErrorBanner message={error} /> : null}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate>
             <FieldGroup>
               <form.Field
                 name="username"
@@ -100,10 +100,11 @@ function SignupPage() {
                         type="text"
                         placeholder="your_username"
                         autoComplete="username"
+                        minLength={3}
                         aria-invalid={isInvalid}
-                        aria-describedby={isInvalid ? `${field.name}-error` : undefined}
+                        aria-describedby="username-error"
                       />
-                      {isInvalid && <FieldError id={`${field.name}-error`} errors={field.state.meta.errors} />}
+                      {isInvalid && <FieldError id="username-error" errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}
@@ -125,8 +126,9 @@ function SignupPage() {
                           onChange={(e) => field.handleChange(e.target.value)}
                           type={showPw ? "text" : "password"}
                           autoComplete="new-password"
+                          minLength={8}
                           aria-invalid={isInvalid}
-                          aria-describedby={isInvalid ? `${field.name}-error` : undefined}
+                          aria-describedby="password-error"
                           className="pr-10"
                         />
                         <button
@@ -150,7 +152,7 @@ function SignupPage() {
                           At least 8 characters
                         </div>
                       </div>
-                      {isInvalid && <FieldError id={`${field.name}-error`} errors={field.state.meta.errors} />}
+                      {isInvalid && <FieldError id="password-error" errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}
@@ -171,12 +173,13 @@ function SignupPage() {
                           onChange={(e) => field.handleChange(e.target.value)}
                           type={showPw ? "text" : "password"}
                           autoComplete="new-password"
+                          minLength={8}
                           aria-invalid={isInvalid}
-                          aria-describedby={isInvalid ? `${field.name}-error` : undefined}
+                          aria-describedby="confirm-password-error"
                           className="pr-10"
                         />
                       </div>
-                      {isInvalid && <FieldError id={`${field.name}-error`} errors={field.state.meta.errors} />}
+                      {isInvalid && <FieldError id="confirm-password-error" errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}

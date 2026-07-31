@@ -184,6 +184,7 @@ function ProvidersPage() {
       <ProviderDialog
         state={editingProvider}
         onClose={() => setEditingProvider(null)}
+        pending={createProvider.isPending || updateProvider.isPending}
         onCreate={(input) =>
           createProvider.mutate(input, {
             onSuccess: ({ id }) => {

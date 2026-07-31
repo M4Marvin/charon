@@ -56,7 +56,7 @@ export function LorebooksSection(_props: SectionProps) {
         >
           <Link to="/lorebooks">
             Manage lorebooks
-            <ArrowRight className="size-3" />
+            <ArrowRight className="size-3" data-icon="inline-end" />
           </Link>
         </Button>
       </div>
@@ -130,7 +130,7 @@ export function LorebooksSection(_props: SectionProps) {
           className="mt-5 gap-1.5"
           onClick={() => setImportOpen(true)}
         >
-          <Upload className="size-3.5" />
+          <Upload className="size-3.5" data-icon="inline-start" />
           Import
         </Button>
       </div>

@@ -32,9 +32,10 @@ interface ProviderDialogProps {
     defaultModel?: string | null;
     defaultHeaders?: Record<string, string> | null;
   }) => void;
+  pending?: boolean;
 }
 
-export function ProviderDialog({ state, onClose, onCreate, onUpdate }: ProviderDialogProps) {
+export function ProviderDialog({ state, onClose, onCreate, onUpdate, pending }: ProviderDialogProps) {
   const open = state !== null;
   const editing = state && state !== "new" ? state : null;
   const [name, setName] = useState("");
@@ -111,10 +112,11 @@ export function ProviderDialog({ state, onClose, onCreate, onUpdate }: ProviderD
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
           <Button
+            disabled={pending}
             onClick={() => {
               let defaultHeaders: Record<string, string> | undefined;
               if (headersText.trim()) {
@@ -145,7 +147,7 @@ export function ProviderDialog({ state, onClose, onCreate, onUpdate }: ProviderD
               }
             }}
           >
-            {editing ? "Save" : "Create"}
+            {pending ? "Saving…" : editing ? "Save" : "Create"}
           </Button>
         </DialogFooter>
       </DialogContent>

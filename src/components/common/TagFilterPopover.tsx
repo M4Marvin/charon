@@ -30,7 +30,7 @@ export function TagFilterPopover({ tags, selected, onChange }: TagFilterPopoverP
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5">
-          <Filter className="size-3.5" />
+          <Filter className="size-3.5" data-icon="inline-start" />
           Tags
           {selected.length > 0 ? (
             <Badge variant="secondary" className="ml-1 h-5 px-1 py-0 text-[10px]">

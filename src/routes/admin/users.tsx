@@ -120,6 +120,7 @@ function AdminUsersPage() {
           <Input
             className="pl-9"
             placeholder="Search by name, username, or email..."
+            aria-label="Search users"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -148,7 +149,7 @@ function AdminUsersPage() {
             setInviteOpen(true);
           }}
         >
-          <UserPlus className="size-4" />
+          <UserPlus className="size-4" data-icon="inline-start" />
           Invite
         </Button>
       </div>
@@ -285,10 +286,16 @@ function AdminUsersPage() {
             <p>This will prevent the user from signing in.</p>
             <Input
               placeholder="Reason (optional)"
+              aria-label="Ban reason"
               value={banReason}
               onChange={(e) => setBanReason(e.target.value)}
             />
-            <Input type="date" value={banExpiry} onChange={(e) => setBanExpiry(e.target.value)} />
+            <Input
+              type="date"
+              aria-label="Ban expiry date"
+              value={banExpiry}
+              onChange={(e) => setBanExpiry(e.target.value)}
+            />
           </div>
         }
         confirmLabel="Ban"

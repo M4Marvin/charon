@@ -82,6 +82,7 @@ function DemoProviderPage() {
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder="sk-..."
+            autoComplete="new-password"
           />
         </div>
         <div className="space-y-1.5">

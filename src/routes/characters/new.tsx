@@ -126,6 +126,7 @@ function NewCharacterPage() {
             onChange={handleFileChange}
             disabled={importMutation.isPending}
             className="hidden"
+            aria-label="Choose a PNG character card"
           />
           {fieldErrors ? <FieldErrorList errors={fieldErrors} /> : null}
           {previewErr ? <ErrorBanner message={previewErr} /> : null}
@@ -142,7 +143,7 @@ function NewCharacterPage() {
               setPreview(null);
             }}
           >
-            <ArrowLeft className="size-4" /> Choose different file
+            <ArrowLeft className="size-4" data-icon="inline-start" /> Choose different file
           </Button>
           {/* Preview card */}
           <div className="rounded-xl border bg-card p-6">

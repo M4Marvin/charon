@@ -17,6 +17,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return { error };
   }
 
+  reset = (): void => {
+    this.setState({ error: null });
+  };
+
   render() {
     if (this.state.error) {
       return (
@@ -27,12 +31,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             description={this.state.error.message}
           >
             <button
-              onClick={() => this.setState({ error: null })}
+              type="button"
+              onClick={this.reset}
               className="text-sm text-brand hover:underline cursor-pointer"
             >
               Try again
             </button>
             <button
+              type="button"
               onClick={() => window.location.reload()}
               className="text-sm text-2 hover:text-1 underline underline-offset-4 cursor-pointer"
             >

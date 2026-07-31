@@ -179,7 +179,7 @@ function CharacterDetailPage() {
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={handleStartChat} disabled={createChatMutation.isPending}>
-            <MessageCircle className="size-4" />
+            <MessageCircle className="size-4" data-icon="inline-start" />
             Start Chat
           </Button>
           {!isDemo ? (
@@ -237,7 +237,7 @@ function CharacterDetailPage() {
             <div className="flex gap-2">
               <Button asChild className="flex-1">
                 <Link to="/chat/$id" params={{ id: characterChats[0].id }}>
-                  <MessageCircle className="size-4" />
+                  <MessageCircle className="size-4" data-icon="inline-start" />
                   Continue
                 </Link>
               </Button>
@@ -255,7 +255,7 @@ function CharacterDetailPage() {
               disabled={createChatMutation.isPending}
               className="w-full"
             >
-              <MessageCircle className="size-4" />
+              <MessageCircle className="size-4" data-icon="inline-start" />
               Start Chat
             </Button>
           )}
@@ -564,7 +564,7 @@ function RenameDialog({
             Renames the character record. The card data inside is unchanged.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div className="space-y-2">
             <Label htmlFor="rename">Name</Label>
             <Input
@@ -577,6 +577,7 @@ function RenameDialog({
               disabled={updateMutation.isPending}
               autoFocus
               required
+              minLength={1}
             />
           </div>
           {error ? <p className="text-destructive text-sm">{error}</p> : null}

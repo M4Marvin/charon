@@ -98,7 +98,7 @@ export function SceneSection({ chatId, isAdmin, isStreaming }: SectionProps) {
             onClick={() => handleSelect(null)}
             aria-label="Clear background"
           >
-            <X className="size-3.5 mr-1" />
+            <X className="size-3.5 mr-1" data-icon="inline-start" />
             Clear scene
           </Button>
         )}
@@ -107,15 +107,16 @@ export function SceneSection({ chatId, isAdmin, isStreaming }: SectionProps) {
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5"
               onClick={() => fileRef.current?.click()}
-              disabled={isStreaming || uploadBg.isPending}
+              disabled={uploadBg.isPending}
+              className="flex items-center gap-1.5"
+              aria-live="polite"
             >
               {uploadBg.isPending ? (
                 "Uploading..."
               ) : (
                 <>
-                  <Upload className="size-3.5" />
+                  <Upload className="size-3.5" data-icon="inline-start" />
                   Upload
                 </>
               )}

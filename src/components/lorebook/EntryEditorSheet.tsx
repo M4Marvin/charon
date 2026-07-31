@@ -193,9 +193,11 @@ export function EntryEditorSheet(props: Props) {
                     rows={6}
                     disabled={isPending}
                     aria-invalid={isInvalid}
+                    aria-describedby="entry-content-error"
+                    minLength={1}
                   />
                   <p className="text-3 text-xs text-right">~{counter.count(field.state.value)} tokens</p>
-                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                  {isInvalid && <FieldError id="entry-content-error" errors={field.state.meta.errors} />}
                 </Field>
               );
             }}
@@ -216,8 +218,9 @@ export function EntryEditorSheet(props: Props) {
                       onChange={(e) => field.handleChange(e.target.value)}
                       disabled={isPending}
                       aria-invalid={isInvalid}
+                      aria-describedby="entry-order-error"
                     />
-                    {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    {isInvalid && <FieldError id="entry-order-error" errors={field.state.meta.errors} />}
                   </Field>
                 );
               }}
