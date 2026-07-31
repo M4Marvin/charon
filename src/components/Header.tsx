@@ -63,7 +63,7 @@ export default function Header() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-1.5">
-                    <Plus className="size-4" />
+                    <Plus className="size-4" data-icon="inline-start" />
                     New
                   </Button>
                 </DropdownMenuTrigger>

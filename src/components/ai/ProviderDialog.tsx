@@ -87,6 +87,7 @@ export function ProviderDialog({ state, onClose, onCreate, onUpdate }: ProviderD
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
+              autoComplete="new-password"
               placeholder={editing ? "Leave blank to keep unchanged" : ""}
             />
           </div>
