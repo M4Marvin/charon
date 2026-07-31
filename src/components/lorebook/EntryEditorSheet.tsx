@@ -42,6 +42,9 @@ export function EntryEditorSheet(props: Props) {
 
   const tokenCount = useMemo(() => counter.count(content), [content]);
 
+  const hasContentError = error === "Content is required.";
+  const hasOrderError = error === "Order must be a number.";
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -140,6 +143,8 @@ export function EntryEditorSheet(props: Props) {
               rows={6}
               required
               disabled={isPending}
+              aria-invalid={hasContentError}
+              aria-describedby={hasContentError ? "entry-form-error" : undefined}
             />
             <p className="text-3 text-xs text-right">~{tokenCount} tokens</p>
           </div>
@@ -151,6 +156,8 @@ export function EntryEditorSheet(props: Props) {
                 value={order}
                 onChange={(e) => setOrder(e.target.value)}
                 disabled={isPending}
+                aria-invalid={hasOrderError}
+                aria-describedby={hasOrderError ? "entry-form-error" : undefined}
               />
             </div>
             <div className="space-y-2 pt-6">
@@ -164,7 +171,11 @@ export function EntryEditorSheet(props: Props) {
               </label>
             </div>
           </div>
-          {error ? <p className="text-danger text-sm">{error}</p> : null}
+          {error ? (
+            <p id="entry-form-error" role="alert" className="text-danger text-sm">
+              {error}
+            </p>
+          ) : null}
           <SheetFooter>
             <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
               Cancel

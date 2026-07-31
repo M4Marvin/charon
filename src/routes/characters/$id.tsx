@@ -200,7 +200,7 @@ function CharacterDetailPage() {
         {/* Continue existing chats */}
         {characterChats && characterChats.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-2 text-sm font-medium">Continue chat</h3>
+            <h2 className="text-2 text-sm font-medium">Continue chat</h2>
             <div className="space-y-1">
               {characterChats.slice(0, 5).map((chat) => (
                 <Link
@@ -487,12 +487,16 @@ function MetadataGrid({ character }: { character: CharacterDetail }) {
   ];
   return (
     <div className="rounded-lg border divide-y">
-      {rows.map((row) => (
-        <div key={row.label} className="flex items-baseline gap-3 px-4 py-2.5 text-sm">
-          <span className="text-2 shrink-0 w-28">{row.label}</span>
-          <span className="text-1 break-all">{row.value}</span>
-        </div>
-      ))}
+      {rows.length === 0 ? (
+        <p className="px-4 py-2.5 text-sm text-3">No metadata available.</p>
+      ) : (
+        rows.map((row) => (
+          <div key={row.label} className="flex items-baseline gap-3 px-4 py-2.5 text-sm">
+            <span className="text-2 shrink-0 w-28">{row.label}</span>
+            <span className="text-1 break-all">{row.value}</span>
+          </div>
+        ))
+      )}
     </div>
   );
 }

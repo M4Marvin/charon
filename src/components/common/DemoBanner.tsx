@@ -23,7 +23,7 @@ export function DemoBanner() {
           if (typeof window !== "undefined") sessionStorage.setItem(STORAGE_KEY, "1");
           setDismissed(true);
         }}
-        className="ml-auto inline-flex size-5 shrink-0 items-center justify-center rounded-sm hover:bg-brand/20"
+        className="ml-auto inline-flex size-6 shrink-0 items-center justify-center rounded-sm hover:bg-brand/20"
         aria-label="Dismiss"
       >
         <X className="size-3.5" />

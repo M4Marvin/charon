@@ -130,7 +130,7 @@ export function ConnectionSection({ isStreaming, isAdmin }: SectionProps) {
             variant="outline"
             size="icon"
             className="size-9 shrink-0"
-            disabled={isStreaming || !selectedProviderId}
+            disabled={isStreaming || !selectedProviderId || testConnection.isPending}
             onClick={handleTest}
             aria-label="Test provider connection"
           >

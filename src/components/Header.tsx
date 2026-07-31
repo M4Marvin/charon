@@ -26,7 +26,7 @@ export default function Header() {
             <span className="text-sm font-semibold tracking-tight text-foreground">Charon</span>
           </Link>
           {!isPending && session?.user ? (
-            <nav className="hidden md:flex items-center gap-6 text-sm">
+            <nav aria-label="Primary" className="hidden md:flex items-center gap-6 text-sm">
               <Link
                 to="/chat"
                 className="text-2 hover:text-1 no-underline transition-colors inline-flex items-center h-14"
@@ -57,7 +57,7 @@ export default function Header() {
             </nav>
           ) : null}
         </div>
-        <nav className="flex items-center gap-2 text-sm">
+        <nav aria-label="Account actions" aria-live="polite" className="flex items-center gap-2 text-sm">
           {isPending ? null : session?.user ? (
             <>
               <DropdownMenu>

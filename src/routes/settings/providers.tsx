@@ -43,14 +43,19 @@ function ProvidersPage() {
   const defaultProviderId = userSettings?.defaultProviderId ?? "";
   const [editingProvider, setEditingProvider] = useState<AiProviderListItem | "new" | null>(null);
   const [delProviderId, setDelProviderId] = useState<string | null>(null);
+  const [testingId, setTestingId] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, ProbeResult | null>>({});
 
   const handleTest = async (providerId: string) => {
+    if (testingId) return;
+    setTestingId(providerId);
     try {
       const result = await testConnection.mutateAsync(providerId);
       setTestResults((prev) => ({ ...prev, [providerId]: result }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Test failed");
+    } finally {
+      setTestingId(null);
     }
   };
 
@@ -94,7 +99,9 @@ function ProvidersPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
-                      {testResult ? (
+                      {testingId === p.id ? (
+                        <StatusDot tone="muted" label="Testing…" />
+                      ) : testResult ? (
                         testResult.ok ? (
                           <StatusDot tone="success" label="Connected" />
                         ) : (

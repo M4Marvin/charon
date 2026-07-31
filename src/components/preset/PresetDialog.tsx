@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -118,12 +119,14 @@ export function PresetDialog({
                 <SelectValue placeholder="Select provider" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="_none">— None —</SelectItem>
-                {providers.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  <SelectItem value="_none">— None —</SelectItem>
+                  {providers.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -143,16 +146,18 @@ export function PresetDialog({
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {fetchedModels.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.id}
-                        </SelectItem>
-                      ))}
-                      {fetchedModels.length === 0 && !modelsLoading && !modelsError && (
-                        <div className="text-muted-foreground px-3 py-2 text-xs">
-                          No models found
-                        </div>
-                      )}
+                      <SelectGroup>
+                        {fetchedModels.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.id}
+                          </SelectItem>
+                        ))}
+                        {fetchedModels.length === 0 && !modelsLoading && !modelsError && (
+                          <div className="text-muted-foreground px-3 py-2 text-xs">
+                            No models found
+                          </div>
+                        )}
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                   <Button
