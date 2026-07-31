@@ -891,7 +891,7 @@
   --border: var(--border-subtle);
   --input: var(--border-subtle);
   --ring: var(--brand);
-  --radius: 10px;
+  --radius: 8px;
   --chart-1: #2dd4bf;
   --chart-2: #34d399;
   --chart-3: #60a5fa;
