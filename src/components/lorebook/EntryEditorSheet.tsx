@@ -27,10 +27,9 @@ const entrySchema = z
     keys: z.array(z.string()),
     secondary: z.array(z.string()),
     content: z.string().min(1, "Content is required."),
-    order: z.string().refine(
-      (v) => !Number.isNaN(Number.parseInt(v, 10)),
-      "Order must be a number.",
-    ),
+    order: z
+      .string()
+      .refine((v) => !Number.isNaN(Number.parseInt(v, 10)), "Order must be a number."),
     disable: z.boolean(),
     constant: z.boolean(),
   })
@@ -108,7 +107,7 @@ export function EntryEditorSheet(props: Props) {
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
+      <SheetContent side="right" className="sm:max-w-lg w-full">
         <SheetHeader>
           <SheetTitle>{mode === "create" ? "New Entry" : "Edit Entry"}</SheetTitle>
           <SheetDescription>
@@ -121,162 +120,170 @@ export function EntryEditorSheet(props: Props) {
             e.stopPropagation();
             void form.handleSubmit();
           }}
-          className="space-y-4 mt-4"
+          className="flex min-h-0 flex-1 flex-col"
         >
-          <form.Field
-            name="comment"
-            children={(field) => (
-              <Field data-invalid={field.state.meta.isTouched && !field.state.meta.isValid}>
-                <FieldLabel htmlFor="entry-comment">Comment</FieldLabel>
-                <Input
-                  id="entry-comment"
-                  name={field.name}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="Short description for the author"
-                  disabled={isPending}
-                />
-              </Field>
-            )}
-          />
-          <form.Field
-            name="keys"
-            children={(field) => {
-              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
-              return (
-                <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor="entry-keys">Keywords</FieldLabel>
-                  <ChipInput
-                    id="entry-keys"
-                    value={field.state.value}
-                    onChange={(v) => field.handleChange(v)}
-                    placeholder="dragon, wyrm, drake"
-                  />
-                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
-                </Field>
-              );
-            }}
-          />
-          <form.Field
-            name="secondary"
-            children={(field) => {
-              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
-              return (
-                <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor="entry-secondary">Secondary keys</FieldLabel>
-                  <ChipInput
-                    id="entry-secondary"
-                    value={field.state.value}
-                    onChange={(v) => field.handleChange(v)}
-                    placeholder="fire, scales"
-                  />
-                  {isInvalid && <FieldError errors={field.state.meta.errors} />}
-                </Field>
-              );
-            }}
-          />
-          <form.Field
-            name="content"
-            children={(field) => {
-              const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
-              return (
-                <Field data-invalid={isInvalid}>
-                  <FieldLabel htmlFor="entry-content">Content</FieldLabel>
-                  <Textarea
-                    id="entry-content"
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4">
+            <form.Field
+              name="comment"
+              children={(field) => (
+                <Field data-invalid={field.state.meta.isTouched && !field.state.meta.isValid}>
+                  <FieldLabel htmlFor="entry-comment">Comment</FieldLabel>
+                  <Input
+                    id="entry-comment"
                     name={field.name}
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
-                    placeholder="The lore text injected into the prompt..."
-                    rows={6}
+                    placeholder="Short description for the author"
                     disabled={isPending}
-                    aria-invalid={isInvalid}
-                    aria-describedby="entry-content-error"
-                    minLength={1}
                   />
-                  <p className="text-3 text-xs text-right">~{counter.count(field.state.value)} tokens</p>
-                  {isInvalid && <FieldError id="entry-content-error" errors={field.state.meta.errors} />}
                 </Field>
-              );
-            }}
-          />
-          <div className="grid grid-cols-2 gap-4">
+              )}
+            />
             <form.Field
-              name="order"
+              name="keys"
               children={(field) => {
                 const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
                 return (
                   <Field data-invalid={isInvalid}>
-                    <FieldLabel htmlFor="entry-order">Order</FieldLabel>
-                    <Input
-                      id="entry-order"
-                      name={field.name}
+                    <FieldLabel htmlFor="entry-keys">Keywords</FieldLabel>
+                    <ChipInput
+                      id="entry-keys"
                       value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      disabled={isPending}
-                      aria-invalid={isInvalid}
-                      aria-describedby="entry-order-error"
+                      onChange={(v) => field.handleChange(v)}
+                      placeholder="dragon, wyrm, drake"
                     />
-                    {isInvalid && <FieldError id="entry-order-error" errors={field.state.meta.errors} />}
+                    {isInvalid && <FieldError errors={field.state.meta.errors} />}
                   </Field>
                 );
               }}
             />
-            <div className="space-y-2 pt-6">
+            <form.Field
+              name="secondary"
+              children={(field) => {
+                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+                return (
+                  <Field data-invalid={isInvalid}>
+                    <FieldLabel htmlFor="entry-secondary">Secondary keys</FieldLabel>
+                    <ChipInput
+                      id="entry-secondary"
+                      value={field.state.value}
+                      onChange={(v) => field.handleChange(v)}
+                      placeholder="fire, scales"
+                    />
+                    {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                  </Field>
+                );
+              }}
+            />
+            <form.Field
+              name="content"
+              children={(field) => {
+                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+                return (
+                  <Field data-invalid={isInvalid}>
+                    <FieldLabel htmlFor="entry-content">Content</FieldLabel>
+                    <Textarea
+                      id="entry-content"
+                      name={field.name}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      placeholder="The lore text injected into the prompt..."
+                      rows={6}
+                      disabled={isPending}
+                      aria-invalid={isInvalid}
+                      aria-describedby="entry-content-error"
+                      minLength={1}
+                    />
+                    <p className="text-3 text-xs text-right">
+                      ~{counter.count(field.state.value)} tokens
+                    </p>
+                    {isInvalid && (
+                      <FieldError id="entry-content-error" errors={field.state.meta.errors} />
+                    )}
+                  </Field>
+                );
+              }}
+            />
+            <div className="grid grid-cols-2 gap-4">
               <form.Field
-                name="constant"
+                name="order"
                 children={(field) => {
                   const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
                   return (
-                    <Field orientation="horizontal" data-invalid={isInvalid} className="gap-2">
-                      <FieldContent>
-                        <FieldLabel htmlFor="entry-constant">Constant (always active)</FieldLabel>
-                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
-                      </FieldContent>
-                      <Switch
-                        id="entry-constant"
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor="entry-order">Order</FieldLabel>
+                      <Input
+                        id="entry-order"
                         name={field.name}
-                        checked={field.state.value}
-                        onCheckedChange={field.handleChange}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
                         disabled={isPending}
                         aria-invalid={isInvalid}
+                        aria-describedby="entry-order-error"
                       />
+                      {isInvalid && (
+                        <FieldError id="entry-order-error" errors={field.state.meta.errors} />
+                      )}
                     </Field>
                   );
                 }}
               />
-              <form.Field
-                name="disable"
-                children={(field) => {
-                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
-                  return (
-                    <Field orientation="horizontal" data-invalid={isInvalid} className="gap-2">
-                      <FieldContent>
-                        <FieldLabel htmlFor="entry-disable">Disabled</FieldLabel>
-                        {isInvalid && <FieldError errors={field.state.meta.errors} />}
-                      </FieldContent>
-                      <Switch
-                        id="entry-disable"
-                        name={field.name}
-                        checked={field.state.value}
-                        onCheckedChange={field.handleChange}
-                        disabled={isPending}
-                        aria-invalid={isInvalid}
-                      />
-                    </Field>
-                  );
-                }}
-              />
+              <div className="space-y-2 pt-6">
+                <form.Field
+                  name="constant"
+                  children={(field) => {
+                    const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+                    return (
+                      <Field orientation="horizontal" data-invalid={isInvalid} className="gap-2">
+                        <FieldContent>
+                          <FieldLabel htmlFor="entry-constant">Constant (always active)</FieldLabel>
+                          {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                        </FieldContent>
+                        <Switch
+                          id="entry-constant"
+                          name={field.name}
+                          checked={field.state.value}
+                          onCheckedChange={field.handleChange}
+                          disabled={isPending}
+                          aria-invalid={isInvalid}
+                        />
+                      </Field>
+                    );
+                  }}
+                />
+                <form.Field
+                  name="disable"
+                  children={(field) => {
+                    const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid;
+                    return (
+                      <Field orientation="horizontal" data-invalid={isInvalid} className="gap-2">
+                        <FieldContent>
+                          <FieldLabel htmlFor="entry-disable">Disabled</FieldLabel>
+                          {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                        </FieldContent>
+                        <Switch
+                          id="entry-disable"
+                          name={field.name}
+                          checked={field.state.value}
+                          onCheckedChange={field.handleChange}
+                          disabled={isPending}
+                          aria-invalid={isInvalid}
+                        />
+                      </Field>
+                    );
+                  }}
+                />
+              </div>
             </div>
+            {submitError ? (
+              <p role="alert" className="text-danger text-sm">
+                {submitError}
+              </p>
+            ) : null}
           </div>
-          {submitError ? (
-            <p role="alert" className="text-danger text-sm">
-              {submitError}
-            </p>
-          ) : null}
           <SheetFooter>
             <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
               Cancel
