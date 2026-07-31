@@ -26,8 +26,15 @@ export function CommandMenu({ isAdmin }: CommandMenuProps) {
         setOpen((o) => !o);
       }
     }
+    function handleToggle() {
+      setOpen((o) => !o);
+    }
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("charon:command-menu", handleToggle);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("charon:command-menu", handleToggle);
+    };
   }, []);
 
   return (

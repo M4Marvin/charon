@@ -1,8 +1,9 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { LogOut, Plus, Settings, Shield } from "lucide-react";
+import { LogOut, Plus, Search, Settings, Shield } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,6 +61,16 @@ export default function Header() {
         <nav aria-label="Account actions" aria-live="polite" className="flex items-center gap-2 text-sm">
           {isPending ? null : session?.user ? (
             <>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new Event("charon:command-menu"))}
+                aria-label="Open command palette (Ctrl K)"
+                className="hidden md:inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-background/60 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <Search className="size-3.5" />
+                <span>Search</span>
+                <Kbd>Ctrl K</Kbd>
+              </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-1.5">
