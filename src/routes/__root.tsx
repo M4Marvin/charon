@@ -115,8 +115,12 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         content: "website",
       },
       {
+        property: "og:url",
+        content: "https://chat.m4marvin.com",
+      },
+      {
         property: "og:image",
-        content: "/og.png",
+        content: "https://chat.m4marvin.com/og.png",
       },
       {
         name: "twitter:card",
@@ -133,7 +137,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         name: "twitter:image",
-        content: "/og.png",
+        content: "https://chat.m4marvin.com/og.png",
       },
       {
         name: "theme-color",
@@ -144,6 +148,10 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "canonical",
+        href: "https://chat.m4marvin.com",
       },
       {
         rel: "icon",
