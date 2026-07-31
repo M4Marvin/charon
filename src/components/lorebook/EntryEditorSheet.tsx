@@ -113,12 +113,22 @@ export function EntryEditorSheet(props: Props) {
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Keywords</Label>
-            <ChipInput value={keys} onChange={setKeys} placeholder="dragon, wyrm, drake" />
+            <Label htmlFor="entry-keys">Keywords</Label>
+            <ChipInput
+              id="entry-keys"
+              value={keys}
+              onChange={setKeys}
+              placeholder="dragon, wyrm, drake"
+            />
           </div>
           <div className="space-y-1.5">
-            <Label>Secondary keys</Label>
-            <ChipInput value={secondary} onChange={setSecondary} placeholder="fire, scales" />
+            <Label htmlFor="entry-secondary">Secondary keys</Label>
+            <ChipInput
+              id="entry-secondary"
+              value={secondary}
+              onChange={setSecondary}
+              placeholder="fire, scales"
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="content">Content</Label>

@@ -453,6 +453,7 @@ function CharacterEditPage() {
                   <Field>
                     <FieldLabel>Tags</FieldLabel>
                     <ChipInput
+                      aria-label="Tags"
                       value={field.state.value}
                       onChange={(v) => field.handleChange(v)}
                       placeholder="Add tags..."

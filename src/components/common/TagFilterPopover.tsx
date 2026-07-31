@@ -46,6 +46,7 @@ export function TagFilterPopover({ tags, selected, onChange }: TagFilterPopoverP
             <Input
               className="h-8 pl-7 text-xs"
               placeholder="Filter tags..."
+              aria-label="Filter tags"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />

@@ -169,6 +169,7 @@ function ProvidersPage() {
             providerId={defaultProviderId}
             value={userSettings?.defaultSelectedModel ?? ""}
             onChange={(model) => updateDefaults.mutate({ defaultSelectedModel: model || null })}
+            aria-label="Default model"
           />
         </div>
       ) : null}

@@ -109,12 +109,12 @@ export function PresetDialog({
             <Input id="pr-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label>Provider (optional)</Label>
+            <Label htmlFor="pr-provider">Provider (optional)</Label>
             <Select
               value={providerId || "_none"}
               onValueChange={(v) => setProviderId(v === "_none" ? "" : v)}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger id="pr-provider" className="w-full">
                 <SelectValue placeholder="Select provider" />
               </SelectTrigger>
               <SelectContent>
@@ -133,7 +133,7 @@ export function PresetDialog({
               <>
                 <div className="flex gap-1.5">
                   <Select value={model} onValueChange={setModel}>
-                    <SelectTrigger className="flex-1">
+                    <SelectTrigger className="flex-1" aria-label="Model">
                       <SelectValue
                         placeholder={
                           modelsLoading && fetchedModels.length === 0
@@ -186,6 +186,7 @@ export function PresetDialog({
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                   placeholder="Or type model ID"
+                  aria-label="Model ID"
                   className="mt-1"
                 />
               </>
@@ -194,6 +195,7 @@ export function PresetDialog({
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 placeholder="model id"
+                aria-label="Model ID"
               />
             )}
           </div>

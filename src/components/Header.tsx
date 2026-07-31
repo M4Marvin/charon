@@ -85,7 +85,7 @@ export default function Header() {
               </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-full pl-0.5 text-sm outline-none hover:bg-muted/50 rounded-lg px-1.5 py-1">
+                  <button className="flex items-center gap-2 rounded-full pl-0.5 text-sm outline-none hover:bg-muted/50 rounded-lg px-1.5 py-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
                     <Avatar className="size-7">
                       <AvatarFallback className="text-xs">
                         {session.user.name?.charAt(0)?.toUpperCase() ?? "U"}

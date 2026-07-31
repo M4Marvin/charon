@@ -17,7 +17,7 @@ export function MobileTabBar() {
           <Users className="size-5" />
           Characters
         </Link>
-        <Link to="/characters" className={base}>
+        <Link to="/characters" className={base} aria-label="New chat">
           <div className="flex size-10 items-center justify-center rounded-full bg-brand text-primary-foreground shadow-lg">
             <Plus className="size-5" />
           </div>

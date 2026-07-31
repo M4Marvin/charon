@@ -9,9 +9,10 @@ interface ModelComboboxProps {
   value: string;
   onChange: (v: string) => void;
   disabled?: boolean;
+  ariaLabel?: string;
 }
 
-export function ModelCombobox({ providerId, value, onChange, disabled }: ModelComboboxProps) {
+export function ModelCombobox({ providerId, value, onChange, disabled, ariaLabel }: ModelComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const ref = useRef<HTMLDivElement>(null);
@@ -38,6 +39,7 @@ export function ModelCombobox({ providerId, value, onChange, disabled }: ModelCo
     <div ref={ref} className="relative">
       <div className="flex gap-1.5">
         <Input
+          aria-label={ariaLabel}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);

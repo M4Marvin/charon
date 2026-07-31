@@ -90,8 +90,9 @@ function SigninPage() {
                         placeholder="demo"
                         autoComplete="username"
                         aria-invalid={isInvalid}
+                        aria-describedby={isInvalid ? `${field.name}-error` : undefined}
                       />
-                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                      {isInvalid && <FieldError id={`${field.name}-error`} errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}
@@ -113,6 +114,7 @@ function SigninPage() {
                           type={showPw ? "text" : "password"}
                           autoComplete="current-password"
                           aria-invalid={isInvalid}
+                          aria-describedby={isInvalid ? `${field.name}-error` : undefined}
                           className="pr-10"
                         />
                         <button
@@ -124,7 +126,7 @@ function SigninPage() {
                           {showPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                         </button>
                       </div>
-                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                      {isInvalid && <FieldError id={`${field.name}-error`} errors={field.state.meta.errors} />}
                     </Field>
                   );
                 }}

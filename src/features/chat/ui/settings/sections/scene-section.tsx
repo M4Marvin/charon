@@ -59,35 +59,33 @@ export function SceneSection({ chatId, isAdmin, isStreaming }: SectionProps) {
 
       <div className="grid grid-cols-3 gap-2">
         {backgrounds?.map((bg) => (
-          <button
-            key={bg.id}
-            type="button"
-            onClick={() => handleSelect(bg.id === selectedId ? null : bg.id)}
-            disabled={isStreaming}
-            className={`group relative aspect-video overflow-hidden rounded-lg bg-white/5 ring-1 ring-white/10 transition ${
-              bg.id === selectedId ? "ring-[--lagoon] ring-2" : "hover:ring-white/20"
-            }`}
-            aria-label={`${bg.name}${bg.id === selectedId ? " (selected)" : ""}`}
-          >
-            <img
-              src={`/api/backgrounds/${bg.id}/image`}
-              alt={bg.name}
-              className="size-full object-cover"
-            />
+          <div key={bg.id} className="relative">
+            <button
+              type="button"
+              onClick={() => handleSelect(bg.id === selectedId ? null : bg.id)}
+              disabled={isStreaming}
+              className={`group relative aspect-video w-full overflow-hidden rounded-lg bg-white/5 ring-1 ring-white/10 transition ${
+                bg.id === selectedId ? "ring-[--lagoon] ring-2" : "hover:ring-white/20"
+              }`}
+              aria-label={`${bg.name}${bg.id === selectedId ? " (selected)" : ""}`}
+            >
+              <img
+                src={`/api/backgrounds/${bg.id}/image`}
+                alt={bg.name}
+                className="size-full object-cover"
+              />
+            </button>
             {isAdmin && (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDeleteTarget(bg.id);
-                }}
+                onClick={() => setDeleteTarget(bg.id)}
                 className="absolute top-0.5 right-0.5 z-10 size-6 rounded-full bg-black/60 flex items-center justify-center text-white/50 hover:text-white hover:bg-black/80"
                 aria-label={`Delete ${bg.name}`}
               >
                 <X className="size-3" />
               </button>
             )}
-          </button>
+          </div>
         ))}
       </div>
 
