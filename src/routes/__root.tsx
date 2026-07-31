@@ -90,13 +90,72 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "ST V2.0",
+        title: "Charon",
+      },
+      {
+        name: "description",
+        content:
+          "A modern self-hosted AI character chat platform. Import V2 character cards, build lorebooks, connect any LLM provider, and chat with branching narratives.",
+      },
+      {
+        property: "og:site_name",
+        content: "Charon",
+      },
+      {
+        property: "og:title",
+        content: "Charon",
+      },
+      {
+        property: "og:description",
+        content:
+          "Import character cards, build lorebooks, connect any LLM provider, and have immersive branching conversations.",
+      },
+      {
+        property: "og:type",
+        content: "website",
+      },
+      {
+        property: "og:image",
+        content: "/logo512.png",
+      },
+      {
+        name: "twitter:card",
+        content: "summary",
+      },
+      {
+        name: "twitter:title",
+        content: "Charon",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Self-hosted AI character chat. Import character cards, build lorebooks, connect any LLM provider.",
+      },
+      {
+        name: "twitter:image",
+        content: "/logo512.png",
+      },
+      {
+        name: "theme-color",
+        content: "#0a1418",
       },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "icon",
+        href: "/favicon.ico",
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/logo192.png",
+      },
+      {
+        rel: "manifest",
+        href: "/manifest.json",
       },
     ],
   }),
