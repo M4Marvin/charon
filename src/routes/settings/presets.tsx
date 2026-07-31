@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -165,16 +166,18 @@ function PresetsPage() {
             })
           }
         >
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full" aria-label="Default preset">
             <SelectValue placeholder="Select preset" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="_none">— None —</SelectItem>
-            {presets.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
+            <SelectGroup>
+              <SelectItem value="_none">— None —</SelectItem>
+              {presets.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectGroup>
           </SelectContent>
         </Select>
       </div>

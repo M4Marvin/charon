@@ -8,15 +8,18 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
+import { ThemeProvider } from "next-themes";
 
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import TanstackQueryProvider from "../integrations/tanstack-query/root-provider";
 
 import Header from "@/components/Header";
 import { EmptyState } from "@/components/common/EmptyState";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { TriangleAlert, Compass } from "lucide-react";
 import { MobileTabBar } from "@/components/common/MobileTabBar";
 import { DemoBanner } from "@/components/common/DemoBanner";
+import { CommandMenu } from "@/components/common/CommandMenu";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import appCss from "@/styles.css?url";
@@ -182,35 +185,46 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     /^\/chat\//.test(location.pathname) || /^\/c\/(?!new$)[^/]+$/.test(location.pathname);
   const isAuthed = Boolean(user);
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body>
-        <TooltipProvider>
-          {!hideGlobalHeader && <Header />}
-          {!hideGlobalHeader && isAuthed && user?.role !== "admin" && <DemoBanner />}
-          <div className={isAuthed && !hideGlobalHeader ? "pb-20 md:pb-0" : undefined}>
-            <RichTextSettingsProvider>
-              <TanstackQueryProvider queryClient={queryClient}>{children}</TanstackQueryProvider>
-            </RichTextSettingsProvider>
-          </div>
-          {isAuthed && !hideGlobalHeader && <MobileTabBar />}
-          <Toaster />
-          <TanStackDevtools
-            config={{
-              position: "bottom-right",
-            }}
-            plugins={[
-              {
-                name: "Tanstack Router",
-                render: <TanStackRouterDevtoolsPanel />,
-              },
-              TanStackQueryDevtools,
-            ]}
-          />
-          <Scripts />
-        </TooltipProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          themes={["dark"]}
+          enableSystem={false}
+          enableColorScheme
+        >
+          <TooltipProvider>
+            <ErrorBoundary>
+              {!hideGlobalHeader && <Header />}
+              {!hideGlobalHeader && isAuthed && user?.role !== "admin" && <DemoBanner />}
+              <div className={isAuthed && !hideGlobalHeader ? "pb-20 md:pb-0" : undefined}>
+                <RichTextSettingsProvider>
+                  <TanstackQueryProvider queryClient={queryClient}>{children}</TanstackQueryProvider>
+                </RichTextSettingsProvider>
+              </div>
+              {isAuthed && !hideGlobalHeader && <MobileTabBar />}
+              {isAuthed && <CommandMenu isAdmin={user?.role === "admin"} />}
+              <Toaster />
+            </ErrorBoundary>
+            <TanStackDevtools
+              config={{
+                position: "bottom-right",
+              }}
+              plugins={[
+                {
+                  name: "Tanstack Router",
+                  render: <TanStackRouterDevtoolsPanel />,
+                },
+                TanStackQueryDevtools,
+              ]}
+            />
+            <Scripts />
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

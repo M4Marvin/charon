@@ -1,8 +1,9 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { LogOut, Plus, Settings, Shield } from "lucide-react";
+import { LogOut, Plus, Search, Settings, Shield } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +27,7 @@ export default function Header() {
             <span className="text-sm font-semibold tracking-tight text-foreground">Charon</span>
           </Link>
           {!isPending && session?.user ? (
-            <nav className="hidden md:flex items-center gap-6 text-sm">
+            <nav aria-label="Primary" className="hidden md:flex items-center gap-6 text-sm">
               <Link
                 to="/chat"
                 className="text-2 hover:text-1 no-underline transition-colors inline-flex items-center h-14"
@@ -57,13 +58,23 @@ export default function Header() {
             </nav>
           ) : null}
         </div>
-        <nav className="flex items-center gap-2 text-sm">
+        <nav aria-label="Account actions" aria-live="polite" className="flex items-center gap-2 text-sm">
           {isPending ? null : session?.user ? (
             <>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new Event("charon:command-menu"))}
+                aria-label="Open command palette (Ctrl K)"
+                className="hidden md:inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-background/60 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/60 hover:text-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                <Search className="size-3.5" />
+                <span>Search</span>
+                <Kbd>Ctrl K</Kbd>
+              </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-1.5">
-                    <Plus className="size-4" />
+                    <Plus className="size-4" data-icon="inline-start" />
                     New
                   </Button>
                 </DropdownMenuTrigger>
@@ -85,7 +96,7 @@ export default function Header() {
               </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-full pl-0.5 text-sm outline-none hover:bg-muted/50 rounded-lg px-1.5 py-1">
+                  <button className="flex items-center gap-2 rounded-full pl-0.5 text-sm outline-none hover:bg-muted/50 rounded-lg px-1.5 py-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
                     <Avatar className="size-7">
                       <AvatarFallback className="text-xs">
                         {session.user.name?.charAt(0)?.toUpperCase() ?? "U"}

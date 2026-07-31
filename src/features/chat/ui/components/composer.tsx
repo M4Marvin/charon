@@ -70,6 +70,7 @@ export function Composer({
             onChange={(e) => setInputDraft(chatId, e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
+            aria-label="Message"
             rows={1}
             disabled={disabled}
             className="min-h-[40px] max-h-[120px] resize-none border-0 bg-transparent px-1 py-1.5 text-[15px] leading-6 placeholder:text-white/30 text-[--sea-ink] no-scrollbar focus-visible:ring-0"

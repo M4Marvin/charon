@@ -179,7 +179,7 @@ function CharacterDetailPage() {
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={handleStartChat} disabled={createChatMutation.isPending}>
-            <MessageCircle className="size-4" />
+            <MessageCircle className="size-4" data-icon="inline-start" />
             Start Chat
           </Button>
           {!isDemo ? (
@@ -200,7 +200,7 @@ function CharacterDetailPage() {
         {/* Continue existing chats */}
         {characterChats && characterChats.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-2 text-sm font-medium">Continue chat</h3>
+            <h2 className="text-2 text-sm font-medium">Continue chat</h2>
             <div className="space-y-1">
               {characterChats.slice(0, 5).map((chat) => (
                 <Link
@@ -237,7 +237,7 @@ function CharacterDetailPage() {
             <div className="flex gap-2">
               <Button asChild className="flex-1">
                 <Link to="/chat/$id" params={{ id: characterChats[0].id }}>
-                  <MessageCircle className="size-4" />
+                  <MessageCircle className="size-4" data-icon="inline-start" />
                   Continue
                 </Link>
               </Button>
@@ -255,7 +255,7 @@ function CharacterDetailPage() {
               disabled={createChatMutation.isPending}
               className="w-full"
             >
-              <MessageCircle className="size-4" />
+              <MessageCircle className="size-4" data-icon="inline-start" />
               Start Chat
             </Button>
           )}
@@ -487,12 +487,16 @@ function MetadataGrid({ character }: { character: CharacterDetail }) {
   ];
   return (
     <div className="rounded-lg border divide-y">
-      {rows.map((row) => (
-        <div key={row.label} className="flex items-baseline gap-3 px-4 py-2.5 text-sm">
-          <span className="text-2 shrink-0 w-28">{row.label}</span>
-          <span className="text-1 break-all">{row.value}</span>
-        </div>
-      ))}
+      {rows.length === 0 ? (
+        <p className="px-4 py-2.5 text-sm text-3">No metadata available.</p>
+      ) : (
+        rows.map((row) => (
+          <div key={row.label} className="flex items-baseline gap-3 px-4 py-2.5 text-sm">
+            <span className="text-2 shrink-0 w-28">{row.label}</span>
+            <span className="text-1 break-all">{row.value}</span>
+          </div>
+        ))
+      )}
     </div>
   );
 }
@@ -560,7 +564,7 @@ function RenameDialog({
             Renames the character record. The card data inside is unchanged.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div className="space-y-2">
             <Label htmlFor="rename">Name</Label>
             <Input
@@ -573,6 +577,7 @@ function RenameDialog({
               disabled={updateMutation.isPending}
               autoFocus
               required
+              minLength={1}
             />
           </div>
           {error ? <p className="text-destructive text-sm">{error}</p> : null}

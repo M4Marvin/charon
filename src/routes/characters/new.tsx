@@ -29,6 +29,9 @@ function NewCharacterPage() {
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [previewB64, setPreviewB64] = useState<string>("");
   const [previewErr, setPreviewErr] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ field: string; message: string }[] | null>(
+    null,
+  );
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importMutation = useImportCharacter();
@@ -36,6 +39,7 @@ function NewCharacterPage() {
   const processFile = async (f: File | null) => {
     setFile(f);
     setPreviewErr(null);
+    setFieldErrors(null);
     if (!f) return;
     if (f.type !== "" && f.type !== "image/png") {
       setPreviewErr("Only PNG files are supported.");
@@ -50,11 +54,11 @@ function NewCharacterPage() {
       setPreviewB64(b64);
       const res = await previewCharacter({ data: { pngBase64: b64 } });
       if (!res.ok) {
-        const msg =
-          res.error.kind === "validation"
-            ? res.error.errors.map((e) => `${e.field}: ${e.message}`).join(", ")
-            : res.error.message;
-        setPreviewErr(msg);
+        if (res.error.kind === "validation") {
+          setFieldErrors(res.error.errors);
+        } else {
+          setPreviewErr(res.error.message);
+        }
         return;
       }
       setPreview(res.data);
@@ -76,7 +80,7 @@ function NewCharacterPage() {
       void navigate({ to: "/characters/$id", params: { id: res.character.id } });
     } else {
       if (res.error.kind === "validation") {
-        setPreviewErr(res.error.errors.map((e) => `${e.field}: ${e.message}`).join(", "));
+        setFieldErrors(res.error.errors);
       } else {
         setPreviewErr(res.error.message);
       }
@@ -89,7 +93,8 @@ function NewCharacterPage() {
 
       {step === "pick" ? (
         <div className="space-y-4">
-          <div
+          <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             onDragOver={(e) => {
               e.preventDefault();
@@ -101,7 +106,8 @@ function NewCharacterPage() {
               setDragOver(false);
               processFile(e.dataTransfer.files?.[0] ?? null);
             }}
-            className={`flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 text-center cursor-pointer hover:bg-surface transition-colors ${
+            disabled={importMutation.isPending}
+            className={`flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-transparent p-12 text-center hover:bg-surface transition-colors disabled:pointer-events-none disabled:opacity-50 ${
               dragOver ? "border-brand bg-brand/5" : ""
             }`}
           >
@@ -112,26 +118,17 @@ function NewCharacterPage() {
                 V2 or V3 card. Max 50 MB. Drag &amp; drop or click to browse.
               </p>
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png"
-              onChange={handleFileChange}
-              disabled={importMutation.isPending}
-              className="hidden"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current?.click();
-              }}
-            >
-              Browse files
-            </Button>
-          </div>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png"
+            onChange={handleFileChange}
+            disabled={importMutation.isPending}
+            className="hidden"
+            aria-label="Choose a PNG character card"
+          />
+          {fieldErrors ? <FieldErrorList errors={fieldErrors} /> : null}
           {previewErr ? <ErrorBanner message={previewErr} /> : null}
         </div>
       ) : null}
@@ -146,7 +143,7 @@ function NewCharacterPage() {
               setPreview(null);
             }}
           >
-            <ArrowLeft className="size-4" /> Choose different file
+            <ArrowLeft className="size-4" data-icon="inline-start" /> Choose different file
           </Button>
           {/* Preview card */}
           <div className="rounded-xl border bg-card p-6">
@@ -209,6 +206,7 @@ function NewCharacterPage() {
               </p>
             </div>
           ) : null}
+          {fieldErrors ? <FieldErrorList errors={fieldErrors} /> : null}
           {previewErr ? <ErrorBanner message={previewErr} /> : null}
           <div className="flex justify-end gap-2">
             <Button
@@ -227,5 +225,23 @@ function NewCharacterPage() {
         </div>
       ) : null}
     </main>
+  );
+}
+
+function FieldErrorList({ errors }: { errors: { field: string; message: string }[] }) {
+  return (
+    <div
+      role="alert"
+      className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive"
+    >
+      <p className="font-medium">Card validation failed:</p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-4">
+        {errors.map((e, i) => (
+          <li key={i}>
+            <code className="font-mono">{e.field}</code>: {e.message}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

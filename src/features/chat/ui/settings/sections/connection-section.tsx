@@ -100,7 +100,7 @@ export function ConnectionSection({ isStreaming, isAdmin }: SectionProps) {
         >
           <Link to="/settings">
             Manage providers & presets
-            <ArrowRight className="size-3" />
+            <ArrowRight className="size-3" data-icon="inline-end" />
           </Link>
         </Button>
       </div>
@@ -130,7 +130,7 @@ export function ConnectionSection({ isStreaming, isAdmin }: SectionProps) {
             variant="outline"
             size="icon"
             className="size-9 shrink-0"
-            disabled={isStreaming || !selectedProviderId}
+            disabled={isStreaming || !selectedProviderId || testConnection.isPending}
             onClick={handleTest}
             aria-label="Test provider connection"
           >

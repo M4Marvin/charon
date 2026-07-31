@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -109,21 +110,23 @@ export function PresetDialog({
             <Input id="pr-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label>Provider (optional)</Label>
+            <Label htmlFor="pr-provider">Provider (optional)</Label>
             <Select
               value={providerId || "_none"}
               onValueChange={(v) => setProviderId(v === "_none" ? "" : v)}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger id="pr-provider" className="w-full">
                 <SelectValue placeholder="Select provider" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="_none">— None —</SelectItem>
-                {providers.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  <SelectItem value="_none">— None —</SelectItem>
+                  {providers.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -133,7 +136,7 @@ export function PresetDialog({
               <>
                 <div className="flex gap-1.5">
                   <Select value={model} onValueChange={setModel}>
-                    <SelectTrigger className="flex-1">
+                    <SelectTrigger className="flex-1" aria-label="Model">
                       <SelectValue
                         placeholder={
                           modelsLoading && fetchedModels.length === 0
@@ -143,16 +146,18 @@ export function PresetDialog({
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      {fetchedModels.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.id}
-                        </SelectItem>
-                      ))}
-                      {fetchedModels.length === 0 && !modelsLoading && !modelsError && (
-                        <div className="text-muted-foreground px-3 py-2 text-xs">
-                          No models found
-                        </div>
-                      )}
+                      <SelectGroup>
+                        {fetchedModels.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.id}
+                          </SelectItem>
+                        ))}
+                        {fetchedModels.length === 0 && !modelsLoading && !modelsError && (
+                          <div className="text-muted-foreground px-3 py-2 text-xs">
+                            No models found
+                          </div>
+                        )}
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                   <Button
@@ -186,6 +191,7 @@ export function PresetDialog({
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                   placeholder="Or type model ID"
+                  aria-label="Model ID"
                   className="mt-1"
                 />
               </>
@@ -194,6 +200,7 @@ export function PresetDialog({
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 placeholder="model id"
+                aria-label="Model ID"
               />
             )}
           </div>
@@ -210,6 +217,7 @@ export function PresetDialog({
               </span>
             </div>
             <Slider
+              aria-label="Temperature"
               value={[temperature]}
               onValueChange={(v) => setTemperature(v[0]!)}
               min={0}
@@ -231,6 +239,7 @@ export function PresetDialog({
               </span>
             </div>
             <Slider
+              aria-label="Top P"
               value={[topP]}
               onValueChange={(v) => setTopP(v[0]!)}
               min={0}
@@ -242,10 +251,11 @@ export function PresetDialog({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <div>
-                <Label>Max tokens</Label>
+                <Label htmlFor="pr-max-tokens">Max tokens</Label>
                 <p className="text-muted-foreground text-xs">Maximum response length in tokens</p>
               </div>
               <Input
+                id="pr-max-tokens"
                 type="number"
                 value={maxTokens}
                 onChange={(e) => setMaxTokens(Number(e.target.value))}
@@ -253,6 +263,7 @@ export function PresetDialog({
               />
             </div>
             <Slider
+              aria-label="Max tokens"
               value={[maxTokens]}
               onValueChange={(v) => setMaxTokens(v[0]!)}
               min={0}
@@ -264,12 +275,13 @@ export function PresetDialog({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <div>
-                <Label>Context size</Label>
+                <Label htmlFor="pr-context-size">Context size</Label>
                 <p className="text-muted-foreground text-xs">
                   Token budget for the prompt context window
                 </p>
               </div>
               <Input
+                id="pr-context-size"
                 type="number"
                 value={contextSize}
                 onChange={(e) => setContextSize(Number(e.target.value))}
@@ -277,6 +289,7 @@ export function PresetDialog({
               />
             </div>
             <Slider
+              aria-label="Context size"
               value={[contextSize]}
               onValueChange={(v) => setContextSize(v[0]!)}
               min={0}
@@ -296,6 +309,7 @@ export function PresetDialog({
               </span>
             </div>
             <Slider
+              aria-label="Frequency penalty"
               value={[frequencyPenalty]}
               onValueChange={(v) => setFrequencyPenalty(v[0]!)}
               min={-2}
@@ -315,6 +329,7 @@ export function PresetDialog({
               </span>
             </div>
             <Slider
+              aria-label="Presence penalty"
               value={[presencePenalty]}
               onValueChange={(v) => setPresencePenalty(v[0]!)}
               min={-2}

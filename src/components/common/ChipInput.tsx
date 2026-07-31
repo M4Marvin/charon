@@ -8,9 +8,18 @@ interface ChipInputProps {
   onChange: (v: string[]) => void;
   suggestions?: string[];
   placeholder?: string;
+  id?: string;
+  ariaLabel?: string;
 }
 
-export function ChipInput({ value, onChange, suggestions, placeholder }: ChipInputProps) {
+export function ChipInput({
+  value,
+  onChange,
+  suggestions,
+  placeholder,
+  id,
+  ariaLabel,
+}: ChipInputProps) {
   const [text, setText] = useState("");
 
   function commit(t: string) {
@@ -55,6 +64,8 @@ export function ChipInput({ value, onChange, suggestions, placeholder }: ChipInp
           </Badge>
         ))}
         <Input
+          id={id}
+          aria-label={ariaLabel}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}

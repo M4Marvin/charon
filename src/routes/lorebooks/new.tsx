@@ -62,6 +62,7 @@ function NewLorebookPage() {
                 placeholder="World Guide"
                 disabled={createMutation.isPending}
                 required
+                minLength={1}
               />
             </div>
             <div className="space-y-2">
@@ -82,7 +83,7 @@ function NewLorebookPage() {
               <Button asChild variant="ghost" type="button">
                 <Link to="/lorebooks">Cancel</Link>
               </Button>
-              <Button type="submit" disabled={createMutation.isPending}>
+              <Button type="submit" disabled={createMutation.isPending} aria-live="polite">
                 {createMutation.isPending ? "Creating..." : "Create"}
               </Button>
             </div>

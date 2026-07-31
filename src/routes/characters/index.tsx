@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -211,7 +212,7 @@ function CharactersPage() {
           !isDemo ? (
             <Button asChild>
               <Link to="/characters/new">
-                <Plus className="size-4 md:hidden" />
+                <Plus className="size-4 md:hidden" data-icon="inline-start" />
                 <span className="hidden md:inline">Import PNG</span>
               </Link>
             </Button>
@@ -250,6 +251,7 @@ function CharactersPage() {
                   ref={searchRef}
                   className="pl-9 pr-12"
                   placeholder="Search name, creator, notes..."
+                  aria-label="Search characters"
                   value={searchInput}
                   onChange={(e) => updateSearch(e.target.value)}
                 />
@@ -264,15 +266,20 @@ function CharactersPage() {
                 <TagFilterPopover tags={tagCounts} selected={tags} onChange={updateTags} />
               ) : null}
               <Select value={sort} onValueChange={(v) => updateSort(v as SortKey)}>
-                <SelectTrigger className="w-auto min-w-[140px] gap-1.5 shrink-0">
+                <SelectTrigger
+                  className="w-auto min-w-[140px] gap-1.5 shrink-0"
+                  aria-label="Sort characters"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {SORT_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    {SORT_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
               {tags.map((tag) => (

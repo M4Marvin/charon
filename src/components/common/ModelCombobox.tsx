@@ -9,9 +9,10 @@ interface ModelComboboxProps {
   value: string;
   onChange: (v: string) => void;
   disabled?: boolean;
+  ariaLabel?: string;
 }
 
-export function ModelCombobox({ providerId, value, onChange, disabled }: ModelComboboxProps) {
+export function ModelCombobox({ providerId, value, onChange, disabled, ariaLabel }: ModelComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const ref = useRef<HTMLDivElement>(null);
@@ -38,6 +39,7 @@ export function ModelCombobox({ providerId, value, onChange, disabled }: ModelCo
     <div ref={ref} className="relative">
       <div className="flex gap-1.5">
         <Input
+          aria-label={ariaLabel}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -69,7 +71,11 @@ export function ModelCombobox({ providerId, value, onChange, disabled }: ModelCo
         ) : null}
       </div>
       {showDropdown ? (
-        <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-48 overflow-auto rounded-lg border bg-popover shadow-lg">
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute inset-x-0 top-full z-50 mt-1 max-h-48 overflow-auto rounded-lg border bg-popover shadow-lg"
+        >
           {isLoading && filtered.length === 0 ? (
             <p className="px-3 py-2 text-xs text-muted-foreground">Loading models...</p>
           ) : error ? (

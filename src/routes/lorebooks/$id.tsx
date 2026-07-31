@@ -102,6 +102,7 @@ function LorebookDetailPage() {
         <Input
           className="flex-1 max-w-sm"
           placeholder="Search entries..."
+          aria-label="Search entries"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -254,6 +255,7 @@ function EntryRow({
           checked={effectiveOn}
           disabled={toggle.isPending || authorDisabled}
           onCheckedChange={(c) => toggle.mutate({ entryId: entry.id, disabled: !c })}
+          aria-label={effectiveOn ? `Disable entry ${entry.data.comment || entry.data.uid}` : `Enable entry ${entry.data.comment || entry.data.uid}`}
         />
         <button
           type="button"

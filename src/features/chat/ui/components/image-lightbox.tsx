@@ -24,15 +24,34 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
         {src && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md"
+            role="button"
+            tabIndex={0}
+            aria-label="Close image viewer"
             onClick={() => onOpenChange(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpenChange(false);
+              }
+            }}
           >
+            <img
+              src={src}
+              alt={alt ?? ""}
+              className={cn(
+                "select-none transition-transform duration-200",
+                zoomed ? "max-w-none max-h-none scale-150" : "max-h-[70vh] max-w-[min(90vw,40rem)] object-contain",
+              )}
+            />
+          </div>
+        )}
+
+        {src && (
+          <>
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenChange(false);
-              }}
-              className="absolute top-4 right-4 z-10 size-10 rounded-full glass flex items-center justify-center text-white/70 hover:text-white"
+              onClick={() => onOpenChange(false)}
+              className="absolute top-4 right-4 z-50 size-10 rounded-full glass flex items-center justify-center text-white/70 hover:text-white"
               aria-label="Close lightbox"
             >
               <X className="size-5" />
@@ -40,31 +59,13 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
 
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleZoom();
-              }}
-              className="absolute bottom-4 right-4 z-10 size-10 rounded-full glass flex items-center justify-center text-white/70 hover:text-white"
+              onClick={toggleZoom}
+              className="absolute bottom-4 right-4 z-50 size-10 rounded-full glass flex items-center justify-center text-white/70 hover:text-white"
               aria-label={zoomed ? "Fit to screen" : "Zoom in"}
             >
               {zoomed ? <ZoomOut className="size-5" /> : <ZoomIn className="size-5" />}
             </button>
-
-            <img
-              src={src}
-              alt={alt ?? ""}
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleZoom();
-              }}
-              className={cn(
-                "select-none transition-transform duration-200",
-                zoomed
-                  ? "max-w-none max-h-none scale-150 cursor-zoom-out"
-                  : "max-h-[70vh] max-w-[min(90vw,40rem)] object-contain cursor-zoom-in",
-              )}
-            />
-          </div>
+          </>
         )}
       </DialogContent>
     </Dialog>

@@ -49,7 +49,7 @@ export function ChatListPage() {
         actions={
           <Button asChild size="sm" className="gap-1.5">
             <Link to="/characters">
-              <Plus className="size-4" /> New Chat
+              <Plus className="size-4" data-icon="inline-start" /> New Chat
             </Link>
           </Button>
         }
@@ -73,6 +73,7 @@ export function ChatListPage() {
               <Input
                 className="pl-9"
                 placeholder="Search chats..."
+                aria-label="Search chats"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
