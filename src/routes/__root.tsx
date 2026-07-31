@@ -116,7 +116,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         property: "og:image",
-        content: "/logo512.png",
+        content: "/og.png",
       },
       {
         name: "twitter:card",
@@ -133,7 +133,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         name: "twitter:image",
-        content: "/logo512.png",
+        content: "/og.png",
       },
       {
         name: "theme-color",
