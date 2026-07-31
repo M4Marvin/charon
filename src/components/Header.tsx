@@ -21,14 +21,9 @@ export default function Header() {
     <header className="sticky top-0 z-50 border-b bg-background/60 px-4 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link
-            to="/chat"
-            className="flex items-center gap-2 no-underline"
-          >
+          <Link to="/chat" className="flex items-center gap-2 no-underline">
             <Logo className="size-7" />
-            <span className="text-sm font-semibold tracking-tight text-foreground">
-              Charon
-            </span>
+            <span className="text-sm font-semibold tracking-tight text-foreground">Charon</span>
           </Link>
           {!isPending && session?.user ? (
             <nav className="hidden md:flex items-center gap-6 text-sm">

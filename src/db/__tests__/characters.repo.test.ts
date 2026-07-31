@@ -362,19 +362,9 @@ describe("characters repository", () => {
     });
 
     it("sorts by name ascending", () => {
-      createCharacter(
-        { id: "char-1", userId, name: "Zelda", data: makeCharacterData() },
-        db,
-      );
-      createCharacter(
-        { id: "char-2", userId, name: "Alice", data: makeCharacterData() },
-        db,
-      );
-      const result = searchCharacterCards(
-        userId,
-        { sort: "name-asc", offset: 0, limit: 10 },
-        db,
-      );
+      createCharacter({ id: "char-1", userId, name: "Zelda", data: makeCharacterData() }, db);
+      createCharacter({ id: "char-2", userId, name: "Alice", data: makeCharacterData() }, db);
+      const result = searchCharacterCards(userId, { sort: "name-asc", offset: 0, limit: 10 }, db);
       expect(result.items[0]!.name).toBe("Alice");
       expect(result.items[1]!.name).toBe("Zelda");
     });
@@ -384,13 +374,27 @@ describe("characters repository", () => {
       createCharacter({ id: "char-1", userId, name: "Few", data }, db);
       createCharacter({ id: "char-2", userId, name: "Many", data }, db);
       const now = new Date();
-      db.insert(chats).values({ id: "chat-1", userId, characterId: "char-2", title: "C", createdAt: now, updatedAt: now }).run();
-      db.insert(chats).values({ id: "chat-2", userId, characterId: "char-2", title: "C2", createdAt: now, updatedAt: now }).run();
-      const result = searchCharacterCards(
-        userId,
-        { sort: "chats-desc", offset: 0, limit: 10 },
-        db,
-      );
+      db.insert(chats)
+        .values({
+          id: "chat-1",
+          userId,
+          characterId: "char-2",
+          title: "C",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+      db.insert(chats)
+        .values({
+          id: "chat-2",
+          userId,
+          characterId: "char-2",
+          title: "C2",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+      const result = searchCharacterCards(userId, { sort: "chats-desc", offset: 0, limit: 10 }, db);
       expect(result.items[0]!.name).toBe("Many");
       expect(result.items[0]!.chatCount).toBe(2);
     });
@@ -406,14 +410,8 @@ describe("characters repository", () => {
     });
 
     it("returns correct total count for filtered result", () => {
-      createCharacter(
-        { id: "char-1", userId, name: "Alice", data: makeCharacterData() },
-        db,
-      );
-      createCharacter(
-        { id: "char-2", userId, name: "Bob", data: makeCharacterData() },
-        db,
-      );
+      createCharacter({ id: "char-1", userId, name: "Alice", data: makeCharacterData() }, db);
+      createCharacter({ id: "char-2", userId, name: "Bob", data: makeCharacterData() }, db);
       const result = searchCharacterCards(userId, { q: "Alice", offset: 0, limit: 10 }, db);
       expect(result.items).toHaveLength(1);
       expect(result.total).toBe(1);

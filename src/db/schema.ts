@@ -112,7 +112,10 @@ export const characters = sqliteTable(
     tagline: text("tagline"),
     creator: text("creator").notNull().default(""),
     creatorNotes: text("creator_notes").notNull().default(""),
-    tags: text("tags", { mode: "json" }).$type<string[]>().notNull().default(sql`'[]'`),
+    tags: text("tags", { mode: "json" })
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'`),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),

@@ -26,9 +26,7 @@ export function useChatList() {
     if (!search.trim()) return chats;
     const q = search.toLowerCase();
     return chats.filter(
-      (c) =>
-        c.title.toLowerCase().includes(q) ||
-        c.characterName.toLowerCase().includes(q),
+      (c) => c.title.toLowerCase().includes(q) || c.characterName.toLowerCase().includes(q),
     );
   }, [chats, search]);
 

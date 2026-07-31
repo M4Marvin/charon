@@ -18,12 +18,7 @@ interface RenameChatDialogProps {
   onRename: (id: string, title: string) => void;
 }
 
-export function RenameChatDialog({
-  chat,
-  loading,
-  onClose,
-  onRename,
-}: RenameChatDialogProps) {
+export function RenameChatDialog({ chat, loading, onClose, onRename }: RenameChatDialogProps) {
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
 

@@ -22,7 +22,11 @@ import { SkeletonCardGrid } from "@/components/common/Skeletons";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { TagFilterPopover } from "@/components/common/TagFilterPopover";
-import { useCharacterSearch, useCharacterTagCounts, useDeleteCharacter } from "@/hooks/useCharacters";
+import {
+  useCharacterSearch,
+  useCharacterTagCounts,
+  useDeleteCharacter,
+} from "@/hooks/useCharacters";
 import { authClient } from "@/lib/auth-client";
 import { RelativeTime } from "@/components/common/RelativeTime";
 import type { CharacterListItem } from "@/server/fns/characters";
@@ -132,7 +136,8 @@ function CharactersPage() {
     function handleKeydown(e: KeyboardEvent) {
       if (e.key === "/" && !e.metaKey && !e.ctrlKey) {
         const tag = (e.target as HTMLElement).tagName;
-        if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement).isContentEditable) return;
+        if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement).isContentEditable)
+          return;
         e.preventDefault();
         searchRef.current?.focus();
       }
@@ -176,7 +181,8 @@ function CharactersPage() {
   });
 
   const virtualItems = virtualizer.getVirtualItems();
-  const lastVirtualIndex = virtualItems.length > 0 ? virtualItems[virtualItems.length - 1]!.index : -1;
+  const lastVirtualIndex =
+    virtualItems.length > 0 ? virtualItems[virtualItems.length - 1]!.index : -1;
   const shouldFetch = lastVirtualIndex >= items.length - lanes * 2;
 
   useEffect(() => {
@@ -214,7 +220,10 @@ function CharactersPage() {
       />
 
       {error && !isLoading ? (
-        <ErrorBanner message={(error as Error).message ?? "Failed to load characters"} onRetry={() => refetch()} />
+        <ErrorBanner
+          message={(error as Error).message ?? "Failed to load characters"}
+          onRetry={() => refetch()}
+        />
       ) : null}
 
       {isInitialLoading ? (
@@ -451,7 +460,11 @@ function CharacterCard({
           <div className="mt-auto">
             <div className="flex items-center gap-1.5 overflow-hidden">
               {character.tags.slice(0, 3).map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0 leading-tight shrink-0">
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 leading-tight shrink-0"
+                >
                   {tag}
                 </Badge>
               ))}
@@ -462,7 +475,9 @@ function CharacterCard({
             <div className="flex items-center gap-1 text-3 text-[10px] tabular-nums mt-1">
               <MessagesSquare className="size-3" />
               {character.chatCount}
-              <span aria-hidden className="mx-0.5">·</span>
+              <span aria-hidden className="mx-0.5">
+                ·
+              </span>
               <RelativeTime date={character.updatedAt} />
             </div>
           </div>

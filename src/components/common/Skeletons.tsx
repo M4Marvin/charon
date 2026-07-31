@@ -11,12 +11,13 @@ export function SkeletonRows({ rows }: { rows: number }) {
 }
 
 export function SkeletonCardGrid({ count, lanes = 3 }: { count: number; lanes?: number }) {
-  const colsClass = {
-    2: "grid-cols-2",
-    3: "grid-cols-2 sm:grid-cols-3",
-    4: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4",
-    5: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
-  }[lanes] ?? "grid-cols-2 sm:grid-cols-3";
+  const colsClass =
+    {
+      2: "grid-cols-2",
+      3: "grid-cols-2 sm:grid-cols-3",
+      4: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4",
+      5: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+    }[lanes] ?? "grid-cols-2 sm:grid-cols-3";
 
   return (
     <div className={`grid gap-3 ${colsClass}`}>

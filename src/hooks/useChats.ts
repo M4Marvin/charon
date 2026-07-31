@@ -186,8 +186,7 @@ export function useUpdateChatSettings() {
 export function useRenameChat() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string; title: string }) =>
-      updateChatSettings({ data: input }),
+    mutationFn: (input: { id: string; title: string }) => updateChatSettings({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.all });
     },

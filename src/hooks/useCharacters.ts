@@ -1,4 +1,10 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
 import type { Character } from "@/db/schema";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import {

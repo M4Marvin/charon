@@ -15,8 +15,7 @@ import { ChatDayGroup } from "../components/chat-day-group";
 import { RenameChatDialog } from "../components/rename-chat-dialog";
 
 export function ChatListPage() {
-  const { chats, filtered, grouped, search, setSearch, isLoading, error } =
-    useChatList();
+  const { chats, filtered, grouped, search, setSearch, isLoading, error } = useChatList();
   const deleteChat = useDeleteChat();
   const renameChat = useRenameChat();
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -38,9 +37,7 @@ export function ChatListPage() {
     return (
       <main className="mx-auto max-w-[1200px] px-4 py-8">
         <PageHeader title="Chats" />
-        <ErrorBanner
-          message={(error as Error).message ?? "Failed to load chats"}
-        />
+        <ErrorBanner message={(error as Error).message ?? "Failed to load chats"} />
       </main>
     );
   }
@@ -83,9 +80,7 @@ export function ChatListPage() {
           ) : null}
 
           {filtered.length === 0 && search.trim() ? (
-            <p className="py-12 text-center text-2 text-sm">
-              No chats match your search.
-            </p>
+            <p className="py-12 text-center text-2 text-sm">No chats match your search.</p>
           ) : (
             <div className="space-y-8">
               {DAY_GROUPS.map((day) => {
@@ -96,9 +91,7 @@ export function ChatListPage() {
                     key={day}
                     label={day}
                     chats={items}
-                    onRename={(id, title) =>
-                      setRenamingChat({ id, title })
-                    }
+                    onRename={(id, title) => setRenamingChat({ id, title })}
                     onDelete={(id) => setDeletingId(id)}
                   />
                 );
@@ -125,9 +118,7 @@ export function ChatListPage() {
                 setDeletingId(null);
               },
               onError: (err) =>
-                toast.error(
-                  `Delete failed: ${err instanceof Error ? err.message : String(err)}`,
-                ),
+                toast.error(`Delete failed: ${err instanceof Error ? err.message : String(err)}`),
             },
           );
         }}
@@ -146,9 +137,7 @@ export function ChatListPage() {
                 setRenamingChat(null);
               },
               onError: (err) =>
-                toast.error(
-                  `Rename failed: ${err instanceof Error ? err.message : String(err)}`,
-                ),
+                toast.error(`Rename failed: ${err instanceof Error ? err.message : String(err)}`),
             },
           );
         }}

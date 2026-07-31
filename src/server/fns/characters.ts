@@ -184,9 +184,7 @@ export const searchCharacters = createServerFn({ method: "GET" })
     return repoSearchCards(user.id, data);
   });
 
-export const characterTagCounts = createServerFn({ method: "GET" }).handler(
-  async () => {
-    const { user } = await getSession();
-    return repoTagCounts(user.id);
-  },
-);
+export const characterTagCounts = createServerFn({ method: "GET" }).handler(async () => {
+  const { user } = await getSession();
+  return repoTagCounts(user.id);
+});

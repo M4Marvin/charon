@@ -74,11 +74,7 @@ export function searchCharacterCards(
 
   const where = and(...conditions) as ReturnType<typeof and>;
 
-  const totalRow = db
-    .select({ count: count() })
-    .from(characters)
-    .where(where)
-    .get();
+  const totalRow = db.select({ count: count() }).from(characters).where(where).get();
   const total = totalRow?.count ?? 0;
 
   let orderBy;
@@ -162,10 +158,7 @@ export function getCharacterDetail(
     })
     .from(characters)
     .leftJoin(chats, eq(chats.characterId, characters.id))
-    .leftJoin(
-      chatMessages,
-      and(eq(chatMessages.chatId, chats.id), eq(chatMessages.role, "user")),
-    )
+    .leftJoin(chatMessages, and(eq(chatMessages.chatId, chats.id), eq(chatMessages.role, "user")))
     .where(and(eq(characters.id, id), eq(characters.userId, userId)))
     .groupBy(characters.id)
     .get();

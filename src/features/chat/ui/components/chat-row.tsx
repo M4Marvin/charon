@@ -22,11 +22,7 @@ export function ChatRow({ chat, onRename, onDelete }: ChatRowProps) {
       />
       <Avatar className="size-11 shrink-0 rounded-xl">
         <AvatarImage
-          src={
-            chat.characterImagePath
-              ? `/api/characters/${chat.characterId}/avatar`
-              : undefined
-          }
+          src={chat.characterImagePath ? `/api/characters/${chat.characterId}/avatar` : undefined}
           alt={chat.characterName}
           className="object-cover"
         />
@@ -39,10 +35,7 @@ export function ChatRow({ chat, onRename, onDelete }: ChatRowProps) {
         <p className="text-2 text-sm truncate">
           {chat.characterName}
           {chat.userMessageCount > 0 && (
-            <span className="text-3 text-xs tabular-nums">
-              {" "}
-              · {chat.userMessageCount} turns
-            </span>
+            <span className="text-3 text-xs tabular-nums"> · {chat.userMessageCount} turns</span>
           )}
         </p>
       </div>

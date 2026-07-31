@@ -212,9 +212,7 @@ function CharacterDetailPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-headline truncate">{chat.title}</p>
                     {chat.lastMessagePreview ? (
-                      <p className="text-3 text-sm line-clamp-1">
-                        {chat.lastMessagePreview}
-                      </p>
+                      <p className="text-3 text-sm line-clamp-1">{chat.lastMessagePreview}</p>
                     ) : (
                       <p className="text-3 text-sm italic">No messages yet</p>
                     )}
@@ -237,10 +235,7 @@ function CharacterDetailPage() {
         <div className="fixed bottom-16 left-0 right-0 z-30 border-t bg-popover/95 px-4 py-3 backdrop-blur-sm md:hidden">
           {characterChats && characterChats.length > 0 ? (
             <div className="flex gap-2">
-              <Button
-                asChild
-                className="flex-1"
-              >
+              <Button asChild className="flex-1">
                 <Link to="/chat/$id" params={{ id: characterChats[0].id }}>
                   <MessageCircle className="size-4" />
                   Continue
