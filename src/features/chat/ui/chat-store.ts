@@ -1,5 +1,42 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
+import type { StateStorage } from "zustand/middleware";
+import {
+  deleteCustomImageFromDb,
+  getAllCustomImages,
+  setCustomImageInDb,
+} from "./custom-image-store";
+
+// localStorage writes throw QuotaExceededError once the ~5MB quota is full.
+// Custom images no longer live in localStorage (see custom-image-store.ts), but
+// a storage failure must never crash the app again — swallow and warn instead.
+const safeLocalStorage: StateStorage = {
+  getItem: (name) => {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.localStorage.getItem(name);
+    } catch (error) {
+      console.warn("[chat-ui] localStorage read failed", error);
+      return null;
+    }
+  },
+  setItem: (name, value) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(name, String(value));
+    } catch (error) {
+      console.warn("[chat-ui] localStorage write failed (quota exceeded?)", error);
+    }
+  },
+  removeItem: (name) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(name);
+    } catch (error) {
+      console.warn("[chat-ui] localStorage remove failed", error);
+    }
+  },
+};
 
 export interface ChatUiState {
   settingsOpen: boolean;
@@ -55,19 +92,27 @@ export const useChatUiStore = create<ChatUiState>()(
       setSceneOpen: (open) => set({ sceneOpen: open }),
       openLightbox: (src) => set({ lightboxSrc: src }),
       closeLightbox: () => set({ lightboxSrc: null }),
-      setCustomImage: (chatId, dataUrl) =>
-        set((s) => ({ customImages: { ...s.customImages, [chatId]: dataUrl } })),
-      clearCustomImage: (chatId) =>
+      setCustomImage: (chatId, dataUrl) => {
+        set((s) => ({ customImages: { ...s.customImages, [chatId]: dataUrl } }));
+        setCustomImageInDb(chatId, dataUrl).catch((error) => {
+          console.warn("[chat-ui] failed to persist custom image", error);
+        });
+      },
+      clearCustomImage: (chatId) => {
         set((s) => {
           const next = { ...s.customImages };
           delete next[chatId];
           return { customImages: next };
-        }),
+        });
+        deleteCustomImageFromDb(chatId).catch((error) => {
+          console.warn("[chat-ui] failed to delete custom image", error);
+        });
+      },
     }),
     {
       name: "chat-ui",
+      storage: createJSONStorage(() => safeLocalStorage),
       partialize: (s) => ({
-        customImages: s.customImages,
         inputDrafts: s.inputDrafts,
         portraitOpen: s.portraitOpen,
         sceneOpen: s.sceneOpen,
@@ -75,6 +120,20 @@ export const useChatUiStore = create<ChatUiState>()(
     },
   ),
 );
+
+async function hydrateCustomImages() {
+  if (typeof indexedDB === "undefined") return;
+  try {
+    const images = await getAllCustomImages();
+    // In-memory images (including any rehydrated from the old localStorage
+    // layout) win over IndexedDB, so a fresh upload isn't clobbered.
+    useChatUiStore.setState((s) => ({ customImages: { ...images, ...s.customImages } }));
+  } catch (error) {
+    console.warn("[chat-ui] failed to hydrate custom images", error);
+  }
+}
+
+void hydrateCustomImages();
 
 export const selectSettingsOpen = (s: ChatUiState) => s.settingsOpen;
 export const selectInputDraft =
