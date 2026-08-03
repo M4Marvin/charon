@@ -7,7 +7,7 @@ import {
   updateAiProvider,
   type AiProviderListItem,
 } from "@/server/fns/aiProviders";
-import { testProviderConnection, type ProbeResult } from "@/server/fns/models";
+import { testProviderConnection, testProviderChat, type ProbeResult, type ChatTestResult } from "@/server/fns/models";
 
 export const aiProviderKeys = {
   all: ["aiProviders"] as const,
@@ -82,6 +82,16 @@ export function useDeleteAiProvider() {
 export function useTestProviderConnection() {
   return useMutation({
     mutationFn: (id: string): Promise<ProbeResult> => testProviderConnection({ data: { id } }),
+  });
+}
+
+export function useTestProviderChat() {
+  return useMutation({
+    mutationFn: (input: {
+      providerId: string;
+      model?: string;
+      message?: string;
+    }): Promise<ChatTestResult> => testProviderChat({ data: input }),
   });
 }
 

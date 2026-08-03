@@ -21,6 +21,7 @@ import {
 } from "@/hooks/useAiProviders";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
 import { ProviderDialog } from "@/components/ai/ProviderDialog";
+import { TestMessageDialog } from "@/components/ai/TestMessageDialog";
 import type { ProbeResult } from "@/server/fns/models";
 
 export const Route = createFileRoute("/settings/providers")({
@@ -43,6 +44,7 @@ function ProvidersPage() {
   const defaultProviderId = userSettings?.defaultProviderId ?? "";
   const [editingProvider, setEditingProvider] = useState<AiProviderListItem | "new" | null>(null);
   const [delProviderId, setDelProviderId] = useState<string | null>(null);
+  const [testMsgProvider, setTestMsgProvider] = useState<AiProviderListItem | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, ProbeResult | null>>({});
 
@@ -138,6 +140,10 @@ function ProvidersPage() {
                         label: "Test connection",
                         onSelect: () => handleTest(p.id),
                       },
+                      {
+                        label: "Test message",
+                        onSelect: () => setTestMsgProvider(p),
+                      },
                       ...(!isDefault
                         ? [
                             {
@@ -209,6 +215,8 @@ function ProvidersPage() {
           })
         }
       />
+
+      <TestMessageDialog provider={testMsgProvider} onClose={() => setTestMsgProvider(null)} />
 
       <ConfirmDialog
         open={delProviderId !== null}
