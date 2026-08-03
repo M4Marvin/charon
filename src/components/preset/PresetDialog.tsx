@@ -293,7 +293,7 @@ export function PresetDialog({
               value={[contextSize]}
               onValueChange={(v) => setContextSize(v[0]!)}
               min={0}
-              max={131072}
+              max={1000000}
               step={512}
             />
           </div>
