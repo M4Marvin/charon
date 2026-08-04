@@ -5,6 +5,11 @@
 - When you're confused or stuck, stop and ask the user. Asking for help is explicitly allowed and preferred over forging ahead with assumptions.
 - Keep tasks atomic, incremental, and reviewable. Small, independent steps.
 
+# Frog friction logging
+- Log papercuts and friction (tooling, docs, APIs, tests, conventions) as you hit them with `npx frog log`.
+- Do not add global, system, or internal friction.
+- Run `npx frog list` first to see what is already known.
+
 # Project state
 See `CONTRIBUTING.md` for project layout, architecture, commands, and conventions. Read it after this file.
 

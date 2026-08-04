@@ -18,3 +18,4 @@ dev.db-shm
 dev.db-wal
 data/
 logs/
+.omo/
