@@ -46,6 +46,7 @@ export function ChatPage() {
 
   const setInput = useChatUiStore((s) => s.setInputDraft);
   const clearInput = useChatUiStore((s) => s.clearInputDraft);
+  const focusComposer = useChatUiStore((s) => s.focusComposer);
   const setSettingsOpen = useChatUiStore((s) => s.setSettingsOpen);
   const setPortraitOpen = useChatUiStore((s) => s.setPortraitOpen);
   const setSceneOpen = useChatUiStore((s) => s.setSceneOpen);
@@ -130,10 +131,15 @@ export function ChatPage() {
       if (isBusy || generation.isStreaming) return;
       deleteMsgMutation.mutate(
         { chatId, messageLocalId },
-        { onSuccess: () => toast.success("Message deleted") },
+        {
+          onSuccess: () => {
+            toast.success("Message deleted");
+            focusComposer();
+          },
+        },
       );
     },
-    [chatId, isBusy, generation.isStreaming, deleteMsgMutation],
+    [chatId, isBusy, generation.isStreaming, deleteMsgMutation, focusComposer],
   );
 
   const handleImpersonate = useCallback(() => {
@@ -238,7 +244,10 @@ export function ChatPage() {
         name={config.character.name}
         imageSrc={characterAvatarUrl}
         isStreaming={generation.isStreaming}
-        onClose={() => setPortraitOpen(false)}
+        onClose={() => {
+          setPortraitOpen(false);
+          focusComposer();
+        }}
         onImageClick={() => characterAvatarUrl && openLightbox(characterAvatarUrl)}
       />
 
@@ -246,7 +255,10 @@ export function ChatPage() {
         open={sceneOpen}
         imageSrc={backgroundUrl}
         customImageSrc={customImage}
-        onClose={() => setSceneOpen(false)}
+        onClose={() => {
+          setSceneOpen(false);
+          focusComposer();
+        }}
         onImageClick={() => {
           if (customImage) openLightbox(customImage);
           else if (backgroundUrl) openLightbox(backgroundUrl);
@@ -259,7 +271,10 @@ export function ChatPage() {
         src={lightboxSrc}
         open={lightboxSrc !== null}
         onOpenChange={(open) => {
-          if (!open) closeLightbox();
+          if (!open) {
+            closeLightbox();
+            focusComposer();
+          }
         }}
       />
 
@@ -275,7 +290,14 @@ export function ChatPage() {
         characterName={config.character.name}
       />
 
-      <SettingsPanel chatId={chatId} open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <SettingsPanel
+        chatId={chatId}
+        open={settingsOpen}
+        onOpenChange={(open) => {
+          setSettingsOpen(open);
+          if (!open) focusComposer();
+        }}
+      />
     </div>
   );
 }

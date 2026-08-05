@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RichText } from "@/components/RichText";
 import { cn } from "@/lib/utils";
+import { useChatUiStore } from "../chat-store";
 import type { ActivePathEntry } from "@/features/chat/tree/types";
 
 const TEXTAREA_MAX_HEIGHT = 240;
@@ -76,6 +77,7 @@ export function ChatMessage({
   const handleSaveEdit = useCallback(() => {
     onEdit(message.localId, editContent);
     setEditing(false);
+    useChatUiStore.getState().focusComposer();
   }, [message.localId, editContent, onEdit]);
 
   const handleKeyDown = useCallback(
@@ -84,6 +86,7 @@ export function ChatMessage({
         handleSaveEdit();
       } else if (e.key === "Escape") {
         setEditing(false);
+        useChatUiStore.getState().focusComposer();
       }
     },
     [handleSaveEdit],
@@ -213,7 +216,10 @@ export function ChatMessage({
                     size="sm"
                     variant="ghost"
                     className="h-7 text-xs text-muted-foreground"
-                    onClick={() => setEditing(false)}
+                    onClick={() => {
+                      setEditing(false);
+                      useChatUiStore.getState().focusComposer();
+                    }}
                   >
                     Cancel
                   </Button>

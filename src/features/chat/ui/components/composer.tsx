@@ -1,9 +1,9 @@
-import { useLayoutEffect, useRef, useCallback } from "react";
+import { useLayoutEffect, useRef, useCallback, useEffect } from "react";
 import { ArrowUp, Square, Wand } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
-import { useChatUiStore } from "../chat-store";
+import { useChatUiStore, selectComposerFocusNonce } from "../chat-store";
 
 const TEXTAREA_MAX_HEIGHT = 120;
 
@@ -34,6 +34,27 @@ export function Composer({
   const setInputDraft = useChatUiStore((s) => s.setInputDraft);
   const canSend = (value.trim().length > 0 || hasMessages) && !isStreaming;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const focusNonce = useChatUiStore(selectComposerFocusNonce);
+
+  const focusTextarea = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, []);
+
+  // Auto-focus when the composer mounts (page load) or the chat changes.
+  // Skip coarse pointers so the on-screen keyboard doesn't pop on touch devices.
+  useEffect(() => {
+    if (window.matchMedia("(pointer: coarse)").matches) return;
+    focusTextarea();
+  }, [chatId, focusTextarea]);
+
+  // Refocus after explicit actions (panel closes, edits, deletes, etc.).
+  useEffect(() => {
+    if (focusNonce === 0) return;
+    focusTextarea();
+  }, [focusNonce, focusTextarea]);
 
   useLayoutEffect(() => {
     const el = textareaRef.current;
@@ -81,7 +102,10 @@ export function Composer({
               variant="ghost"
               size="icon"
               className="size-8 rounded-full text-white/40 hover:text-(--lagoon) disabled:opacity-30"
-              onClick={onImpersonate}
+              onClick={() => {
+                onImpersonate();
+                focusTextarea();
+              }}
               disabled={disabled || isStreaming || impersonatePending}
               aria-label="Impersonate"
             >
@@ -93,7 +117,10 @@ export function Composer({
                 variant="ghost"
                 size="icon"
                 className="size-8 rounded-full text-white/80 hover:text-red-400"
-                onClick={onStop}
+                onClick={() => {
+                  onStop();
+                  focusTextarea();
+                }}
                 aria-label="Stop generating"
               >
                 <Square className="size-4" />
@@ -103,7 +130,10 @@ export function Composer({
                 variant="ghost"
                 size="icon"
                 className="size-8 rounded-full text-white/40 hover:text-white disabled:opacity-20"
-                onClick={onSend}
+                onClick={() => {
+                  onSend();
+                  focusTextarea();
+                }}
                 disabled={!canSend || disabled}
                 aria-label="Send message"
               >
