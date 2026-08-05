@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Pre-commit gates for Charon: format check, lint, tests, typecheck.
+# Skip with: git commit --no-verify
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+fail() { printf '\033[1;31m✗ %s\033[0m\n' "$*"; exit 1; }
+log()  { printf '\033[1;36m▶ %s\033[0m\n' "$*"; }
+
+# 1. Format check — ignore generated files and the pnpm version WARN (stdout noise).
+log "oxfmt --check src"
+unformatted=$(pnpm exec oxfmt --list-different src 2>/dev/null | grep -v 'routeTree.gen.ts' | grep -v '\[WARN\]' || true)
+if [ -n "$unformatted" ]; then
+  printf '%s\n' "$unformatted"
+  fail "formatting drift — run: pnpm format"
+fi
+
+# 2. Lint.
+log "oxlint src"
+pnpm exec oxlint src
+
+# 3. Tests.
+log "vitest run"
+pnpm exec vitest run
+
+# 4. Typecheck.
+log "tsc --noEmit"
+pnpm exec tsc --noEmit
+
+printf '\033[1;32m✓ all gates passed\033[0m\n'
