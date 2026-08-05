@@ -117,6 +117,17 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 | DB push | `pnpm run db:push` |
 | DB studio | `pnpm run db:studio` |
 
+## Pre-commit hook
+
+A `pre-commit` hook lives in `.githooks/` (wired via `core.hooksPath` by the `prepare` script on `pnpm install`). It runs four gates in order and blocks the commit on failure:
+
+1. Format check (`oxfmt --list-different src` — ignores `routeTree.gen.ts` and pnpm stdout noise)
+2. Lint (`oxlint src`)
+3. Tests (`vitest run`)
+4. Typecheck (`tsc --noEmit`)
+
+Skip it in a pinch with `git commit --no-verify`.
+
 ## Tests
 
 422 tests across 24 files. All pass. Uses in-memory SQLite for integration tests. Run with `pnpm run test`.
