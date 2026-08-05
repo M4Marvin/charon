@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import { Link } from "@tanstack/react-router";
 import { Zap, RotateCw, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,9 +21,10 @@ interface SectionProps {
   chatId: string;
   isStreaming: boolean;
   isAdmin: boolean;
+  onNavigate: (sectionId: string) => void;
 }
 
-export function ConnectionSection({ isStreaming, isAdmin }: SectionProps) {
+export function ConnectionSection({ isStreaming, isAdmin, onNavigate }: SectionProps) {
   const { data: settings } = useUserSettings();
   const { data: providers } = useAiProviders();
   const { data: presets } = usePresets();
@@ -92,17 +92,26 @@ export function ConnectionSection({ isStreaming, isAdmin }: SectionProps) {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <p className="text-sm font-heading text-[--sea-ink]">Connection</p>
-        <Button
-          variant="link"
-          size="sm"
-          className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
-          asChild
-        >
-          <Link to="/settings">
-            Manage providers & presets
+        <div className="flex items-center gap-3">
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
+            onClick={() => onNavigate("providers")}
+          >
+            Providers
             <ArrowRight className="size-3" data-icon="inline-end" />
-          </Link>
-        </Button>
+          </Button>
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
+            onClick={() => onNavigate("presets")}
+          >
+            Presets
+            <ArrowRight className="size-3" data-icon="inline-end" />
+          </Button>
+        </div>
       </div>
 
       <Field className="space-y-1.5">

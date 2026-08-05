@@ -1,6 +1,16 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Zap, User, BookOpen, FileText, UserRoundCog, Image, Monitor } from "lucide-react";
+import {
+  Zap,
+  User,
+  BookOpen,
+  FileText,
+  UserRoundCog,
+  Image,
+  Monitor,
+  Server,
+  SlidersHorizontal,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -15,6 +25,8 @@ import { authClient } from "@/lib/auth-client";
 import { SettingsNav, type SettingsSection } from "./settings-nav";
 import { ConfirmDialog } from "./confirm-dialog";
 import { ConnectionSection } from "./sections/connection-section";
+import { ProviderSection } from "./sections/provider-section";
+import { PresetSection } from "./sections/preset-section";
 import { PersonaSection } from "./sections/persona-section";
 import { LorebooksSection } from "./sections/lorebooks-section";
 import { PromptsSection } from "./sections/prompts-section";
@@ -24,6 +36,8 @@ import { DisplaySection } from "./sections/display-section";
 
 const SECTIONS: SettingsSection[] = [
   { id: "connection", label: "Connection", icon: Zap, adminOnly: true },
+  { id: "providers", label: "Providers", icon: Server, adminOnly: true },
+  { id: "presets", label: "Presets", icon: SlidersHorizontal, adminOnly: true },
   { id: "persona", label: "Persona", icon: User },
   { id: "lorebooks", label: "Lorebooks", icon: BookOpen },
   { id: "prompts", label: "Prompts", icon: FileText },
@@ -66,7 +80,7 @@ export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps
     setActiveId(id);
   }, []);
 
-  const sectionProps = { chatId, isStreaming, isAdmin };
+  const sectionProps = { chatId, isStreaming, isAdmin, onNavigate: handleSectionChange };
 
   return (
     <>
@@ -84,6 +98,8 @@ export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps
 
             <div className="flex-1 min-w-0 overflow-y-auto px-5 py-5 scrollbar-thin">
               {activeId === "connection" && isAdmin && <ConnectionSection {...sectionProps} />}
+              {activeId === "providers" && isAdmin && <ProviderSection {...sectionProps} />}
+              {activeId === "presets" && isAdmin && <PresetSection {...sectionProps} />}
               {activeId === "persona" && <PersonaSection {...sectionProps} />}
               {activeId === "lorebooks" && <LorebooksSection {...sectionProps} />}
               {activeId === "prompts" && <PromptsSection {...sectionProps} />}
