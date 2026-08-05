@@ -45,7 +45,8 @@ function paramSummary(p: PresetListItem): string {
  * Shared by the /settings/presets route and the chat settings sheet so
  * management stays in sync.
  */
-export function PresetManager() {
+export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet" } = {}) {
+  const isSheet = variant === "sheet";
   const { data: providers = [] } = useAiProviders();
   const { data: userSettings } = useUserSettings();
   const updateDefaults = useUpdateUserSettings();
@@ -75,7 +76,9 @@ export function PresetManager() {
   return (
     <div className="space-y-6">
       {presets.length === 0 ? (
-        <p className="text-2 text-sm py-4">No presets configured yet.</p>
+        <p className={`text-2 text-sm py-4 ${isSheet ? "text-[--sea-ink-soft]/70" : ""}`}>
+          No presets configured yet.
+        </p>
       ) : (
         <div className="space-y-2">
           {presets.map((p) => {
@@ -84,13 +87,23 @@ export function PresetManager() {
               <div
                 key={p.id}
                 className={`rounded-lg border p-4 ${
-                  isDefault ? "border-brand/30 bg-brand/5" : "bg-card"
+                  isSheet
+                    ? isDefault
+                      ? "border-[--lagoon]/30 bg-[--lagoon]/5"
+                      : "bg-white/5"
+                    : isDefault
+                      ? "border-brand/30 bg-brand/5"
+                      : "bg-card"
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 space-y-1">
-                    <p className="text-headline truncate">{p.name}</p>
-                    <p className="text-3 text-xs font-mono">{paramSummary(p)}</p>
+                    <p className={`text-headline truncate ${isSheet ? "text-[--sea-ink]" : ""}`}>
+                      {p.name}
+                    </p>
+                    <p className={`text-3 text-xs font-mono ${isSheet ? "text-[--sea-ink-soft]/70" : ""}`}>
+                      {paramSummary(p)}
+                    </p>
                   </div>
                   <RowActionsMenu
                     label={`Actions for ${p.name}`}

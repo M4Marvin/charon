@@ -27,7 +27,8 @@ import type { ProbeResult } from "@/server/fns/models";
  * test message, set default, default model). Shared by the /settings/providers
  * route and the chat settings sheet so management stays in sync.
  */
-export function ProviderManager() {
+export function ProviderManager({ variant = "page" }: { variant?: "page" | "sheet" } = {}) {
+  const isSheet = variant === "sheet";
   const { data: userSettings, isLoading: settingsLoading } = useUserSettings();
   const updateDefaults = useUpdateUserSettings();
   const { data: providers = [], isLoading: providersLoading, error } = useAiProviders();
@@ -75,7 +76,9 @@ export function ProviderManager() {
   return (
     <div className="space-y-6">
       {providers.length === 0 ? (
-        <p className="text-2 text-sm py-4">No providers configured yet.</p>
+        <p className={`text-2 text-sm py-4 ${isSheet ? "text-[--sea-ink-soft]/70" : ""}`}>
+          No providers configured yet.
+        </p>
       ) : (
         <div className="space-y-2">
           {providers.map((p) => {
@@ -85,7 +88,13 @@ export function ProviderManager() {
               <div
                 key={p.id}
                 className={`rounded-lg border p-4 ${
-                  isDefault ? "border-brand/30 bg-brand/5" : "bg-card"
+                  isSheet
+                    ? isDefault
+                      ? "border-[--lagoon]/30 bg-[--lagoon]/5"
+                      : "bg-white/5"
+                    : isDefault
+                      ? "border-brand/30 bg-brand/5"
+                      : "bg-card"
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -102,16 +111,31 @@ export function ProviderManager() {
                       ) : (
                         <StatusDot tone="muted" label="Untested" />
                       )}
-                      <span className="text-headline truncate">{p.name}</span>
+                      <span
+                        className={`text-headline truncate ${isSheet ? "text-[--sea-ink]" : ""}`}
+                      >
+                        {p.name}
+                      </span>
                       {isDefault ? (
-                        <Badge variant="default" className="text-[10px] ml-1">
+                        <Badge
+                          variant="default"
+                          className={`text-[10px] ml-1 ${
+                            isSheet ? "bg-[--lagoon]/15 text-[--lagoon] border-[--lagoon]/20" : ""
+                          }`}
+                        >
                           Default
                         </Badge>
                       ) : null}
                     </div>
-                    <p className="text-2 text-xs font-mono truncate">{p.baseUrl}</p>
+                    <p
+                      className={`text-2 text-xs font-mono truncate ${
+                        isSheet ? "text-[--sea-ink-soft]" : ""
+                      }`}
+                    >
+                      {p.baseUrl}
+                    </p>
                     {testResult && testResult.ok ? (
-                      <p className="text-3 text-xs">
+                      <p className={`text-3 text-xs ${isSheet ? "text-[--sea-ink-soft]/70" : ""}`}>
                         {testResult.latencyMs}ms · {testResult.modelCount} models
                       </p>
                     ) : null}
