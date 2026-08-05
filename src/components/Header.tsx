@@ -58,7 +58,11 @@ export default function Header() {
             </nav>
           ) : null}
         </div>
-        <nav aria-label="Account actions" aria-live="polite" className="flex items-center gap-2 text-sm">
+        <nav
+          aria-label="Account actions"
+          aria-live="polite"
+          className="flex items-center gap-2 text-sm"
+        >
           {isPending ? null : session?.user ? (
             <>
               <button

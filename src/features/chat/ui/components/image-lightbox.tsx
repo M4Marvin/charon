@@ -40,7 +40,9 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
               alt={alt ?? ""}
               className={cn(
                 "select-none transition-transform duration-200",
-                zoomed ? "max-w-none max-h-none scale-150" : "max-h-[70vh] max-w-[min(90vw,40rem)] object-contain",
+                zoomed
+                  ? "max-w-none max-h-none scale-150"
+                  : "max-h-[70vh] max-w-[min(90vw,40rem)] object-contain",
               )}
             />
           </div>

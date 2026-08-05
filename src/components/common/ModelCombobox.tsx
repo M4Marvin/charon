@@ -12,7 +12,13 @@ interface ModelComboboxProps {
   ariaLabel?: string;
 }
 
-export function ModelCombobox({ providerId, value, onChange, disabled, ariaLabel }: ModelComboboxProps) {
+export function ModelCombobox({
+  providerId,
+  value,
+  onChange,
+  disabled,
+  ariaLabel,
+}: ModelComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const ref = useRef<HTMLDivElement>(null);

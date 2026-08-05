@@ -13,13 +13,7 @@ export function PageHeader({ title, subtitle, backTo, actions }: PageHeaderProps
   return (
     <div className="mb-6 flex items-start gap-3">
       {backTo ? (
-        <Button
-          asChild
-          variant="ghost"
-          size="icon"
-          className="-ml-3 shrink-0"
-          aria-label="Back"
-        >
+        <Button asChild variant="ghost" size="icon" className="-ml-3 shrink-0" aria-label="Back">
           <Link to={backTo} aria-label="Back">
             <ArrowLeft className="size-4" />
           </Link>

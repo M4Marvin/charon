@@ -155,7 +155,9 @@ export function LorebooksSection(_props: SectionProps) {
                   <span className="truncate">{lb.name}</span>
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-[10px] tabular-nums text-(--sea-ink-soft)/50">{lb.entryCount}</span>
+                  <span className="text-[10px] tabular-nums text-(--sea-ink-soft)/50">
+                    {lb.entryCount}
+                  </span>
                   <Switch
                     checked
                     onCheckedChange={() => handleToggle(lb.id, false)}

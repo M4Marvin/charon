@@ -26,12 +26,7 @@ describe("SectionHeader", () => {
   });
 
   it("renders the actions node when passed", () => {
-    render(
-      <SectionHeader
-        title="Display"
-        actions={<button type="button">Import</button>}
-      />,
-    );
+    render(<SectionHeader title="Display" actions={<button type="button">Import</button>} />);
 
     expect(screen.getByRole("button", { name: "Import" })).toBeTruthy();
   });

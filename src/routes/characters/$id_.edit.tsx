@@ -230,14 +230,14 @@ function CharacterEditPage() {
                   children={(f: any) => (
                     <Field>
                       <FieldLabel htmlFor={f.name}>Creator</FieldLabel>
-                    <Input
-                      id={f.name}
-                      value={f.state.value}
-                      onBlur={f.handleBlur}
-                      onChange={(e) => f.handleChange(e.target.value)}
-                      minLength={1}
-                      maxLength={64}
-                    />
+                      <Input
+                        id={f.name}
+                        value={f.state.value}
+                        onBlur={f.handleBlur}
+                        onChange={(e) => f.handleChange(e.target.value)}
+                        minLength={1}
+                        maxLength={64}
+                      />
                     </Field>
                   )}
                 />

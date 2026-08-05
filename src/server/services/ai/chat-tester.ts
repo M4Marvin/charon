@@ -80,7 +80,9 @@ export const testProviderChatCompletion = (
       return {
         ok: false,
         latencyMs,
-        error: detail ? `HTTP ${response.status}: ${detail}` : `HTTP ${response.status} ${response.statusText}`.trim(),
+        error: detail
+          ? `HTTP ${response.status}: ${detail}`
+          : `HTTP ${response.status} ${response.statusText}`.trim(),
       };
     }
 

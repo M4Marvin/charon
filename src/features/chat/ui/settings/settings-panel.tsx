@@ -36,8 +36,22 @@ import { DisplaySection } from "./sections/display-section";
 
 const SECTIONS: SettingsSection[] = [
   { id: "connection", label: "Connection", icon: Zap, adminOnly: true, group: "connection" },
-  { id: "providers", label: "Providers", icon: Server, adminOnly: true, group: "connection", secondary: true },
-  { id: "presets", label: "Presets", icon: SlidersHorizontal, adminOnly: true, group: "connection", secondary: true },
+  {
+    id: "providers",
+    label: "Providers",
+    icon: Server,
+    adminOnly: true,
+    group: "connection",
+    secondary: true,
+  },
+  {
+    id: "presets",
+    label: "Presets",
+    icon: SlidersHorizontal,
+    adminOnly: true,
+    group: "connection",
+    secondary: true,
+  },
   { id: "persona", label: "Persona", icon: User, group: "chat" },
   { id: "lorebooks", label: "Lorebooks", icon: BookOpen, group: "chat" },
   { id: "prompts", label: "Prompts", icon: FileText, group: "chat" },

@@ -9,10 +9,7 @@ import {
   type ProviderModel,
   type ProbeResult,
 } from "@/server/services/ai/model-fetcher";
-import {
-  testProviderChatCompletion,
-  type ChatTestResult,
-} from "@/server/services/ai/chat-tester";
+import { testProviderChatCompletion, type ChatTestResult } from "@/server/services/ai/chat-tester";
 
 export type { ProviderModel, ProbeResult, ChatTestResult };
 

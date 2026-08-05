@@ -29,9 +29,7 @@ function NewCharacterPage() {
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [previewB64, setPreviewB64] = useState<string>("");
   const [previewErr, setPreviewErr] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ field: string; message: string }[] | null>(
-    null,
-  );
+  const [fieldErrors, setFieldErrors] = useState<{ field: string; message: string }[] | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importMutation = useImportCharacter();

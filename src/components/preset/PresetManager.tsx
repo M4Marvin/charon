@@ -114,7 +114,9 @@ export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet"
                         </Badge>
                       ) : null}
                     </div>
-                    <p className={`text-3 text-xs font-mono ${isSheet ? "text-(--sea-ink-soft)/70" : ""}`}>
+                    <p
+                      className={`text-3 text-xs font-mono ${isSheet ? "text-(--sea-ink-soft)/70" : ""}`}
+                    >
                       {paramSummary(p)}
                     </p>
                   </div>

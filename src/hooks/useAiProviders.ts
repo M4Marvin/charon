@@ -7,7 +7,12 @@ import {
   updateAiProvider,
   type AiProviderListItem,
 } from "@/server/fns/aiProviders";
-import { testProviderConnection, testProviderChat, type ProbeResult, type ChatTestResult } from "@/server/fns/models";
+import {
+  testProviderConnection,
+  testProviderChat,
+  type ProbeResult,
+  type ChatTestResult,
+} from "@/server/fns/models";
 
 export const aiProviderKeys = {
   all: ["aiProviders"] as const,

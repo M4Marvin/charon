@@ -7,7 +7,10 @@ export function MobileTabBar() {
   const active = "text-brand-strong font-medium";
 
   return (
-    <nav aria-label="Mobile" className="fixed inset-x-0 bottom-0 z-50 border-t bg-popover/95 backdrop-blur-sm md:hidden">
+    <nav
+      aria-label="Mobile"
+      className="fixed inset-x-0 bottom-0 z-50 border-t bg-popover/95 backdrop-blur-sm md:hidden"
+    >
       <div className="mx-auto flex h-16 max-w-lg items-center justify-around pb-[env(safe-area-inset-bottom)]">
         <Link to="/chat" className={base} activeProps={{ className: `${base} ${active}` }}>
           <MessageCircle className="size-5" />

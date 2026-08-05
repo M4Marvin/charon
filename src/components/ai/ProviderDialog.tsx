@@ -35,7 +35,13 @@ interface ProviderDialogProps {
   pending?: boolean;
 }
 
-export function ProviderDialog({ state, onClose, onCreate, onUpdate, pending }: ProviderDialogProps) {
+export function ProviderDialog({
+  state,
+  onClose,
+  onCreate,
+  onUpdate,
+  pending,
+}: ProviderDialogProps) {
   const open = state !== null;
   const editing = state && state !== "new" ? state : null;
   const [name, setName] = useState("");

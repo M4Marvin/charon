@@ -93,7 +93,9 @@ function SigninPage() {
                         aria-invalid={isInvalid}
                         aria-describedby="username-error"
                       />
-                      {isInvalid && <FieldError id="username-error" errors={field.state.meta.errors} />}
+                      {isInvalid && (
+                        <FieldError id="username-error" errors={field.state.meta.errors} />
+                      )}
                     </Field>
                   );
                 }}
@@ -128,7 +130,9 @@ function SigninPage() {
                           {showPw ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                         </button>
                       </div>
-                      {isInvalid && <FieldError id="password-error" errors={field.state.meta.errors} />}
+                      {isInvalid && (
+                        <FieldError id="password-error" errors={field.state.meta.errors} />
+                      )}
                     </Field>
                   );
                 }}

@@ -11,7 +11,10 @@ interface SectionProps {
 export function PresetSection(_props: SectionProps) {
   return (
     <div className="flex flex-col gap-5">
-      <SectionHeader title="Presets" description="Generation parameters — shared across all chats." />
+      <SectionHeader
+        title="Presets"
+        description="Generation parameters — shared across all chats."
+      />
       <PresetManager variant="sheet" />
     </div>
   );

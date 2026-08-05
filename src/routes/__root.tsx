@@ -203,7 +203,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               {!hideGlobalHeader && isAuthed && user?.role !== "admin" && <DemoBanner />}
               <div className={isAuthed && !hideGlobalHeader ? "pb-20 md:pb-0" : undefined}>
                 <RichTextSettingsProvider>
-                  <TanstackQueryProvider queryClient={queryClient}>{children}</TanstackQueryProvider>
+                  <TanstackQueryProvider queryClient={queryClient}>
+                    {children}
+                  </TanstackQueryProvider>
                 </RichTextSettingsProvider>
               </div>
               {isAuthed && !hideGlobalHeader && <MobileTabBar />}

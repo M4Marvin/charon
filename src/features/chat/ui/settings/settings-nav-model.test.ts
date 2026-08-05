@@ -7,7 +7,14 @@ const icon = {} as SettingsSection["icon"];
 
 const ADMIN_SECTIONS: SettingsSection[] = [
   { id: "connection", label: "Connection", icon, adminOnly: true, group: "connection" },
-  { id: "providers", label: "Providers", icon, adminOnly: true, group: "connection", secondary: true },
+  {
+    id: "providers",
+    label: "Providers",
+    icon,
+    adminOnly: true,
+    group: "connection",
+    secondary: true,
+  },
   { id: "presets", label: "Presets", icon, adminOnly: true, group: "connection", secondary: true },
   { id: "persona", label: "Persona", icon, group: "chat" },
   { id: "lorebooks", label: "Lorebooks", icon, group: "chat" },
@@ -45,7 +52,13 @@ describe("getVisibleNavGroups", () => {
     const groups = getVisibleNavGroups(ADMIN_SECTIONS, true);
     const chat = groups.find((g) => g.id === "chat")!;
 
-    expect(chat.items.map((s) => s.id)).toEqual(["persona", "lorebooks", "prompts", "character", "scene"]);
+    expect(chat.items.map((s) => s.id)).toEqual([
+      "persona",
+      "lorebooks",
+      "prompts",
+      "character",
+      "scene",
+    ]);
   });
 
   it("returns [] for empty input", () => {
