@@ -39,10 +39,15 @@
   }
 
   --animate-msg-in: msg-in 0.3s ease-out;
+  --animate-section-in: msg-in 0.15s ease-out;
 }
 
 .rt-msg-in {
   animation: var(--animate-msg-in);
+}
+
+@utility section-switch {
+  animation: var(--animate-section-in);
 }
 
 /* ── Message text (parity with SillyTavern .mes_text) ── */
@@ -770,6 +775,11 @@
     -webkit-text-fill-color: currentColor;
   }
   .rt-msg-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .section-switch {
     animation: none;
     opacity: 1;
     transform: none;
