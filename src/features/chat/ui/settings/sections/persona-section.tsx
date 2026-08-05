@@ -29,6 +29,7 @@ import {
 } from "@/hooks/usePersonas";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
 import { ConfirmDialog } from "../confirm-dialog";
+import { SectionHeader } from "../section-header";
 
 interface SectionProps {
   chatId: string;
@@ -128,7 +129,7 @@ export function PersonaSection(_props: SectionProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm font-heading text-[--sea-ink]">Persona</p>
+      <SectionHeader title="Persona" />
 
       <Field className="space-y-1.5">
         <FieldLabel htmlFor="ps-persona">Active persona</FieldLabel>

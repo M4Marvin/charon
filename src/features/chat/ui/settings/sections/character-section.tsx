@@ -1,6 +1,7 @@
 import { useChatConfig } from "@/hooks/useChatConfig";
 import { useUpdateChatOverrides } from "@/hooks/useChatConfig";
 import { BlurCommitTextarea } from "../blur-commit-textarea";
+import { SectionHeader } from "../section-header";
 
 interface SectionProps {
   chatId: string;
@@ -16,7 +17,7 @@ export function CharacterSection({ chatId, isStreaming }: SectionProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm font-heading text-[--sea-ink]">Character overrides</p>
+      <SectionHeader title="Character overrides" />
 
       <BlurCommitTextarea
         id="cs-desc"

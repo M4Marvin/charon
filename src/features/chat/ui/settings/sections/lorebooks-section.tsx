@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { SectionHeader } from "../section-header";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
@@ -103,38 +104,38 @@ export function LorebooksSection(_props: SectionProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-0.5">
-          <p className="text-sm font-heading text-[--sea-ink]">Lorebooks</p>
-          <p className="text-[11px] text-[--sea-ink-soft]">Toggle active books, manage entries.</p>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="link"
-            size="sm"
-            className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
-            onClick={() => {
-              setNewOpen(true);
-              setImportOpen(false);
-            }}
-          >
-            <Plus className="size-3" data-icon="inline-start" />
-            New
-          </Button>
-          <Button
-            variant="link"
-            size="sm"
-            className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
-            onClick={() => {
-              setImportOpen(true);
-              setNewOpen(false);
-            }}
-          >
-            <Upload className="size-3" data-icon="inline-start" />
-            Import
-          </Button>
-        </div>
-      </div>
+      <SectionHeader
+        title="Lorebooks"
+        description="Toggle active books, manage entries."
+        actions={
+          <>
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
+              onClick={() => {
+                setNewOpen(true);
+                setImportOpen(false);
+              }}
+            >
+              <Plus className="size-3" data-icon="inline-start" />
+              New
+            </Button>
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
+              onClick={() => {
+                setImportOpen(true);
+                setNewOpen(false);
+              }}
+            >
+              <Upload className="size-3" data-icon="inline-start" />
+              Import
+            </Button>
+          </>
+        }
+      />
 
       {enabled.length > 0 && (
         <div className="flex flex-col gap-1">

@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { SectionHeader } from "../section-header";
 import { useAiProviders, useTestProviderConnection } from "@/hooks/useAiProviders";
 import { usePresets } from "@/hooks/usePresets";
 import { useProviderModels } from "@/hooks/useProviderModels";
@@ -90,29 +91,31 @@ export function ConnectionSection({ isStreaming, isAdmin, onNavigate }: SectionP
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-heading text-[--sea-ink]">Connection</p>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="link"
-            size="sm"
-            className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
-            onClick={() => onNavigate("providers")}
-          >
-            Providers
-            <ArrowRight className="size-3" data-icon="inline-end" />
-          </Button>
-          <Button
-            variant="link"
-            size="sm"
-            className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
-            onClick={() => onNavigate("presets")}
-          >
-            Presets
-            <ArrowRight className="size-3" data-icon="inline-end" />
-          </Button>
-        </div>
-      </div>
+      <SectionHeader
+        title="Connection"
+        actions={
+          <>
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
+              onClick={() => onNavigate("providers")}
+            >
+              Providers
+              <ArrowRight className="size-3" data-icon="inline-end" />
+            </Button>
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
+              onClick={() => onNavigate("presets")}
+            >
+              Presets
+              <ArrowRight className="size-3" data-icon="inline-end" />
+            </Button>
+          </>
+        }
+      />
 
       <Field className="space-y-1.5">
         <FieldLabel htmlFor="cs-provider">Provider</FieldLabel>

@@ -1,6 +1,7 @@
 import { useRichTextSettings } from "@/lib/richtext-settings";
 import { Switch } from "@/components/ui/switch";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { SectionHeader } from "../section-header";
 
 interface SectionProps {
   chatId: string;
@@ -20,7 +21,7 @@ export function DisplaySection(_props: SectionProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm font-heading text-[--sea-ink]">Display</p>
+      <SectionHeader title="Display" />
 
       <Field className="flex items-center justify-between gap-3">
         <FieldLabel htmlFor="ds-highlight" className="text-xs text-[--sea-ink-soft] cursor-pointer">

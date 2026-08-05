@@ -1,6 +1,5 @@
-import { Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { ProviderManager } from "@/components/ai/ProviderManager";
+import { SectionHeader } from "../section-header";
 
 interface SectionProps {
   chatId: string;
@@ -9,25 +8,11 @@ interface SectionProps {
   onNavigate: (sectionId: string) => void;
 }
 
-export function ProviderSection({ onNavigate }: SectionProps) {
+export function ProviderSection(_props: SectionProps) {
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7 rounded-full glass text-[--sea-ink-soft] hover:text-[--sea-ink]"
-            onClick={() => onNavigate("connection")}
-            aria-label="Back to Connection settings"
-          >
-            <Settings className="size-3.5" />
-          </Button>
-          <p className="text-sm font-heading text-[--sea-ink]">Providers</p>
-        </div>
-        <p className="text-[11px] text-[--sea-ink-soft]">API endpoints — shared across all chats.</p>
-      </div>
-      <ProviderManager />
+      <SectionHeader title="Providers" description="API endpoints — shared across all chats." />
+      <ProviderManager variant="sheet" />
     </div>
   );
 }

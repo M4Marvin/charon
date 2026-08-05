@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useBackgrounds, useUploadBackground, useDeleteBackground } from "@/hooks/useBackgrounds";
 import { useChatConfig, useUpdateChatOverrides } from "@/hooks/useChatConfig";
 import { ConfirmDialog } from "../confirm-dialog";
+import { SectionHeader } from "../section-header";
 
 interface SectionProps {
   chatId: string;
@@ -55,7 +56,7 @@ export function SceneSection({ chatId, isAdmin, isStreaming }: SectionProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm font-heading text-[--sea-ink]">Scene</p>
+      <SectionHeader title="Scene" />
 
       <div className="grid grid-cols-3 gap-2">
         {backgrounds?.map((bg) => (

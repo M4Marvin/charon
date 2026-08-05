@@ -1,5 +1,6 @@
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
 import { BlurCommitTextarea } from "../blur-commit-textarea";
+import { SectionHeader } from "../section-header";
 
 interface SectionProps {
   chatId: string;
@@ -13,7 +14,7 @@ export function PromptsSection(_props: SectionProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-sm font-heading text-[--sea-ink]">Prompts</p>
+      <SectionHeader title="Prompts" />
 
       <BlurCommitTextarea
         id="ps-system"
