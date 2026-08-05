@@ -196,7 +196,7 @@ export function ChatMessage({
                   onChange={(e) => setEditContent(e.target.value)}
                   onKeyDown={handleKeyDown}
                   aria-label="Edit message"
-                  className="min-h-[60px] resize-none border-0 bg-transparent p-0 text-sm leading-6 text-foreground focus-visible:ring-0"
+                  className="min-h-[60px] resize-none rounded-lg border-0 bg-white/5 p-3 text-sm leading-6 text-foreground ring-1 ring-white/10 focus-visible:ring-1 focus-visible:ring-[--lagoon]/60"
                   style={{ maxHeight: TEXTAREA_MAX_HEIGHT }}
                 />
                 <div className="mt-2 flex items-center gap-2">
