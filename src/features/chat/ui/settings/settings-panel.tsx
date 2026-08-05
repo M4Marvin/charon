@@ -62,14 +62,15 @@ export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps
   const isStreaming = config?.chat.lockState === "generating";
   const firstVisibleId = SECTIONS.find((s) => !s.adminOnly || isAdmin)?.id ?? "persona";
 
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState("persona");
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  // Session resolves after mount (isAdmin=false while loading): derive the initial section once auth settles, else admins land on Persona.
+  // Session settles after mount (data starts null/undefined): derive the initial
+  // section once auth resolves, else admins land on Persona instead of Connection.
   const initialSectionApplied = useRef(false);
   useEffect(() => {
     if (initialSectionApplied.current) return;
-    if (session === undefined) return; // auth still loading
+    if (!session?.user) return; // session not settled yet
     setActiveId(firstVisibleId);
     initialSectionApplied.current = true;
   }, [session, isAdmin, firstVisibleId]);
@@ -99,7 +100,7 @@ export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps
           className="w-full data-[side=right]:w-full data-[side=right]:sm:max-w-2xl glass-strong flex flex-col gap-0 p-0"
         >
           <SheetHeader className="px-5 pt-5 pb-3 border-b border-white/5">
-            <SheetTitle className="font-heading text-[--sea-ink]">Chat Settings</SheetTitle>
+            <SheetTitle className="font-heading text-(--sea-ink)">Chat Settings</SheetTitle>
             <SheetDescription className="text-xs">
               Configure AI, persona, prompts, and appearance.
             </SheetDescription>
