@@ -98,7 +98,7 @@ export function ConnectionSection({ isStreaming, isAdmin, onNavigate }: SectionP
             <Button
               variant="link"
               size="sm"
-              className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
+              className="h-auto gap-1 p-0 text-[11px] text-(--lagoon)"
               onClick={() => onNavigate("providers")}
             >
               Providers
@@ -107,7 +107,7 @@ export function ConnectionSection({ isStreaming, isAdmin, onNavigate }: SectionP
             <Button
               variant="link"
               size="sm"
-              className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
+              className="h-auto gap-1 p-0 text-[11px] text-(--lagoon)"
               onClick={() => onNavigate("presets")}
             >
               Presets

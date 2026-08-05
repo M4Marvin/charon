@@ -66,7 +66,7 @@ export function SceneSection({ chatId, isAdmin, isStreaming }: SectionProps) {
               onClick={() => handleSelect(bg.id === selectedId ? null : bg.id)}
               disabled={isStreaming}
               className={`group relative aspect-video w-full overflow-hidden rounded-lg bg-white/5 ring-1 ring-white/10 transition ${
-                bg.id === selectedId ? "ring-[--lagoon] ring-2" : "hover:ring-white/20"
+                bg.id === selectedId ? "ring-(--lagoon) ring-2" : "hover:ring-white/20"
               }`}
               aria-label={`${bg.name}${bg.id === selectedId ? " (selected)" : ""}`}
             >

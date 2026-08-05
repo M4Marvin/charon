@@ -24,7 +24,7 @@ export function DisplaySection(_props: SectionProps) {
       <SectionHeader title="Display" />
 
       <Field className="flex items-center justify-between gap-3">
-        <FieldLabel htmlFor="ds-highlight" className="text-xs text-[--sea-ink-soft] cursor-pointer">
+        <FieldLabel htmlFor="ds-highlight" className="text-xs text-(--sea-ink-soft) cursor-pointer">
           Highlight dialogue
         </FieldLabel>
         <Switch
@@ -35,14 +35,14 @@ export function DisplaySection(_props: SectionProps) {
       </Field>
 
       <Field className="flex items-center justify-between gap-3">
-        <FieldLabel htmlFor="ds-markdown" className="text-xs text-[--sea-ink-soft] cursor-pointer">
+        <FieldLabel htmlFor="ds-markdown" className="text-xs text-(--sea-ink-soft) cursor-pointer">
           Auto-fix markdown
         </FieldLabel>
         <Switch id="ds-markdown" checked={autoFixMarkdown} onCheckedChange={setAutoFixMarkdown} />
       </Field>
 
       <Field className="flex items-center justify-between gap-3">
-        <FieldLabel htmlFor="ds-media" className="text-xs text-[--sea-ink-soft] cursor-pointer">
+        <FieldLabel htmlFor="ds-media" className="text-xs text-(--sea-ink-soft) cursor-pointer">
           Block external media
         </FieldLabel>
         <Switch

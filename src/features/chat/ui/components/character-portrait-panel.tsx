@@ -34,7 +34,7 @@ export function CharacterPortraitPanel({
         aria-label={`View ${name} portrait`}
         onKeyDown={(e) => e.key === "Enter" && onImageClick()}
       >
-        <div className="aspect-[3/4] max-h-[70dvh] relative flex items-center justify-center bg-[--bg-base]/60">
+        <div className="aspect-[3/4] max-h-[70dvh] relative flex items-center justify-center bg-(--bg-base)/60">
           {imageSrc ? (
             <img
               src={imageSrc}
@@ -42,14 +42,14 @@ export function CharacterPortraitPanel({
               className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
-            <div className="text-[--sea-ink-soft] text-sm">No portrait</div>
+            <div className="text-(--sea-ink-soft) text-sm">No portrait</div>
           )}
           {isStreaming && (
-            <div className="absolute inset-0 ring-2 ring-[--lagoon]/40 rounded-2xl animate-pulse pointer-events-none" />
+            <div className="absolute inset-0 ring-2 ring-(--lagoon)/40 rounded-2xl animate-pulse pointer-events-none" />
           )}
         </div>
         <div className="px-3 py-2.5 flex items-center justify-between">
-          <p className="font-heading text-sm text-[--sea-ink] truncate">{name}</p>
+          <p className="font-heading text-sm text-(--sea-ink) truncate">{name}</p>
         </div>
       </div>
 

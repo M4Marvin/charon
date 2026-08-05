@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
@@ -76,7 +77,7 @@ export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet"
   return (
     <div className="space-y-6">
       {presets.length === 0 ? (
-        <p className={`text-2 text-sm py-4 ${isSheet ? "text-[--sea-ink-soft]/70" : ""}`}>
+        <p className={`text-2 text-sm py-4 ${isSheet ? "text-(--sea-ink-soft)/70" : ""}`}>
           No presets configured yet.
         </p>
       ) : (
@@ -89,7 +90,7 @@ export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet"
                 className={`rounded-lg border p-4 ${
                   isSheet
                     ? isDefault
-                      ? "border-[--lagoon]/30 bg-[--lagoon]/5"
+                      ? "border-(--lagoon)/30 bg-(--lagoon)/5"
                       : "bg-white/5"
                     : isDefault
                       ? "border-brand/30 bg-brand/5"
@@ -98,10 +99,22 @@ export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 space-y-1">
-                    <p className={`text-headline truncate ${isSheet ? "text-[--sea-ink]" : ""}`}>
-                      {p.name}
-                    </p>
-                    <p className={`text-3 text-xs font-mono ${isSheet ? "text-[--sea-ink-soft]/70" : ""}`}>
+                    <div className="flex items-center gap-1.5">
+                      <p className={`text-headline truncate ${isSheet ? "text-(--sea-ink)" : ""}`}>
+                        {p.name}
+                      </p>
+                      {isDefault ? (
+                        <Badge
+                          variant="default"
+                          className={`shrink-0 text-[10px] ${
+                            isSheet ? "bg-(--lagoon)/15 text-(--lagoon) border-(--lagoon)/20" : ""
+                          }`}
+                        >
+                          Default
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className={`text-3 text-xs font-mono ${isSheet ? "text-(--sea-ink-soft)/70" : ""}`}>
                       {paramSummary(p)}
                     </p>
                   </div>

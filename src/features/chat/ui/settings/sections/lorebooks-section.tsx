@@ -112,7 +112,7 @@ export function LorebooksSection(_props: SectionProps) {
             <Button
               variant="link"
               size="sm"
-              className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
+              className="h-auto gap-1 p-0 text-[11px] text-(--lagoon)"
               onClick={() => {
                 setNewOpen(true);
                 setImportOpen(false);
@@ -124,7 +124,7 @@ export function LorebooksSection(_props: SectionProps) {
             <Button
               variant="link"
               size="sm"
-              className="h-auto gap-1 p-0 text-[11px] text-[--lagoon]"
+              className="h-auto gap-1 p-0 text-[11px] text-(--lagoon)"
               onClick={() => {
                 setImportOpen(true);
                 setNewOpen(false);
@@ -145,7 +145,7 @@ export function LorebooksSection(_props: SectionProps) {
                 <button
                   type="button"
                   onClick={() => setExpandedId(expandedId === lb.id ? null : lb.id)}
-                  className="flex items-center gap-1.5 text-xs text-[--sea-ink-soft] hover:text-[--sea-ink] min-w-0"
+                  className="flex items-center gap-1.5 text-xs text-(--sea-ink-soft) hover:text-(--sea-ink) min-w-0"
                 >
                   {expandedId === lb.id ? (
                     <ChevronDown className="size-3.5 shrink-0" />
@@ -155,7 +155,7 @@ export function LorebooksSection(_props: SectionProps) {
                   <span className="truncate">{lb.name}</span>
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-[10px] tabular-nums text-white/30">{lb.entryCount}</span>
+                  <span className="text-[10px] tabular-nums text-(--sea-ink-soft)/50">{lb.entryCount}</span>
                   <Switch
                     checked
                     onCheckedChange={() => handleToggle(lb.id, false)}
@@ -180,7 +180,7 @@ export function LorebooksSection(_props: SectionProps) {
       )}
 
       {enabled.length === 0 && (
-        <p className="text-xs text-[--sea-ink-soft]">No lorebooks enabled.</p>
+        <p className="text-xs text-(--sea-ink-soft)">No lorebooks enabled.</p>
       )}
 
       <div className="flex items-end gap-2">
@@ -270,7 +270,7 @@ function ExpandedEntries({ lorebookId }: { lorebookId: string }) {
             key={entry.id}
             className="flex items-center justify-between gap-1 rounded px-2 py-1 hover:bg-white/5"
           >
-            <span className="text-[11px] text-[--sea-ink-soft] truncate max-w-[45%]">
+            <span className="text-[11px] text-(--sea-ink-soft) truncate max-w-[45%]">
               {entry.data.comment || `Entry #${entry.data.uid}`}
             </span>
             <div className="flex items-center gap-0.5 shrink-0">
@@ -285,7 +285,7 @@ function ExpandedEntries({ lorebookId }: { lorebookId: string }) {
               <button
                 type="button"
                 onClick={() => setDialog({ kind: "edit", entry })}
-                className="size-6 flex items-center justify-center rounded text-[--sea-ink-soft] hover:text-[--sea-ink] hover:bg-white/5"
+                className="size-6 flex items-center justify-center rounded text-(--sea-ink-soft) hover:text-(--sea-ink) hover:bg-white/5"
                 aria-label={`Edit ${entry.data.comment || `entry ${entry.data.uid}`}`}
               >
                 <Pencil className="size-3" />
@@ -293,7 +293,7 @@ function ExpandedEntries({ lorebookId }: { lorebookId: string }) {
               <button
                 type="button"
                 onClick={() => setDelEntryId(entry.id)}
-                className="size-6 flex items-center justify-center rounded text-[--sea-ink-soft] hover:text-red-400 hover:bg-white/5"
+                className="size-6 flex items-center justify-center rounded text-(--sea-ink-soft) hover:text-red-400 hover:bg-white/5"
                 aria-label={`Delete ${entry.data.comment || `entry ${entry.data.uid}`}`}
               >
                 <Trash2 className="size-3" />

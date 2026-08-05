@@ -37,8 +37,8 @@ export function SettingsNav({ sections, activeId, onChange }: SettingsNavProps) 
                     "flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-xs transition-colors",
                     s.secondary ? "ml-5" : "ml-1",
                     activeId === s.id
-                      ? "bg-[--lagoon]/15 text-[--lagoon]"
-                      : "text-[--sea-ink-soft] hover:bg-white/5 hover:text-[--sea-ink]",
+                      ? "bg-(--lagoon)/15 text-(--lagoon)"
+                      : "text-(--sea-ink-soft) hover:bg-white/5 hover:text-(--sea-ink)",
                   )}
                   aria-current={activeId === s.id ? "page" : undefined}
                   aria-label={s.label}

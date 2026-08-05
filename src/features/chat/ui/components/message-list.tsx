@@ -93,8 +93,8 @@ export function MessageList({
     return (
       <div className="flex flex-col items-center justify-center px-6 pt-32">
         <div className="glass rounded-2xl px-8 py-10 text-center max-w-xs">
-          <p className="font-heading text-xl text-[--sea-ink] mb-2">{characterName}</p>
-          <p className="text-sm text-[--sea-ink-soft] leading-relaxed">
+          <p className="font-heading text-xl text-(--sea-ink) mb-2">{characterName}</p>
+          <p className="text-sm text-(--sea-ink-soft) leading-relaxed">
             Start the story by sending a message.
           </p>
         </div>

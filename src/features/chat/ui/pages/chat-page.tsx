@@ -173,14 +173,14 @@ export function ChatPage() {
         className="fixed inset-0 flex items-center justify-center"
         style={{ background: "var(--bg-base)" }}
       >
-        <div className="flex items-center gap-2 text-[--sea-ink-soft]">
-          <span className="size-2 rounded-full bg-[--lagoon] animate-bounce" />
+        <div className="flex items-center gap-2 text-(--sea-ink-soft)">
+          <span className="size-2 rounded-full bg-(--lagoon) animate-bounce" />
           <span
-            className="size-2 rounded-full bg-[--lagoon] animate-bounce"
+            className="size-2 rounded-full bg-(--lagoon) animate-bounce"
             style={{ animationDelay: "150ms" }}
           />
           <span
-            className="size-2 rounded-full bg-[--lagoon] animate-bounce"
+            className="size-2 rounded-full bg-(--lagoon) animate-bounce"
             style={{ animationDelay: "300ms" }}
           />
         </div>

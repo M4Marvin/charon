@@ -76,7 +76,7 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
   return (
     <div className="space-y-6">
       {providers.length === 0 ? (
-        <p className={`text-2 text-sm py-4 ${isSheet ? "text-[--sea-ink-soft]/70" : ""}`}>
+        <p className={`text-2 text-sm py-4 ${isSheet ? "text-(--sea-ink-soft)/70" : ""}`}>
           No providers configured yet.
         </p>
       ) : (
@@ -90,7 +90,7 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
                 className={`rounded-lg border p-4 ${
                   isSheet
                     ? isDefault
-                      ? "border-[--lagoon]/30 bg-[--lagoon]/5"
+                      ? "border-(--lagoon)/30 bg-(--lagoon)/5"
                       : "bg-white/5"
                     : isDefault
                       ? "border-brand/30 bg-brand/5"
@@ -112,7 +112,7 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
                         <StatusDot tone="muted" label="Untested" />
                       )}
                       <span
-                        className={`text-headline truncate ${isSheet ? "text-[--sea-ink]" : ""}`}
+                        className={`text-headline truncate ${isSheet ? "text-(--sea-ink)" : ""}`}
                       >
                         {p.name}
                       </span>
@@ -120,7 +120,7 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
                         <Badge
                           variant="default"
                           className={`text-[10px] ml-1 ${
-                            isSheet ? "bg-[--lagoon]/15 text-[--lagoon] border-[--lagoon]/20" : ""
+                            isSheet ? "bg-(--lagoon)/15 text-(--lagoon) border-(--lagoon)/20" : ""
                           }`}
                         >
                           Default
@@ -129,13 +129,13 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
                     </div>
                     <p
                       className={`text-2 text-xs font-mono truncate ${
-                        isSheet ? "text-[--sea-ink-soft]" : ""
+                        isSheet ? "text-(--sea-ink-soft)" : ""
                       }`}
                     >
                       {p.baseUrl}
                     </p>
                     {testResult && testResult.ok ? (
-                      <p className={`text-3 text-xs ${isSheet ? "text-[--sea-ink-soft]/70" : ""}`}>
+                      <p className={`text-3 text-xs ${isSheet ? "text-(--sea-ink-soft)/70" : ""}`}>
                         {testResult.latencyMs}ms · {testResult.modelCount} models
                       </p>
                     ) : null}

@@ -115,7 +115,7 @@ export function ChatMessage({
       <div
         className={cn(
           "group relative rounded-2xl px-4 py-3.5 md:px-5 md:py-4",
-          isAssistant ? "glass-strong border-l-2 border-[--lagoon]/40" : "glass",
+          isAssistant ? "glass-strong border-l-2 border-(--lagoon)/40" : "glass",
           isNewest && "motion-safe:animate-msg-in",
         )}
       >
@@ -126,8 +126,8 @@ export function ChatMessage({
               className={cn(
                 "rounded-lg text-sm",
                 isAssistant
-                  ? "bg-[--lagoon]/20 text-[--lagoon]"
-                  : "bg-white/10 text-[--sea-ink-soft]",
+                  ? "bg-(--lagoon)/20 text-(--lagoon)"
+                  : "bg-white/10 text-(--sea-ink-soft)",
               )}
             >
               {name.charAt(0).toUpperCase()}
@@ -139,7 +139,7 @@ export function ChatMessage({
               <span
                 className={cn(
                   "text-sm font-semibold tracking-wide truncate",
-                  isAssistant ? "text-[--lagoon]" : "text-[--sea-ink-soft]",
+                  isAssistant ? "text-(--lagoon)" : "text-(--sea-ink-soft)",
                 )}
               >
                 {name}
@@ -196,7 +196,7 @@ export function ChatMessage({
                   onChange={(e) => setEditContent(e.target.value)}
                   onKeyDown={handleKeyDown}
                   aria-label="Edit message"
-                  className="min-h-[60px] resize-none rounded-lg border-0 bg-white/5 p-3 text-sm leading-6 text-foreground ring-1 ring-white/10 focus-visible:ring-1 focus-visible:ring-[--lagoon]/60"
+                  className="min-h-[60px] resize-none rounded-lg border-0 bg-white/5 p-3 text-sm leading-6 text-foreground ring-1 ring-white/10 focus-visible:ring-1 focus-visible:ring-(--lagoon)/60"
                   style={{ maxHeight: TEXTAREA_MAX_HEIGHT }}
                 />
                 <div className="mt-2 flex items-center gap-2">
@@ -225,7 +225,7 @@ export function ChatMessage({
                 {[0, 150, 300].map((delay) => (
                   <span
                     key={delay}
-                    className="size-1.5 rounded-full bg-[--lagoon] animate-bounce"
+                    className="size-1.5 rounded-full bg-(--lagoon) animate-bounce"
                     style={{ animationDelay: `${delay}ms` }}
                   />
                 ))}
@@ -234,7 +234,7 @@ export function ChatMessage({
               <div className="text-sm leading-6">
                 <RichText content={displayContent} />
                 {isStreaming && streamingText && (
-                  <span className="inline-block w-[2px] h-[1.15em] bg-[--lagoon] animate-pulse align-baseline ml-0.5" />
+                  <span className="inline-block w-[2px] h-[1.15em] bg-(--lagoon) animate-pulse align-baseline ml-0.5" />
                 )}
               </div>
             )}
@@ -269,7 +269,7 @@ export function ChatMessage({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-6 text-white/30 hover:text-[--lagoon]"
+                className="size-6 text-white/30 hover:text-(--lagoon)"
                 onClick={() => onRegenerate(message.localId)}
                 aria-label="Regenerate response"
               >

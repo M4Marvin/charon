@@ -55,7 +55,7 @@ export function CustomImagePanel({
         aria-label={hasImage ? `View ${label.toLowerCase()} image` : "No image set"}
         onKeyDown={(e) => e.key === "Enter" && hasImage && onImageClick()}
       >
-        <div className="relative flex items-center justify-center bg-[--bg-base]/60">
+        <div className="relative flex items-center justify-center bg-(--bg-base)/60">
           {hasImage ? (
             <img
               src={displaySrc}
@@ -63,7 +63,7 @@ export function CustomImagePanel({
               className="w-full h-auto block transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
-            <div className="flex flex-col items-center gap-2 text-[--sea-ink-soft] py-10 w-full">
+            <div className="flex flex-col items-center gap-2 text-(--sea-ink-soft) py-10 w-full">
               <ImageIcon className="size-6 opacity-40" />
               <span className="text-xs">No scene set</span>
             </div>

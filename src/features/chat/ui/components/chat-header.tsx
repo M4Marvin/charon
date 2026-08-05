@@ -46,7 +46,7 @@ export function ChatHeader({
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0">
-          <p className="font-heading text-[--sea-ink] text-xs md:text-sm leading-5 truncate">
+          <p className="font-heading text-(--sea-ink) text-xs md:text-sm leading-5 truncate">
             {characterName}
           </p>
         </div>
@@ -55,7 +55,7 @@ export function ChatHeader({
             {[0, 150, 300].map((delay) => (
               <span
                 key={delay}
-                className="size-1 rounded-full bg-[--lagoon] animate-bounce"
+                className="size-1 rounded-full bg-(--lagoon) animate-bounce"
                 style={{ animationDelay: `${delay}ms` }}
               />
             ))}
@@ -69,7 +69,7 @@ export function ChatHeader({
           size="icon"
           className={cn(
             "size-7 rounded-full glass shrink-0 text-white/70 hover:text-white hidden lg:inline-flex",
-            portraitOpen && "text-[--lagoon] ring-1 ring-[--lagoon]/30",
+            portraitOpen && "text-(--lagoon) ring-1 ring-(--lagoon)/30",
           )}
           onClick={onTogglePortrait}
           aria-label="Toggle character portrait"
@@ -81,7 +81,7 @@ export function ChatHeader({
           size="icon"
           className={cn(
             "size-7 rounded-full glass shrink-0 text-white/70 hover:text-white hidden lg:inline-flex",
-            sceneOpen && "text-[--lagoon] ring-1 ring-[--lagoon]/30",
+            sceneOpen && "text-(--lagoon) ring-1 ring-(--lagoon)/30",
           )}
           onClick={onToggleScene}
           aria-label="Toggle scene panel"

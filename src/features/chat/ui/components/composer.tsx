@@ -73,14 +73,14 @@ export function Composer({
             aria-label="Message"
             rows={1}
             disabled={disabled}
-            className="min-h-[40px] max-h-[120px] resize-none border-0 bg-transparent px-1 py-1.5 text-[15px] leading-6 placeholder:text-white/30 text-[--sea-ink] no-scrollbar focus-visible:ring-0"
+            className="min-h-[40px] max-h-[120px] resize-none border-0 bg-transparent px-1 py-1.5 text-[15px] leading-6 placeholder:text-white/30 text-(--sea-ink) no-scrollbar focus-visible:ring-0"
           />
 
           <div className="flex items-center gap-1 pb-0.5 shrink-0">
             <Button
               variant="ghost"
               size="icon"
-              className="size-8 rounded-full text-white/40 hover:text-[--lagoon] disabled:opacity-30"
+              className="size-8 rounded-full text-white/40 hover:text-(--lagoon) disabled:opacity-30"
               onClick={onImpersonate}
               disabled={disabled || isStreaming || impersonatePending}
               aria-label="Impersonate"
