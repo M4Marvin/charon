@@ -7,7 +7,7 @@ export type { SettingsSection } from "./settings-nav-model";
 
 interface SettingsNavProps {
   sections: SettingsSection[];
-  activeId: string;
+  activeId: string | null;
   onChange: (id: string) => void;
 }
 

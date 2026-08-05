@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Zap,
@@ -62,8 +62,17 @@ export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps
   const isStreaming = config?.chat.lockState === "generating";
   const firstVisibleId = SECTIONS.find((s) => !s.adminOnly || isAdmin)?.id ?? "persona";
 
-  const [activeId, setActiveId] = useState(firstVisibleId);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  // Session resolves after mount (isAdmin=false while loading): derive the initial section once auth settles, else admins land on Persona.
+  const initialSectionApplied = useRef(false);
+  useEffect(() => {
+    if (initialSectionApplied.current) return;
+    if (session === undefined) return; // auth still loading
+    setActiveId(firstVisibleId);
+    initialSectionApplied.current = true;
+  }, [session, isAdmin, firstVisibleId]);
 
   const handleDelete = useCallback(() => {
     deleteChat.mutate(
