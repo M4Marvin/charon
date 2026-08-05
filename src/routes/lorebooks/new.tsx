@@ -28,7 +28,7 @@ function NewLorebookPage() {
     try {
       const result = await createMutation.mutateAsync({
         name: name.trim(),
-        description: description.trim() || undefined,
+        ...(description.trim() ? { description: description.trim() } : {}),
       });
       void navigate({ to: "/lorebooks/$id", params: { id: result.id } });
     } catch (err) {

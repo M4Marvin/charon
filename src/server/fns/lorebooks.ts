@@ -43,7 +43,7 @@ const EntryRefInput = type({ lorebookId: "string > 0", entryId: "string > 0" });
 
 const CreateLorebookInput = type({
   name: "string > 0",
-  "description?": "string",
+  "description?": "string | undefined",
 });
 
 const UpdateLorebookInput = type({

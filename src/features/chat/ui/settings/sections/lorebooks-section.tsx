@@ -71,7 +71,7 @@ export function LorebooksSection(_props: SectionProps) {
     try {
       const result = await createLorebook.mutateAsync({
         name: newName.trim(),
-        description: newDescription.trim() || undefined,
+        ...(newDescription.trim() ? { description: newDescription.trim() } : {}),
       });
       toast.success("Lorebook created");
       setNewName("");
