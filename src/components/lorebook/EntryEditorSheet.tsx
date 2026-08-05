@@ -107,7 +107,10 @@ export function EntryEditorSheet(props: Props) {
 
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="sm:max-w-lg w-full">
+      <SheetContent
+        side="right"
+        className="data-[side=right]:sm:max-w-2xl w-full data-[side=right]:w-full"
+      >
         <SheetHeader>
           <SheetTitle>{mode === "create" ? "New Entry" : "Edit Entry"}</SheetTitle>
           <SheetDescription>
