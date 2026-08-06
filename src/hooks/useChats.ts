@@ -11,6 +11,7 @@ import {
 import {
   cancelStreamFn,
   finalizeStreamFn,
+  imagePromptFn,
   impersonateFn,
   prepareStreamFn,
 } from "@/features/chat/generation/fns";
@@ -211,5 +212,12 @@ export function useImpersonateMessage() {
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
+  });
+}
+
+export function useImagePrompt() {
+  return useMutation({
+    mutationFn: (input: { chatId: string }): Promise<{ text: string }> =>
+      imagePromptFn({ data: input }),
   });
 }

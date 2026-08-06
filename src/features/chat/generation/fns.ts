@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getSession } from "@/server/session";
 import { prepareStream, finalizeStream, cancelStream } from "./service";
 import { impersonateMessage } from "./impersonate";
+import { generateImagePrompt } from "./image-prompt";
 
 const PrepareStreamSchema = Schema.Struct({
   chatId: Schema.String,
@@ -52,4 +53,15 @@ export const impersonateFn = createServerFn({ method: "POST", strict: { output: 
   .handler(async ({ data }) => {
     const { user } = await getSession();
     return impersonateMessage(user.id, data.chatId, user.name);
+  });
+
+const ImagePromptSchema = Schema.Struct({
+  chatId: Schema.String,
+});
+
+export const imagePromptFn = createServerFn({ method: "POST", strict: { output: false } })
+  .validator((data) => Schema.decodeUnknownSync(ImagePromptSchema)(data))
+  .handler(async ({ data }) => {
+    const { user } = await getSession();
+    return generateImagePrompt(user.id, data.chatId, user.name);
   });
