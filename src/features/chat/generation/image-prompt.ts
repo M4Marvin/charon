@@ -57,10 +57,13 @@ export async function generateImagePrompt(
 
   const example = settings.imagePromptExample ?? DEFAULT_IMAGE_PROMPT_EXAMPLE;
   const instruction = [
-    "You write image prompts for anime image generation models in danbooru tag style.",
-    "Output ONLY a comma-separated tag list: quality tokens first, then character tags (appearance, clothing), then scenario tags (setting, pose, action), then style tags. No prose, no sentences, no explanations.",
-    "The character base MUST stay identical, only the scenario varies.",
-    "Match the format of this example:",
+    "You write danbooru-style image prompts for anime image generation models.",
+    "Emit a single comma-separated tag list in this order: quality tokens, character tags, scenario tags, style/artist tags. No prose, no explanations.",
+    "Character tags: taken from the character card below — keep them IDENTICAL, never change the character's appearance.",
+    "Style/artist tags: copy them VERBATIM from the reference example below (including @artist names and weight syntax like (@name:0.7)).",
+    "Scenario tags (pose, action, setting, lighting, expression): describe the current scene given in the 'Current scene:' message. This is the ONLY section that changes.",
+    "Quality tokens: mirror the reference example's quality/score tags.",
+    "Reference example:",
     example,
   ].join("\n");
 

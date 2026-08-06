@@ -524,6 +524,19 @@ describe("generation service", () => {
       expect(body.messages[0].content).toContain(DEFAULT_IMAGE_PROMPT_EXAMPLE);
     });
 
+    it("requires preserving style/artist tags from the reference example", async () => {
+      seedProvider();
+      appendUserAndReply(userId, chatId, "Hello", "Hi there!", undefined, db);
+      const mockFetch = mockImagePromptFetch();
+
+      await generateImagePrompt(userId, chatId, "Test User", { fetchFn: mockFetch as any }, db);
+
+      const init = mockFetch.mock.calls[0]![1] as RequestInit;
+      const body = JSON.parse(init.body as string);
+      expect(body.messages[0].content).toContain("Style/artist tags: copy them VERBATIM");
+      expect(body.messages[0].content).toContain("the ONLY section that changes");
+    });
+
     it("includes the character base (name, description, personality, tags) verbatim", async () => {
       seedProvider();
       appendUserAndReply(userId, chatId, "Hello", "Hi there!", undefined, db);
