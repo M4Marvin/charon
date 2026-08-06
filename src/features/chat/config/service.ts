@@ -24,6 +24,7 @@ function toSettingsView(settings: ReturnType<typeof getUserSettings> | null): Us
     systemPrompt: settings?.systemPrompt ?? null,
     postHistoryInstructions: settings?.postHistoryInstructions ?? null,
     impersonationPrompt: settings?.impersonationPrompt ?? null,
+    imagePromptExample: settings?.imagePromptExample ?? null,
   };
 }
 

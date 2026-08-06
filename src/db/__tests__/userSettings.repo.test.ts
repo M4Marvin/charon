@@ -78,6 +78,7 @@ describe("userSettings repo", () => {
     expect(row.systemPrompt).toBeNull();
     expect(row.postHistoryInstructions).toBeNull();
     expect(row.impersonationPrompt).toBeNull();
+    expect(row.imagePromptExample).toBeNull();
   });
 
   it("applies partial updates without overwriting untouched fields", () => {
@@ -178,5 +179,47 @@ describe("userSettings repo", () => {
     expect(row!.postHistoryInstructions).toBeNull();
     expect(row!.impersonationPrompt).toBeNull();
     expect(row!.defaultPersonaId).toBeNull();
+  });
+
+  // ── imagePromptExample ──
+
+  it("stores and retrieves imagePromptExample on first upsert", () => {
+    const row = upsertUserSettings(
+      userId,
+      { imagePromptExample: "masterpiece, best quality, 1girl" },
+      db,
+    );
+    expect(row.imagePromptExample).toBe("masterpiece, best quality, 1girl");
+    const reread = getUserSettings(userId, db);
+    expect(reread!.imagePromptExample).toBe("masterpiece, best quality, 1girl");
+  });
+
+  it("updates imagePromptExample without touching other fields", () => {
+    upsertUserSettings(
+      userId,
+      {
+        imagePromptExample: "First example",
+        impersonationPrompt: "Keep me",
+      },
+      db,
+    );
+    upsertUserSettings(userId, { imagePromptExample: "Second example" }, db);
+    const row = getUserSettings(userId, db);
+    expect(row!.imagePromptExample).toBe("Second example");
+    expect(row!.impersonationPrompt).toBe("Keep me");
+  });
+
+  it("clears imagePromptExample when explicitly set to null", () => {
+    upsertUserSettings(userId, { imagePromptExample: "Temp" }, db);
+    upsertUserSettings(userId, { imagePromptExample: null }, db);
+    const row = getUserSettings(userId, db);
+    expect(row!.imagePromptExample).toBeNull();
+  });
+
+  it("leaves imagePromptExample untouched when the patch omits it", () => {
+    upsertUserSettings(userId, { imagePromptExample: "Stable" }, db);
+    upsertUserSettings(userId, { systemPrompt: "Unrelated" }, db);
+    const row = getUserSettings(userId, db);
+    expect(row!.imagePromptExample).toBe("Stable");
   });
 });

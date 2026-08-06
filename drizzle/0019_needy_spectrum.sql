@@ -1,0 +1,1 @@
+ALTER TABLE `user_settings` ADD `image_prompt_example` text;

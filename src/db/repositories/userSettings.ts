@@ -12,6 +12,7 @@ export type UserSettingsPatch = Partial<
     | "systemPrompt"
     | "postHistoryInstructions"
     | "impersonationPrompt"
+    | "imagePromptExample"
   >
 >;
 
@@ -41,6 +42,7 @@ export function upsertUserSettings(
         systemPrompt: patch.systemPrompt ?? null,
         postHistoryInstructions: patch.postHistoryInstructions ?? null,
         impersonationPrompt: patch.impersonationPrompt ?? null,
+        imagePromptExample: patch.imagePromptExample ?? null,
       })
       .returning()
       .get();
@@ -57,6 +59,7 @@ export function upsertUserSettings(
     updates.postHistoryInstructions = patch.postHistoryInstructions;
   if (patch.impersonationPrompt !== undefined)
     updates.impersonationPrompt = patch.impersonationPrompt;
+  if (patch.imagePromptExample !== undefined) updates.imagePromptExample = patch.imagePromptExample;
   if (Object.keys(updates).length === 1) return existing;
   const row = db
     .update(userSettings)

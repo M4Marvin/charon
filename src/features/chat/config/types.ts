@@ -14,6 +14,7 @@ export interface UserSettingsView {
   systemPrompt: string | null;
   postHistoryInstructions: string | null;
   impersonationPrompt: string | null;
+  imagePromptExample: string | null;
 }
 
 export interface PersonaInfo {

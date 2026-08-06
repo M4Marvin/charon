@@ -387,6 +387,7 @@ export const userSettings = sqliteTable("user_settings", {
   systemPrompt: text("system_prompt"),
   postHistoryInstructions: text("post_history_instructions"),
   impersonationPrompt: text("impersonation_prompt"),
+  imagePromptExample: text("image_prompt_example"),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
     .$defaultFn(() => new Date()),

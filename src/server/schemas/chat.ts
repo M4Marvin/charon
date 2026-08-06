@@ -37,4 +37,5 @@ export const UpdateUserSettings = Schema.Struct({
   systemPrompt: NullableOptionalString,
   postHistoryInstructions: NullableOptionalString,
   impersonationPrompt: NullableOptionalString,
+  imagePromptExample: NullableOptionalString,
 });

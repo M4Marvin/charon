@@ -16,6 +16,7 @@ export type UserSettingsView = {
   systemPrompt: string | null;
   postHistoryInstructions: string | null;
   impersonationPrompt: string | null;
+  imagePromptExample: string | null;
   updatedAt: Date;
 };
 
@@ -28,6 +29,7 @@ function toView(
     systemPrompt: string | null;
     postHistoryInstructions: string | null;
     impersonationPrompt: string | null;
+    imagePromptExample: string | null;
     updatedAt: Date;
   } | null,
 ): UserSettingsView {
@@ -39,6 +41,7 @@ function toView(
     systemPrompt: row?.systemPrompt ?? null,
     postHistoryInstructions: row?.postHistoryInstructions ?? null,
     impersonationPrompt: row?.impersonationPrompt ?? null,
+    imagePromptExample: row?.imagePromptExample ?? null,
     updatedAt: row?.updatedAt ?? new Date(0),
   };
 }
@@ -65,6 +68,7 @@ export const updateUserSettings = createServerFn({ method: "POST", strict: { out
       patch.postHistoryInstructions = data.postHistoryInstructions;
     if (data.impersonationPrompt !== undefined)
       patch.impersonationPrompt = data.impersonationPrompt;
+    if (data.imagePromptExample !== undefined) patch.imagePromptExample = data.imagePromptExample;
     const row = repoUpsertUserSettings(user.id, patch);
     return toView(row);
   });
