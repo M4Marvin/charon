@@ -13,6 +13,7 @@ import {
 import { acquireGenerationLock } from "../tree/lock";
 import { prepareStream, finalizeStream, cancelStream } from "./service";
 import { impersonateMessage } from "./impersonate";
+import { generateImagePrompt, DEFAULT_IMAGE_PROMPT_EXAMPLE } from "./image-prompt";
 
 describe("generation service", () => {
   let db: TestDb;
@@ -454,6 +455,175 @@ describe("generation service", () => {
       await expect(
         impersonateMessage(userId, chatId, "Test User", { fetchFn: mockFetch as any }, db),
       ).rejects.toThrow("Provider returned 401");
+    });
+  });
+
+  // ── image prompt ───────────────────────────────────────────────────────────
+
+  describe("generateImagePrompt", () => {
+    function mockImagePromptFetch(content = "masterpiece, best quality, 1girl") {
+      const mockFetch = vi.fn();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content } }] }),
+        text: async () => "",
+      } as unknown as Response);
+      return mockFetch;
+    }
+
+    it("sends the expected request shape (model, system-first messages, stream: false)", async () => {
+      seedProvider();
+      appendUserAndReply(userId, chatId, "Hello", "Hi there!", undefined, db);
+      const mockFetch = mockImagePromptFetch();
+
+      await generateImagePrompt(userId, chatId, "Test User", { fetchFn: mockFetch as any }, db);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url, init] = mockFetch.mock.calls[0]! as [string, RequestInit];
+      expect(url).toBe("http://localhost:11434/chat/completions");
+      expect(init.method).toBe("POST");
+      const headers = init.headers as Record<string, string>;
+      expect(headers["Content-Type"]).toBe("application/json");
+      expect(headers.Authorization).toBe("Bearer test-key");
+
+      const body = JSON.parse(init.body as string);
+      expect(body.model).toBe("test-model");
+      expect(body.stream).toBe(false);
+      expect(body.messages[0].role).toBe("system");
+      expect(body.messages[1].role).toBe("system");
+      expect(body.messages[2].role).toBe("user");
+      expect(body.messages).toHaveLength(3);
+    });
+
+    it("uses custom imagePromptExample from settings in the instruction", async () => {
+      seedProvider();
+      appendUserAndReply(userId, chatId, "Hello", "Hi there!", undefined, db);
+      db.update(userSettings)
+        .set({ imagePromptExample: "custom example, 1boy, watercolor" })
+        .where(eq(userSettings.userId, userId))
+        .run();
+      const mockFetch = mockImagePromptFetch();
+
+      await generateImagePrompt(userId, chatId, "Test User", { fetchFn: mockFetch as any }, db);
+
+      const init = mockFetch.mock.calls[0]![1] as RequestInit;
+      const body = JSON.parse(init.body as string);
+      expect(body.messages[0].content).toContain("custom example, 1boy, watercolor");
+      expect(body.messages[0].content).not.toContain(DEFAULT_IMAGE_PROMPT_EXAMPLE);
+    });
+
+    it("falls back to DEFAULT_IMAGE_PROMPT_EXAMPLE when the setting is null", async () => {
+      seedProvider();
+      appendUserAndReply(userId, chatId, "Hello", "Hi there!", undefined, db);
+      const mockFetch = mockImagePromptFetch();
+
+      await generateImagePrompt(userId, chatId, "Test User", { fetchFn: mockFetch as any }, db);
+
+      const init = mockFetch.mock.calls[0]![1] as RequestInit;
+      const body = JSON.parse(init.body as string);
+      expect(body.messages[0].content).toContain(DEFAULT_IMAGE_PROMPT_EXAMPLE);
+    });
+
+    it("includes the character base (name, description, personality, tags) verbatim", async () => {
+      seedProvider();
+      appendUserAndReply(userId, chatId, "Hello", "Hi there!", undefined, db);
+      const mockFetch = mockImagePromptFetch();
+
+      await generateImagePrompt(userId, chatId, "Test User", { fetchFn: mockFetch as any }, db);
+
+      const init = mockFetch.mock.calls[0]![1] as RequestInit;
+      const body = JSON.parse(init.body as string);
+      const characterBlock = body.messages[1];
+      expect(characterBlock.role).toBe("system");
+      expect(characterBlock.content).toContain("Test Character: A test character");
+      expect(characterBlock.content).toContain("Personality: Cheerful");
+      expect(characterBlock.content).toContain("Tags: test");
+      expect(characterBlock.content).not.toContain("A test scenario");
+      expect(characterBlock.content).not.toContain("Scenario:");
+    });
+
+    it("limits the scene to the last 10 history messages", async () => {
+      seedProvider();
+      for (let i = 1; i <= 8; i++) {
+        appendUserAndReply(userId, chatId, `user ${i}`, `reply ${i}`, undefined, db);
+      }
+      const mockFetch = mockImagePromptFetch();
+
+      await generateImagePrompt(userId, chatId, "Test User", { fetchFn: mockFetch as any }, db);
+
+      const init = mockFetch.mock.calls[0]![1] as RequestInit;
+      const body = JSON.parse(init.body as string);
+      const sceneMessage = body.messages.find((m: { role: string }) => m.role === "user");
+      expect(sceneMessage.content).toContain("Current scene: ");
+      const sceneLines = sceneMessage.content.replace("Current scene: ", "").split("\n");
+      expect(sceneLines).toHaveLength(10);
+      expect(sceneMessage.content).toContain("user 4");
+      expect(sceneMessage.content).toContain("reply 8");
+      expect(sceneMessage.content).not.toContain("user 3");
+      expect(sceneMessage.content).not.toContain("Hello!");
+    });
+
+    it("falls back to character.scenario as the scene on an empty conversation", async () => {
+      seedProvider();
+      const emptyChat = createChat(
+        userId,
+        { characterId: charId, title: "Empty", greetings: [""] },
+        db,
+      );
+      const mockFetch = mockImagePromptFetch();
+
+      await generateImagePrompt(
+        userId,
+        emptyChat.id,
+        "Test User",
+        { fetchFn: mockFetch as any },
+        db,
+      );
+
+      const init = mockFetch.mock.calls[0]![1] as RequestInit;
+      const body = JSON.parse(init.body as string);
+      const sceneMessage = body.messages.find((m: { role: string }) => m.role === "user");
+      expect(sceneMessage.content).toBe("Current scene: A test scenario");
+    });
+
+    it("throws on provider error", async () => {
+      seedProvider();
+      appendUserAndReply(userId, chatId, "Hello", "Hi there!", undefined, db);
+      const mockFetch = vi.fn();
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        text: async () => "Unauthorized",
+      } as unknown as Response);
+
+      await expect(
+        generateImagePrompt(userId, chatId, "Test User", { fetchFn: mockFetch as any }, db),
+      ).rejects.toThrow("Provider returned 401");
+    });
+
+    it("throws when no provider is configured", async () => {
+      const mockFetch = mockImagePromptFetch();
+
+      await expect(
+        generateImagePrompt(userId, chatId, "Test User", { fetchFn: mockFetch as any }, db),
+      ).rejects.toThrow("No provider configured");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("returns text parsed from choices[0].message.content", async () => {
+      seedProvider();
+      appendUserAndReply(userId, chatId, "Hello", "Hi there!", undefined, db);
+      const mockFetch = mockImagePromptFetch("masterpiece, 1girl, sunset");
+
+      const result = await generateImagePrompt(
+        userId,
+        chatId,
+        "Test User",
+        { fetchFn: mockFetch as any },
+        db,
+      );
+
+      expect(result).toEqual({ text: "masterpiece, 1girl, sunset" });
     });
   });
 });
