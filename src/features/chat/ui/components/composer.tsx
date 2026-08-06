@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useCallback, useEffect } from "react";
-import { ArrowUp, Square, Wand } from "lucide-react";
+import { ArrowUp, Palette, Square, Wand } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
@@ -13,8 +13,10 @@ interface ComposerProps {
   onSend: () => void;
   onStop: () => void;
   onImpersonate: () => void;
+  onImagePrompt: () => void;
   isStreaming: boolean;
   impersonatePending: boolean;
+  imagePromptPending: boolean;
   disabled: boolean;
   characterName?: string;
 }
@@ -25,8 +27,10 @@ export function Composer({
   onSend,
   onStop,
   onImpersonate,
+  onImagePrompt,
   isStreaming,
   impersonatePending,
+  imagePromptPending,
   disabled,
   characterName,
 }: ComposerProps) {
@@ -98,6 +102,20 @@ export function Composer({
           />
 
           <div className="flex items-center gap-1 pb-0.5 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 rounded-full text-white/40 hover:text-(--lagoon) disabled:opacity-30"
+              onClick={() => {
+                onImagePrompt();
+                focusTextarea();
+              }}
+              disabled={disabled || isStreaming || imagePromptPending}
+              aria-label="Generate image prompt"
+            >
+              {imagePromptPending ? <Spinner className="size-4" /> : <Palette className="size-4" />}
+            </Button>
+
             <Button
               variant="ghost"
               size="icon"

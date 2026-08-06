@@ -8,6 +8,7 @@ import {
   useDeleteMessage,
   useEditMessage,
   useImpersonateMessage,
+  useImagePrompt,
 } from "@/hooks/useChats";
 import { useChatConfig } from "@/hooks/useChatConfig";
 import { useCharacter } from "@/hooks/useCharacters";
@@ -69,6 +70,7 @@ export function ChatPage() {
   const deleteMsgMutation = useDeleteMessage();
   const editMutation = useEditMessage();
   const impersonateMutation = useImpersonateMessage();
+  const imagePromptMutation = useImagePrompt();
 
   const activePath = useMemo(
     () =>
@@ -156,6 +158,26 @@ export function ChatPage() {
       },
     );
   }, [chatId, isBusy, generation.isStreaming, impersonateMutation, setInput]);
+
+  const handleImagePrompt = useCallback(() => {
+    if (isBusy || generation.isStreaming) return;
+    imagePromptMutation.mutate(
+      { chatId },
+      {
+        onSuccess: (result) => {
+          if (!result.text.trim()) {
+            toast.error("Failed to generate image prompt");
+            return;
+          }
+          setInput(chatId, result.text);
+          focusComposer();
+        },
+        onError: () => {
+          toast.error("Failed to generate image prompt");
+        },
+      },
+    );
+  }, [chatId, isBusy, generation.isStreaming, imagePromptMutation, setInput, focusComposer]);
 
   const handleUploadImage = useCallback(
     async (file: File) => {
@@ -284,8 +306,10 @@ export function ChatPage() {
         onSend={handleSend}
         onStop={generation.stop}
         onImpersonate={handleImpersonate}
+        onImagePrompt={handleImagePrompt}
         isStreaming={generation.isStreaming}
         impersonatePending={impersonateMutation.isPending}
+        imagePromptPending={imagePromptMutation.isPending}
         disabled={composerDisabled}
         characterName={config.character.name}
       />
