@@ -1,10 +1,11 @@
-import { db } from "@/db";
+import { db as defaultDb, type DB } from "@/db";
 import { characters as charactersTable, user, userSettings } from "@/db/schema";
 import { eq, and, not, like } from "drizzle-orm";
 import { seedDefaultBackgrounds, seedDemoCharactersForExistingUser } from "@/server/seed";
 import { upsertUserSettings } from "@/db/repositories/userSettings";
 import { ensureGlobalAiProviderExists } from "@/db/repositories/aiProviders";
 import { ensureUploadsDirs } from "@/server/uploads";
+import { DEFAULT_IMAGE_PROMPT_EXAMPLE } from "@/features/chat/generation/image-prompt";
 
 export const FALLBACK_GLOBAL_PROVIDER = {
   name: "Built-in",
@@ -21,7 +22,7 @@ export async function ensureGlobalProvider(): Promise<void> {
   await seedDefaultBackgrounds();
 }
 
-async function seedExistingDemoUsers(): Promise<void> {
+export async function seedExistingDemoUsers(db: DB = defaultDb): Promise<void> {
   const demoUsers = db
     .select({ id: user.id })
     .from(user)
@@ -36,7 +37,7 @@ async function seedExistingDemoUsers(): Promise<void> {
       .get();
 
     if (!hasDemoChar) {
-      seedDemoCharactersForExistingUser(u.id);
+      seedDemoCharactersForExistingUser(u.id, db);
     }
 
     const settings = db.select().from(userSettings).where(eq(userSettings.userId, u.id)).get();
@@ -44,23 +45,29 @@ async function seedExistingDemoUsers(): Promise<void> {
       if (
         settings.systemPrompt === null ||
         settings.postHistoryInstructions === null ||
-        settings.impersonationPrompt === null
+        settings.impersonationPrompt === null ||
+        settings.imagePromptExample === null
       ) {
-        upsertUserSettings(u.id, {
-          systemPrompt:
-            settings.systemPrompt ??
-            "You are a helpful AI assistant. Roleplay as {{char}} according to their character description, staying in character at all times. Write responses from {{char}}'s perspective in a narrative style, using *asterisks* for actions and descriptions.",
-          postHistoryInstructions:
-            settings.postHistoryInstructions ??
-            "Stay in character and continue the scene naturally. React to {{user}}'s latest message and move the conversation forward.",
-          impersonationPrompt:
-            settings.impersonationPrompt ??
-            "You are {{user}} for a single message only. Write a response as if you were {{user}} speaking to {{char}}. Stay in character for {{user}} based on the conversation so far.",
-        });
+        upsertUserSettings(
+          u.id,
+          {
+            systemPrompt:
+              settings.systemPrompt ??
+              "You are a helpful AI assistant. Roleplay as {{char}} according to their character description, staying in character at all times. Write responses from {{char}}'s perspective in a narrative style, using *asterisks* for actions and descriptions.",
+            postHistoryInstructions:
+              settings.postHistoryInstructions ??
+              "Stay in character and continue the scene naturally. React to {{user}}'s latest message and move the conversation forward.",
+            impersonationPrompt:
+              settings.impersonationPrompt ??
+              "You are {{user}} for a single message only. Write a response as if you were {{user}} speaking to {{char}}. Stay in character for {{user}} based on the conversation so far.",
+            imagePromptExample: settings.imagePromptExample ?? DEFAULT_IMAGE_PROMPT_EXAMPLE,
+          },
+          db,
+        );
       }
 
       if (settings.defaultSelectedModel !== null) {
-        upsertUserSettings(u.id, { defaultSelectedModel: null });
+        upsertUserSettings(u.id, { defaultSelectedModel: null }, db);
       }
     }
   }
