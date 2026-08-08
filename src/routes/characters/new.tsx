@@ -4,6 +4,7 @@ import { Upload, ArrowLeft, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { authClient } from "@/lib/auth-client";
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/characters/new")({
   component: NewCharacterPage,
 });
 
-function NewCharacterPage() {
+export function NewCharacterPage() {
   const navigate = useNavigate();
   const { data: session } = authClient.useSession();
   const isDemo = session?.user?.role !== "admin";
@@ -33,8 +34,13 @@ function NewCharacterPage() {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importMutation = useImportCharacter();
+  // `processing` drives the UI; `processingRef` guards re-entrancy (a state
+  // snapshot is per-render and cannot stop a same-tick re-entry).
+  const [processing, setProcessing] = useState(false);
+  const processingRef = useRef(false);
 
   const processFile = async (f: File | null) => {
+    if (processingRef.current) return;
     setFile(f);
     setPreviewErr(null);
     setFieldErrors(null);
@@ -47,6 +53,8 @@ function NewCharacterPage() {
       setPreviewErr("File too large (max 5 MB).");
       return;
     }
+    processingRef.current = true;
+    setProcessing(true);
     try {
       const b64 = await fileToBase64(f);
       setPreviewB64(b64);
@@ -63,6 +71,11 @@ function NewCharacterPage() {
       setStep("preview");
     } catch (err) {
       setPreviewErr(err instanceof Error ? err.message : "Failed to read file");
+    } finally {
+      processingRef.current = false;
+      setProcessing(false);
+      // Clear stale input so re-selecting the same file fires `change` again.
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -102,16 +115,23 @@ function NewCharacterPage() {
             onDrop={(e) => {
               e.preventDefault();
               setDragOver(false);
+              if (processingRef.current) return;
               processFile(e.dataTransfer.files?.[0] ?? null);
             }}
-            disabled={importMutation.isPending}
+            disabled={processing || importMutation.isPending}
             className={`flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-transparent p-12 text-center hover:bg-surface transition-colors disabled:pointer-events-none disabled:opacity-50 ${
               dragOver ? "border-brand bg-brand/5" : ""
             }`}
           >
-            <Upload className="size-10 text-3" />
+            {processing ? (
+              <Spinner className="size-10 text-3" />
+            ) : (
+              <Upload className="size-10 text-3" />
+            )}
             <div>
-              <p className="text-headline">Choose a PNG character card</p>
+              <p className="text-headline">
+                {processing ? "Processing…" : "Choose a PNG character card"}
+              </p>
               <p className="text-2 text-sm mt-1">
                 V2 or V3 card. Max 50 MB. Drag &amp; drop or click to browse.
               </p>
@@ -122,7 +142,7 @@ function NewCharacterPage() {
             type="file"
             accept="image/png"
             onChange={handleFileChange}
-            disabled={importMutation.isPending}
+            disabled={processing || importMutation.isPending}
             className="hidden"
             aria-label="Choose a PNG character card"
           />
