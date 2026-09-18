@@ -47,6 +47,15 @@ describe("applySwipeOptimistic", () => {
     expect(applySwipeOptimistic(siblingRows(), 99, "next")).toBeNull();
   });
 
+  it("returns null when the parent omits the target from children", () => {
+    const rows = [
+      row({ localId: 0, role: "system", children: [1], selectedChildLocalId: 1 }),
+      row({ localId: 1, parentLocalId: 0, content: "one" }),
+      row({ localId: 2, parentLocalId: 0, content: "orphan" }),
+    ];
+    expect(applySwipeOptimistic(rows, 2, "next")).toBeNull();
+  });
+
   it("does not mutate the input rows", () => {
     const rows = siblingRows();
     applySwipeOptimistic(rows, 1, "next");
@@ -103,5 +112,19 @@ describe("applyDeleteOptimistic", () => {
     applyDeleteOptimistic(rows, 1);
     expect(rows).toHaveLength(4);
     expect(rows.find((r) => r.localId === 0)?.children).toEqual([1, 2]);
+  });
+
+  it("matches the server when the parent omits the target from children", () => {
+    // deleteSubtree skips the splice/reselection when index === -1.
+    const rows = [
+      row({ localId: 0, role: "system", children: [1], selectedChildLocalId: 1 }),
+      row({ localId: 1, parentLocalId: 0, content: "kept" }),
+      row({ localId: 2, parentLocalId: 0, content: "orphan" }),
+    ];
+    const next = applyDeleteOptimistic(rows, 2);
+    expect(next?.map((r) => r.localId)).toEqual([0, 1]);
+    const root = next?.find((r) => r.localId === 0);
+    expect(root?.children).toEqual([1]);
+    expect(root?.selectedChildLocalId).toBe(1);
   });
 });
