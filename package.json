@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite dev --port 3000",
+    "dev:lan": "vite dev --port 3000 --host 0.0.0.0",
     "prepare": "git config core.hooksPath .githooks || true",
     "generate-routes": "tsr generate",
     "build": "vite build",

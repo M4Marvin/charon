@@ -7,7 +7,15 @@ import { nitro } from 'nitro/vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+const lanHosts = (process.env.VITE_ALLOWED_HOSTS ?? '')
+  .split(',')
+  .map((h) => h.trim())
+  .filter(Boolean)
+
 const config = defineConfig({
+  // Dev-only (ignored by `vite build` and the prod server): extra hosts for
+  // `pnpm dev:lan`, via VITE_ALLOWED_HOSTS in .env.local. Unset = localhost only.
+  ...(lanHosts.length > 0 ? { server: { allowedHosts: lanHosts } } : {}),
   resolve: {
     tsconfigPaths: true,
     alias: {
