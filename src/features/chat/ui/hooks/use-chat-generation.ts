@@ -54,6 +54,8 @@ export function useChatGeneration(
   const chatIdRef = useRef(chatId);
   const placeholderRef = useRef<number | null>(null);
   const recoveredForRef = useRef<string | null>(null);
+  /** Bumped by stop(); a start() whose id no longer matches was superseded. */
+  const generationRef = useRef(0);
 
   useEffect(() => {
     chatIdRef.current = chatId;
@@ -174,6 +176,7 @@ export function useChatGeneration(
 
   const start = useCallback(
     async (mode: "send" | "regenerate" | "continue", opts?: StartOpts) => {
+      const myGeneration = ++generationRef.current;
       setStatus("streaming");
       setStreamingText("");
       useChatUiStore.getState().setPendingSend({
@@ -187,6 +190,21 @@ export function useChatGeneration(
           content: opts?.content,
           messageLocalId: opts?.messageLocalId,
         });
+
+        if (generationRef.current !== myGeneration) {
+          // stop() ran while prepare was in flight: undo the rows/lock we
+          // just created instead of starting a stream nobody owns.
+          // (Fallback wrote final rows with no lock — nothing to undo.)
+          if (result.mode === "stream") {
+            cancelRef.current
+              .mutateAsync({
+                chatId: chatIdRef.current,
+                messageLocalId: result.assistantMessageLocalId,
+              })
+              .catch(() => {});
+          }
+          return;
+        }
 
         if (result.mode === "fallback") {
           toast.info("No AI provider configured — using a fallback reply");
@@ -220,6 +238,9 @@ export function useChatGeneration(
   );
 
   const stop = useCallback(() => {
+    // Invalidate any in-flight start() so a late prepare resolves into the
+    // superseded branch above instead of starting an orphaned stream.
+    generationRef.current++;
     const ph = placeholderRef.current;
     const cid = chatIdRef.current;
     if (ph) {
