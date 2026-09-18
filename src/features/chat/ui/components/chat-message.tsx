@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { RichText } from "@/components/RichText";
+import { balanceMarkdown } from "@/lib/markdown";
 import { cn } from "@/lib/utils";
 import { useChatUiStore } from "../chat-store";
 import type { ActivePathEntry } from "@/features/chat/tree/types";
@@ -97,6 +98,11 @@ export function ChatMessage({
 
   const name = isAssistant ? characterName : isUser ? userName : "";
   const displayContent = isStreaming ? streamingText || message.content : message.content;
+  // Streaming chunks often end mid-token; balance before markdown render so
+  // morphdom patches a well-formed tree instead of flickering on broken HTML.
+  // Copy still uses the raw text.
+  const renderContent =
+    isStreaming && streamingText ? balanceMarkdown(streamingText, false) : displayContent;
 
   if (isSystem) {
     return (
@@ -238,7 +244,7 @@ export function ChatMessage({
               </div>
             ) : (
               <div className="text-sm leading-6">
-                <RichText content={displayContent} />
+                <RichText content={renderContent} />
                 {isStreaming && streamingText && (
                   <span className="inline-block w-[2px] h-[1.15em] bg-(--lagoon) animate-pulse align-baseline ml-0.5" />
                 )}
