@@ -121,7 +121,7 @@ export function MessageOverviewRail({ entries }: { entries: ActivePathEntry[] })
   const nearBottom = highlightIndex >= count - 2;
 
   return (
-    <div className="pointer-events-none absolute top-6 right-4 bottom-24 z-20 hidden w-6 md:block">
+    <div className="pointer-events-none absolute top-20 right-4 bottom-24 z-20 hidden w-6 md:block">
       <div
         ref={trackRef}
         role="slider"
@@ -150,8 +150,8 @@ export function MessageOverviewRail({ entries }: { entries: ActivePathEntry[] })
               index === activeIndex
                 ? "bg-(--lagoon)"
                 : index === hovered
-                  ? "bg-white/60"
-                  : "bg-white/20",
+                  ? "bg-(--text-2)"
+                  : "bg-(--text-3)/40",
             )}
           />
         ))}
@@ -164,15 +164,13 @@ export function MessageOverviewRail({ entries }: { entries: ActivePathEntry[] })
               nearTop ? "top-0" : nearBottom ? "bottom-0" : "top-1/2 -translate-y-1/2",
             )}
           >
-            <div className="mb-1 flex items-center justify-between gap-2 text-[10px] tracking-widest text-white/40 uppercase">
+            <div className="text-3 mb-1 flex items-center justify-between gap-2 text-[10px] tracking-widest uppercase">
               <span>{previewTick.role === "user" ? "You" : "Assistant"}</span>
               <span className="tabular-nums">
                 {highlightIndex + 1}/{count}
               </span>
             </div>
-            <p className="line-clamp-3 text-xs leading-5 text-white/80">
-              {previewTick.preview || "…"}
-            </p>
+            <p className="text-2 line-clamp-3 text-xs leading-5">{previewTick.preview || "…"}</p>
           </div>
         )}
       </div>
