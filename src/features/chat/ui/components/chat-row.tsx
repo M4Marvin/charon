@@ -18,8 +18,9 @@ interface ChatRowProps {
 
 export function ChatRow({ chat, onRename, onDelete }: ChatRowProps) {
   const queryClient = useQueryClient();
-  // Warm the chat page queries so opening the chat paints from cache.
-  // Both are cheap local-SQLite reads; mount still reconciles in background.
+  // Warm the chat page queries so opening the chat paints from cache. The
+  // messages read is cheap; config resolution does several local reads and
+  // logs, but the 30s default staleTime bounds how often a re-hover refetches.
   const prefetchChat = () => {
     void queryClient.prefetchQuery({
       queryKey: chatKeys.messages(chat.id),

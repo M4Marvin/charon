@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   MessageScrollerProvider,
   MessageScroller,
@@ -97,44 +96,37 @@ export function MessageList({
   showPendingAssistant,
 }: MessageListProps) {
   // Synthetic overlay entries: stable negative localIds, never sent to the
-  // server and never written to the query cache. Always rendered
-  // disabled — they are visual feedback only.
-  const pendingUserEntry: ActivePathEntry | null = useMemo(
-    () =>
-      pendingUserContent === null
-        ? null
-        : {
-            message: {
-              localId: -1,
-              parentLocalId: null,
-              children: [],
-              selectedChildLocalId: null,
-              role: "user",
-              content: pendingUserContent,
-            },
-            siblingIndex: 0,
-            siblingTotal: 1,
+  // server and never written to the query cache. Rendered inert — they are
+  // visual feedback only.
+  const pendingUserEntry: ActivePathEntry | null =
+    pendingUserContent === null
+      ? null
+      : {
+          message: {
+            localId: -1,
+            parentLocalId: null,
+            children: [],
+            selectedChildLocalId: null,
+            role: "user",
+            content: pendingUserContent,
           },
-    [pendingUserContent],
-  );
-  const pendingAssistantEntry: ActivePathEntry | null = useMemo(
-    () =>
-      !showPendingAssistant
-        ? null
-        : {
-            message: {
-              localId: -2,
-              parentLocalId: null,
-              children: [],
-              selectedChildLocalId: null,
-              role: "assistant",
-              content: "",
-            },
-            siblingIndex: 0,
-            siblingTotal: 1,
-          },
-    [showPendingAssistant],
-  );
+          siblingIndex: 0,
+          siblingTotal: 1,
+        };
+  const pendingAssistantEntry: ActivePathEntry | null = showPendingAssistant
+    ? {
+        message: {
+          localId: -2,
+          parentLocalId: null,
+          children: [],
+          selectedChildLocalId: null,
+          role: "assistant",
+          content: "",
+        },
+        siblingIndex: 0,
+        siblingTotal: 1,
+      }
+    : null;
 
   if (entries.length === 0 && pendingUserEntry === null && pendingAssistantEntry === null) {
     return (
@@ -195,6 +187,16 @@ export function MessageList({
               );
             })}
             {pendingUserEntry && (
+              <span role="status" className="sr-only">
+                Message sent.
+              </span>
+            )}
+            {pendingAssistantEntry && (
+              <span role="status" className="sr-only">
+                Assistant is responding.
+              </span>
+            )}
+            {pendingUserEntry && (
               <MessageScrollerItem messageId="pending-user" scrollAnchor>
                 <ChatMessage
                   entry={pendingUserEntry}
@@ -205,6 +207,7 @@ export function MessageList({
                   userName={userName}
                   avatarSrc={userAvatarSrc}
                   disabled
+                  synthetic
                   onSwipe={onSwipe}
                   onRegenerate={onRegenerate}
                   onEdit={onEdit}
@@ -223,6 +226,7 @@ export function MessageList({
                   userName={userName}
                   avatarSrc={characterAvatarSrc}
                   disabled
+                  synthetic
                   onSwipe={onSwipe}
                   onRegenerate={onRegenerate}
                   onEdit={onEdit}

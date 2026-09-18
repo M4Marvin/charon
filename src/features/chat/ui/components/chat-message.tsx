@@ -30,6 +30,8 @@ interface ChatMessageProps {
   userName: string;
   avatarSrc: string | null;
   disabled: boolean;
+  /** Visual-only overlay entry (e.g. instant-send pending): non-interactive. */
+  synthetic?: boolean;
   onSwipe: (messageLocalId: number, direction: "next" | "prev") => void;
   onRegenerate: (messageLocalId: number) => void;
   onEdit: (messageLocalId: number, content: string) => void;
@@ -45,6 +47,7 @@ export function ChatMessage({
   userName,
   avatarSrc,
   disabled,
+  synthetic = false,
   onSwipe,
   onRegenerate,
   onEdit,
@@ -127,6 +130,7 @@ export function ChatMessage({
           isAssistant ? "glass-strong border-l-2 border-(--lagoon)/40" : "glass",
           isNewest && "motion-safe:animate-msg-in",
         )}
+        inert={synthetic || undefined}
       >
         <div className="flex gap-3">
           <Avatar className="size-8 shrink-0">
@@ -153,48 +157,50 @@ export function ChatMessage({
               >
                 {name}
               </span>
-              <span
-                className={cn(
-                  "ml-auto flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity shrink-0",
-                  disabled && "pointer-events-none",
-                )}
-              >
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6 text-white/40 hover:text-white"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(displayContent).then(() => {
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 1500);
-                    });
-                  }}
-                  aria-label={copied ? "Copied" : "Copy message"}
+              {!synthetic && (
+                <span
+                  className={cn(
+                    "ml-auto flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity shrink-0",
+                    disabled && "pointer-events-none",
+                  )}
                 >
-                  {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6 text-white/40 hover:text-white"
-                  onClick={() => {
-                    setEditContent(message.content);
-                    setEditing(true);
-                  }}
-                  aria-label="Edit message"
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-6 text-white/40 hover:text-red-400"
-                  onClick={() => setDeleteOpen(true)}
-                  aria-label="Delete message"
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 text-white/40 hover:text-white"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(displayContent).then(() => {
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1500);
+                      });
+                    }}
+                    aria-label={copied ? "Copied" : "Copy message"}
+                  >
+                    {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 text-white/40 hover:text-white"
+                    onClick={() => {
+                      setEditContent(message.content);
+                      setEditing(true);
+                    }}
+                    aria-label="Edit message"
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 text-white/40 hover:text-red-400"
+                    onClick={() => setDeleteOpen(true)}
+                    aria-label="Delete message"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </span>
+              )}
             </div>
 
             {editing ? (
@@ -253,7 +259,7 @@ export function ChatMessage({
           </div>
         </div>
 
-        {canSwipe || isLastAssistant ? (
+        {!synthetic && (canSwipe || isLastAssistant) ? (
           <div
             className={cn(
               "mt-2 flex items-center justify-end gap-1",
