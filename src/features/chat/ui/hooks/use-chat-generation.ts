@@ -243,10 +243,15 @@ export function useChatGeneration(
     generationRef.current++;
     const ph = placeholderRef.current;
     const cid = chatIdRef.current;
+    placeholderRef.current = null;
+    // Abort the transport, not just the local buffer. `setMessages([])` maps
+    // to setMessagesManually and leaves the client `isLoading`; without this,
+    // an immediate re-send is silently dropped by sendMessage and the old
+    // run's onFinish would finalize onto the new placeholder.
+    aiChatRef.current.stop();
     if (ph) {
       cancelRef.current.mutateAsync({ chatId: cid, messageLocalId: ph }).catch(() => {});
     }
-    placeholderRef.current = null;
     clearGenerationOverlay();
     setStatus("idle");
     setStreamingText("");
