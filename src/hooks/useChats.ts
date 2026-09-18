@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createChat,
@@ -85,94 +86,75 @@ export function useAppendUserAndReply() {
   });
 }
 
-export function useSwipeMessage() {
+/**
+ * Shared plumbing for optimistic message-tree mutations: cancel in-flight
+ * reads, snapshot, apply the transform, then re-sync from the server on
+ * settle. Rollbacks are version-guarded so an older overlapping mutation
+ * cannot clobber a newer one's optimistic write.
+ */
+function useOptimisticMessagesMutation<TVariables extends { chatId: string }>(
+  mutationFn: (variables: TVariables) => Promise<unknown>,
+  apply: (rows: ChatMessageRow[], variables: TVariables) => ChatMessageRow[] | null,
+) {
   const queryClient = useQueryClient();
+  const versions = useRef(new Map<string, number>());
+
   return useMutation({
-    mutationFn: (input: {
+    mutationFn,
+    onMutate: async (variables: TVariables) => {
+      const key = chatKeys.messages(variables.chatId);
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<ChatMessageRow[]>(key);
+      const version = (versions.current.get(variables.chatId) ?? 0) + 1;
+      versions.current.set(variables.chatId, version);
+      if (previous) {
+        const next = apply(previous, variables);
+        if (next) queryClient.setQueryData(key, next);
+      }
+      return { previous, version };
+    },
+    onError: (_error: unknown, variables: TVariables, context) => {
+      // A newer mutation for this chat already owns the cache; restoring our
+      // older snapshot would undo its optimistic write.
+      if (!context || versions.current.get(variables.chatId) !== context.version) return;
+      if (context.previous) {
+        queryClient.setQueryData(chatKeys.messages(variables.chatId), context.previous);
+      }
+    },
+    onSettled: (_data: unknown, _error: unknown, variables: TVariables) => {
+      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
+    },
+  });
+}
+
+export function useSwipeMessage() {
+  return useOptimisticMessagesMutation(
+    (input: {
       chatId: string;
       messageLocalId: number;
       direction: "next" | "prev";
       createIfMissing?: { role: "user" | "assistant"; content: string };
     }) => swipeFn({ data: input }),
-    onMutate: async (variables) => {
-      await queryClient.cancelQueries({ queryKey: chatKeys.messages(variables.chatId) });
-      const previous = queryClient.getQueryData<ChatMessageRow[]>(
-        chatKeys.messages(variables.chatId),
-      );
-      if (previous) {
-        const next = applySwipeOptimistic(previous, variables.messageLocalId, variables.direction);
-        if (next) queryClient.setQueryData(chatKeys.messages(variables.chatId), next);
-      }
-      return { previous };
-    },
-    onError: (_error, variables, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(chatKeys.messages(variables.chatId), context.previous);
-      }
-    },
-    onSettled: (_data, _error, variables) => {
-      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
-    },
-  });
+    (rows, variables) => applySwipeOptimistic(rows, variables.messageLocalId, variables.direction),
+  );
 }
 
 export function useDeleteMessage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { chatId: string; messageLocalId: number }) =>
-      deleteBranchFn({ data: input }),
-    onMutate: async (variables) => {
-      await queryClient.cancelQueries({ queryKey: chatKeys.messages(variables.chatId) });
-      const previous = queryClient.getQueryData<ChatMessageRow[]>(
-        chatKeys.messages(variables.chatId),
-      );
-      if (previous) {
-        const next = applyDeleteOptimistic(previous, variables.messageLocalId);
-        if (next) queryClient.setQueryData(chatKeys.messages(variables.chatId), next);
-      }
-      return { previous };
-    },
-    onError: (_error, variables, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(chatKeys.messages(variables.chatId), context.previous);
-      }
-    },
-    onSettled: (_data, _error, variables) => {
-      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
-    },
-  });
+  return useOptimisticMessagesMutation(
+    (input: { chatId: string; messageLocalId: number }) => deleteBranchFn({ data: input }),
+    (rows, variables) => applyDeleteOptimistic(rows, variables.messageLocalId),
+  );
 }
 
 export function useEditMessage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { chatId: string; messageLocalId: number; content: string }) =>
+  return useOptimisticMessagesMutation(
+    (input: { chatId: string; messageLocalId: number; content: string }) =>
       editMessageFn({ data: input }),
-    onMutate: async (variables) => {
-      await queryClient.cancelQueries({ queryKey: chatKeys.messages(variables.chatId) });
-      const previous = queryClient.getQueryData<ChatMessageRow[]>(
-        chatKeys.messages(variables.chatId),
-      );
-      queryClient.setQueryData<ChatMessageRow[]>(chatKeys.messages(variables.chatId), (old) =>
-        old
-          ? old.map((row) =>
-              row.localId === variables.messageLocalId
-                ? { ...row, content: variables.content }
-                : row,
-            )
-          : old,
-      );
-      return { previous };
-    },
-    onError: (_error, variables, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(chatKeys.messages(variables.chatId), context.previous);
-      }
-    },
-    onSettled: (_data, _error, variables) => {
-      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
-    },
-  });
+    (rows, variables) =>
+      rows.map((row) =>
+        row.localId === variables.messageLocalId ? { ...row, content: variables.content } : row,
+      ),
+  );
 }
 
 export function usePrepareStream() {
