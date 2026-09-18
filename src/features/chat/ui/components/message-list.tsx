@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { ChatMessage } from "./chat-message";
+import { MessageOverviewRail } from "./message-overview-rail";
 import type { ActivePathEntry } from "@/features/chat/tree/types";
 
 interface MessageListProps {
@@ -44,7 +45,7 @@ function MessageNavButtons({ ids }: { ids: string[] }) {
   if (ids.length < 2) return null;
 
   return (
-    <div className="absolute bottom-24 right-4 z-10 flex flex-col gap-1.5">
+    <div className="absolute bottom-24 right-4 z-10 flex flex-col gap-1.5 md:hidden">
       <Button
         variant="ghost"
         size="icon"
@@ -242,6 +243,7 @@ export function MessageList({
           size="icon-sm"
           className="bottom-24 z-10"
         />
+        <MessageOverviewRail entries={entries} />
         <MessageNavButtons ids={ids} />
       </MessageScroller>
     </MessageScrollerProvider>
