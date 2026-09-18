@@ -91,7 +91,7 @@ export function MessageList({
 }: MessageListProps) {
   if (entries.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center px-6 pt-32">
+      <div className="flex flex-1 flex-col items-center justify-center px-6 pb-16">
         <div className="glass rounded-2xl px-8 py-10 text-center max-w-xs">
           <p className="font-heading text-xl text-(--sea-ink) mb-2">{characterName}</p>
           <p className="text-sm text-(--sea-ink-soft) leading-relaxed">
@@ -112,7 +112,7 @@ export function MessageList({
     >
       <MessageScroller className="size-full">
         <MessageScrollerViewport className="px-3 md:px-6 pt-20 pb-24">
-          <MessageScrollerContent className="mx-auto max-w-3xl flex flex-col gap-3 pb-6">
+          <MessageScrollerContent className="mx-auto max-w-3xl flex flex-col justify-end gap-3 pb-6">
             {entries.map((entry) => {
               const isPlaceholder =
                 activePlaceholderId !== null && entry.message.localId === activePlaceholderId;
