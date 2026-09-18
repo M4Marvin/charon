@@ -38,7 +38,7 @@ const baseProps = {
 };
 
 describe("MessageList pending overlay", () => {
-  it("renders the pending user bubble instantly", () => {
+  it("renders the pending user bubble alongside history", () => {
     render(
       <MessageList
         {...baseProps}
@@ -49,6 +49,25 @@ describe("MessageList pending overlay", () => {
     );
     expect(screen.getByText("my instant message")).not.toBeNull();
     expect(screen.getByText("hello there")).not.toBeNull();
+    expect(screen.getByText("Assistant is responding.")).not.toBeNull();
+  });
+
+  it("renders an inert overlay with typing dots and no actions", () => {
+    const { container } = render(
+      <MessageList
+        {...baseProps}
+        entries={[]}
+        pendingUserContent="first message"
+        showPendingAssistant
+      />,
+    );
+
+    expect(screen.getByText("first message")).not.toBeNull();
+    expect(container.querySelector(".animate-bounce")).not.toBeNull();
+    // Synthetic entries must not expose destructive/interactive controls.
+    expect(screen.queryByLabelText("Delete message")).toBeNull();
+    expect(screen.queryByLabelText("Edit message")).toBeNull();
+    expect(screen.queryByLabelText("Copy message")).toBeNull();
   });
 
   it("renders nothing pending by default", () => {
