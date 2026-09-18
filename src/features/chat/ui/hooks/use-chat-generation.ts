@@ -177,15 +177,19 @@ export function useChatGeneration(
   const start = useCallback(
     async (mode: "send" | "regenerate" | "continue", opts?: StartOpts) => {
       const myGeneration = ++generationRef.current;
+      // Bind this run to the chat it started for. chatIdRef may change while
+      // prepare is in flight (route param reuse), and cancelling/restoring
+      // against the wrong chat would corrupt unrelated data.
+      const activeChatId = chatIdRef.current;
       setStatus("streaming");
       setStreamingText("");
       useChatUiStore.getState().setPendingSend({
-        chatId: chatIdRef.current,
+        chatId: activeChatId,
         content: mode === "send" ? (opts?.content ?? null) : null,
       });
       try {
         const result = await prepareStream.mutateAsync({
-          chatId: chatIdRef.current,
+          chatId: activeChatId,
           mode,
           content: opts?.content,
           messageLocalId: opts?.messageLocalId,
@@ -198,7 +202,7 @@ export function useChatGeneration(
           if (result.mode === "stream") {
             cancelRef.current
               .mutateAsync({
-                chatId: chatIdRef.current,
+                chatId: activeChatId,
                 messageLocalId: result.assistantMessageLocalId,
               })
               .catch(() => {});
@@ -230,7 +234,7 @@ export function useChatGeneration(
           // prepare resolved, so the user row + placeholder were persisted;
           // tear the placeholder back down instead of leaving a lock behind.
           cancelRef.current
-            .mutateAsync({ chatId: chatIdRef.current, messageLocalId: ph })
+            .mutateAsync({ chatId: activeChatId, messageLocalId: ph })
             .catch(() => {});
         }
         placeholderRef.current = null;
@@ -239,7 +243,7 @@ export function useChatGeneration(
           // prepareStream is transactional: a throw before the placeholder
           // resolves means nothing was persisted, so the draft is safe to
           // hand back. If it did resolve, the message is already stored.
-          useChatUiStore.getState().setInputDraft(chatIdRef.current, opts.content);
+          useChatUiStore.getState().setInputDraft(activeChatId, opts.content);
           toast.error("Failed to send — draft restored");
         } else {
           toast.error("Generation failed");
