@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   MessageScrollerProvider,
   MessageScroller,
@@ -26,6 +27,10 @@ interface MessageListProps {
   onRegenerate: (messageLocalId: number) => void;
   onEdit: (messageLocalId: number, content: string) => void;
   onDelete: (messageLocalId: number) => void;
+  /** Instant-send overlay: user bubble content, null when absent. */
+  pendingUserContent: string | null;
+  /** Instant-send overlay: assistant typing-dots bubble. */
+  showPendingAssistant: boolean;
 }
 
 function MessageNavButtons({ ids }: { ids: string[] }) {
@@ -88,8 +93,50 @@ export function MessageList({
   onRegenerate,
   onEdit,
   onDelete,
+  pendingUserContent,
+  showPendingAssistant,
 }: MessageListProps) {
-  if (entries.length === 0) {
+  // Synthetic overlay entries: stable negative localIds, never sent to the
+  // server and never written to the query cache. Always rendered
+  // disabled — they are visual feedback only.
+  const pendingUserEntry: ActivePathEntry | null = useMemo(
+    () =>
+      pendingUserContent === null
+        ? null
+        : {
+            message: {
+              localId: -1,
+              parentLocalId: null,
+              children: [],
+              selectedChildLocalId: null,
+              role: "user",
+              content: pendingUserContent,
+            },
+            siblingIndex: 0,
+            siblingTotal: 1,
+          },
+    [pendingUserContent],
+  );
+  const pendingAssistantEntry: ActivePathEntry | null = useMemo(
+    () =>
+      !showPendingAssistant
+        ? null
+        : {
+            message: {
+              localId: -2,
+              parentLocalId: null,
+              children: [],
+              selectedChildLocalId: null,
+              role: "assistant",
+              content: "",
+            },
+            siblingIndex: 0,
+            siblingTotal: 1,
+          },
+    [showPendingAssistant],
+  );
+
+  if (entries.length === 0 && pendingUserEntry === null && pendingAssistantEntry === null) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-6 pb-16">
         <div className="glass rounded-2xl px-8 py-10 text-center max-w-xs">
@@ -147,6 +194,42 @@ export function MessageList({
                 </MessageScrollerItem>
               );
             })}
+            {pendingUserEntry && (
+              <MessageScrollerItem messageId="pending-user" scrollAnchor>
+                <ChatMessage
+                  entry={pendingUserEntry}
+                  isStreaming={false}
+                  streamingText=""
+                  isNewest={pendingAssistantEntry === null}
+                  characterName={characterName}
+                  userName={userName}
+                  avatarSrc={userAvatarSrc}
+                  disabled
+                  onSwipe={onSwipe}
+                  onRegenerate={onRegenerate}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              </MessageScrollerItem>
+            )}
+            {pendingAssistantEntry && (
+              <MessageScrollerItem messageId="pending-assistant">
+                <ChatMessage
+                  entry={pendingAssistantEntry}
+                  isStreaming
+                  streamingText=""
+                  isNewest
+                  characterName={characterName}
+                  userName={userName}
+                  avatarSrc={characterAvatarSrc}
+                  disabled
+                  onSwipe={onSwipe}
+                  onRegenerate={onRegenerate}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              </MessageScrollerItem>
+            )}
           </MessageScrollerContent>
         </MessageScrollerViewport>
         <MessageScrollerButton

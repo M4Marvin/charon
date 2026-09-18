@@ -42,6 +42,13 @@ export interface ChatUiState {
   settingsOpen: boolean;
   inputDrafts: Record<string, string>;
   activePlaceholderId: number | null;
+  /**
+   * Instant send feedback: set when generation starts, hidden once the
+   * server placeholder row arrives (see isPendingVisible). Never holds a
+   * server localId — it is UI-only and cleared on every terminal path
+   * alongside clearPlaceholder.
+   */
+  pendingSend: { chatId: string; content: string | null } | null;
   portraitOpen: boolean;
   sceneOpen: boolean;
   lightboxSrc: string | null;
@@ -55,6 +62,8 @@ export interface ChatUiState {
   clearInputDraft: (chatId: string) => void;
   setPlaceholder: (id: number) => void;
   clearPlaceholder: () => void;
+  setPendingSend: (pending: { chatId: string; content: string | null } | null) => void;
+  clearPendingSend: () => void;
   focusComposer: () => void;
   togglePortrait: () => void;
   toggleScene: () => void;
@@ -90,6 +99,9 @@ export const useChatUiStore = create<ChatUiState>()(
         }),
       setPlaceholder: (id) => set({ activePlaceholderId: id }),
       clearPlaceholder: () => set({ activePlaceholderId: null }),
+      pendingSend: null,
+      setPendingSend: (pending) => set({ pendingSend: pending }),
+      clearPendingSend: () => set({ pendingSend: null }),
       focusComposer: () => set((s) => ({ composerFocusNonce: s.composerFocusNonce + 1 })),
       togglePortrait: () => set((s) => ({ portraitOpen: !s.portraitOpen })),
       toggleScene: () => set((s) => ({ sceneOpen: !s.sceneOpen })),
@@ -146,6 +158,7 @@ export const selectInputDraft =
   (s: ChatUiState): string =>
     s.inputDrafts[chatId] ?? "";
 export const selectActivePlaceholderId = (s: ChatUiState) => s.activePlaceholderId;
+export const selectPendingSend = (s: ChatUiState) => s.pendingSend;
 export const selectPortraitOpen = (s: ChatUiState) => s.portraitOpen;
 export const selectSceneOpen = (s: ChatUiState) => s.sceneOpen;
 export const selectLightboxSrc = (s: ChatUiState) => s.lightboxSrc;

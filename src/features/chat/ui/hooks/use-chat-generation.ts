@@ -32,6 +32,18 @@ function extractAssistantText(messages: unknown[]): string {
   return "";
 }
 
+/**
+ * Clears all generation UI state. Placeholder and pending overlay are
+ * always cleared together — the overlay's visibility is derived from the
+ * placeholder match (see isPendingVisible), so clearing one without the
+ * other either leaks the overlay or breaks the dots.
+ */
+function clearGenerationOverlay() {
+  const store = useChatUiStore.getState();
+  store.clearPlaceholder();
+  store.clearPendingSend();
+}
+
 export function useChatGeneration(
   chatId: string,
   lockMessageLocalId: number | null,
@@ -80,7 +92,7 @@ export function useChatGeneration(
           cancelRef.current.mutateAsync({ chatId: cid, messageLocalId: ph }).catch(() => {});
         }
         placeholderRef.current = null;
-        useChatUiStore.getState().clearPlaceholder();
+        clearGenerationOverlay();
         setStatus("idle");
         setStreamingText("");
         return;
@@ -91,7 +103,7 @@ export function useChatGeneration(
         .mutateAsync({ chatId: cid, messageLocalId: ph, content: text })
         .then(() => {
           placeholderRef.current = null;
-          useChatUiStore.getState().clearPlaceholder();
+          clearGenerationOverlay();
           setStatus("idle");
           setStreamingText("");
           void aiChatRef.current.setMessages([]);
@@ -99,7 +111,7 @@ export function useChatGeneration(
         .catch(() => {
           cancelRef.current.mutateAsync({ chatId: cid, messageLocalId: ph }).catch(() => {});
           placeholderRef.current = null;
-          useChatUiStore.getState().clearPlaceholder();
+          clearGenerationOverlay();
           setStatus("idle");
           setStreamingText("");
         });
@@ -113,7 +125,7 @@ export function useChatGeneration(
         cancelRef.current.mutateAsync({ chatId: cid, messageLocalId: ph }).catch(() => {});
       }
       placeholderRef.current = null;
-      useChatUiStore.getState().clearPlaceholder();
+      clearGenerationOverlay();
       setStatus("idle");
       setStreamingText("");
     },
@@ -164,6 +176,10 @@ export function useChatGeneration(
     async (mode: "send" | "regenerate" | "continue", opts?: StartOpts) => {
       setStatus("streaming");
       setStreamingText("");
+      useChatUiStore.getState().setPendingSend({
+        chatId: chatIdRef.current,
+        content: mode === "send" ? (opts?.content ?? null) : null,
+      });
       try {
         const result = await prepareStream.mutateAsync({
           chatId: chatIdRef.current,
@@ -175,7 +191,7 @@ export function useChatGeneration(
         if (result.mode === "fallback") {
           toast.info("No AI provider configured — using a fallback reply");
           placeholderRef.current = null;
-          useChatUiStore.getState().clearPlaceholder();
+          clearGenerationOverlay();
           setStatus("idle");
           setStreamingText("");
           return;
@@ -188,7 +204,14 @@ export function useChatGeneration(
       } catch (e) {
         console.error("[chat] generate error", e);
         placeholderRef.current = null;
-        useChatUiStore.getState().clearPlaceholder();
+        clearGenerationOverlay();
+        if (mode === "send" && opts?.content) {
+          // Nothing was persisted — hand the draft back instead of losing it.
+          useChatUiStore.getState().setInputDraft(chatIdRef.current, opts.content);
+          toast.error("Failed to send — draft restored");
+        } else {
+          toast.error("Generation failed");
+        }
         setStatus("idle");
         setStreamingText("");
       }
@@ -203,7 +226,7 @@ export function useChatGeneration(
       cancelRef.current.mutateAsync({ chatId: cid, messageLocalId: ph }).catch(() => {});
     }
     placeholderRef.current = null;
-    useChatUiStore.getState().clearPlaceholder();
+    clearGenerationOverlay();
     setStatus("idle");
     setStreamingText("");
     void aiChatRef.current.setMessages([]);

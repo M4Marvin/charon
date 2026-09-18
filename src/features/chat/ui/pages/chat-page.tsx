@@ -19,11 +19,13 @@ import { useChatGeneration } from "../hooks/use-chat-generation";
 import {
   useChatUiStore,
   selectActivePlaceholderId,
+  selectPendingSend,
   selectSettingsOpen,
   selectPortraitOpen,
   selectSceneOpen,
   selectLightboxSrc,
 } from "../chat-store";
+import { isPendingVisible } from "../pending";
 import { useChatMacros } from "../macros";
 import { fileToDownscaledDataUrl } from "../custom-image";
 import { ChatBackground } from "../components/chat-background";
@@ -40,6 +42,7 @@ export function ChatPage() {
   const navigate = useNavigate();
 
   const activePlaceholderId = useChatUiStore(selectActivePlaceholderId);
+  const pendingSend = useChatUiStore(selectPendingSend);
   const settingsOpen = useChatUiStore(selectSettingsOpen);
   const portraitOpen = useChatUiStore(selectPortraitOpen);
   const sceneOpen = useChatUiStore(selectSceneOpen);
@@ -84,6 +87,9 @@ export function ChatPage() {
 
   const isBusy = config ? config.chat.lockState !== "idle" : false;
   const hasMessages = activePath.length > 0;
+  const pendingVisible = pendingSend
+    ? isPendingVisible(pendingSend, chatId, activePath, activePlaceholderId)
+    : false;
   const composerDisabled = config?.chat.lockState === "generating" && activePlaceholderId === null;
 
   const userAvatarUrl = persona?.iconPath ? `/api/personas/${persona.id}/icon` : null;
@@ -253,6 +259,8 @@ export function ChatPage() {
         entries={activePath}
         activePlaceholderId={activePlaceholderId}
         streamingText={generation.streamingText}
+        pendingUserContent={pendingVisible ? (pendingSend?.content ?? null) : null}
+        showPendingAssistant={pendingVisible}
         characterName={config.character.name}
         userName={config.persona.name}
         characterAvatarSrc={characterAvatarUrl}
