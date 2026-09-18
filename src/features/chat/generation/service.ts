@@ -45,6 +45,20 @@ export function prepareStream(
   userName: string,
   db: DB = defaultDb,
 ): PrepareStreamResult {
+  // Persisting the user/assistant rows and acquiring the lock must be
+  // all-or-nothing: a partial write would strand a placeholder + lock that
+  // the client can no longer identify (it only learns the id on success),
+  // and the client relies on "throw == nothing persisted" to safely restore
+  // the draft. better-sqlite3 transactions are synchronous, matching this fn.
+  return db.transaction((tx) => prepareStreamTx(userId, input, userName, tx as unknown as DB));
+}
+
+function prepareStreamTx(
+  userId: string, // account FK
+  input: PrepareStreamInput,
+  userName: string,
+  db: DB,
+): PrepareStreamResult {
   log.debug("prepareStream start", { chatId: input.chatId, mode: input.mode });
 
   ensureChatIdle(input.chatId, db);

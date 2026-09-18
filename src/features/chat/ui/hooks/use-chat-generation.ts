@@ -221,10 +221,24 @@ export function useChatGeneration(
         await aiChatRef.current.sendMessage(mode === "send" ? (opts?.content ?? "") : ".");
       } catch (e) {
         console.error("[chat] generate error", e);
+        if (generationRef.current !== myGeneration) {
+          // A newer generation (or stop) owns the UI now; don't touch it.
+          return;
+        }
+        const ph = placeholderRef.current;
+        if (ph) {
+          // prepare resolved, so the user row + placeholder were persisted;
+          // tear the placeholder back down instead of leaving a lock behind.
+          cancelRef.current
+            .mutateAsync({ chatId: chatIdRef.current, messageLocalId: ph })
+            .catch(() => {});
+        }
         placeholderRef.current = null;
         clearGenerationOverlay();
-        if (mode === "send" && opts?.content) {
-          // Nothing was persisted — hand the draft back instead of losing it.
+        if (ph === null && mode === "send" && opts?.content) {
+          // prepareStream is transactional: a throw before the placeholder
+          // resolves means nothing was persisted, so the draft is safe to
+          // hand back. If it did resolve, the message is already stored.
           useChatUiStore.getState().setInputDraft(chatIdRef.current, opts.content);
           toast.error("Failed to send — draft restored");
         } else {
