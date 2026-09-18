@@ -22,6 +22,7 @@ import {
   swipeFn,
 } from "@/features/chat/tree/fns";
 import type { PrepareStreamResult } from "@/features/chat/generation/types";
+import { applySwipeOptimistic } from "@/features/chat/tree/optimistic";
 import type { ChatMessageRow } from "@/db/schema";
 
 export const chatKeys = {
@@ -93,7 +94,23 @@ export function useSwipeMessage() {
       direction: "next" | "prev";
       createIfMissing?: { role: "user" | "assistant"; content: string };
     }) => swipeFn({ data: input }),
-    onSuccess: (_result, variables) => {
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: chatKeys.messages(variables.chatId) });
+      const previous = queryClient.getQueryData<ChatMessageRow[]>(
+        chatKeys.messages(variables.chatId),
+      );
+      if (previous) {
+        const next = applySwipeOptimistic(previous, variables.messageLocalId, variables.direction);
+        if (next) queryClient.setQueryData(chatKeys.messages(variables.chatId), next);
+      }
+      return { previous };
+    },
+    onError: (_error, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(chatKeys.messages(variables.chatId), context.previous);
+      }
+    },
+    onSettled: (_data, _error, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
   });
