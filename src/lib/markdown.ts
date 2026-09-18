@@ -447,15 +447,124 @@ function countOccurrences(text: string, sub: string): number {
   return count;
 }
 
+const FENCE_LINE_RE = /^ {0,3}(`{3,}|~{3,})/;
+
+/**
+ * Replace delimiters that must not participate in balancing with spaces:
+ * backslash-escaped characters and everything inside inline code spans.
+ */
+function maskInlineCode(line: string): string {
+  let out = "";
+  let i = 0;
+  let fence = 0; // active backtick run length; 0 = not inside code
+  while (i < line.length) {
+    const ch = line[i];
+    if (ch === "\\" && i + 1 < line.length) {
+      out += "  ";
+      i += 2;
+      continue;
+    }
+    if (ch === "`") {
+      let n = 0;
+      while (line[i + n] === "`") n++;
+      if (fence === 0) fence = n;
+      else if (n >= fence) fence = 0;
+      out += " ".repeat(n);
+      i += n;
+      continue;
+    }
+    out += fence === 0 ? ch : " ";
+    i++;
+  }
+  return out;
+}
+
+/**
+ * Return the closing delimiters needed to balance emphasis/strikethrough
+ * openers in a single line. Only left-flanking runs open; a following
+ * matching run closes the innermost opener. Returns the closers in
+ * innermost-first order, or "" when the line is balanced.
+ */
+function unmatchedEmphasis(masked: string): string {
+  const stack: Array<{ ch: string; count: number }> = [];
+  let i = 0;
+  while (i < masked.length) {
+    const ch = masked[i];
+    if (ch !== "*" && ch !== "_" && ch !== "~") {
+      i++;
+      continue;
+    }
+    let n = 0;
+    while (masked[i + n] === ch) n++;
+    const next = masked[i + n];
+    const prev = i > 0 ? masked[i - 1] : "";
+    const canOpen =
+      next !== undefined && !/\s/.test(next) && (ch !== "_" || i === 0 || /[\s([{>]/.test(prev));
+    const canClose = /\S/.test(prev);
+
+    if (ch === "~") {
+      // `~~` is strikethrough; `~~~` fences are handled by the caller.
+      if (n === 2) {
+        const top = stack[stack.length - 1];
+        if (top && top.ch === "~" && canClose) stack.pop();
+        else if (canOpen) stack.push({ ch: "~", count: 2 });
+      }
+      i += n;
+      continue;
+    }
+
+    const top = stack[stack.length - 1];
+    if (top && top.ch === ch && canClose) stack.pop();
+    else if (canOpen) stack.push({ ch, count: n });
+    i += n;
+  }
+
+  return stack
+    .slice()
+    .reverse()
+    .map((d) => d.ch.repeat(d.count))
+    .join("");
+}
+
+function balanceLine(line: string): string {
+  const masked = maskInlineCode(line);
+  let suffix = unmatchedEmphasis(masked);
+  if (isOdd(countOccurrences(masked, '"'))) suffix += '"';
+  return suffix.length > 0 ? line.trimEnd() + suffix : line;
+}
+
+/**
+ * Close markdown delimiters that are still open in a partial (streaming)
+ * buffer so the renderer receives well-formed input.
+ *
+ * Code spans and backslash escapes are ignored, list bullets are not
+ * mistaken for emphasis, fenced blocks are closed on their own lines, and
+ * multi-character openers (`**`, `***`, `~~`) are closed with a matching
+ * run. `isFinal` short-circuits: complete text is returned untouched.
+ */
 export function balanceMarkdown(text: string, isFinal: boolean): string {
   if (isFinal) return text;
-  const chars = ["*", '"', "```", "~~~"];
-  let result = text;
-  for (const c of chars) {
-    if (isOdd(countOccurrences(result, c))) {
-      const sep = c.length > 1 ? "\n" : "";
-      result = result.trimEnd() + sep + c;
+
+  const out: string[] = [];
+  let openFence: string | null = null;
+
+  for (const line of text.split("\n")) {
+    const fence = FENCE_LINE_RE.exec(line);
+    if (openFence !== null) {
+      out.push(line);
+      if (fence && fence[1][0] === openFence[0] && fence[1].length >= openFence.length) {
+        openFence = null;
+      }
+      continue;
     }
+    if (fence) {
+      openFence = fence[1];
+      out.push(line);
+      continue;
+    }
+    out.push(balanceLine(line));
   }
-  return result;
+
+  if (openFence !== null) out.push(openFence);
+  return out.join("\n");
 }

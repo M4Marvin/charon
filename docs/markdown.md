@@ -207,21 +207,20 @@ The `color: inherit` override on `<q>` descendants ensures inline formatting ins
 
 ### `balanceMarkdown(text, isFinal)`
 
-`src/lib/markdown.ts:222`
+`src/lib/markdown.ts`
 
-During SSE streaming, prevents markdown syntax breakage by closing unpaired tokens:
+During SSE streaming, prevents markdown syntax breakage by closing still-open delimiters before the buffer is rendered:
 
-| Token | Closing |
-|---|---|
-| `*` | `*` |
-| `"` | `"` |
-| `` ``` `` | `\n```\n` |
-| `~~~` | `\n~~~\n` |
+- Emphasis/strikethrough openers are closed with a matching run: `*`, `_`, `**`, `***`, `~~`.
+- An unpaired `"` is closed inline.
+- An unterminated fenced block (`` ``` `` / `~~~`) is closed on its own line.
+- The scan ignores backslash escapes and inline code spans, does not treat list bullets (`* item`) as emphasis, and leaves a balanced fence untouched.
+- `isFinal === true` returns the text unchanged.
 
-Called in `src/routes/chats/$id.tsx`:
+Called in `src/features/chat/ui/components/chat-message.tsx`:
 ```tsx
 <RichText
-  content={isStreaming ? balanceMarkdown(message.content, false) : message.content}
+  content={isStreaming && streamingText ? balanceMarkdown(streamingText, false) : displayContent}
 />
 ```
 
@@ -334,16 +333,19 @@ No `getNodeKey` — morphdom uses positional + `id` attribute matching by defaul
 
 ## Consumer Usage
 
-### Chat messages — `src/routes/chats/$id.tsx`
+### Chat messages — `src/features/chat/ui/components/chat-message.tsx`
 
 ```tsx
-<RichText
-  content={isStreaming ? balanceMarkdown(message.content, false) : message.content}
-/>
-{isStreaming && <StreamingCaret />}
+const renderContent =
+  isStreaming && streamingText ? balanceMarkdown(streamingText, false) : displayContent;
+
+<div className="text-sm leading-6">
+  <RichText content={renderContent} />
+  {isStreaming && streamingText && <StreamingCaret />}
+</div>
 ```
 
-The `StreamingCaret` is a sibling (not inside `RichText`), so morphdom patching does not interfere with it.
+The streaming caret is a sibling (not inside `RichText`), so morphdom patching does not interfere with it. Copy uses the raw `displayContent`, not the balanced buffer.
 
 ### Character detail — `src/routes/characters/$id.tsx`
 
