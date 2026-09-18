@@ -1,9 +1,14 @@
 import { ExternalLink } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RelativeTime } from "@/components/common/RelativeTime";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
 import type { ChatListItem } from "@/server/fns/chats";
+import { getChatMessages } from "@/server/fns/chats";
+import { getChatConfigFn } from "@/features/chat/config/fns";
+import { chatKeys } from "@/hooks/useChats";
+import { chatConfigKeys } from "@/hooks/useChatConfig";
 
 interface ChatRowProps {
   chat: ChatListItem;
@@ -12,8 +17,25 @@ interface ChatRowProps {
 }
 
 export function ChatRow({ chat, onRename, onDelete }: ChatRowProps) {
+  const queryClient = useQueryClient();
+  // Warm the chat page queries so opening the chat paints from cache.
+  // Both are cheap local-SQLite reads; mount still reconciles in background.
+  const prefetchChat = () => {
+    void queryClient.prefetchQuery({
+      queryKey: chatKeys.messages(chat.id),
+      queryFn: () => getChatMessages({ data: { id: chat.id } }),
+    });
+    void queryClient.prefetchQuery({
+      queryKey: chatConfigKeys.detail(chat.id),
+      queryFn: () => getChatConfigFn({ data: { chatId: chat.id } }),
+    });
+  };
   return (
-    <div className="group relative flex items-center gap-4 rounded-xl border border-subtle bg-surface px-4 py-3 transition-colors hover:border-brand/40">
+    <div
+      className="group relative flex items-center gap-4 rounded-xl border border-subtle bg-surface px-4 py-3 transition-colors hover:border-brand/40"
+      onMouseEnter={prefetchChat}
+      onFocus={prefetchChat}
+    >
       <Link
         to="/chat/$id"
         params={{ id: chat.id }}
