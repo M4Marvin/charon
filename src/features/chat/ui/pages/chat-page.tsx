@@ -123,7 +123,10 @@ export function ChatPage() {
     (messageLocalId: number, content: string) => {
       if (isBusy || generation.isStreaming) return;
       const final = substitute(content);
-      editMutation.mutate({ chatId, messageLocalId, content: final });
+      editMutation.mutate(
+        { chatId, messageLocalId, content: final },
+        { onError: () => toast.error("Edit failed — message restored") },
+      );
     },
     [chatId, isBusy, generation.isStreaming, substitute, editMutation],
   );

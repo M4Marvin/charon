@@ -22,6 +22,7 @@ import {
   swipeFn,
 } from "@/features/chat/tree/fns";
 import type { PrepareStreamResult } from "@/features/chat/generation/types";
+import type { ChatMessageRow } from "@/db/schema";
 
 export const chatKeys = {
   all: ["chats"] as const,
@@ -114,7 +115,28 @@ export function useEditMessage() {
   return useMutation({
     mutationFn: (input: { chatId: string; messageLocalId: number; content: string }) =>
       editMessageFn({ data: input }),
-    onSuccess: (_result, variables) => {
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: chatKeys.messages(variables.chatId) });
+      const previous = queryClient.getQueryData<ChatMessageRow[]>(
+        chatKeys.messages(variables.chatId),
+      );
+      queryClient.setQueryData<ChatMessageRow[]>(chatKeys.messages(variables.chatId), (old) =>
+        old
+          ? old.map((row) =>
+              row.localId === variables.messageLocalId
+                ? { ...row, content: variables.content }
+                : row,
+            )
+          : old,
+      );
+      return { previous };
+    },
+    onError: (_error, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(chatKeys.messages(variables.chatId), context.previous);
+      }
+    },
+    onSettled: (_data, _error, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
   });
