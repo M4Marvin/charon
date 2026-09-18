@@ -22,7 +22,7 @@ import {
   swipeFn,
 } from "@/features/chat/tree/fns";
 import type { PrepareStreamResult } from "@/features/chat/generation/types";
-import { applySwipeOptimistic } from "@/features/chat/tree/optimistic";
+import { applyDeleteOptimistic, applySwipeOptimistic } from "@/features/chat/tree/optimistic";
 import type { ChatMessageRow } from "@/db/schema";
 
 export const chatKeys = {
@@ -121,7 +121,23 @@ export function useDeleteMessage() {
   return useMutation({
     mutationFn: (input: { chatId: string; messageLocalId: number }) =>
       deleteBranchFn({ data: input }),
-    onSuccess: (_result, variables) => {
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: chatKeys.messages(variables.chatId) });
+      const previous = queryClient.getQueryData<ChatMessageRow[]>(
+        chatKeys.messages(variables.chatId),
+      );
+      if (previous) {
+        const next = applyDeleteOptimistic(previous, variables.messageLocalId);
+        if (next) queryClient.setQueryData(chatKeys.messages(variables.chatId), next);
+      }
+      return { previous };
+    },
+    onError: (_error, variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(chatKeys.messages(variables.chatId), context.previous);
+      }
+    },
+    onSettled: (_data, _error, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
   });
