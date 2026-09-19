@@ -16,7 +16,7 @@ dev.db
 dev.db-journal
 dev.db-shm
 dev.db-wal
-dev.db.bak-single-user-*
+dev.db.bak-*
 data/
 logs/
 .omo/
