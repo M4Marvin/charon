@@ -16,6 +16,11 @@ const ROLE_WIDTH: Record<MessageTick["role"], string> = {
 
 const PAGE_JUMP = 10;
 
+/** Fixed centre-to-centre gap between ticks while the stack fits the cap. */
+const TICK_GAP = 8;
+/** The stack never exceeds this fraction of the message area's height. */
+const MAX_HEIGHT_FRACTION = 0.4;
+
 function prefersReducedMotion(): boolean {
   return (
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -23,10 +28,19 @@ function prefersReducedMotion(): boolean {
 }
 
 /**
- * Right-edge message overview: one decorative tick per active-path message
- * is positioned proportionally down a fixed-height track, so the rail fits
- * any chat length without sampling. The track itself is the control (a
- * vertical slider) — click or arrow-key to jump to the nearest message.
+ * Right-edge message overview: one decorative tick per active-path message.
+ *
+ * The stack keeps a fixed centre-to-centre gap, so spacing is independent of
+ * the message count. The natural span is `(count - 1) * TICK_GAP`, which is
+ * known at render time, so the track height is expressed as
+ * `min(100%, (count - 1) * TICK_GAP)` — `100%` is the cap box
+ * ({@link MAX_HEIGHT_FRACTION} of the message area). Ticks are spread evenly
+ * across whatever the track resolves to: while the natural span fits the cap
+ * that yields exactly `TICK_GAP`; once it exceeds the cap, `100%` wins and the
+ * gap compresses proportionally. All of that is pure CSS — no measurement.
+ *
+ * The track itself is the control (a vertical slider) — click or arrow-key to
+ * jump to the nearest message.
  */
 export function MessageOverviewRail({ entries }: { entries: ActivePathEntry[] }) {
   const ticks = useMemo(() => toTicks(entries), [entries]);
@@ -116,12 +130,17 @@ export function MessageOverviewRail({ entries }: { entries: ActivePathEntry[] })
 
   if (count < 2) return null;
 
+  const naturalSpan = (count - 1) * TICK_GAP;
+
   const previewTick = ticks[highlightIndex];
   const nearTop = highlightIndex <= 1;
   const nearBottom = highlightIndex >= count - 2;
 
   return (
-    <div className="pointer-events-none absolute top-20 right-4 bottom-24 z-20 hidden w-6 md:block">
+    <div
+      className="pointer-events-none absolute top-1/2 right-4 z-20 hidden w-6 -translate-y-1/2 items-center md:flex"
+      style={{ height: `${MAX_HEIGHT_FRACTION * 100}%` }}
+    >
       <div
         ref={trackRef}
         role="slider"
@@ -132,7 +151,8 @@ export function MessageOverviewRail({ entries }: { entries: ActivePathEntry[] })
         aria-valuemax={count}
         aria-valuenow={highlightIndex + 1}
         aria-valuetext={`Message ${highlightIndex + 1} of ${count}, ${previewTick?.role ?? "message"}`}
-        className="focus-ring pointer-events-auto relative h-full w-full cursor-pointer outline-none"
+        className="focus-ring pointer-events-auto relative w-full cursor-pointer outline-none"
+        style={{ height: `min(100%, ${naturalSpan}px)` }}
         onPointerMove={handlePointerMove}
         onPointerLeave={() => setHovered(null)}
         onBlur={() => setHovered(null)}
