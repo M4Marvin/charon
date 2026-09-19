@@ -4,11 +4,13 @@ import { join, extname } from "node:path";
 import { db as defaultDb } from "@/db";
 import { createBackground } from "@/db/repositories/backgrounds";
 import { createCharacter } from "@/db/repositories/characters";
+import { createEntry, createLorebook, setLorebookEnabled } from "@/db/repositories/lorebooks";
 import { createPreset } from "@/db/repositories/presets";
 import { createPersona } from "@/db/repositories/personas";
 import { upsertUserSettings } from "@/db/repositories/userSettings";
 import { backgrounds } from "@/db/schema";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
+import { DEFAULT_LORE_CONFIG, DEFAULT_LORE_ENTRY } from "@/lib/st-core/lorebook";
 import { DEFAULT_IMAGE_PROMPT_EXAMPLE } from "@/features/chat/generation/image-prompt";
 
 export async function seedSampleData(userId: string): Promise<void> {
@@ -115,6 +117,9 @@ export async function seedSampleData(userId: string): Promise<void> {
     },
   });
 
+  // Adventure lorebooks that match the starter characters
+  seedStarterLorebooks();
+
   // Creative preset
   const presetId = randomUUID();
   createPreset({
@@ -190,6 +195,141 @@ function createDemoCharacter(id: string, input: DemoCharacterInput): void {
     },
     tagline: input.description.split("\n")[0]?.slice(0, 120) ?? input.name,
   });
+}
+
+type SeedLoreEntry = {
+  uid: number;
+  keys: string[];
+  comment: string;
+  content: string;
+};
+
+function createStarterLorebook(
+  id: string,
+  name: string,
+  description: string,
+  entries: SeedLoreEntry[],
+): void {
+  createLorebook({ id, name, description, config: { ...DEFAULT_LORE_CONFIG } });
+  for (const entry of entries) {
+    createEntry({
+      id: randomUUID(),
+      lorebookId: id,
+      uid: entry.uid,
+      data: {
+        ...DEFAULT_LORE_ENTRY,
+        uid: entry.uid,
+        key: entry.keys,
+        comment: entry.comment,
+        content: entry.content,
+      },
+    });
+  }
+  // Activation is global; enable the starter books so their keyword-gated
+  // entries are live for a fresh account.
+  setLorebookEnabled(id, true);
+}
+
+function seedStarterLorebooks(): void {
+  createStarterLorebook(
+    "starter-outer-rim",
+    "Outer Rim Gazetteer",
+    "World lore for the Outer Rim: stations, ships, factions, and tech referenced by the starter characters.",
+    [
+      {
+        uid: 1,
+        keys: ["Nexus Station", "Nexus"],
+        comment: "Nexus Station",
+        content:
+          "Nexus Station is a sprawling trade hub orbiting a gas giant at the edge of the Outer Rim. Its main concourse is a warren of cantinas, repair docks, and black-market stalls that never fully close. The station is nominally governed by the Concord Authority, but most disputes are settled by dock bosses and whoever is holding the docking clamps.",
+      },
+      {
+        uid: 2,
+        keys: ["Stardust Drifter", "the Drifter"],
+        comment: "The Stardust Drifter",
+        content:
+          "The Stardust Drifter is a beat-up but beloved light freighter commanded by Captain Jack Ryder. Her hull is patched with mismatched plating, the galley smells permanently of burnt protein, and the hyperdrive has a temperamental whine that Jack insists is 'character.' She runs cargo — legal and otherwise — across the Outer Rim.",
+      },
+      {
+        uid: 3,
+        keys: ["Themis Station", "Themis"],
+        comment: "Themis Station",
+        content:
+          "Themis Station is a compact research outpost perched on the edge of a jungle-covered exoplanet. It houses a rotating crew of scientists, a single landing pad, and enough life support to feel like a small, humid town. The station's AI, Althea, runs day-to-day operations with a dry sense of humor.",
+      },
+      {
+        uid: 4,
+        keys: ["Outer Rim"],
+        comment: "The Outer Rim",
+        content:
+          "The Outer Rim is the loosely governed fringe of settled space, far from the wealthy core worlds. Colonies here are young, independent, and often one bad season away from collapse. FTL travel is routine but not cheap, and the further out you go, the more the rule of law gives way to the rule of whoever owns the most ships.",
+      },
+      {
+        uid: 5,
+        keys: ["Torellian", "Torellian whiskey"],
+        comment: "Torellian whiskey",
+        content:
+          "Torellian whiskey is a popular amber spirit distilled on the agri-world of Torellia. It is cheap, strong, and responsible for a disproportionate number of cantina brawls and bad decisions. Jack Ryder keeps a bottle aboard the Drifter for 'emergencies' and rarely explains what qualifies.",
+      },
+      {
+        uid: 6,
+        keys: ["Colonial Navy", "the Navy", "naval"],
+        comment: "The Colonial Navy",
+        content:
+          "The Colonial Navy is the core worlds' peacekeeping and enforcement fleet. It is disciplined, well-funded, and stretched thin across too much territory. Many Outer Rim crews distrust it on principle; a surprising number of them, like Jack Ryder, once served in it.",
+      },
+      {
+        uid: 7,
+        keys: ["hyperdrive regulator", "hyperdrive"],
+        comment: "Hyperdrive regulator",
+        content:
+          "A hyperdrive regulator is the component that keeps a ship's faster-than-light drive from tearing itself apart. Regulators are fussy, expensive, and the cause of roughly half of all mid-route breakdowns. A good pilot can coax a failing one along for a few more jumps; a bad one leaves you drifting.",
+      },
+      {
+        uid: 8,
+        keys: ["Cygnus"],
+        comment: "Cygnus",
+        content:
+          "Cygnus is a frontier system known for its volatile gas clouds and a handful of mining colonies. Ship traffic there is sparse, and the nav beacons are frequently out of date. Crews say the Cygnus run is the fastest way to lose a pursuit — or a hull.",
+      },
+    ],
+  );
+
+  createStarterLorebook(
+    "starter-xenobiology",
+    "Xenobiology of Themis",
+    "Field notes from Dr. Elena Vasquez's research on the jungle exoplanet beneath Themis Station.",
+    [
+      {
+        uid: 1,
+        keys: ["Xylarid", "mimic-frond", "mimic frond"],
+        comment: "Xylarid mimic-frond",
+        content:
+          "The Xylarid mimic-frond is a predatory plant that evolved to imitate the distress calls of local herbivores in perfect bioacoustic fidelity. It lures predators close, then releases a neurotoxin through root barbs. Dr. Vasquez spent three months studying whether it acts with intent and is still not certain.",
+      },
+      {
+        uid: 2,
+        keys: ["bioluminescent", "fungi", "glowing fungus"],
+        comment: "Bioluminescent fungi",
+        content:
+          "Themis's bioluminescent fungi pulse in slow, hypnotic rhythms tied to the planet's day cycle. Their light is bright enough to read by, and their spores are inert unless disturbed. Dr. Vasquez keeps several terrariums of them in her lab and has learned not to leave the lids loose.",
+      },
+      {
+        uid: 3,
+        keys: ["Althea"],
+        comment: "Althea",
+        content:
+          "Althea is Themis Station's resident AI. She manages life support, docking, and the station's endless paperwork with a dry, deadpan wit. She and Dr. Vasquez have an ongoing argument about whether the mimic-frond is 'conscious' that neither of them expects to win.",
+      },
+      {
+        uid: 4,
+        keys: ["binary sunset", "the suns"],
+        comment: "Binary sunset",
+        content:
+          "Themis orbits a binary star, so the planet gets two sunsets that drift roughly twenty minutes apart over the course of the year. During the gap, the whole sky turns the color of fire. It is the one sight Dr. Vasquez refuses to miss.",
+      },
+    ],
+  );
 }
 
 const SOURCE_DIR = "public/data/backgrounds-seed";

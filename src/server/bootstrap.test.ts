@@ -35,6 +35,7 @@ import { ensureStartupTasks } from "@/server/bootstrap";
 import { seedSampleData } from "@/server/seed";
 import { listBackgrounds } from "@/db/repositories/backgrounds";
 import { listCharacters } from "@/db/repositories/characters";
+import { listEntries, listLorebooks } from "@/db/repositories/lorebooks";
 import { listPersonas } from "@/db/repositories/personas";
 import { listPresets } from "@/db/repositories/presets";
 import { getUserSettings } from "@/db/repositories/userSettings";
@@ -99,7 +100,7 @@ describe("seedSampleData", () => {
     ctx.sqlite.close();
   });
 
-  it("seeds the persona, Sample + starter characters, Creative preset, and settings", async () => {
+  it("seeds the persona, Sample + starter characters, adventure lorebooks, Creative preset, and settings", async () => {
     await seedSampleData(userId);
 
     const personas = listPersonas(holder.db);
@@ -113,6 +114,18 @@ describe("seedSampleData", () => {
     const sample = chars.find((c) => c.name === "Sample");
     expect(sample).toBeDefined();
     expect(sample!.data.first_mes).toBe("*Awaits your input*");
+
+    const books = listLorebooks(holder.db);
+    const byName = new Map(books.map((b) => [b.name, b]));
+    const gazetteer = byName.get("Outer Rim Gazetteer");
+    expect(gazetteer).toBeDefined();
+    expect(gazetteer!.enabled).toBe(true);
+    expect(gazetteer!.entryCount).toBeGreaterThan(0);
+    const xenobiology = byName.get("Xenobiology of Themis");
+    expect(xenobiology).toBeDefined();
+    expect(xenobiology!.enabled).toBe(true);
+    const entries = listEntries("starter-outer-rim", holder.db);
+    expect(entries.map((e) => e.data.comment)).toContain("Nexus Station");
 
     const presets = listPresets(holder.db);
     const creative = presets.find((p) => p.name === "Creative");
