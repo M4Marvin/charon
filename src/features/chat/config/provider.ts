@@ -37,6 +37,13 @@ async function pickProviderRow(
   return await getAiProvider(first[0].id, db);
 }
 
+/**
+ * Resolve the provider + model to use, or null when the user has no usable
+ * configuration (no provider row, or a provider with no resolvable model).
+ * This is deliberately non-throwing: a missing model is a soft, user-fixable
+ * state, so chat config must still load and the page must still render.
+ * Generation surfaces the missing provider at call time.
+ */
 export async function resolveProvider(
   settings: UserSettingsView | null,
   db: DB = defaultDb,
@@ -51,11 +58,11 @@ export async function resolveProvider(
 
   const model = settings?.defaultSelectedModel ?? provider.defaultModel;
   if (!model) {
-    log.error("resolveProvider: no model configured", {
+    log.warn("resolveProvider: no model configured", {
       settingsModel: settings?.defaultSelectedModel ?? null,
       providerModel: provider.defaultModel,
     });
-    throw new Error("No model configured");
+    return null;
   }
 
   let preset: Partial<ChatCompletionPreset> = {};

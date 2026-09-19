@@ -36,6 +36,7 @@ import { CharacterPortraitPanel } from "../components/character-portrait-panel";
 import { CustomImagePanel } from "../components/custom-image-panel";
 import { ImageLightbox } from "../components/image-lightbox";
 import { SettingsPanel } from "../settings/settings-panel";
+import { ErrorBanner } from "@/components/common/ErrorBanner";
 
 export function ChatPage() {
   const { id: chatId } = useParams({ from: "/chat/$id" });
@@ -60,7 +61,13 @@ export function ChatPage() {
   const setCustomImage = useChatUiStore((s) => s.setCustomImage);
   const clearCustomImage = useChatUiStore((s) => s.clearCustomImage);
 
-  const { data: config, isLoading: configLoading } = useChatConfig(chatId);
+  const {
+    data: config,
+    isLoading: configLoading,
+    isError: configError,
+    error: configErrorObj,
+    refetch: refetchConfig,
+  } = useChatConfig(chatId);
   const { data: messages, isLoading: messagesLoading } = useChatMessages(chatId);
   const { data: character } = useCharacter(config?.chat.characterId ?? "");
   const { data: background } = useBackground(config?.chat.backgroundId ?? "");
@@ -96,8 +103,20 @@ export function ChatPage() {
   const characterAvatarUrl = character?.imagePath ? `/api/characters/${character.id}/avatar` : null;
   const backgroundUrl = background?.path ? `/api/backgrounds/${background.id}/image` : null;
 
+  const ensureModelConfigured = useCallback(() => {
+    // A provider row exists but has no resolvable model (neither a selected
+    // default nor a provider default). Block here so the user gets an
+    // actionable message instead of a silent stream failure.
+    if (config?.settings.defaultProviderId && !config.provider) {
+      toast.error("No model configured — choose a model in chat settings");
+      return false;
+    }
+    return true;
+  }, [config]);
+
   const handleSend = useCallback(() => {
     if (generation.isStreaming) return;
+    if (!ensureModelConfigured()) return;
     const trimmed = (useChatUiStore.getState().inputDrafts[chatId] ?? "").trim();
 
     if (trimmed) {
@@ -107,7 +126,7 @@ export function ChatPage() {
     } else if (hasMessages) {
       generation.start("continue");
     }
-  }, [chatId, substitute, clearInput, generation, hasMessages]);
+  }, [chatId, substitute, clearInput, generation, hasMessages, ensureModelConfigured]);
 
   const handleSwipe = useCallback(
     (messageLocalId: number, direction: "next" | "prev") => {
@@ -120,9 +139,10 @@ export function ChatPage() {
   const handleRegenerate = useCallback(
     (messageLocalId: number) => {
       if (isBusy || generation.isStreaming) return;
+      if (!ensureModelConfigured()) return;
       generation.start("regenerate", { messageLocalId });
     },
-    [isBusy, generation],
+    [isBusy, generation, ensureModelConfigured],
   );
 
   const handleEdit = useCallback(
@@ -219,6 +239,24 @@ export function ChatPage() {
           <span
             className="size-2 rounded-full bg-(--lagoon) animate-bounce"
             style={{ animationDelay: "300ms" }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (configError) {
+    return (
+      <div
+        className="fixed inset-0 flex items-center justify-center p-6"
+        style={{ background: "var(--bg-base)" }}
+      >
+        <div className="w-full max-w-md">
+          <ErrorBanner
+            message={
+              configErrorObj instanceof Error ? configErrorObj.message : "Failed to load chat"
+            }
+            onRetry={() => void refetchConfig()}
           />
         </div>
       </div>
