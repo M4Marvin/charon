@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import { devtools } from '@tanstack/devtools-vite'
 
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
@@ -7,7 +7,12 @@ import { nitro } from 'nitro/vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-const lanHosts = (process.env.VITE_ALLOWED_HOSTS ?? '')
+// Vite does not populate `process.env` from `.env*` files when evaluating an
+// object config, so read them explicitly. `loadEnv` also merges any VITE_ vars
+// already exported in the shell.
+const env = loadEnv(process.env.NODE_ENV ?? 'development', process.cwd(), 'VITE_')
+
+const lanHosts = (env.VITE_ALLOWED_HOSTS ?? '')
   .split(',')
   .map((h) => h.trim())
   .filter(Boolean)
