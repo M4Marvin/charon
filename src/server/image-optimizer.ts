@@ -22,6 +22,7 @@ import {
 } from "@/server/image-limits";
 
 const DEFAULT_CACHE_MAX_BYTES = 1024 * 1024 * 1024;
+const CACHE_SCHEMA_VERSION = "1";
 const TRANSFORM_TIMEOUT_SECONDS = 5;
 const MIN_CACHE_PRUNE_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_CONCURRENT_TRANSFORMS = Math.max(1, Math.min(4, availableParallelism() - 1));
@@ -65,6 +66,49 @@ function errorResponse(message: string, status: number): Response {
 
 function sourceEtag(stats: Stats): string {
   return `"${stats.size.toString(16)}-${Math.trunc(stats.mtimeMs).toString(16)}"`;
+}
+
+function isNotModified(
+  request: Request,
+  stats: Stats,
+  etag: string,
+  allowModifiedSince = true,
+): boolean {
+  const ifNoneMatch = request.headers.get("if-none-match");
+  if (ifNoneMatch) {
+    const normalizedEtag = etag.replace(/^W\//, "");
+    return ifNoneMatch
+      .split(",")
+      .map((value) => value.trim().replace(/^W\//, ""))
+      .some((value) => value === "*" || value === normalizedEtag);
+  }
+
+  if (!allowModifiedSince) return false;
+  const ifModifiedSince = request.headers.get("if-modified-since");
+  if (!ifModifiedSince) return false;
+  const modified = Date.parse(ifModifiedSince);
+  return Number.isFinite(modified) && Math.floor(stats.mtimeMs / 1000) * 1000 <= modified;
+}
+
+function notModifiedResponse(etag: string, immutable: boolean, lastModified?: Date): Response {
+  return new Response(null, {
+    status: 304,
+    headers: {
+      "cache-control": immutable
+        ? "private, max-age=31536000, immutable"
+        : "private, max-age=300, must-revalidate",
+      etag,
+      ...(lastModified ? { "last-modified": lastModified.toUTCString() } : {}),
+    },
+  });
+}
+
+function isWebpBuffer(bytes: Buffer): boolean {
+  return (
+    bytes.length >= 12 &&
+    bytes.toString("ascii", 0, 4) === "RIFF" &&
+    bytes.toString("ascii", 8, 12) === "WEBP"
+  );
 }
 
 function contentTypeForMetadata(metadata: ImageMetadata): string {
@@ -120,7 +164,7 @@ async function walkCacheFiles(
         pending.push(path);
         continue;
       }
-      if (!entry.isFile()) continue;
+      if (!entry.isFile() || !entry.name.endsWith(".webp")) continue;
       try {
         const stats = await stat(path);
         files.push({ path, size: stats.size, accessedAt: stats.atimeMs });
@@ -152,15 +196,17 @@ function scheduleCachePrune(cacheDir: string, maxBytes: number, now: Date): void
   void pruneCache(cacheDir, maxBytes).catch(() => {});
 }
 
-async function writeCacheFile(cachePath: string, bytes: Buffer): Promise<void> {
-  await mkdir(dirname(cachePath), { recursive: true });
+async function writeCacheFile(cachePath: string, bytes: Buffer): Promise<boolean> {
   const temporaryPath = `${cachePath}.${process.pid}.${randomUUID()}.tmp`;
   try {
+    await mkdir(dirname(cachePath), { recursive: true });
     await writeFile(temporaryPath, bytes, { flag: "wx" });
     await rename(temporaryPath, cachePath);
+    return true;
   } catch (error) {
     await rm(temporaryPath, { force: true }).catch(() => {});
-    throw error;
+    console.warn("[image-optimizer] cache write failed", error);
+    return false;
   }
 }
 
@@ -173,6 +219,10 @@ async function readOrTransformVariant(
   stats: Stats,
 ): Promise<{ bytes: Buffer; cacheKey: string; cacheHit: boolean }> {
   const cacheKey = createHash("sha256")
+    .update(CACHE_SCHEMA_VERSION)
+    .update("\0")
+    .update(sourcePath)
+    .update("\0")
     .update(storedPath)
     .update("\0")
     .update(String(stats.mtimeMs))
@@ -187,10 +237,14 @@ async function readOrTransformVariant(
 
   try {
     const bytes = await readFile(cachePath);
-    void utimes(cachePath, new Date(), new Date()).catch(() => {});
-    return { bytes, cacheKey, cacheHit: true };
-  } catch (error) {
-    if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
+    if (!isWebpBuffer(bytes)) {
+      await rm(cachePath, { force: true, recursive: true }).catch(() => {});
+    } else {
+      void utimes(cachePath, new Date(), new Date()).catch(() => {});
+      return { bytes, cacheKey, cacheHit: true };
+    }
+  } catch {
+    // A missing, unreadable, or partially written cache entry is a miss.
   }
 
   const existing = inFlight.get(cacheKey);
@@ -244,6 +298,7 @@ export async function serveStoredImage(
   }
   if (!stats.isFile()) return errorResponse("File missing", 404);
   if (stats.size > MAX_IMAGE_BYTES) return errorResponse("Image is too large", 413);
+  scheduleCachePrune(cacheDir, maxCacheBytes, now());
 
   const url = new URL(request.url);
   const rawWidth = url.searchParams.get("w");
@@ -252,7 +307,7 @@ export async function serveStoredImage(
   const immutable = url.searchParams.get("v") === sourceVersion;
   if (rawWidth === null) {
     if (rawQuality !== null) return errorResponse("Quality requires a width", 400);
-    return serveOriginal(sourcePath, stats, undefined, immutable);
+    return serveOriginal(request, sourcePath, stats, undefined, immutable);
   }
 
   const width = Number(rawWidth);
@@ -283,16 +338,16 @@ export async function serveStoredImage(
   ) {
     return isUnsafeImageMetadata(metadata)
       ? errorResponse("Unsupported image format", 415)
-      : serveOriginal(sourcePath, stats, metadata, immutable);
+      : serveOriginal(request, sourcePath, stats, metadata, immutable);
   }
   if (stats.size < 10 * 1024 && (metadata.format === "webp" || isAvifMetadata(metadata))) {
-    return serveOriginal(sourcePath, stats, metadata, immutable);
+    return serveOriginal(request, sourcePath, stats, metadata, immutable);
   }
   if (
     (metadata.width ?? width) <= width &&
     (metadata.format === "webp" || isAvifMetadata(metadata))
   ) {
-    return serveOriginal(sourcePath, stats, metadata, immutable);
+    return serveOriginal(request, sourcePath, stats, metadata, immutable);
   }
 
   try {
@@ -304,8 +359,10 @@ export async function serveStoredImage(
       quality,
       stats,
     );
-    if (!variant.cacheHit) scheduleCachePrune(cacheDir, maxCacheBytes, now());
-
+    const etag = `"${variant.cacheKey}"`;
+    if (isNotModified(request, stats, etag, false)) {
+      return notModifiedResponse(etag, immutable);
+    }
     return new Response(new Uint8Array(variant.bytes), {
       headers: {
         "cache-control": immutable
@@ -314,7 +371,7 @@ export async function serveStoredImage(
         "content-length": String(variant.bytes.byteLength),
         "content-type": "image/webp",
         "x-content-type-options": "nosniff",
-        etag: `"${variant.cacheKey}"`,
+        etag,
         "x-image-cache": variant.cacheHit ? "hit" : "miss",
       },
     });
@@ -324,11 +381,17 @@ export async function serveStoredImage(
 }
 
 async function serveOriginal(
+  request: Request,
   sourcePath: string,
   stats: Stats,
   knownMetadata?: ImageMetadata,
   immutable = false,
 ): Promise<Response> {
+  const etag = sourceEtag(stats);
+  if (isNotModified(request, stats, etag)) {
+    return notModifiedResponse(etag, immutable, new Date(stats.mtimeMs));
+  }
+
   try {
     const metadata =
       knownMetadata ??
@@ -349,7 +412,7 @@ async function serveOriginal(
         "content-length": String(bytes.byteLength),
         "content-type": contentTypeForMetadata(metadata),
         "x-content-type-options": "nosniff",
-        etag: sourceEtag(stats),
+        etag,
         "last-modified": new Date(stats.mtimeMs).toUTCString(),
         "x-image-cache": "source",
       },

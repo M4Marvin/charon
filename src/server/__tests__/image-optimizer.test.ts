@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import sharp from "sharp";
@@ -44,6 +44,22 @@ function request(url: string): Request {
   return new Request(`http://localhost${url}`);
 }
 
+async function findWebpCache(root: string): Promise<string> {
+  const entries = await readdir(root, { withFileTypes: true });
+  for (const entry of entries) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) {
+      try {
+        return await findWebpCache(path);
+      } catch {
+        continue;
+      }
+    }
+    if (entry.isFile() && entry.name.endsWith(".webp")) return path;
+  }
+  throw new Error("WebP cache file not found");
+}
+
 function optimizerOptions() {
   return { rootDir, cacheDir, maxCacheBytes: 10 * 1024 * 1024, now: () => now };
 }
@@ -70,6 +86,48 @@ describe("serveStoredImage", () => {
     );
     expect(second.headers.get("x-image-cache")).toBe("hit");
     expect(Buffer.from(await second.arrayBuffer()).equals(transformed)).toBe(true);
+  });
+
+  it("returns 304 for a matching transformed validator", async () => {
+    const url = "/api/characters/test/avatar?w=512&q=80&v=test-image.png";
+    const first = await serveStoredImage(request(url), storedPath, optimizerOptions());
+    const revalidated = await serveStoredImage(
+      new Request(`http://localhost${url}`, {
+        headers: { "if-none-match": first.headers.get("etag") ?? "" },
+      }),
+      storedPath,
+      optimizerOptions(),
+    );
+
+    expect(revalidated.status).toBe(304);
+    expect((await revalidated.arrayBuffer()).byteLength).toBe(0);
+  });
+
+  it("serves transformed bytes when the cache cannot be written", async () => {
+    await writeFile(cacheDir, "not a directory");
+
+    const response = await serveStoredImage(
+      request("/api/characters/test/avatar?w=512"),
+      storedPath,
+      optimizerOptions(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/webp");
+  });
+
+  it("regenerates a corrupt cache entry", async () => {
+    const url = "/api/characters/test/avatar?w=512&q=80&v=test-image.png";
+    const first = await serveStoredImage(request(url), storedPath, optimizerOptions());
+    const cacheFile = await findWebpCache(cacheDir);
+    await writeFile(cacheFile, "corrupt");
+
+    const second = await serveStoredImage(request(url), storedPath, optimizerOptions());
+    const secondBytes = Buffer.from(await second.arrayBuffer());
+    expect(second.status).toBe(200);
+    expect(second.headers.get("x-image-cache")).toBe("miss");
+    expect((await sharp(secondBytes).metadata()).format).toBe("webp");
+    expect(secondBytes.equals(Buffer.from(await first.arrayBuffer()))).toBe(true);
   });
 
   it("serves AVIF with the correct MIME type and optimizes it when requested", async () => {
@@ -136,6 +194,15 @@ describe("serveStoredImage", () => {
     expect(response.headers.get("content-type")).toBe("image/png");
     expect(response.headers.get("x-image-cache")).toBe("source");
     expect((await sharp(await response.arrayBuffer()).metadata()).format).toBe("png");
+
+    const revalidated = await serveStoredImage(
+      new Request("http://localhost/api/characters/test/avatar", {
+        headers: { "if-none-match": response.headers.get("etag") ?? "" },
+      }),
+      storedPath,
+      optimizerOptions(),
+    );
+    expect(revalidated.status).toBe(304);
   });
 
   it("does not advertise an unversioned transformed response as immutable", async () => {
