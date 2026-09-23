@@ -93,11 +93,16 @@ export function isSupportedRasterMetadata(metadata: ImageMetadata): boolean {
 }
 
 export async function validateUploadedImage(bytes: Uint8Array): Promise<ImageMetadata> {
-  const metadata = await sharp(bytes, {
-    failOn: "error",
-    limitInputPixels: MAX_IMAGE_PIXELS,
-    sequentialRead: true,
-  }).metadata();
+  let metadata: ImageMetadata;
+  try {
+    metadata = await sharp(bytes, {
+      failOn: "error",
+      limitInputPixels: MAX_IMAGE_PIXELS,
+      sequentialRead: true,
+    }).metadata();
+  } catch {
+    throw new Error("Invalid image data");
+  }
 
   if (isUnsafeImageMetadata(metadata) || !isSupportedRasterMetadata(metadata)) {
     throw new Error("Unsupported image format");
@@ -105,5 +110,19 @@ export async function validateUploadedImage(bytes: Uint8Array): Promise<ImageMet
   if (metadata.width !== undefined && metadata.height !== undefined) {
     assertImagePixelCount(metadata.width, metadata.height, metadata.channels, metadata.depth);
   }
+
+  try {
+    const { info } = await sharp(bytes, {
+      failOn: "error",
+      limitInputPixels: MAX_IMAGE_PIXELS,
+      sequentialRead: true,
+    })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+    assertImagePixelCount(info.width, info.height, info.channels, metadata.depth);
+  } catch {
+    throw new Error("Invalid image data");
+  }
+
   return metadata;
 }

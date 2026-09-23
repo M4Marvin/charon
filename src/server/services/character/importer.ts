@@ -23,7 +23,11 @@ import {
   diskPathFromStored,
   storedPathFromDiskComponents,
 } from "@/server/uploads";
-import { decodeImageBase64, validatePngDimensions } from "@/server/image-limits";
+import {
+  decodeImageBase64,
+  validatePngDimensions,
+  validateUploadedImage,
+} from "@/server/image-limits";
 import type { DB } from "@/db";
 
 export type ImportError =
@@ -53,13 +57,15 @@ export type ParsedCard = {
   pngBytes: Uint8Array;
 };
 
-export function parseAndValidateCard(
+export async function parseAndValidateCard(
   pngBase64: string,
-): { ok: true; parsed: ParsedCard } | { ok: false; error: ImportError } {
+): Promise<{ ok: true; parsed: ParsedCard } | { ok: false; error: ImportError }> {
   let pngBytes: Uint8Array;
   try {
     const bytes = decodeImageBase64(pngBase64);
     validatePngDimensions(bytes);
+    const metadata = await validateUploadedImage(bytes);
+    if (metadata.format !== "png") throw new Error("Character cards must be PNG");
     pngBytes = bytes;
   } catch (e) {
     return {
@@ -127,11 +133,11 @@ export type PreviewResult = {
   duplicateOf: { id: string; name: string } | null;
 };
 
-export function previewCharacterCard(
+export async function previewCharacterCard(
   pngBase64: string,
   db?: DB,
-): { ok: true; data: PreviewResult } | { ok: false; error: ImportError } {
-  const parsed = parseAndValidateCard(pngBase64);
+): Promise<{ ok: true; data: PreviewResult } | { ok: false; error: ImportError }> {
+  const parsed = await parseAndValidateCard(pngBase64);
   if (!parsed.ok) return parsed;
 
   const { cardData, spec, specVersion } = parsed.parsed;
@@ -165,7 +171,7 @@ export function previewCharacterCard(
 }
 
 export async function importCharacterCard(pngBase64: string, db?: DB): Promise<ImportResult> {
-  const parsed = parseAndValidateCard(pngBase64);
+  const parsed = await parseAndValidateCard(pngBase64);
   if (!parsed.ok) return parsed;
 
   const { cardData, spec, specVersion, pngBytes } = parsed.parsed;

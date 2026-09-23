@@ -32,6 +32,16 @@ describe("image limits", () => {
     );
   });
 
+  it("rejects image data that only has valid metadata headers", async () => {
+    const png = await sharp({
+      create: { width: 20, height: 20, channels: 3, background: "red" },
+    })
+      .png()
+      .toBuffer();
+
+    await expect(validateUploadedImage(png.subarray(0, 40))).rejects.toThrow("Invalid image data");
+  });
+
   it("rejects active SVG uploads", async () => {
     const svg = Buffer.from(
       '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><script>alert(1)</script></svg>',

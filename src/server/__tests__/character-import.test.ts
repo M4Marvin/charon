@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { deflateSync } from "node:zlib";
 import PNGtext from "png-chunk-text";
 import { crc32 } from "crc";
 import {
@@ -50,6 +51,7 @@ function buildPng(textChunks: Array<{ keyword: string; text: string }>): Uint8Ar
   ihdr[12] = 0;
   const chunks: Array<{ name: string; data: Uint8Array }> = [
     { name: "IHDR", data: ihdr },
+    { name: "IDAT", data: new Uint8Array(deflateSync(Buffer.from([0, 255, 0, 0, 0]))) },
     ...textChunks.map((t) =>
       PNGtext.encode(t.keyword, Buffer.from(t.text, "utf8").toString("base64")),
     ),
@@ -127,27 +129,27 @@ function makeCard(name: string): string {
 }
 
 describe("parseAndValidateCard", () => {
-  it("rejects invalid base64", () => {
-    const result = parseAndValidateCard("invalid!@@");
+  it("rejects invalid base64", async () => {
+    const result = await parseAndValidateCard("invalid!@@");
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.kind).toBe("invalid_png");
     }
   });
 
-  it("rejects a PNG without character data", () => {
+  it("rejects a PNG without character data", async () => {
     const png = buildPng([]);
     const b64 = Buffer.from(png).toString("base64");
-    const result = parseAndValidateCard(b64);
+    const result = await parseAndValidateCard(b64);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.kind).toBe("invalid_png");
     }
   });
 
-  it("parses a valid V2 character card", () => {
+  it("parses a valid V2 character card", async () => {
     const b64 = makeCard("Alaric");
-    const result = parseAndValidateCard(b64);
+    const result = await parseAndValidateCard(b64);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.parsed.cardData.name).toBe("Alaric");
@@ -171,9 +173,9 @@ describe("previewCharacterCard", () => {
     ctx.sqlite.close();
   });
 
-  it("returns preview with warnings and counts", () => {
+  it("returns preview with warnings and counts", async () => {
     const b64 = makeCard("Zephyr");
-    const result = previewCharacterCard(b64, db);
+    const result = await previewCharacterCard(b64, db);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.preview.name).toBe("Zephyr");
@@ -186,7 +188,7 @@ describe("previewCharacterCard", () => {
     }
   });
 
-  it("returns duplicateOf when name matches an existing character", () => {
+  it("returns duplicateOf when name matches an existing character", async () => {
     createCharacter(
       {
         id: "char-1",
@@ -214,7 +216,7 @@ describe("previewCharacterCard", () => {
     );
 
     const b64 = makeCard("Zephyr");
-    const result = previewCharacterCard(b64, db);
+    const result = await previewCharacterCard(b64, db);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.duplicateOf).not.toBeNull();
@@ -223,7 +225,7 @@ describe("previewCharacterCard", () => {
     }
   });
 
-  it("handles cards with minimal data", () => {
+  it("handles cards with minimal data", async () => {
     const minimalCard = JSON.stringify({
       spec: "chara_card_v2",
       spec_version: "2.0",
@@ -246,7 +248,7 @@ describe("previewCharacterCard", () => {
     });
     const png = buildPng([{ keyword: "chara", text: minimalCard }]);
     const b64 = Buffer.from(png).toString("base64");
-    const result = previewCharacterCard(b64, db);
+    const result = await previewCharacterCard(b64, db);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.preview.name).toBe("Echo");
