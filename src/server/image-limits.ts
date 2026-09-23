@@ -13,6 +13,10 @@ export type ImageMetadata = {
   compression?: string;
   width?: number;
   height?: number;
+  autoOrient?: {
+    width: number;
+    height: number;
+  };
   pages?: number;
   channels?: number;
   depth?: number | string;

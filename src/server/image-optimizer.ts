@@ -356,7 +356,7 @@ function getVariantIdentity(
   return {
     cacheKey,
     sourceKey,
-    cachePath: join(cacheDir, sourceKey, `${width}-${quality}.webp`),
+    cachePath: join(cacheDir, sourceKey, `${cacheKey}.webp`),
   };
 }
 
@@ -475,17 +475,16 @@ export async function serveStoredImage(
     if (stats.size < 10 * 1024 && (metadata.format === "webp" || isAvifMetadata(metadata))) {
       return serveOriginal(request, sourcePath, stats, metadata);
     }
+    const sourceWidth = metadata.autoOrient?.width ?? metadata.width;
     if (
-      (metadata.width ?? width) <= width &&
+      (sourceWidth ?? width) <= width &&
       (metadata.format === "webp" || isAvifMetadata(metadata))
     ) {
       return serveOriginal(request, sourcePath, stats, metadata);
     }
 
     const effectiveWidth =
-      metadata.width !== undefined && metadata.width > 0 && metadata.width < width
-        ? metadata.width
-        : width;
+      sourceWidth !== undefined && sourceWidth > 0 && sourceWidth < width ? sourceWidth : width;
     if (effectiveWidth !== width) {
       identity = getVariantIdentity(
         sourcePath,

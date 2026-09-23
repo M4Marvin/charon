@@ -92,6 +92,67 @@ describe("serveStoredImage", () => {
     expect(Buffer.from(await second.arrayBuffer()).equals(transformed)).toBe(true);
   });
 
+  it("does not reuse a cached variant after a same-path source replacement", async () => {
+    const first = await serveStoredImage(
+      request("/api/characters/test/avatar?w=512"),
+      storedPath,
+      optimizerOptions(),
+    );
+    const firstBytes = Buffer.from(await first.arrayBuffer());
+    expect(first.headers.get("x-image-cache")).toBe("miss");
+
+    await writeFile(
+      sourcePath,
+      await sharp({
+        create: {
+          width: 1200,
+          height: 800,
+          channels: 3,
+          background: { r: 220, g: 40, b: 40 },
+        },
+      })
+        .png()
+        .toBuffer(),
+    );
+
+    const second = await serveStoredImage(
+      request("/api/characters/test/avatar?w=512"),
+      storedPath,
+      optimizerOptions(),
+    );
+    const secondBytes = Buffer.from(await second.arrayBuffer());
+
+    expect(second.headers.get("x-image-cache")).toBe("miss");
+    expect(secondBytes.equals(firstBytes)).toBe(false);
+  });
+
+  it("uses the oriented width when selecting a transform", async () => {
+    await writeFile(
+      sourcePath,
+      await sharp({
+        create: {
+          width: 800,
+          height: 1200,
+          channels: 3,
+          background: { r: 40, g: 100, b: 180 },
+        },
+      })
+        .jpeg()
+        .withMetadata({ orientation: 6 })
+        .toBuffer(),
+    );
+
+    const response = await serveStoredImage(
+      request("/api/characters/test/avatar?w=960"),
+      storedPath,
+      optimizerOptions(),
+    );
+    const metadata = await sharp(Buffer.from(await response.arrayBuffer())).metadata();
+
+    expect(metadata.width).toBe(960);
+    expect(metadata.height).toBe(640);
+  });
+
   it("shares one cached variant for widths larger than the source", async () => {
     await writeFile(
       sourcePath,
