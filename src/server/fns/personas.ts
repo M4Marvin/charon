@@ -10,6 +10,7 @@ import {
   storedPathFromDiskComponents,
 } from "@/server/uploads";
 import { decodeImageBase64, validateUploadedImage } from "@/server/image-limits";
+import { invalidateStoredImageCache } from "@/server/image-optimizer";
 import type { Persona } from "@/db/schema";
 import { UploadPersonaIconInput } from "@/server/schemas/persona";
 import {
@@ -109,6 +110,7 @@ export const deletePersona = createServerFn({ method: "POST" })
     await getSession();
     const existing = repoGet(data.id);
     if (existing.iconPath) {
+      await invalidateStoredImageCache(existing.iconPath).catch(() => {});
       try {
         await rm(diskPathFromStored(existing.iconPath), { force: true });
       } catch {}
@@ -133,6 +135,7 @@ export const uploadPersonaIcon = createServerFn({ method: "POST" })
     await writeFile(diskPath, bytes);
 
     if (existing.iconPath) {
+      await invalidateStoredImageCache(existing.iconPath).catch(() => {});
       try {
         await rm(diskPathFromStored(existing.iconPath), { force: true });
       } catch {}

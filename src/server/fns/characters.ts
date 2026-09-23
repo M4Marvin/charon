@@ -17,6 +17,7 @@ import type { CharacterDataV2 } from "@/lib/st-core/character";
 import { getSession } from "@/server/session";
 import { validateId } from "@/server/validators";
 import { diskPathFromStored } from "@/server/uploads";
+import { invalidateStoredImageCache } from "@/server/image-optimizer";
 import {
   importCharacterCard,
   previewCharacterCard,
@@ -152,6 +153,7 @@ export const deleteCharacter = createServerFn({ method: "POST" })
     repoDelete(data.id);
 
     if (imagePath) {
+      await invalidateStoredImageCache(imagePath).catch(() => {});
       try {
         await rm(diskPathFromStored(imagePath), { force: true });
       } catch {}

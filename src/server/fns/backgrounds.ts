@@ -20,6 +20,7 @@ import {
   storedPathFromDiskComponents,
 } from "@/server/uploads";
 import { decodeImageBase64, validateUploadedImage } from "@/server/image-limits";
+import { invalidateStoredImageCache } from "@/server/image-optimizer";
 
 export type BackgroundListItem = Pick<Background, "id" | "name" | "path" | "createdAt">;
 
@@ -61,6 +62,7 @@ export const deleteBackground = createServerFn({ method: "POST" })
 
     const bg = repoGet(data.id);
 
+    await invalidateStoredImageCache(bg.path).catch(() => {});
     try {
       await rm(diskPathFromStored(bg.path), { force: true });
     } catch {

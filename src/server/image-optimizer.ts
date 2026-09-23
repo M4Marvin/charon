@@ -26,7 +26,8 @@ import {
 } from "@/server/image-limits";
 
 const DEFAULT_CACHE_MAX_BYTES = 1024 * 1024 * 1024;
-const CACHE_SCHEMA_VERSION = "2";
+const CACHE_SCHEMA_VERSION = "3";
+const INVALIDATION_TTL_MS = 10 * 60 * 1000;
 const TRANSFORM_TIMEOUT_SECONDS = 5;
 const MIN_CACHE_PRUNE_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_CONCURRENT_TRANSFORMS = Math.max(1, Math.min(4, availableParallelism() - 1));
@@ -35,6 +36,7 @@ const log = createLogger("image-optimizer");
 sharp.concurrency(Math.max(1, Math.min(2, availableParallelism())));
 
 const inFlight = new Map<string, Promise<Buffer>>();
+const invalidatedSourceKeys = new Set<string>();
 const sourceMetadataCache = new Map<string, Promise<ImageMetadata>>();
 const MAX_SOURCE_METADATA_CACHE_ENTRIES = 256;
 type TransformWaiter = { resolve: () => void; reject: (error: Error) => void };
@@ -69,6 +71,24 @@ function cacheMaxBytes(): number {
   const configuredMb = Number(process.env.IMAGE_CACHE_MAX_MB ?? 1024);
   if (!Number.isFinite(configuredMb) || configuredMb <= 0) return DEFAULT_CACHE_MAX_BYTES;
   return Math.floor(configuredMb * 1024 * 1024);
+}
+
+export type ImageCacheInvalidationOptions = Pick<ImageOptimizerOptions, "rootDir" | "cacheDir">;
+
+export async function invalidateStoredImageCache(
+  storedPath: string,
+  options: ImageCacheInvalidationOptions = {},
+): Promise<void> {
+  const rootDir = options.rootDir ?? UPLOADS_DISK_ROOT;
+  const sourcePath = resolveStoredPath(rootDir, storedPath);
+  if (!sourcePath) return;
+
+  const cacheDir = options.cacheDir ?? join(rootDir, ".image-cache");
+  const sourceKey = sourceCacheKey(sourcePath);
+  invalidatedSourceKeys.add(sourceKey);
+  const timer = setTimeout(() => invalidatedSourceKeys.delete(sourceKey), INVALIDATION_TTL_MS);
+  timer.unref();
+  await rm(join(cacheDir, sourceKey), { recursive: true, force: true });
 }
 
 function resolveStoredPath(rootDir: string, storedPath: string): string | null {
@@ -153,6 +173,14 @@ function contentTypeForMetadata(metadata: ImageMetadata): string {
     default:
       return "application/octet-stream";
   }
+}
+
+function sourceCacheKey(sourcePath: string): string {
+  return createHash("sha256")
+    .update(CACHE_SCHEMA_VERSION)
+    .update("\0")
+    .update(sourcePath)
+    .digest("hex");
 }
 
 function sourceMetadataKey(sourcePath: string, stats: Stats): string {
@@ -260,11 +288,20 @@ function scheduleCachePrune(cacheDir: string, maxBytes: number, now: Date): void
   void pruneCache(cacheDir, maxBytes).catch(() => {});
 }
 
-async function writeCacheFile(cachePath: string, bytes: Buffer): Promise<boolean> {
+async function writeCacheFile(
+  cachePath: string,
+  bytes: Buffer,
+  sourceKey?: string,
+): Promise<boolean> {
+  if (sourceKey && invalidatedSourceKeys.has(sourceKey)) return false;
   const temporaryPath = `${cachePath}.${process.pid}.${randomUUID()}.tmp`;
   try {
     await mkdir(dirname(cachePath), { recursive: true });
     await writeFile(temporaryPath, bytes, { flag: "wx" });
+    if (sourceKey && invalidatedSourceKeys.has(sourceKey)) {
+      await rm(temporaryPath, { force: true }).catch(() => {});
+      return false;
+    }
     await rename(temporaryPath, cachePath);
     return true;
   } catch (error) {
@@ -280,6 +317,7 @@ async function writeCacheFile(cachePath: string, bytes: Buffer): Promise<boolean
 
 type VariantIdentity = {
   cacheKey: string;
+  sourceKey: string;
   cachePath: string;
 };
 
@@ -297,10 +335,9 @@ function getVariantIdentity(
   quality: number,
   stats: Stats,
 ): VariantIdentity {
+  const sourceKey = sourceCacheKey(sourcePath);
   const cacheKey = createHash("sha256")
-    .update(CACHE_SCHEMA_VERSION)
-    .update("\0")
-    .update(sourcePath)
+    .update(sourceKey)
     .update("\0")
     .update(String(stats.ctimeMs))
     .update("\0")
@@ -316,7 +353,8 @@ function getVariantIdentity(
     .digest("hex");
   return {
     cacheKey,
-    cachePath: join(cacheDir, cacheKey.slice(0, 2), `${cacheKey}.webp`),
+    sourceKey,
+    cachePath: join(cacheDir, sourceKey, `${width}-${quality}.webp`),
   };
 }
 
@@ -361,7 +399,7 @@ async function transformVariant(
         .webp({ quality, effort: 4, smartSubsample: true })
         .timeout({ seconds: TRANSFORM_TIMEOUT_SECONDS })
         .toBuffer();
-      await writeCacheFile(identity.cachePath, bytes);
+      await writeCacheFile(identity.cachePath, bytes, identity.sourceKey);
       return bytes;
     } finally {
       inFlight.delete(identity.cacheKey);

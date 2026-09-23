@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import sharp from "sharp";
-import { serveStoredImage } from "@/server/image-optimizer";
+import { invalidateStoredImageCache, serveStoredImage } from "@/server/image-optimizer";
 
 let testDir: string;
 let rootDir: string;
@@ -114,6 +114,20 @@ describe("serveStoredImage", () => {
     }
 
     expect(await listWebpCacheFiles(cacheDir)).toHaveLength(1);
+  });
+
+  it("removes all cached variants when a source is invalidated", async () => {
+    for (const width of [512, 640]) {
+      await serveStoredImage(
+        request(`/api/characters/test/avatar?w=${width}`),
+        storedPath,
+        optimizerOptions(),
+      );
+    }
+    expect(await listWebpCacheFiles(cacheDir)).toHaveLength(2);
+
+    await invalidateStoredImageCache(storedPath, { rootDir, cacheDir });
+    expect(await listWebpCacheFiles(cacheDir)).toHaveLength(0);
   });
 
   it("returns 304 for a matching transformed validator", async () => {
