@@ -29,10 +29,9 @@ vi.mock("node:fs/promises", async (importOriginal) => ({
 }));
 
 /**
- * Build a minimal PNG with arbitrary tEXt chunks + IEND. Same approach as
- * the st-core parser test: IHDR + tEXt chunks + IEND, using the `crc`
- * package for correct CRC values. No IDAT needed — the parser only reads
- * tEXt chunks.
+ * Build a minimal valid PNG with arbitrary tEXt chunks + IEND. It includes
+ * one decoded IDAT row so upload-level validation exercises the pixel data as
+ * well as the character metadata.
  */
 function buildPng(textChunks: Array<{ keyword: string; text: string }>): Uint8Array {
   const ihdr = new Uint8Array(13);
