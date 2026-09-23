@@ -9,7 +9,7 @@
 // Re-runnable: skips existing rows by name so it is safe to re-run after a
 // partial failure.
 
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -235,6 +235,7 @@ async function migrateCharacters(
         })
         .run();
     } catch (e) {
+      await rm(writePath, { force: true }).catch(() => {});
       console.log(`  ✗ ${fileBase}: insert (${(e as Error).message})`);
       counts.failed++;
       continue;
@@ -404,6 +405,7 @@ async function migratePersonas(): Promise<Counts> {
     const id = randomUUID();
 
     let iconPath: string | null = null;
+    let iconWritePath: string | null = null;
     const userAvatarPath = join(DATA_ROOT, "User Avatars", avatarKey);
     const thumbnailPath = join(DATA_ROOT, "thumbnails", "persona", avatarKey);
     const sourcePath = existsSync(userAvatarPath)
@@ -414,13 +416,14 @@ async function migratePersonas(): Promise<Counts> {
 
     if (sourcePath) {
       const iconFilename = `${id}.png`;
-      const iconWritePath = join(PERSONA_ICON_DIR, iconFilename);
+      iconWritePath = join(PERSONA_ICON_DIR, iconFilename);
       iconPath = join(PERSONA_PUBLIC_PREFIX, iconFilename);
       try {
         const iconBytes = await readFile(sourcePath);
         await validateUploadedImage(iconBytes);
         await writeFile(iconWritePath, iconBytes);
       } catch (e) {
+        if (iconWritePath) await rm(iconWritePath, { force: true }).catch(() => {});
         console.log(`  ✗ ${name}: icon copy (${(e as Error).message})`);
         iconPath = null;
       }
@@ -441,6 +444,7 @@ async function migratePersonas(): Promise<Counts> {
       counts.inserted++;
       console.log(`  ✓ ${name}${iconPath ? " (with icon)" : " (no icon)"}`);
     } catch (e) {
+      if (iconWritePath) await rm(iconWritePath, { force: true }).catch(() => {});
       console.log(`  ✗ ${name}: ${(e as Error).message}`);
       counts.failed++;
     }

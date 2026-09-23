@@ -7,8 +7,9 @@
 import { config } from "dotenv";
 config({ path: [".env.local", ".env"] });
 
-import { readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { eq, like } from "drizzle-orm";
 
@@ -26,11 +27,13 @@ import {
 const SOURCE_BASE = "public/data";
 
 type Counts = { found: number; moved: number; skipped: number };
+type MigrationResult = Counts & { verified: Set<string> };
 
-async function migrateSubdir(subdir: UploadSubdir): Promise<Counts> {
+async function migrateSubdir(subdir: UploadSubdir): Promise<MigrationResult> {
   const counts: Counts = { found: 0, moved: 0, skipped: 0 };
+  const verified = new Set<string>();
   const sourceDir = join(SOURCE_BASE, UPLOADS_SUBDIRS[subdir]);
-  if (!existsSync(sourceDir)) return counts;
+  if (!existsSync(sourceDir)) return { ...counts, verified };
 
   const entries = await readdir(sourceDir, { withFileTypes: true });
   const images = entries.filter(
@@ -47,33 +50,68 @@ async function migrateSubdir(subdir: UploadSubdir): Promise<Counts> {
 
     if (existsSync(dst)) {
       const destinationBytes = await readFile(dst);
-      await validateUploadedImage(destinationBytes);
-      if (!sourceBytes.equals(destinationBytes)) {
-        throw new Error(`Refusing to overwrite different destination: ${dst}`);
+      let destinationIsValid = true;
+      try {
+        await validateUploadedImage(destinationBytes);
+      } catch {
+        destinationIsValid = false;
       }
-      counts.skipped++;
-      continue;
+      if (destinationIsValid) {
+        if (!sourceBytes.equals(destinationBytes)) {
+          throw new Error(`Refusing to overwrite different destination: ${dst}`);
+        }
+        verified.add(stored);
+        counts.skipped++;
+        continue;
+      }
+      await rm(dst, { force: true });
     }
 
-    await writeFile(dst, sourceBytes, { flag: "wx" });
+    const tempPath = `${dst}.tmp-${randomUUID()}`;
+    try {
+      await writeFile(tempPath, sourceBytes, { flag: "wx" });
+      await rename(tempPath, dst);
+    } finally {
+      await rm(tempPath, { force: true }).catch(() => {});
+    }
+    verified.add(stored);
     counts.moved++;
   }
 
-  return counts;
+  return { ...counts, verified };
 }
 
-function updateDbPaths(): void {
+function verifiedPath(
+  path: string | null,
+  oldPrefix: string,
+  newPrefix: string,
+  verified: Set<string>,
+): string | null {
+  if (!path) return null;
+  const next = path.replace(oldPrefix, newPrefix);
+  if (!verified.has(next)) {
+    console.warn(`  ! skipped unverified path: ${path}`);
+    return null;
+  }
+  try {
+    diskPathFromStored(next);
+  } catch {
+    console.warn(`  ! skipped invalid path: ${path}`);
+    return null;
+  }
+  return next;
+}
+
+function updateDbPaths(verified: Set<string>): void {
   const chars = db
     .select({ id: characters.id, p: characters.imagePath })
     .from(characters)
     .where(like(characters.imagePath, "data/avatars/%"))
     .all();
   for (const c of chars) {
-    if (c.p) {
-      db.update(characters)
-        .set({ imagePath: c.p.replace("data/avatars/", "uploads/avatars/") })
-        .where(eq(characters.id, c.id))
-        .run();
+    const next = verifiedPath(c.p, "data/avatars/", "uploads/avatars/", verified);
+    if (next) {
+      db.update(characters).set({ imagePath: next }).where(eq(characters.id, c.id)).run();
     }
   }
 
@@ -83,11 +121,9 @@ function updateDbPaths(): void {
     .where(like(backgrounds.path, "data/backgrounds/%"))
     .all();
   for (const b of bgs) {
-    if (b.p) {
-      db.update(backgrounds)
-        .set({ path: b.p.replace("data/backgrounds/", "uploads/backgrounds/") })
-        .where(eq(backgrounds.id, b.id))
-        .run();
+    const next = verifiedPath(b.p, "data/backgrounds/", "uploads/backgrounds/", verified);
+    if (next) {
+      db.update(backgrounds).set({ path: next }).where(eq(backgrounds.id, b.id)).run();
     }
   }
 
@@ -97,11 +133,9 @@ function updateDbPaths(): void {
     .where(like(personas.iconPath, "data/personas/%"))
     .all();
   for (const p of pers) {
-    if (p.p) {
-      db.update(personas)
-        .set({ iconPath: p.p.replace("data/personas/", "uploads/personas/") })
-        .where(eq(personas.id, p.id))
-        .run();
+    const next = verifiedPath(p.p, "data/personas/", "uploads/personas/", verified);
+    if (next) {
+      db.update(personas).set({ iconPath: next }).where(eq(personas.id, p.id)).run();
     }
   }
 }
@@ -157,24 +191,29 @@ async function main() {
   console.log("=== image path migration ===\n");
   await ensureUploadsDirs();
 
+  const verified = new Set<string>();
+
   console.log("[1/3] Moving avatars...");
   const avatarResult = await migrateSubdir("avatars");
+  for (const path of avatarResult.verified) verified.add(path);
   console.log(
     `  → ${avatarResult.found} found, ${avatarResult.moved} moved, ${avatarResult.skipped} skipped`,
   );
 
   console.log("[2/3] Moving backgrounds...");
   const bgResult = await migrateSubdir("backgrounds");
+  for (const path of bgResult.verified) verified.add(path);
   console.log(`  → ${bgResult.found} found, ${bgResult.moved} moved, ${bgResult.skipped} skipped`);
 
   console.log("[3/3] Moving personas...");
   const personaResult = await migrateSubdir("personas");
+  for (const path of personaResult.verified) verified.add(path);
   console.log(
     `  → ${personaResult.found} found, ${personaResult.moved} moved, ${personaResult.skipped} skipped`,
   );
 
   console.log("\n[DB] Updating stored paths...");
-  updateDbPaths();
+  updateDbPaths(verified);
   console.log("  → done");
 
   console.log("\n[Cleanup] Removing migrated/orphan image files from public/data/...");

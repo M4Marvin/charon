@@ -4,12 +4,19 @@ import sharp from "sharp";
 import {
   assertImagePixelCount,
   decodeImageBase64,
+  MAX_IMAGE_BYTES,
   isAvifMetadata,
   validatePngDimensions,
   validateUploadedImage,
 } from "@/server/image-limits";
 
 describe("image limits", () => {
+  it("rejects buffers above the upload byte limit", async () => {
+    await expect(validateUploadedImage(new Uint8Array(MAX_IMAGE_BYTES + 1))).rejects.toThrow(
+      "Image exceeds the allowed size limit",
+    );
+  });
+
   it("rejects malformed Base64 before decoding", () => {
     expect(() => decodeImageBase64("not-base64!")).toThrow("Invalid image data");
     expect(() => decodeImageBase64("a")).toThrow("Invalid image data");

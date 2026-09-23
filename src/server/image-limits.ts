@@ -96,6 +96,10 @@ export function isSupportedRasterMetadata(metadata: ImageMetadata): boolean {
 }
 
 export async function validateUploadedImage(bytes: Uint8Array): Promise<ImageMetadata> {
+  if (bytes.byteLength > MAX_IMAGE_BYTES) {
+    throw new Error("Image exceeds the allowed size limit");
+  }
+
   let metadata: ImageMetadata;
   try {
     metadata = await sharp(bytes, {
