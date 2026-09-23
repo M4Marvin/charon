@@ -332,7 +332,7 @@ function seedStarterLorebooks(): void {
   );
 }
 
-const SOURCE_DIR = "public/data/backgrounds-seed";
+const SOURCE_DIRS = ["data/backgrounds-seed", "public/data/backgrounds-seed"] as const;
 const DEST_DIR = "data/uploads/backgrounds";
 const PUBLIC_PATH_PREFIX = "uploads/backgrounds";
 
@@ -346,12 +346,18 @@ export async function seedDefaultBackgrounds(): Promise<void> {
   const count = defaultDb.select({ id: backgrounds.id }).from(backgrounds).limit(1).get();
   if (count) return;
 
-  let files: string[];
-  try {
-    files = await readdir(SOURCE_DIR);
-  } catch {
-    return;
+  let sourceDir: string | null = null;
+  let files: string[] = [];
+  for (const candidate of SOURCE_DIRS) {
+    try {
+      files = await readdir(candidate);
+      sourceDir = candidate;
+      break;
+    } catch {
+      // Try the next local/private seed location.
+    }
   }
+  if (!sourceDir) return;
 
   await mkdir(DEST_DIR, { recursive: true });
 
@@ -363,7 +369,7 @@ export async function seedDefaultBackgrounds(): Promise<void> {
     const destFilename = `${uuid}${ext}`;
     const destPath = join(DEST_DIR, destFilename);
 
-    await cp(join(SOURCE_DIR, file), destPath);
+    await cp(join(sourceDir, file), destPath);
 
     createBackground({
       name: cleanBackgroundName(file),
