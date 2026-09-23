@@ -25,43 +25,55 @@ function Avatar({
   );
 }
 
-type AvatarImageProps = React.ComponentProps<typeof AvatarPrimitive.Image> & {
+type AvatarImageProps = React.ComponentProps<"img"> & {
   priority?: boolean;
   quality?: ImageQuality;
   unoptimized?: boolean;
 };
 
-function AvatarImage({
-  className,
-  priority,
-  quality,
-  unoptimized,
-  width,
-  height,
-  ...props
-}: AvatarImageProps) {
-  const imageProps = props.src
-    ? getOptimizedImageProps({
-        ...props,
-        src: props.src,
-        alt: props.alt ?? "",
-        width: width == null ? undefined : Number(width),
-        height: height == null ? undefined : Number(height),
-        preset: "avatar",
-        priority,
-        quality,
-        unoptimized,
-      })
-    : { ...props, width, height };
+const AvatarImage = React.forwardRef<HTMLImageElement, AvatarImageProps>(function AvatarImage(
+  { className, priority, quality, unoptimized, src, width, height, onLoad, onError, ...props },
+  ref,
+) {
+  const [loadedSrc, setLoadedSrc] = React.useState<string | null>(null);
+  const [failedSrc, setFailedSrc] = React.useState<string | null>(null);
+
+  if (!src) return null;
+
+  const imageProps = getOptimizedImageProps({
+    ...props,
+    src,
+    alt: props.alt ?? "",
+    width: width == null ? undefined : Number(width),
+    height: height == null ? undefined : Number(height),
+    preset: "avatar",
+    priority,
+    quality,
+    unoptimized,
+  });
+  const visible = loadedSrc === src && failedSrc !== src;
 
   return (
-    <AvatarPrimitive.Image
+    <img
+      ref={ref}
       data-slot="avatar-image"
-      className={cn("aspect-square size-full rounded-full object-cover", className)}
+      className={cn(
+        "relative z-10 aspect-square size-full rounded-full object-cover",
+        !visible && "opacity-0",
+        className,
+      )}
       {...imageProps}
+      onLoad={(event) => {
+        setLoadedSrc(src);
+        onLoad?.(event);
+      }}
+      onError={(event) => {
+        setFailedSrc(src);
+        onError?.(event);
+      }}
     />
   );
-}
+});
 
 function AvatarFallback({
   className,
