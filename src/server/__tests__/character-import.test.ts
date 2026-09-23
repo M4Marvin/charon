@@ -129,27 +129,27 @@ function makeCard(name: string): string {
 }
 
 describe("parseAndValidateCard", () => {
-  it("rejects invalid base64", async () => {
-    const result = await parseAndValidateCard("invalid!@@");
+  it("rejects invalid base64", () => {
+    const result = parseAndValidateCard("invalid!@@");
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.kind).toBe("invalid_png");
     }
   });
 
-  it("rejects a PNG without character data", async () => {
+  it("rejects a PNG without character data", () => {
     const png = buildPng([]);
     const b64 = Buffer.from(png).toString("base64");
-    const result = await parseAndValidateCard(b64);
+    const result = parseAndValidateCard(b64);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.kind).toBe("invalid_png");
     }
   });
 
-  it("parses a valid V2 character card", async () => {
+  it("parses a valid V2 character card", () => {
     const b64 = makeCard("Alaric");
-    const result = await parseAndValidateCard(b64);
+    const result = parseAndValidateCard(b64);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.parsed.cardData.name).toBe("Alaric");

@@ -57,15 +57,13 @@ export type ParsedCard = {
   pngBytes: Uint8Array;
 };
 
-export async function parseAndValidateCard(
+export function parseAndValidateCard(
   pngBase64: string,
-): Promise<{ ok: true; parsed: ParsedCard } | { ok: false; error: ImportError }> {
+): { ok: true; parsed: ParsedCard } | { ok: false; error: ImportError } {
   let pngBytes: Uint8Array;
   try {
     const bytes = decodeImageBase64(pngBase64);
     validatePngDimensions(bytes);
-    const metadata = await validateUploadedImage(bytes);
-    if (metadata.format !== "png") throw new Error("Character cards must be PNG");
     pngBytes = bytes;
   } catch (e) {
     return {
@@ -118,6 +116,21 @@ export async function parseAndValidateCard(
   };
 }
 
+type InvalidPngError = Extract<ImportError, { kind: "invalid_png" }>;
+
+async function validateCharacterPngPixels(pngBytes: Uint8Array): Promise<InvalidPngError | null> {
+  try {
+    const metadata = await validateUploadedImage(pngBytes);
+    if (metadata.format === "png") return null;
+    return { kind: "invalid_png", message: "Character cards must be PNG" };
+  } catch (error) {
+    return {
+      kind: "invalid_png",
+      message: error instanceof Error ? error.message : "Invalid character card PNG",
+    };
+  }
+}
+
 export type PreviewResult = {
   preview: {
     name: string;
@@ -137,8 +150,10 @@ export async function previewCharacterCard(
   pngBase64: string,
   db?: DB,
 ): Promise<{ ok: true; data: PreviewResult } | { ok: false; error: ImportError }> {
-  const parsed = await parseAndValidateCard(pngBase64);
+  const parsed = parseAndValidateCard(pngBase64);
   if (!parsed.ok) return parsed;
+  const pixelError = await validateCharacterPngPixels(parsed.parsed.pngBytes);
+  if (pixelError) return { ok: false, error: pixelError };
 
   const { cardData, spec, specVersion } = parsed.parsed;
 
@@ -171,8 +186,10 @@ export async function previewCharacterCard(
 }
 
 export async function importCharacterCard(pngBase64: string, db?: DB): Promise<ImportResult> {
-  const parsed = await parseAndValidateCard(pngBase64);
+  const parsed = parseAndValidateCard(pngBase64);
   if (!parsed.ok) return parsed;
+  const pixelError = await validateCharacterPngPixels(parsed.parsed.pngBytes);
+  if (pixelError) return { ok: false, error: pixelError };
 
   const { cardData, spec, specVersion, pngBytes } = parsed.parsed;
 
