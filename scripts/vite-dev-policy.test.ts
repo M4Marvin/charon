@@ -76,5 +76,6 @@ describe("viteFsDeny", () => {
       ]),
     );
     expect(deny).not.toContain("**/data/**");
+    expect(viteFsDeny("/tmp/user[prod]")).toContain("/tmp/user\\[prod\\]/data/**");
   });
 });

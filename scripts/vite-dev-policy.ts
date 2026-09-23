@@ -11,8 +11,16 @@ export const VITE_DEFAULT_FS_DENY = [
   "**/.git/**",
 ] as const;
 
+function escapeGlob(value: string): string {
+  return value.replace(/([*?[\]{}()!+@])/g, "\\$1");
+}
+
+function anchoredRoot(root: string): string {
+  return escapeGlob(resolve(root).replaceAll("\\", "/"));
+}
+
 function absolutePattern(root: string, relativePath: string): string {
-  return resolve(root, relativePath).replaceAll("\\", "/");
+  return `${anchoredRoot(root)}/${relativePath}`;
 }
 
 export function viteFsDeny(root: string): string[] {
@@ -25,6 +33,10 @@ export function viteFsDeny(root: string): string[] {
     absolutePattern(root, "dev.db"),
     `${absolutePattern(root, "dev.db")}-*`,
     `${absolutePattern(root, "dev.db")}.bak-*`,
+    absolutePattern(root, "*.db"),
+    absolutePattern(root, "*.db-*"),
+    absolutePattern(root, "*.bak-*"),
+    absolutePattern(root, "*.tar.gz"),
     `${absolutePattern(root, "logs")}/**`,
   ];
 }

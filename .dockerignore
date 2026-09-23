@@ -16,3 +16,4 @@ public/
 dev.db
 dev.db-*
 dev.db.bak-*
+*.tar.gz

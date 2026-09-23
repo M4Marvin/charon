@@ -24,6 +24,7 @@ describe("Vite dev asset policy", () => {
     await mkdir(join(root, "logs"), { recursive: true });
     await writeFile(join(root, ".env"), "SECRET=1");
     await writeFile(join(root, "dev.db"), "database");
+    await writeFile(join(root, "backup.tar.gz"), "backup");
     await writeFile(join(root, "logs/app.log"), "log");
     await writeFile(join(root, "safe.txt"), "safe");
 
@@ -52,9 +53,11 @@ describe("Vite dev asset policy", () => {
         "/%2e%2e/public/data/avatars/legacy.png",
         "/.env",
         "/dev.db",
+        "/backup.tar.gz",
         "/logs/app.log",
         `/@fs${join(root, "data/uploads/avatars/private.png")}`,
         `/@fs${join(root, "dev.db")}`,
+        `/@fs${join(root, "backup.tar.gz")}`,
       ]) {
         const response = await fetch(`${base}${path}`);
         expect([403, 404], `${path} returned ${response.status}`).toContain(response.status);
