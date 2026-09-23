@@ -5,6 +5,7 @@ export const IMAGE_WIDTHS = [
 
 export const IMAGE_QUALITIES = [60, 70, 80, 90] as const;
 export const DEFAULT_IMAGE_QUALITY = 80;
+export const MAX_IMAGE_UPLOAD_BYTES = 50 * 1024 * 1024;
 
 export type ImageWidth = (typeof IMAGE_WIDTHS)[number];
 export type ImageQuality = (typeof IMAGE_QUALITIES)[number];

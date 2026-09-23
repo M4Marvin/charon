@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { OptimizedImage } from "@/components/ui/optimized-image";
+import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/image-optimization";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { fileToBase64, useImportCharacter } from "@/hooks/useCharacters";
@@ -55,7 +56,7 @@ export function NewCharacterPage() {
       setPreviewErr("Only PNG files are supported.");
       return;
     }
-    if (f.size > 50 * 1024 * 1024) {
+    if (f.size > MAX_IMAGE_UPLOAD_BYTES) {
       setPreviewErr("File too large (max 50 MB).");
       return;
     }
