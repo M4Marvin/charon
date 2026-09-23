@@ -1,3 +1,5 @@
+import { posix } from "node:path";
+
 import { defineConfig, loadEnv } from "vite";
 import { devtools } from "@tanstack/devtools-vite";
 
@@ -17,22 +19,43 @@ const lanHosts = (env.VITE_ALLOWED_HOSTS ?? "")
   .map((h) => h.trim())
   .filter(Boolean);
 
-const blockedDevAssetPaths = [
-  /^\/public\/(?:data|uploads)(?:\/|$)/,
-  /^\/data\/(?:avatars|backgrounds|personas)(?:\/|$)/,
-  /^\/uploads(?:\/|$)/,
-  /^\/@fs\/.*\/public\/(?:data|uploads)(?:\/|$)/,
-  /^\/@fs\/.*\/data(?:\/|$)/,
-];
+function normalizeDevRequestPath(rawUrl: string): string {
+  let pathname = rawUrl.split(/[?#]/, 1)[0] ?? "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const decoded = decodeURIComponent(pathname);
+      if (decoded === pathname) break;
+      pathname = decoded;
+    } catch {
+      // Keep the raw path for matching if it contains malformed escaping.
+      break;
+    }
+  }
+  pathname = `/${pathname.replace(/^\/+/, "")}`;
+  return posix.normalize(pathname);
+}
 
 function isBlockedDevAssetPath(rawUrl: string): boolean {
-  let pathname = rawUrl.split("?", 1)[0] ?? "";
-  try {
-    pathname = decodeURIComponent(pathname);
-  } catch {
-    // Keep the raw path for matching if it contains malformed escaping.
+  const pathname = normalizeDevRequestPath(rawUrl);
+  if (
+    pathname === "/data" ||
+    pathname.startsWith("/data/") ||
+    pathname === "/public/data" ||
+    pathname.startsWith("/public/data/") ||
+    pathname === "/public/uploads" ||
+    pathname.startsWith("/public/uploads/") ||
+    pathname === "/uploads" ||
+    pathname.startsWith("/uploads/")
+  ) {
+    return true;
   }
-  return blockedDevAssetPaths.some((pattern) => pattern.test(pathname));
+
+  if (pathname.startsWith("/@fs/")) {
+    const fsPath = pathname.slice("/@fs/".length);
+    return /(^|\/)(?:data|public\/(?:data|uploads))(?:\/|$)/.test(fsPath);
+  }
+
+  return false;
 }
 
 const config = defineConfig({
@@ -44,6 +67,8 @@ const config = defineConfig({
     ...(lanHosts.length > 0 ? { allowedHosts: lanHosts } : {}),
     fs: {
       strict: true,
+      // The middleware below also blocks ordinary /data URLs; these deny
+      // Vite's raw filesystem handler for equivalent /@fs requests.
       deny: ["public/data/**", "public/uploads/**", "data/**"],
     },
   },
