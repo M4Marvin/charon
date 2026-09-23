@@ -31,6 +31,7 @@ export function MoreByCreator({ creator, currentId }: { creator: string; current
               <div className="aspect-square overflow-hidden rounded-t-lg bg-muted">
                 {avatarUrl ? (
                   <OptimizedImage
+                    key={avatarUrl}
                     src={avatarUrl}
                     alt={item.name}
                     width={112}

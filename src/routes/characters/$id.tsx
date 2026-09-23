@@ -97,6 +97,7 @@ export function CharacterDetailPage() {
           className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[360px] overflow-hidden"
         >
           <OptimizedImage
+            key={avatarUrl}
             src={avatarUrl}
             alt=""
             preset="background"

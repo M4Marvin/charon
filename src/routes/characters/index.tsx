@@ -400,6 +400,11 @@ function CharacterCard({
 }) {
   const navigate = useNavigate();
   const imgRef = useRef<HTMLImageElement>(null);
+  const avatarUrl = character.imagePath
+    ? withImageVersion(`/api/characters/${character.id}/avatar`, character.imagePath)
+    : null;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const showImage = avatarUrl !== null && failedSrc !== avatarUrl;
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const img = imgRef.current;
@@ -428,16 +433,14 @@ function CharacterCard({
         className="block focus-ring rounded-xl"
       >
         <div className="relative aspect-square bg-muted overflow-hidden">
-          {character.imagePath ? (
+          {showImage && avatarUrl ? (
             <OptimizedImage
               ref={imgRef}
-              src={withImageVersion(`/api/characters/${character.id}/avatar`, character.imagePath)}
+              src={avatarUrl}
               alt={character.name}
               preset="card"
               className="size-full object-cover motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
+              onError={() => setFailedSrc(avatarUrl)}
             />
           ) : (
             <div className="flex size-full items-center justify-center bg-raised">

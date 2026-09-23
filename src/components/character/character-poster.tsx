@@ -35,6 +35,7 @@ export function CharacterPoster({ character, chats, onStartChat, starting }: Cha
         <div className="relative lg:h-full">
           {avatarUrl ? (
             <OptimizedImage
+              key={avatarUrl}
               src={avatarUrl}
               alt={character.name}
               preset="portrait"
@@ -171,6 +172,7 @@ function PortraitLightbox({
         <DialogTitle className="sr-only">Portrait of {name}</DialogTitle>
         {avatarUrl ? (
           <OptimizedImage
+            key={avatarUrl}
             src={avatarUrl}
             alt={name}
             preset="lightbox"
