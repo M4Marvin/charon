@@ -1,5 +1,7 @@
 import { posix } from "node:path";
 
+import type { Plugin } from "vite";
+
 /** Preserve Vite's defaults, then add Charon's private filesystem roots. */
 export const VITE_FS_DENY = [
   ".env",
@@ -53,4 +55,26 @@ export function isBlockedDevAssetPath(rawUrl: string): boolean {
   if (!pathname.startsWith("/@fs/")) return false;
   const fsPath = pathname.slice("/@fs/".length);
   return /(^|\/)(?:data|public\/(?:data|uploads))(?:\/|$)/.test(fsPath);
+}
+
+export function privateAssetDevPlugin(): Plugin {
+  return {
+    name: "charon-private-dev-assets",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url || "";
+        if (isBlockedDevAssetPath(url)) {
+          res.statusCode = 404;
+          res.end();
+          return;
+        }
+
+        const dest = req.headers["sec-fetch-dest"];
+        if (dest === "image" && (url.startsWith("/api/") || url.startsWith("/uploads/"))) {
+          req.headers["sec-fetch-dest"] = "empty";
+        }
+        next();
+      });
+    },
+  };
 }

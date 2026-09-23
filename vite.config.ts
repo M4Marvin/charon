@@ -5,7 +5,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 
 import viteReact from "@vitejs/plugin-react";
-import { isBlockedDevAssetPath, VITE_FS_DENY } from "./scripts/vite-dev-policy";
+import { privateAssetDevPlugin, VITE_FS_DENY } from "./scripts/vite-dev-policy";
 import tailwindcss from "@tailwindcss/vite";
 
 // Vite does not populate `process.env` from `.env*` files when evaluating an
@@ -46,25 +46,7 @@ const config = defineConfig({
   plugins: [
     devtools(),
     tailwindcss(),
-    {
-      name: "force-nitro-image-api",
-      configureServer(server) {
-        server.middlewares.use((req, res, next) => {
-          const url = req.url || "";
-          if (isBlockedDevAssetPath(url)) {
-            res.statusCode = 404;
-            res.end();
-            return;
-          }
-
-          const dest = req.headers["sec-fetch-dest"];
-          if (dest === "image" && (url.startsWith("/api/") || url.startsWith("/uploads/"))) {
-            req.headers["sec-fetch-dest"] = "empty";
-          }
-          next();
-        });
-      },
-    },
+    privateAssetDevPlugin(),
     nitro({
       publicAssets: [
         { dir: "static", maxAge: 0 },
