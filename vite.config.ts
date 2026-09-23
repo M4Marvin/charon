@@ -19,7 +19,7 @@ const lanHosts = (env.VITE_ALLOWED_HOSTS ?? "")
 
 const config = defineConfig({
   // Keep migration inputs under public/ out of both dev and production static serving.
-  publicDir: "static",
+  publicDir: false,
   // Dev-only (ignored by `vite build` and the prod server): extra hosts for
   // `pnpm dev:lan`, via VITE_ALLOWED_HOSTS in .env.local. Unset = localhost only.
   ...(lanHosts.length > 0 ? { server: { allowedHosts: lanHosts } } : {}),
@@ -50,7 +50,10 @@ const config = defineConfig({
       },
     },
     nitro({
-      publicAssets: [{ dir: "public", ignore: ["**"], maxAge: 0 }],
+      publicAssets: [
+        { dir: "static", maxAge: 0 },
+        { dir: "public", ignore: ["**"], maxAge: 0 },
+      ],
     }),
     tanstackStart({
       router: {
