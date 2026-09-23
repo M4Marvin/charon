@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Upload, ArrowLeft, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -32,6 +32,18 @@ export function NewCharacterPage() {
   // snapshot is per-render and cannot stop a same-tick re-entry).
   const [processing, setProcessing] = useState(false);
   const processingRef = useRef(false);
+  const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewObjectUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewObjectUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
 
   const processFile = async (f: File | null) => {
     if (processingRef.current) return;
@@ -44,7 +56,7 @@ export function NewCharacterPage() {
       return;
     }
     if (f.size > 50 * 1024 * 1024) {
-      setPreviewErr("File too large (max 5 MB).");
+      setPreviewErr("File too large (max 50 MB).");
       return;
     }
     processingRef.current = true;
@@ -168,9 +180,9 @@ export function NewCharacterPage() {
           {/* Preview card */}
           <div className="rounded-xl border bg-card p-6">
             <div className="flex gap-4">
-              {file ? (
+              {previewObjectUrl ? (
                 <OptimizedImage
-                  src={URL.createObjectURL(file)}
+                  src={previewObjectUrl}
                   alt={preview.preview.name}
                   preset="portrait"
                   intrinsicSize={false}

@@ -35,8 +35,15 @@ vi.mock("@tanstack/react-router", () => ({
 
 import { NewCharacterPage } from "./new";
 
+const nativeCreateObjectURL = URL.createObjectURL;
+const nativeRevokeObjectURL = URL.revokeObjectURL;
+
 // No vitest setup file / globals in this repo, so RTL auto-cleanup never runs.
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  URL.createObjectURL = nativeCreateObjectURL;
+  URL.revokeObjectURL = nativeRevokeObjectURL;
+});
 
 type PreviewResponse = { ok: true; data: PreviewResult } | { ok: false; error: ImportError };
 
@@ -62,9 +69,9 @@ function makePngFile(): File {
 describe("NewCharacterPage import loading state", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // jsdom lacks createObjectURL; the preview step renders <img src={URL.createObjectURL(file)}>
-    // (new.tsx:151) — without this stub the settled test crashes.
+    // jsdom does not implement object URLs; the settled preview owns one and revokes it on cleanup.
     URL.createObjectURL = vi.fn(() => "blob:mock");
+    URL.revokeObjectURL = vi.fn();
   });
 
   it("shows a spinner and disables the upload card while processing a file", async () => {
@@ -92,7 +99,7 @@ describe("NewCharacterPage import loading state", () => {
       }),
     );
 
-    render(<NewCharacterPage />);
+    const view = render(<NewCharacterPage />);
     fireEvent.change(screen.getByLabelText("Choose a PNG character card"), {
       target: { files: [makePngFile()] },
     });
@@ -104,6 +111,10 @@ describe("NewCharacterPage import loading state", () => {
 
     expect(screen.getByText("Ada Lovelace")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /choose a png character card/i })).toBeNull();
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+
+    view.unmount();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock");
   });
 
   it("keeps the upload card enabled when validation fails (regression)", () => {
