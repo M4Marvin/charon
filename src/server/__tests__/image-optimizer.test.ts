@@ -299,6 +299,11 @@ describe("serveStoredImage", () => {
       "../outside.png",
       optimizerOptions(),
     );
+    const siblingFile = await serveStoredImage(
+      request("/api/characters/test/avatar?w=512"),
+      "uploads/../local.db",
+      optimizerOptions(),
+    );
     const missing = await serveStoredImage(
       request("/api/characters/test/avatar?w=512"),
       "uploads/avatars/missing.png",
@@ -306,6 +311,7 @@ describe("serveStoredImage", () => {
     );
 
     expect(traversal.status).toBe(400);
+    expect(siblingFile.status).toBe(400);
     expect(missing.status).toBe(404);
   });
 });

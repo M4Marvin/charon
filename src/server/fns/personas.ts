@@ -30,20 +30,17 @@ export type PersonaListItem = Persona;
 const CreatePersonaInput = type({
   name: "string > 0",
   "description?": "string",
-  "iconPath?": "string",
 });
 
 const UpdatePersonaInput = type({
   id: "string > 0",
   "name?": "string > 0",
   "description?": "string | null",
-  "iconPath?": "string | null",
 });
 
 function validateCreateInput(data: unknown): {
   name: string;
   description?: string;
-  iconPath?: string;
 } {
   const result = CreatePersonaInput(data);
   if (result instanceof type.errors) throw new Error("Invalid persona input");
@@ -54,7 +51,6 @@ function validateUpdateInput(data: unknown): {
   id: string;
   name?: string;
   description?: string | null;
-  iconPath?: string | null;
 } {
   const result = UpdatePersonaInput(data);
   if (result instanceof type.errors) throw new Error("Invalid persona update");
@@ -86,7 +82,6 @@ export const createPersona = createServerFn({ method: "POST" })
       id,
       name: data.name,
       description: data.description ?? null,
-      iconPath: data.iconPath ?? null,
     };
     repoCreate(input);
     return { id };
@@ -99,7 +94,6 @@ export const updatePersona = createServerFn({ method: "POST", strict: { output: 
     const patch: UpdatePersonaInput = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.description !== undefined) patch.description = data.description;
-    if (data.iconPath !== undefined) patch.iconPath = data.iconPath;
     repoUpdate(data.id, patch);
     return { id: data.id };
   });

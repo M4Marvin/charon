@@ -33,11 +33,8 @@ export function usePersona(id: string) {
 export function useCreatePersona() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: {
-      name: string;
-      description?: string;
-      iconPath?: string;
-    }): Promise<{ id: string }> => createPersona({ data: input }),
+    mutationFn: (input: { name: string; description?: string }): Promise<{ id: string }> =>
+      createPersona({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: personaKeys.all });
       void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
@@ -52,7 +49,6 @@ export function useUpdatePersona() {
       id: string;
       name?: string;
       description?: string | null;
-      iconPath?: string | null;
     }): Promise<{ id: string }> => updatePersona({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: personaKeys.all });

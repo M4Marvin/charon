@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { availableParallelism } from "node:os";
 import type { Stats } from "node:fs";
 import { createReadStream } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, join } from "node:path";
 import { Readable } from "node:stream";
 import { mkdir, readFile, readdir, rename, rm, stat, utimes, writeFile } from "node:fs/promises";
 import sharp from "sharp";
@@ -13,7 +13,7 @@ import {
   isImageQuality,
   isImageWidth,
 } from "@/lib/image-optimization";
-import { UPLOADS_DISK_ROOT } from "@/server/uploads";
+import { resolveStoredUploadPath, UPLOADS_DISK_ROOT } from "@/server/uploads";
 import { createLogger } from "@/features/logging";
 import {
   MAX_IMAGE_BYTES,
@@ -92,12 +92,7 @@ export async function invalidateStoredImageCache(
 }
 
 function resolveStoredPath(rootDir: string, storedPath: string): string | null {
-  if (!storedPath || isAbsolute(storedPath)) return null;
-  const root = resolve(rootDir);
-  const candidate = resolve(root, storedPath);
-  const rel = relative(root, candidate);
-  if (rel.startsWith(`..${sep}`) || rel === "..") return null;
-  return candidate;
+  return resolveStoredUploadPath(rootDir, storedPath);
 }
 
 function errorResponse(message: string, status: number): Response {

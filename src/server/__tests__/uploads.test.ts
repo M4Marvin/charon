@@ -14,5 +14,10 @@ describe("diskPathFromStored", () => {
     expect(() => diskPathFromStored("uploads/../../outside.png")).toThrow(
       "Invalid stored upload path",
     );
+    expect(() => diskPathFromStored("local.db")).toThrow("Invalid stored upload path");
+    expect(() => diskPathFromStored("uploads/../local.db")).toThrow("Invalid stored upload path");
+    expect(() => diskPathFromStored("uploads/avatars/nested/image.png")).toThrow(
+      "Invalid stored upload path",
+    );
   });
 });
