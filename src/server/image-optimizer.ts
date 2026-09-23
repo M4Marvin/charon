@@ -150,11 +150,15 @@ function notModifiedResponse(etag: string, lastModified?: Date): Response {
 }
 
 function isWebpBuffer(bytes: Buffer): boolean {
-  return (
-    bytes.length >= 12 &&
-    bytes.toString("ascii", 0, 4) === "RIFF" &&
-    bytes.toString("ascii", 8, 12) === "WEBP"
-  );
+  if (
+    bytes.length < 16 ||
+    bytes.toString("ascii", 0, 4) !== "RIFF" ||
+    bytes.toString("ascii", 8, 12) !== "WEBP"
+  ) {
+    return false;
+  }
+  const chunk = bytes.toString("ascii", 12, 16);
+  return ["VP8 ", "VP8L", "VP8X"].includes(chunk) && bytes.readUInt32LE(4) + 8 === bytes.length;
 }
 
 function contentTypeForMetadata(metadata: ImageMetadata): string {
@@ -339,6 +343,8 @@ function getVariantIdentity(
   const sourceKey = sourceCacheKey(sourcePath);
   const cacheKey = createHash("sha256")
     .update(sourceKey)
+    .update("\0")
+    .update(cacheDir)
     .update("\0")
     .update(String(stats.ctimeMs))
     .update("\0")
