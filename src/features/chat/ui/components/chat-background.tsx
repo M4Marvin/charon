@@ -32,6 +32,7 @@ export function ChatBackground({ src, fallbackSrc }: ChatBackgroundProps) {
     <div className="pointer-events-none fixed inset-0 select-none">
       {showPrevious && previousSrc ? (
         <OptimizedImage
+          key={previousSrc}
           src={previousSrc}
           alt=""
           preset="background"
@@ -43,6 +44,7 @@ export function ChatBackground({ src, fallbackSrc }: ChatBackgroundProps) {
 
       {currentVisible && effectiveSrc ? (
         <OptimizedImage
+          key={effectiveSrc}
           src={effectiveSrc}
           alt=""
           preset="background"

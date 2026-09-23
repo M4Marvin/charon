@@ -39,6 +39,7 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
             }}
           >
             <OptimizedImage
+              key={src}
               src={src}
               alt={alt ?? ""}
               preset="lightbox"

@@ -57,6 +57,7 @@ export function CharacterPortraitPanel({
         <div className="aspect-[3/4] max-h-[70dvh] relative flex items-center justify-center bg-(--bg-base)/60">
           {shouldMountImage && imageSrc && !imageFailed ? (
             <OptimizedImage
+              key={imageSrc}
               src={imageSrc}
               alt={name}
               preset="portrait"

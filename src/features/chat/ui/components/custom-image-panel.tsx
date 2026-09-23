@@ -78,6 +78,7 @@ export function CustomImagePanel({
         <div className="relative flex items-center justify-center bg-(--bg-base)/60">
           {shouldMountImage && canOpen ? (
             <OptimizedImage
+              key={displaySrc}
               src={displaySrc}
               alt={label}
               preset="scene"
