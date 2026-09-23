@@ -42,8 +42,9 @@ export function assertImagePixelCount(
   height: number,
   channels = 4,
   depth: number | string = 8,
+  pages = 1,
 ): void {
-  const pixels = width * height;
+  const pixels = width * height * pages;
   const bytesPerSample =
     typeof depth === "number"
       ? Math.ceil(depth / 8)
@@ -58,6 +59,8 @@ export function assertImagePixelCount(
   if (
     !Number.isFinite(width) ||
     !Number.isFinite(height) ||
+    !Number.isFinite(pages) ||
+    pages <= 0 ||
     !Number.isFinite(decodedBytes) ||
     width <= 0 ||
     height <= 0 ||
@@ -108,18 +111,25 @@ export async function validateUploadedImage(bytes: Uint8Array): Promise<ImageMet
     throw new Error("Unsupported image format");
   }
   if (metadata.width !== undefined && metadata.height !== undefined) {
-    assertImagePixelCount(metadata.width, metadata.height, metadata.channels, metadata.depth);
+    assertImagePixelCount(
+      metadata.width,
+      metadata.height,
+      metadata.channels,
+      metadata.depth,
+      metadata.pages,
+    );
   }
 
   try {
     const { info } = await sharp(bytes, {
       failOn: "error",
       limitInputPixels: MAX_IMAGE_PIXELS,
+      pages: metadata.pages,
       sequentialRead: true,
     })
       .raw()
       .toBuffer({ resolveWithObject: true });
-    assertImagePixelCount(info.width, info.height, info.channels, metadata.depth);
+    assertImagePixelCount(info.width, info.height, info.channels, metadata.depth, metadata.pages);
   } catch {
     throw new Error("Invalid image data");
   }

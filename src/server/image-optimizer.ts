@@ -198,7 +198,13 @@ async function getSourceMetadata(sourcePath: string, stats: Stats): Promise<Imag
       sequentialRead: true,
     }).metadata();
     if (metadata.width !== undefined && metadata.height !== undefined) {
-      assertImagePixelCount(metadata.width, metadata.height, metadata.channels, metadata.depth);
+      assertImagePixelCount(
+        metadata.width,
+        metadata.height,
+        metadata.channels,
+        metadata.depth,
+        metadata.pages,
+      );
     }
     return metadata;
   })();

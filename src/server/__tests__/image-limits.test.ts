@@ -23,6 +23,9 @@ describe("image limits", () => {
     expect(() => assertImagePixelCount(8_000, 8_000, 4, "ushort")).toThrow(
       "Image dimensions exceed the allowed limit",
     );
+    expect(() => assertImagePixelCount(8_000, 8_000, 4, "uchar", 2)).toThrow(
+      "Image dimensions exceed the allowed limit",
+    );
 
     const pngHeader = new Uint8Array(24);
     new DataView(pngHeader.buffer).setUint32(16, 8_193);
