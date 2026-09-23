@@ -172,8 +172,8 @@ Browser → GET /api/{entity}/{id}/{field}?v={filename}&w={width}&q={quality}
 2. repo.getXxx(user.id, params.id) → 404 if missing
 3. diskPathFromStored(record.imagePath) → "data/uploads/{type}/{uuid}.{ext}"
 4. serveStoredImage validates bounded transform parameters
-5. Cache hit → cached WebP bytes; miss → Sharp resize/transcode → atomic disk write
-6. Response(bytes, immutable cache headers for versioned variants)
+5. Cache hit → cached WebP bytes; miss → Sharp resize/transcode → best-effort atomic disk write
+6. Response(bytes, private revalidation headers, and an ETag)
 ```
 
 `OptimizedImage` is the shared entry point for app-owned images. Use a
@@ -184,16 +184,21 @@ by `src/server/image-optimizer.ts`; blob, object, and data URLs pass through
 without a server round trip.
 
 The source upload remains untouched. This preserves character-card metadata
-and lets existing files optimize lazily. Generated variants live under
-`data/.image-cache/` and are keyed by source modification data and transform
-parameters. `IMAGE_CACHE_MAX_MB` controls the disk budget (default: 1024 MB).
+and lets existing files optimize lazily. Generated variants live in
+source-scoped directories under `data/.image-cache/` and are keyed by source
+modification data and transform parameters. Cache writes are best effort;
+deletion and replacement invalidate the source's variants. `IMAGE_CACHE_MAX_MB`
+controls the disk budget (default: 1024 MB). Uploads are limited to 50 MiB and
+100 megapixels, with a 256 MiB decoded-memory ceiling; active formats such as
+SVG are rejected. Responses are private and revalidate after five minutes so
+deleted private images are not retained in year-long browser caches.
 
 ### API routes
 
 | Route | DB field | User-scoped | File |
 |---|---|---|---|
 | `/api/characters/$id/avatar` | `character.imagePath` | Yes | `routes/api/characters/$id/avatar.ts` |
-| `/api/backgrounds/$id/image` | `background.path` | No (global) | `routes/api/backgrounds/$id/image.ts` |
+| `/api/backgrounds/$id/image` | `background.path` | Authenticated (global resource) | `routes/api/backgrounds/$id/image.ts` |
 | `/api/personas/$id/icon` | `persona.iconPath` | Yes | `routes/api/personas/$id/icon.ts` |
 
 ### URL construction
@@ -208,34 +213,35 @@ const src = record.imagePath ? `/api/characters/${record.id}/avatar` : null;
 
 ### Fallback pattern
 
-Every `<img>` must handle two states: **no path** (null src → placeholder) and **load error** (broken img → fallback).
+Every `<img>` must handle two states: **no path** (null src → placeholder) and
+**load error** (broken img → fallback). Prefer component state or a source-keyed
+image node so a new version can recover after an older request failed; avoid
+leaving imperative `style.display` state on a reused element.
 
 ```tsx
-{src ? (
-  <img
-    src={src}
-    alt={name}
-    className="..."
-    onError={(e) => {
-      e.currentTarget.style.display = "none";
-      e.currentTarget.nextElementSibling?.classList.remove("hidden");
-    }}
-  />
-) : null}
-<div className="hidden ..."><FallbackIcon /></div>
+const [failedSrc, setFailedSrc] = useState<string | null>(null);
+const showImage = src !== null && failedSrc !== src;
+
+return showImage ? (
+  <img src={src} alt={name} onError={() => setFailedSrc(src)} />
+) : (
+  <FallbackIcon />
+);
 ```
 
-For Radix `Avatar`, the `<AvatarFallback>` handles the error state automatically — just pass the URL directly to `<AvatarImage src={...}>`.
+For Radix `Avatar`, the fallback remains visible until the native responsive
+image reports `load`; pass the URL directly to `<AvatarImage src={...}>`.
 
-### Server-side helpers (`src/server/uploads.ts`)
+### Server-side image helpers
 
 | Function | Purpose |
 |---|---|
 | `storedPathFromDiskComponents(subdir, filename)` | `"uploads/avatars/uuid.png"` |
-| `diskPathFromStored(stored)` | `"data/uploads/avatars/uuid.png"` |
-| `contentTypeForPath(storedPath)` | `"image/png"` / `"image/jpeg"` / `"image/webp"` |
+| `diskPathFromStored(stored)` | Validates and resolves `"data/uploads/avatars/uuid.png"` |
 | `ensureUploadsDirs()` | Creates `data/uploads/avatars/`, etc. |
+| `validateUploadedImage()` (`server/image-limits.ts`) | Decodes raster uploads and enforces byte/pixel limits |
 | `serveStoredImage()` (`server/image-optimizer.ts`) | Resizes/transcodes authenticated source files and serves cached variants |
+| `invalidateStoredImageCache()` (`server/image-optimizer.ts`) | Removes all cached variants for a deleted or replaced source |
 
 ### Custom (ephemeral) images
 
