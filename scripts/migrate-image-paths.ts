@@ -233,7 +233,7 @@ async function main() {
   updateDbPaths(verified);
   console.log("  → done");
 
-  console.log("\n[Cleanup] Removing migrated/orphan image files from public/data/...");
+  console.log("\n[Cleanup] Removing migrated/orphan image files from data/import/...");
   const { deleted } = await cleanOrphans();
   if (deleted.length > 0) {
     for (const f of deleted) console.log(`  → deleted ${f}`);

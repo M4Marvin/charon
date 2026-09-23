@@ -178,7 +178,12 @@ export async function createPrivateReadStream(
 ) {
   const handle = await openPrivateFile(filePath, maxBytes, rootDir);
   try {
-    return handle.createReadStream({ autoClose: true });
+    const stats = await handle.stat();
+    return handle.createReadStream({
+      autoClose: true,
+      start: 0,
+      end: stats.size > 0 ? stats.size - 1 : 0,
+    });
   } catch (error) {
     await handle.close().catch(() => {});
     throw error;
