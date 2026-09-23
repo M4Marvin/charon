@@ -188,16 +188,6 @@ export function MessageList({
               );
             })}
             {pendingUserEntry && (
-              <span role="status" className="sr-only">
-                Message sent.
-              </span>
-            )}
-            {pendingAssistantEntry && (
-              <span role="status" className="sr-only">
-                Assistant is responding.
-              </span>
-            )}
-            {pendingUserEntry && (
               <MessageScrollerItem messageId="pending-user" scrollAnchor>
                 <ChatMessage
                   entry={pendingUserEntry}
@@ -237,6 +227,16 @@ export function MessageList({
             )}
           </MessageScrollerContent>
         </MessageScrollerViewport>
+        {pendingUserEntry && (
+          <span role="status" className="sr-only">
+            Message sent.
+          </span>
+        )}
+        {pendingAssistantEntry && (
+          <span role="status" className="sr-only">
+            Assistant is responding.
+          </span>
+        )}
         <MessageScrollerButton
           direction="end"
           variant="secondary"

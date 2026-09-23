@@ -4,3 +4,6 @@ allowBuilds:
   esbuild: true
   msgpackr-extract: false
   protobufjs: true
+# Remove when @shadcn/react includes the mount-anchor fix from shadcn-ui/ui#11182.
+patchedDependencies:
+  '@shadcn/react@0.3.0': patches/@shadcn__react@0.3.0.patch

@@ -49,7 +49,37 @@ describe("MessageList pending overlay", () => {
     );
     expect(screen.getByText("my instant message")).not.toBeNull();
     expect(screen.getByText("hello there")).not.toBeNull();
+    expect(screen.getByText("Message sent.")).not.toBeNull();
     expect(screen.getByText("Assistant is responding.")).not.toBeNull();
+  });
+
+  it("keeps live-region status nodes outside the scroller content", () => {
+    const { container } = render(
+      <MessageList
+        {...baseProps}
+        entries={[entry(1, "hello there")]}
+        pendingUserContent="my instant message"
+        showPendingAssistant
+      />,
+    );
+    const content = container.querySelector<HTMLElement>('[data-slot="message-scroller-content"]');
+
+    expect(content).not.toBeNull();
+    if (!content) return;
+
+    expect(content.contains(screen.getByText("Message sent."))).toBe(false);
+    expect(content.contains(screen.getByText("Assistant is responding."))).toBe(false);
+
+    const transcriptChildren = Array.from(content.children).filter(
+      (child) =>
+        !(child instanceof HTMLElement && child.hasAttribute("data-message-scroller-spacer")),
+    );
+    expect(transcriptChildren).toHaveLength(3);
+    expect(
+      transcriptChildren.every(
+        (child) => child.getAttribute("data-slot") === "message-scroller-item",
+      ),
+    ).toBe(true);
   });
 
   it("renders an inert overlay with typing dots and no actions", () => {
