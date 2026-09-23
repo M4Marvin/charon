@@ -12,7 +12,7 @@
 import { config } from "dotenv";
 config({ path: [".env.local", ".env"] });
 
-import { mkdir, readdir, rm } from "node:fs/promises";
+import { readdir, rm } from "node:fs/promises";
 import { existsSync, realpathSync } from "node:fs";
 import { basename, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -22,7 +22,12 @@ import { user, characters, lorebooks, loreEntries, personas } from "@/db/schema"
 import { derivedColumns } from "@/db/repositories/characters";
 import { validateUploadedImage } from "@/server/image-limits";
 import { readMigrationFile } from "./migration-io";
-import { ensureUploadsDirs, writePrivateFileAtomic } from "@/server/uploads";
+import {
+  diskPathFromStored,
+  ensureUploadsDirs,
+  storedPathFromDiskComponents,
+  writePrivateFileAtomic,
+} from "@/server/uploads";
 import { upsertUserSettings, type UserSettingsPatch } from "@/db/repositories/userSettings";
 import {
   parseCharacterCard,
@@ -32,13 +37,14 @@ import {
   type CharacterDataV2,
 } from "@/lib/st-core/character";
 import { DEFAULT_LORE_CONFIG, type LoreEntry as LoreEntryData } from "@/lib/st-core/lorebook";
+import { parseWorldFile } from "@/lib/lorebook/world-file";
 import { normalizeCardData, normalizeV3ToV2 } from "@/lib/character/normalize";
 
 const DATA_ROOT = "data/import";
-const AVATAR_DIR = "data/uploads/avatars";
-const AVATAR_PUBLIC_PREFIX = "uploads/avatars";
-const PERSONA_ICON_DIR = "data/uploads/personas";
-const PERSONA_PUBLIC_PREFIX = "uploads/personas";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 function isWithin(root: string, candidate: string): boolean {
   const pathFromRoot = relative(root, candidate);
@@ -74,6 +80,62 @@ function resolveMigrationSource(rootDir: string, key: string): string | null {
   } catch {
     return null;
   }
+}
+
+type ParsedSettings = {
+  personas: Record<string, string>;
+  descriptions: Record<string, string>;
+  systemPrompt?: string;
+  impersonationPrompt?: string;
+  postHistoryInstructions?: string;
+};
+
+function parseSettingsFile(value: unknown): ParsedSettings | null {
+  if (!isRecord(value)) return null;
+
+  const powerUser = value.power_user;
+  if (powerUser !== undefined && !isRecord(powerUser)) return null;
+
+  const rawPersonas = powerUser?.personas;
+  if (rawPersonas !== undefined && !isRecord(rawPersonas)) return null;
+  const personas: Record<string, string> = {};
+  for (const [key, name] of Object.entries(rawPersonas ?? {})) {
+    if (typeof name !== "string") return null;
+    personas[key] = name;
+  }
+
+  const rawDescriptions = powerUser?.persona_descriptions;
+  if (rawDescriptions !== undefined && !isRecord(rawDescriptions)) return null;
+  const descriptions: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(rawDescriptions ?? {})) {
+    if (!isRecord(raw)) return null;
+    if (raw.description !== undefined && typeof raw.description !== "string") return null;
+    descriptions[key] = raw.description ?? "";
+  }
+
+  const sysprompt = powerUser?.sysprompt;
+  if (sysprompt !== undefined && !isRecord(sysprompt)) return null;
+  if (sysprompt?.content !== undefined && typeof sysprompt.content !== "string") return null;
+
+  const oai = value.oai_settings;
+  if (oai !== undefined && !isRecord(oai)) return null;
+  if (oai?.impersonation_prompt !== undefined && typeof oai.impersonation_prompt !== "string") {
+    return null;
+  }
+
+  const extensions = value.extension_settings;
+  if (extensions !== undefined && !isRecord(extensions)) return null;
+  const note = extensions?.note;
+  if (note !== undefined && !isRecord(note)) return null;
+  if (note?.default !== undefined && typeof note.default !== "string") return null;
+
+  return {
+    personas,
+    descriptions,
+    systemPrompt: sysprompt?.content,
+    impersonationPrompt: oai?.impersonation_prompt,
+    postHistoryInstructions: note?.default,
+  };
 }
 
 type Counts = {
@@ -189,7 +251,6 @@ async function migrateCharacters(
 
   const pngs = await listPngs(join(DATA_ROOT, "characters"));
   counts.found = pngs.length;
-  await mkdir(AVATAR_DIR, { recursive: true });
 
   for (const pngPath of pngs) {
     const fileBase = basename(pngPath, ".png");
@@ -254,8 +315,8 @@ async function migrateCharacters(
 
     const id = randomUUID();
     const filename = `${id}.png`;
-    const writePath = join(AVATAR_DIR, filename);
-    const avatarPath = join(AVATAR_PUBLIC_PREFIX, filename);
+    const avatarPath = storedPathFromDiskComponents("avatars", filename);
+    const writePath = diskPathFromStored(avatarPath);
 
     try {
       await writePrivateFileAtomic(writePath, bytes);
@@ -306,61 +367,52 @@ async function migrateCharacters(
 
 // ── Standalone lorebooks (worlds/*.json) ───────────────────────────────────
 
-interface WorldEntry {
-  uid?: number;
-  [k: string]: unknown;
-}
-
-interface WorldFile {
-  entries?: Record<string, WorldEntry>;
-  [k: string]: unknown;
-}
-
 function insertLorebookFromWorldFile(
   name: string,
-  world: WorldFile,
-): { id: string; entries: number } | null {
-  const id = randomUUID();
-  const now = new Date();
+  json: string,
+): { id: string; entries: number; skipped: number } | null {
+  let parsed: ReturnType<typeof parseWorldFile>;
   try {
-    db.insert(lorebooks)
-      .values({
-        id,
-        name,
-        config: { ...DEFAULT_LORE_CONFIG },
-        createdAt: now,
-        updatedAt: now,
-      })
-      .run();
+    parsed = parseWorldFile(json);
   } catch (e) {
     console.log(`  ✗ Lorebook "${name}": ${(e as Error).message}`);
     return null;
   }
 
-  const entries = world.entries ?? {};
-  let inserted = 0;
-  let nextUid = 1;
-  for (const [, entry] of Object.entries(entries)) {
-    const uid = typeof entry.uid === "number" ? entry.uid : nextUid++;
-    if (uid >= nextUid) nextUid = uid + 1;
-    try {
-      db.insert(loreEntries)
+  const id = randomUUID();
+  const now = new Date();
+  try {
+    db.transaction((tx) => {
+      tx.insert(lorebooks)
         .values({
-          id: randomUUID(),
-          lorebookId: id,
-          uid,
-          data: entry as unknown as LoreEntryData,
+          id,
+          name,
+          description: parsed.description,
+          config: parsed.config,
           createdAt: now,
           updatedAt: now,
         })
         .run();
-      inserted++;
-    } catch {
-      // (lorebookId, uid) collision — skip
-    }
+
+      for (const entry of parsed.entries) {
+        tx.insert(loreEntries)
+          .values({
+            id: randomUUID(),
+            lorebookId: id,
+            uid: entry.uid,
+            data: entry,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+      }
+    });
+  } catch (e) {
+    console.log(`  ✗ Lorebook "${name}": ${(e as Error).message}`);
+    return null;
   }
 
-  return { id, entries: inserted };
+  return { id, entries: parsed.entries.length, skipped: parsed.entriesSkipped };
 }
 
 async function migrateLorebooks(): Promise<{ lorebooks: Counts; loreEntries: number }> {
@@ -382,22 +434,28 @@ async function migrateLorebooks(): Promise<{ lorebooks: Counts; loreEntries: num
       continue;
     }
 
-    let world: WorldFile;
+    let json: string;
     try {
-      const text = (await readMigrationFile(filePath)).toString("utf8");
-      world = JSON.parse(text) as WorldFile;
+      json = (await readMigrationFile(filePath)).toString("utf8");
     } catch (e) {
-      console.log(`  ✗ ${name}: parse (${(e as Error).message})`);
+      console.log(`  ✗ ${name}: read (${(e as Error).message})`);
       counts.failed++;
       continue;
     }
 
-    const result = insertLorebookFromWorldFile(name, world);
-    if (result) {
-      counts.inserted++;
-      totalEntries += result.entries;
-      console.log(`  ✓ ${name} (${result.entries} entries)`);
-    } else {
+    try {
+      const result = insertLorebookFromWorldFile(name, json);
+      if (result) {
+        counts.inserted++;
+        totalEntries += result.entries;
+        console.log(
+          `  ✓ ${name} (${result.entries} entries${result.skipped ? `, ${result.skipped} skipped` : ""})`,
+        );
+      } else {
+        counts.failed++;
+      }
+    } catch (e) {
+      console.log(`  ✗ ${name}: migration (${(e as Error).message})`);
       counts.failed++;
     }
   }
@@ -407,39 +465,27 @@ async function migrateLorebooks(): Promise<{ lorebooks: Counts; loreEntries: num
 
 // ── Personas (settings.json) ──────────────────────────────────────────────
 
-interface PersonaDescription {
-  description?: string;
-  position?: number;
-  [k: string]: unknown;
-}
-
-interface SettingsFile {
-  power_user?: {
-    personas?: Record<string, string>;
-    persona_descriptions?: Record<string, PersonaDescription>;
-    [k: string]: unknown;
-  };
-  [k: string]: unknown;
-}
-
 async function migratePersonas(): Promise<Counts> {
   const counts: Counts = { ...ZERO };
   const settingsPath = join(DATA_ROOT, "settings.json");
   if (!existsSync(settingsPath)) return counts;
 
-  await mkdir(PERSONA_ICON_DIR, { recursive: true });
-
-  let settings: SettingsFile;
+  let settings: ParsedSettings;
   try {
     const text = (await readMigrationFile(settingsPath)).toString("utf8");
-    settings = JSON.parse(text) as SettingsFile;
+    const parsed = parseSettingsFile(JSON.parse(text));
+    if (!parsed) {
+      console.log("  ✗ settings.json: expected a settings object");
+      return counts;
+    }
+    settings = parsed;
   } catch (e) {
     console.log(`  ✗ settings.json: ${(e as Error).message}`);
     return counts;
   }
 
-  const personasMap = settings.power_user?.personas ?? {};
-  const descriptionsMap = settings.power_user?.persona_descriptions ?? {};
+  const personasMap = settings.personas;
+  const descriptionsMap = settings.descriptions;
   counts.found = Object.keys(personasMap).length;
 
   for (const [avatarKey, name] of Object.entries(personasMap)) {
@@ -454,7 +500,7 @@ async function migratePersonas(): Promise<Counts> {
       continue;
     }
 
-    const description = descriptionsMap[avatarKey]?.description ?? "";
+    const description = descriptionsMap[avatarKey] ?? "";
     const id = randomUUID();
 
     let iconPath: string | null = null;
@@ -465,8 +511,8 @@ async function migratePersonas(): Promise<Counts> {
 
     if (sourcePath) {
       const iconFilename = `${id}.png`;
-      iconWritePath = join(PERSONA_ICON_DIR, iconFilename);
-      iconPath = join(PERSONA_PUBLIC_PREFIX, iconFilename);
+      iconPath = storedPathFromDiskComponents("personas", iconFilename);
+      iconWritePath = diskPathFromStored(iconPath);
       try {
         const iconBytes = await readMigrationFile(sourcePath);
         await validateUploadedImage(iconBytes);
@@ -508,40 +554,34 @@ async function migrateUserSettings(accountId: string): Promise<void> {
   const settingsPath = join(DATA_ROOT, "settings.json");
   if (!existsSync(settingsPath)) return;
 
-  let settings: Record<string, unknown>;
+  let settings: ParsedSettings;
   try {
     const text = (await readMigrationFile(settingsPath)).toString("utf8");
-    settings = JSON.parse(text) as Record<string, unknown>;
+    const parsed = parseSettingsFile(JSON.parse(text));
+    if (!parsed) return;
+    settings = parsed;
   } catch {
     return;
   }
 
   const patch: UserSettingsPatch = {};
-
-  // systemPrompt — from power_user.sysprompt.content
-  const sysprompt = (settings as any).power_user?.sysprompt;
-  if (sysprompt?.content) {
-    patch.systemPrompt = String(sysprompt.content);
+  if (settings.systemPrompt !== undefined) patch.systemPrompt = settings.systemPrompt;
+  if (settings.impersonationPrompt !== undefined) {
+    patch.impersonationPrompt = settings.impersonationPrompt;
   }
-
-  // impersonationPrompt — from oai_settings.impersonation_prompt
-  const oai = (settings as any).oai_settings;
-  if (oai?.impersonation_prompt) {
-    patch.impersonationPrompt = String(oai.impersonation_prompt);
-  }
-
-  // postHistoryInstructions — from extension_settings.note.default
-  const note = (settings as any).extension_settings?.note;
-  if (note?.default) {
-    patch.postHistoryInstructions = String(note.default);
+  if (settings.postHistoryInstructions !== undefined) {
+    patch.postHistoryInstructions = settings.postHistoryInstructions;
   }
 
   const keys = Object.keys(patch);
   if (keys.length === 0) return;
 
-  upsertUserSettings(accountId, patch);
-
-  console.log(`  → migrated user settings: ${keys.join(", ")}`);
+  try {
+    upsertUserSettings(accountId, patch);
+    console.log(`  → migrated user settings: ${keys.join(", ")}`);
+  } catch (error) {
+    console.log(`  ✗ user settings: ${(error as Error).message}`);
+  }
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────
