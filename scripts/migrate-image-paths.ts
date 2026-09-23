@@ -7,7 +7,7 @@
 import { config } from "dotenv";
 config({ path: [".env.local", ".env"] });
 
-import { readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { readdir, rename, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
@@ -16,6 +16,7 @@ import { eq, like } from "drizzle-orm";
 import { db } from "@/db";
 import { characters, backgrounds, personas } from "@/db/schema";
 import { validateUploadedImage } from "@/server/image-limits";
+import { readMigrationFile } from "./migration-io";
 import {
   ensureUploadsDirs,
   diskPathFromStored,
@@ -26,11 +27,11 @@ import {
 
 const SOURCE_BASE = "public/data";
 
-type Counts = { found: number; moved: number; skipped: number };
+type Counts = { found: number; moved: number; skipped: number; failed: number };
 type MigrationResult = Counts & { verified: Set<string> };
 
 async function migrateSubdir(subdir: UploadSubdir): Promise<MigrationResult> {
-  const counts: Counts = { found: 0, moved: 0, skipped: 0 };
+  const counts: Counts = { found: 0, moved: 0, skipped: 0, failed: 0 };
   const verified = new Set<string>();
   const sourceDir = join(SOURCE_BASE, UPLOADS_SUBDIRS[subdir]);
   if (!existsSync(sourceDir)) return { ...counts, verified };
@@ -45,37 +46,43 @@ async function migrateSubdir(subdir: UploadSubdir): Promise<MigrationResult> {
     const src = join(sourceDir, img.name);
     const stored = storedPathFromDiskComponents(subdir, img.name);
     const dst = diskPathFromStored(stored);
-    const sourceBytes = await readFile(src);
-    await validateUploadedImage(sourceBytes);
 
-    if (existsSync(dst)) {
-      const destinationBytes = await readFile(dst);
-      let destinationIsValid = true;
-      try {
-        await validateUploadedImage(destinationBytes);
-      } catch {
-        destinationIsValid = false;
-      }
-      if (destinationIsValid) {
-        if (!sourceBytes.equals(destinationBytes)) {
-          throw new Error(`Refusing to overwrite different destination: ${dst}`);
-        }
-        verified.add(stored);
-        counts.skipped++;
-        continue;
-      }
-      await rm(dst, { force: true });
-    }
-
-    const tempPath = `${dst}.tmp-${randomUUID()}`;
     try {
-      await writeFile(tempPath, sourceBytes, { flag: "wx" });
-      await rename(tempPath, dst);
-    } finally {
-      await rm(tempPath, { force: true }).catch(() => {});
+      const sourceBytes = await readMigrationFile(src);
+      await validateUploadedImage(sourceBytes);
+
+      if (existsSync(dst)) {
+        const destinationBytes = await readMigrationFile(dst);
+        let destinationIsValid = true;
+        try {
+          await validateUploadedImage(destinationBytes);
+        } catch {
+          destinationIsValid = false;
+        }
+        if (destinationIsValid) {
+          if (!sourceBytes.equals(destinationBytes)) {
+            throw new Error(`Refusing to overwrite different destination: ${dst}`);
+          }
+          verified.add(stored);
+          counts.skipped++;
+          continue;
+        }
+        await rm(dst, { force: true });
+      }
+
+      const tempPath = `${dst}.tmp-${randomUUID()}`;
+      try {
+        await writeFile(tempPath, sourceBytes, { flag: "wx" });
+        await rename(tempPath, dst);
+      } finally {
+        await rm(tempPath, { force: true }).catch(() => {});
+      }
+      verified.add(stored);
+      counts.moved++;
+    } catch (error) {
+      console.warn(`  ! ${subdir}/${img.name}: ${(error as Error).message}`);
+      counts.failed++;
     }
-    verified.add(stored);
-    counts.moved++;
   }
 
   return { ...counts, verified };
@@ -197,19 +204,21 @@ async function main() {
   const avatarResult = await migrateSubdir("avatars");
   for (const path of avatarResult.verified) verified.add(path);
   console.log(
-    `  → ${avatarResult.found} found, ${avatarResult.moved} moved, ${avatarResult.skipped} skipped`,
+    `  → ${avatarResult.found} found, ${avatarResult.moved} moved, ${avatarResult.skipped} skipped, ${avatarResult.failed} failed`,
   );
 
   console.log("[2/3] Moving backgrounds...");
   const bgResult = await migrateSubdir("backgrounds");
   for (const path of bgResult.verified) verified.add(path);
-  console.log(`  → ${bgResult.found} found, ${bgResult.moved} moved, ${bgResult.skipped} skipped`);
+  console.log(
+    `  → ${bgResult.found} found, ${bgResult.moved} moved, ${bgResult.skipped} skipped, ${bgResult.failed} failed`,
+  );
 
   console.log("[3/3] Moving personas...");
   const personaResult = await migrateSubdir("personas");
   for (const path of personaResult.verified) verified.add(path);
   console.log(
-    `  → ${personaResult.found} found, ${personaResult.moved} moved, ${personaResult.skipped} skipped`,
+    `  → ${personaResult.found} found, ${personaResult.moved} moved, ${personaResult.skipped} skipped, ${personaResult.failed} failed`,
   );
 
   console.log("\n[DB] Updating stored paths...");

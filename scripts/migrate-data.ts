@@ -9,15 +9,19 @@
 // Re-runnable: skips existing rows by name so it is safe to re-run after a
 // partial failure.
 
-import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { existsSync, readFileSync } from "node:fs";
-import { basename, extname, join } from "node:path";
+import { config } from "dotenv";
+config({ path: [".env.local", ".env"] });
+
+import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { existsSync, realpathSync } from "node:fs";
+import { basename, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { db } from "@/db";
 import { user, characters, lorebooks, loreEntries, personas } from "@/db/schema";
 import { derivedColumns } from "@/db/repositories/characters";
 import { validateUploadedImage } from "@/server/image-limits";
+import { readMigrationFile } from "./migration-io";
 import { ensureUploadsDirs } from "@/server/uploads";
 import { upsertUserSettings, type UserSettingsPatch } from "@/db/repositories/userSettings";
 import {
@@ -35,6 +39,42 @@ const AVATAR_DIR = "data/uploads/avatars";
 const AVATAR_PUBLIC_PREFIX = "uploads/avatars";
 const PERSONA_ICON_DIR = "data/uploads/personas";
 const PERSONA_PUBLIC_PREFIX = "uploads/personas";
+
+function isWithin(root: string, candidate: string): boolean {
+  const pathFromRoot = relative(root, candidate);
+  return (
+    pathFromRoot === "" ||
+    (pathFromRoot !== ".." && !pathFromRoot.startsWith(`..${sep}`) && !isAbsolute(pathFromRoot))
+  );
+}
+
+function isSafeAvatarKey(key: string): boolean {
+  return (
+    key.length > 0 &&
+    key !== "." &&
+    key !== ".." &&
+    !key.includes("/") &&
+    !key.includes("\\") &&
+    !key.includes("\0")
+  );
+}
+
+function resolveMigrationSource(rootDir: string, key: string): string | null {
+  if (!isSafeAvatarKey(key)) return null;
+
+  try {
+    const dataRoot = realpathSync(DATA_ROOT);
+    const root = realpathSync(rootDir);
+    if (!isWithin(dataRoot, root)) return null;
+
+    const candidate = resolve(root, key);
+    if (!isWithin(root, candidate)) return null;
+    const realCandidate = realpathSync(candidate);
+    return isWithin(root, realCandidate) ? realCandidate : null;
+  } catch {
+    return null;
+  }
+}
 
 type Counts = {
   found: number;
@@ -156,7 +196,7 @@ async function migrateCharacters(
 
     let bytes: Uint8Array;
     try {
-      bytes = new Uint8Array(await readFile(pngPath));
+      bytes = new Uint8Array(await readMigrationFile(pngPath));
     } catch (e) {
       console.log(`  ✗ ${fileBase}: failed to read PNG (${(e as Error).message})`);
       counts.failed++;
@@ -193,7 +233,13 @@ async function migrateCharacters(
       continue;
     }
 
-    await validateUploadedImage(bytes);
+    try {
+      await validateUploadedImage(bytes);
+    } catch (e) {
+      console.log(`  ✗ ${fileBase}: image validation (${(e as Error).message})`);
+      counts.failed++;
+      continue;
+    }
 
     const data = validation.card.data as CharacterDataV2;
     const spec: "chara_card_v2" | "chara_card_v3" = isV3 ? "chara_card_v3" : "chara_card_v2";
@@ -214,6 +260,7 @@ async function migrateCharacters(
     try {
       await writeFile(writePath, bytes);
     } catch (e) {
+      await rm(writePath, { force: true }).catch(() => {});
       console.log(`  ✗ ${fileBase}: avatar copy (${(e as Error).message})`);
       counts.failed++;
       continue;
@@ -337,7 +384,7 @@ async function migrateLorebooks(): Promise<{ lorebooks: Counts; loreEntries: num
 
     let world: WorldFile;
     try {
-      const text = readFileSync(filePath, "utf8");
+      const text = (await readMigrationFile(filePath)).toString("utf8");
       world = JSON.parse(text) as WorldFile;
     } catch (e) {
       console.log(`  ✗ ${name}: parse (${(e as Error).message})`);
@@ -384,7 +431,7 @@ async function migratePersonas(): Promise<Counts> {
 
   let settings: SettingsFile;
   try {
-    const text = await readFile(settingsPath, "utf8");
+    const text = (await readMigrationFile(settingsPath)).toString("utf8");
     settings = JSON.parse(text) as SettingsFile;
   } catch (e) {
     console.log(`  ✗ settings.json: ${(e as Error).message}`);
@@ -401,25 +448,27 @@ async function migratePersonas(): Promise<Counts> {
       continue;
     }
 
+    if (!isSafeAvatarKey(avatarKey)) {
+      console.log(`  ✗ ${name}: unsafe avatar key`);
+      counts.failed++;
+      continue;
+    }
+
     const description = descriptionsMap[avatarKey]?.description ?? "";
     const id = randomUUID();
 
     let iconPath: string | null = null;
     let iconWritePath: string | null = null;
-    const userAvatarPath = join(DATA_ROOT, "User Avatars", avatarKey);
-    const thumbnailPath = join(DATA_ROOT, "thumbnails", "persona", avatarKey);
-    const sourcePath = existsSync(userAvatarPath)
-      ? userAvatarPath
-      : existsSync(thumbnailPath)
-        ? thumbnailPath
-        : null;
+    const sourcePath =
+      resolveMigrationSource(join(DATA_ROOT, "User Avatars"), avatarKey) ??
+      resolveMigrationSource(join(DATA_ROOT, "thumbnails", "persona"), avatarKey);
 
     if (sourcePath) {
       const iconFilename = `${id}.png`;
       iconWritePath = join(PERSONA_ICON_DIR, iconFilename);
       iconPath = join(PERSONA_PUBLIC_PREFIX, iconFilename);
       try {
-        const iconBytes = await readFile(sourcePath);
+        const iconBytes = await readMigrationFile(sourcePath);
         await validateUploadedImage(iconBytes);
         await writeFile(iconWritePath, iconBytes);
       } catch (e) {
@@ -455,13 +504,14 @@ async function migratePersonas(): Promise<Counts> {
 
 // ── User settings (prompts from settings.json) ───────────────────────────
 
-function migrateUserSettings(accountId: string): void {
+async function migrateUserSettings(accountId: string): Promise<void> {
   const settingsPath = join(DATA_ROOT, "settings.json");
   if (!existsSync(settingsPath)) return;
 
   let settings: Record<string, unknown>;
   try {
-    settings = JSON.parse(readFileSync(settingsPath, "utf8")) as Record<string, unknown>;
+    const text = (await readMigrationFile(settingsPath)).toString("utf8");
+    settings = JSON.parse(text) as Record<string, unknown>;
   } catch {
     return;
   }
@@ -553,7 +603,7 @@ async function main() {
   );
 
   console.log("\n[5/5] Migrating user settings (prompts)...");
-  migrateUserSettings(account.id);
+  await migrateUserSettings(account.id);
 
   printSummary({
     characters: charResult.characters,
