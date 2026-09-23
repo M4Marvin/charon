@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { X, ImageIcon, ImagePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OptimizedImage } from "@/components/ui/optimized-image";
@@ -24,6 +24,19 @@ export function CustomImagePanel({
   onClearImage,
 }: CustomImagePanelProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [keepImageMounted, setKeepImageMounted] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setKeepImageMounted(true);
+      return;
+    }
+
+    const timer = window.setTimeout(() => setKeepImageMounted(false), 300);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
+  const shouldMountImage = open || keepImageMounted;
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,6 +56,8 @@ export function CustomImagePanel({
 
   return (
     <div
+      aria-hidden={!open}
+      inert={!open}
       className={cn(
         "fixed right-4 top-1/2 -translate-y-1/2 z-20 hidden lg:flex flex-col gap-2 transition-all duration-300",
         open ? "translate-x-0 opacity-100" : "translate-x-[calc(100%+2rem)] opacity-0",
@@ -57,7 +72,7 @@ export function CustomImagePanel({
         onKeyDown={(e) => e.key === "Enter" && hasImage && onImageClick()}
       >
         <div className="relative flex items-center justify-center bg-(--bg-base)/60">
-          {hasImage ? (
+          {shouldMountImage && hasImage ? (
             <OptimizedImage
               src={displaySrc}
               alt={label}
