@@ -46,7 +46,7 @@ export function ChatHeader({
             className="object-cover"
             priority
           />
-          <AvatarFallback className="rounded-lg bg-white/10 text-sm text-lagoon">
+          <AvatarFallback className="rounded-full bg-white/10 text-sm text-lagoon">
             {characterName.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>

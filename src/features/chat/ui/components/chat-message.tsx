@@ -137,7 +137,7 @@ export function ChatMessage({
             <AvatarImage src={avatarSrc ?? undefined} alt={name} className="object-cover" />
             <AvatarFallback
               className={cn(
-                "rounded-lg text-sm",
+                "rounded-full text-sm",
                 isAssistant
                   ? "bg-(--lagoon)/20 text-(--lagoon)"
                   : "bg-white/10 text-(--sea-ink-soft)",

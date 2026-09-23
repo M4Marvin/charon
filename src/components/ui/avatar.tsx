@@ -5,13 +5,31 @@ import { getOptimizedImageProps } from "@/components/ui/optimized-image";
 import type { ImageQuality } from "@/lib/image-optimization";
 import { cn } from "#/lib/utils.ts";
 
+type AvatarImageStatus = "idle" | "loading" | "loaded" | "error";
+type AvatarImageState = {
+  src: string | null;
+  status: AvatarImageStatus;
+};
+type AvatarImageContextValue = {
+  state: AvatarImageState;
+  setState: React.Dispatch<React.SetStateAction<AvatarImageState>>;
+};
+
+const AvatarImageContext = React.createContext<AvatarImageContextValue | null>(null);
+
 function Avatar({
   className,
   size = "default",
+  children,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Root> & {
   size?: "default" | "sm" | "lg";
 }) {
+  const [imageState, setImageState] = React.useState<AvatarImageState>({
+    src: null,
+    status: "idle",
+  });
+
   return (
     <AvatarPrimitive.Root
       data-slot="avatar"
@@ -21,7 +39,11 @@ function Avatar({
         className,
       )}
       {...props}
-    />
+    >
+      <AvatarImageContext.Provider value={{ state: imageState, setState: setImageState }}>
+        {children}
+      </AvatarImageContext.Provider>
+    </AvatarPrimitive.Root>
   );
 }
 
@@ -37,6 +59,19 @@ const AvatarImage = React.forwardRef<HTMLImageElement, AvatarImageProps>(functio
 ) {
   const [loadedSrc, setLoadedSrc] = React.useState<string | null>(null);
   const [failedSrc, setFailedSrc] = React.useState<string | null>(null);
+  const context = React.useContext(AvatarImageContext);
+  const setImageState = context?.setState;
+  const normalizedSrc = src || null;
+
+  React.useEffect(() => {
+    if (!setImageState) return;
+    setImageState({ src: normalizedSrc, status: normalizedSrc ? "loading" : "idle" });
+    return () => {
+      setImageState((current) =>
+        current.src === normalizedSrc ? { src: null, status: "idle" } : current,
+      );
+    };
+  }, [setImageState, normalizedSrc]);
 
   if (!src) return null;
 
@@ -58,17 +93,19 @@ const AvatarImage = React.forwardRef<HTMLImageElement, AvatarImageProps>(functio
       ref={ref}
       data-slot="avatar-image"
       className={cn(
-        "relative z-10 aspect-square size-full rounded-full object-cover",
+        "absolute inset-0 z-10 aspect-square size-full rounded-full object-cover",
         !visible && "opacity-0",
         className,
       )}
       {...imageProps}
       onLoad={(event) => {
         setLoadedSrc(src);
+        setImageState?.({ src: normalizedSrc, status: "loaded" });
         onLoad?.(event);
       }}
       onError={(event) => {
         setFailedSrc(src);
+        setImageState?.({ src: normalizedSrc, status: "error" });
         onError?.(event);
       }}
     />
@@ -79,6 +116,9 @@ function AvatarFallback({
   className,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
+  const context = React.useContext(AvatarImageContext);
+  if (context?.state.status === "loaded" && context.state.src !== null) return null;
+
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
