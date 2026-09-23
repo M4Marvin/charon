@@ -1,5 +1,3 @@
-import { posix } from "node:path";
-
 import { defineConfig, loadEnv } from "vite";
 import { devtools } from "@tanstack/devtools-vite";
 
@@ -7,6 +5,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 
 import viteReact from "@vitejs/plugin-react";
+import { isBlockedDevAssetPath, VITE_FS_DENY } from "./scripts/vite-dev-policy";
 import tailwindcss from "@tailwindcss/vite";
 
 // Vite does not populate `process.env` from `.env*` files when evaluating an
@@ -18,45 +17,6 @@ const lanHosts = (env.VITE_ALLOWED_HOSTS ?? "")
   .split(",")
   .map((h) => h.trim())
   .filter(Boolean);
-
-function normalizeDevRequestPath(rawUrl: string): string {
-  let pathname = rawUrl.split(/[?#]/, 1)[0] ?? "";
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const decoded = decodeURIComponent(pathname);
-      if (decoded === pathname) break;
-      pathname = decoded;
-    } catch {
-      // Keep the raw path for matching if it contains malformed escaping.
-      break;
-    }
-  }
-  pathname = `/${pathname.replace(/^\/+/, "")}`;
-  return posix.normalize(pathname);
-}
-
-function isBlockedDevAssetPath(rawUrl: string): boolean {
-  const pathname = normalizeDevRequestPath(rawUrl);
-  if (
-    pathname === "/data" ||
-    pathname.startsWith("/data/") ||
-    pathname === "/public/data" ||
-    pathname.startsWith("/public/data/") ||
-    pathname === "/public/uploads" ||
-    pathname.startsWith("/public/uploads/") ||
-    pathname === "/uploads" ||
-    pathname.startsWith("/uploads/")
-  ) {
-    return true;
-  }
-
-  if (pathname.startsWith("/@fs/")) {
-    const fsPath = pathname.slice("/@fs/".length);
-    return /(^|\/)(?:data|public\/(?:data|uploads))(?:\/|$)/.test(fsPath);
-  }
-
-  return false;
-}
 
 const config = defineConfig({
   // Keep migration inputs under public/ out of both dev and production static serving.
@@ -70,16 +30,7 @@ const config = defineConfig({
       // The middleware below also blocks ordinary /data URLs; these deny
       // Vite's raw filesystem handler for equivalent /@fs requests. Keep
       // Vite's default secret/repository denials when extending the list.
-      deny: [
-        ".env",
-        ".env.*",
-        "*.{crt,pem}",
-        "**/.git/**",
-        ".npmrc",
-        "public/data/**",
-        "public/uploads/**",
-        "data/**",
-      ],
+      deny: [...VITE_FS_DENY],
     },
   },
   resolve: {
