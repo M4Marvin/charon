@@ -17,12 +17,36 @@ const lanHosts = (env.VITE_ALLOWED_HOSTS ?? "")
   .map((h) => h.trim())
   .filter(Boolean);
 
+const blockedDevAssetPaths = [
+  /^\/public\/(?:data|uploads)(?:\/|$)/,
+  /^\/data\/(?:avatars|backgrounds|personas)(?:\/|$)/,
+  /^\/uploads(?:\/|$)/,
+  /^\/@fs\/.*\/public\/(?:data|uploads)(?:\/|$)/,
+  /^\/@fs\/.*\/data(?:\/|$)/,
+];
+
+function isBlockedDevAssetPath(rawUrl: string): boolean {
+  let pathname = rawUrl.split("?", 1)[0] ?? "";
+  try {
+    pathname = decodeURIComponent(pathname);
+  } catch {
+    // Keep the raw path for matching if it contains malformed escaping.
+  }
+  return blockedDevAssetPaths.some((pattern) => pattern.test(pathname));
+}
+
 const config = defineConfig({
   // Keep migration inputs under public/ out of both dev and production static serving.
   publicDir: "static",
   // Dev-only (ignored by `vite build` and the prod server): extra hosts for
   // `pnpm dev:lan`, via VITE_ALLOWED_HOSTS in .env.local. Unset = localhost only.
-  ...(lanHosts.length > 0 ? { server: { allowedHosts: lanHosts } } : {}),
+  server: {
+    ...(lanHosts.length > 0 ? { allowedHosts: lanHosts } : {}),
+    fs: {
+      strict: true,
+      deny: ["public/data/**", "public/uploads/**", "data/**"],
+    },
+  },
   resolve: {
     tsconfigPaths: true,
     alias: {
@@ -39,9 +63,15 @@ const config = defineConfig({
     {
       name: "force-nitro-image-api",
       configureServer(server) {
-        server.middlewares.use((req, _res, next) => {
-          const dest = req.headers["sec-fetch-dest"];
+        server.middlewares.use((req, res, next) => {
           const url = req.url || "";
+          if (isBlockedDevAssetPath(url)) {
+            res.statusCode = 404;
+            res.end();
+            return;
+          }
+
+          const dest = req.headers["sec-fetch-dest"];
           if (dest === "image" && (url.startsWith("/api/") || url.startsWith("/uploads/"))) {
             req.headers["sec-fetch-dest"] = "empty";
           }
