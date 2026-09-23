@@ -204,6 +204,7 @@ export async function importCharacterCard(pngBase64: string, db?: DB): Promise<I
     await ensureUploadsDirs();
     await writeFile(writePath, pngBytes);
   } catch (e) {
+    await rm(writePath, { force: true }).catch(() => {});
     return {
       ok: false,
       error: {

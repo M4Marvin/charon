@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { cp, mkdir, readdir } from "node:fs/promises";
+import { cp, mkdir, readdir, rm } from "node:fs/promises";
 import { join, extname } from "node:path";
 import { db as defaultDb } from "@/db";
 import { createBackground } from "@/db/repositories/backgrounds";
@@ -369,11 +369,16 @@ export async function seedDefaultBackgrounds(): Promise<void> {
     const destFilename = `${uuid}${ext}`;
     const destPath = join(DEST_DIR, destFilename);
 
-    await cp(join(sourceDir, file), destPath);
+    try {
+      await cp(join(sourceDir, file), destPath);
 
-    createBackground({
-      name: cleanBackgroundName(file),
-      path: join(PUBLIC_PATH_PREFIX, destFilename),
-    });
+      createBackground({
+        name: cleanBackgroundName(file),
+        path: join(PUBLIC_PATH_PREFIX, destFilename),
+      });
+    } catch (error) {
+      await rm(destPath, { force: true }).catch(() => {});
+      throw error;
+    }
   }
 }

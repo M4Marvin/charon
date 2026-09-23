@@ -50,7 +50,12 @@ export const uploadBackground = createServerFn({ method: "POST" })
 
     const bytes = decodeImageBase64(data.fileBase64);
     await validateUploadedImage(bytes);
-    await writeFile(filepath, bytes);
+    try {
+      await writeFile(filepath, bytes);
+    } catch (error) {
+      await rm(filepath, { force: true }).catch(() => {});
+      throw error;
+    }
 
     try {
       return repoCreate({ name: data.name, path: storedPath });

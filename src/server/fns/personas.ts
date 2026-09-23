@@ -126,7 +126,12 @@ export const uploadPersonaIcon = createServerFn({ method: "POST" })
 
     const bytes = decodeImageBase64(data.fileBase64);
     await validateUploadedImage(bytes);
-    await writeFile(diskPath, bytes);
+    try {
+      await writeFile(diskPath, bytes);
+    } catch (error) {
+      await rm(diskPath, { force: true }).catch(() => {});
+      throw error;
+    }
 
     try {
       repoUpdate(data.id, { iconPath: storedPath });
