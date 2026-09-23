@@ -26,7 +26,7 @@ import {
 } from "@/server/image-limits";
 
 const DEFAULT_CACHE_MAX_BYTES = 1024 * 1024 * 1024;
-const CACHE_SCHEMA_VERSION = "1";
+const CACHE_SCHEMA_VERSION = "2";
 const TRANSFORM_TIMEOUT_SECONDS = 5;
 const MIN_CACHE_PRUNE_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_CONCURRENT_TRANSFORMS = Math.max(1, Math.min(4, availableParallelism() - 1));
@@ -91,7 +91,9 @@ function errorResponse(message: string, status: number): Response {
 }
 
 function sourceEtag(stats: Stats): string {
-  return `"${stats.size.toString(16)}-${Math.trunc(stats.mtimeMs).toString(16)}"`;
+  return `"${stats.size.toString(16)}-${Math.trunc(stats.ctimeMs).toString(16)}-${Math.trunc(
+    stats.mtimeMs,
+  ).toString(16)}"`;
 }
 
 function isNotModified(
@@ -116,13 +118,11 @@ function isNotModified(
   return Number.isFinite(modified) && Math.floor(stats.mtimeMs / 1000) * 1000 <= modified;
 }
 
-function notModifiedResponse(etag: string, immutable: boolean, lastModified?: Date): Response {
+function notModifiedResponse(etag: string, lastModified?: Date): Response {
   return new Response(null, {
     status: 304,
     headers: {
-      "cache-control": immutable
-        ? "private, max-age=31536000, immutable"
-        : "private, max-age=300, must-revalidate",
+      "cache-control": "private, max-age=300, must-revalidate",
       etag,
       ...(lastModified ? { "last-modified": lastModified.toUTCString() } : {}),
     },
@@ -156,7 +156,7 @@ function contentTypeForMetadata(metadata: ImageMetadata): string {
 }
 
 function sourceMetadataKey(sourcePath: string, stats: Stats): string {
-  return `${sourcePath}\0${stats.mtimeMs}\0${stats.size}`;
+  return `${sourcePath}\0${stats.ctimeMs}\0${stats.mtimeMs}\0${stats.size}`;
 }
 
 async function getSourceMetadata(sourcePath: string, stats: Stats): Promise<ImageMetadata> {
@@ -302,6 +302,8 @@ function getVariantIdentity(
     .update("\0")
     .update(sourcePath)
     .update("\0")
+    .update(String(stats.ctimeMs))
+    .update("\0")
     .update(storedPath)
     .update("\0")
     .update(String(stats.mtimeMs))
@@ -395,11 +397,9 @@ export async function serveStoredImage(
   const url = new URL(request.url);
   const rawWidth = url.searchParams.get("w");
   const rawQuality = url.searchParams.get("q");
-  const sourceVersion = storedPath.split(/[\\/]/).at(-1);
-  const immutable = url.searchParams.get("v") === sourceVersion;
   if (rawWidth === null) {
     if (rawQuality !== null) return errorResponse("Quality requires a width", 400);
-    return serveOriginal(request, sourcePath, stats, undefined, immutable);
+    return serveOriginal(request, sourcePath, stats);
   }
 
   const width = Number(rawWidth);
@@ -430,16 +430,16 @@ export async function serveStoredImage(
     ) {
       return isUnsafeImageMetadata(metadata)
         ? errorResponse("Unsupported image format", 415)
-        : serveOriginal(request, sourcePath, stats, metadata, immutable);
+        : serveOriginal(request, sourcePath, stats, metadata);
     }
     if (stats.size < 10 * 1024 && (metadata.format === "webp" || isAvifMetadata(metadata))) {
-      return serveOriginal(request, sourcePath, stats, metadata, immutable);
+      return serveOriginal(request, sourcePath, stats, metadata);
     }
     if (
       (metadata.width ?? width) <= width &&
       (metadata.format === "webp" || isAvifMetadata(metadata))
     ) {
-      return serveOriginal(request, sourcePath, stats, metadata, immutable);
+      return serveOriginal(request, sourcePath, stats, metadata);
     }
 
     const effectiveWidth =
@@ -472,7 +472,7 @@ export async function serveStoredImage(
 
   const etag = `"${variant.cacheKey}"`;
   if (isNotModified(request, stats, etag, false)) {
-    return notModifiedResponse(etag, immutable);
+    return notModifiedResponse(etag);
   }
   const body = new Uint8Array(
     variant.bytes.buffer,
@@ -481,9 +481,7 @@ export async function serveStoredImage(
   );
   return new Response(body as unknown as BodyInit, {
     headers: {
-      "cache-control": immutable
-        ? "private, max-age=31536000, immutable"
-        : "private, max-age=300, must-revalidate",
+      "cache-control": "private, max-age=300, must-revalidate",
       "content-length": String(variant.bytes.byteLength),
       "content-type": "image/webp",
       "x-content-type-options": "nosniff",
@@ -498,11 +496,10 @@ async function serveOriginal(
   sourcePath: string,
   stats: Stats,
   knownMetadata?: ImageMetadata,
-  immutable = false,
 ): Promise<Response> {
   const etag = sourceEtag(stats);
   if (isNotModified(request, stats, etag)) {
-    return notModifiedResponse(etag, immutable, new Date(stats.mtimeMs));
+    return notModifiedResponse(etag, new Date(stats.mtimeMs));
   }
 
   try {
@@ -513,9 +510,7 @@ async function serveOriginal(
     const body = Readable.toWeb(createReadStream(sourcePath));
     return new Response(body as unknown as BodyInit, {
       headers: {
-        "cache-control": immutable
-          ? "private, max-age=31536000, immutable"
-          : "private, max-age=300",
+        "cache-control": "private, max-age=300, must-revalidate",
         "content-length": String(stats.size),
         "content-type": contentTypeForMetadata(metadata),
         "x-content-type-options": "nosniff",

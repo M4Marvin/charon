@@ -78,7 +78,7 @@ describe("serveStoredImage", () => {
 
     expect(first.status).toBe(200);
     expect(first.headers.get("content-type")).toBe("image/webp");
-    expect(first.headers.get("cache-control")).toBe("private, max-age=31536000, immutable");
+    expect(first.headers.get("cache-control")).toBe("private, max-age=300, must-revalidate");
     expect(first.headers.get("x-image-cache")).toBe("miss");
     const transformed = Buffer.from(await first.arrayBuffer());
     expect((await sharp(transformed).metadata()).width).toBe(512);
@@ -233,32 +233,20 @@ describe("serveStoredImage", () => {
     expect(revalidated.status).toBe(304);
   });
 
-  it("does not advertise an unversioned transformed response as immutable", async () => {
-    const response = await serveStoredImage(
-      request("/api/characters/test/avatar?w=512"),
+  it("uses revalidation for versioned image responses", async () => {
+    const transformed = await serveStoredImage(
+      request("/api/characters/test/avatar?w=512&v=test-image.png"),
       storedPath,
       optimizerOptions(),
     );
-
-    expect(response.headers.get("cache-control")).toBe("private, max-age=300, must-revalidate");
-  });
-
-  it("only grants immutable caching when the version matches the stored filename", async () => {
-    const spoofed = await serveStoredImage(
-      request("/api/characters/test/avatar?w=512&v=other.png"),
-      storedPath,
-      optimizerOptions(),
-    );
-    const versionedOriginal = await serveStoredImage(
+    const original = await serveStoredImage(
       request("/api/characters/test/avatar?v=test-image.png"),
       storedPath,
       optimizerOptions(),
     );
 
-    expect(spoofed.headers.get("cache-control")).toBe("private, max-age=300, must-revalidate");
-    expect(versionedOriginal.headers.get("cache-control")).toBe(
-      "private, max-age=31536000, immutable",
-    );
+    expect(transformed.headers.get("cache-control")).toBe("private, max-age=300, must-revalidate");
+    expect(original.headers.get("cache-control")).toBe("private, max-age=300, must-revalidate");
   });
 
   it("deduplicates concurrent transforms of the same variant", async () => {
