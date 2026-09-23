@@ -66,28 +66,31 @@ Characters not included. Grab some from [Chub](https://chub.ai) or copy `.png` f
 
 ### Chat controls
 
-| Action | How |
-|---|---|
-| **Send** | Type in the composer, press Enter (Enter also stops while the AI is typing) |
-| **New line** | Shift+Enter |
-| **Swipe** (see alternate replies) | Click the ← / → buttons under an AI message |
-| **Regenerate** | Click the circular-arrow button on the last AI message |
-| **Edit** | Click the ✏️ icon, edit, click ✓ (or Ctrl/Cmd+Enter; Esc cancels) |
-| **Impersonate** | Click the wand icon in the composer, review the draft, press Enter |
-| **Continue** | Leave the input empty and press Enter |
-| **Delete branch** | Trash icon on any message |
-| **Command menu** | Ctrl+K |
+| Action                            | How                                                                         |
+| --------------------------------- | --------------------------------------------------------------------------- |
+| **Send**                          | Type in the composer, press Enter (Enter also stops while the AI is typing) |
+| **New line**                      | Shift+Enter                                                                 |
+| **Swipe** (see alternate replies) | Click the ← / → buttons under an AI message                                 |
+| **Regenerate**                    | Click the circular-arrow button on the last AI message                      |
+| **Edit**                          | Click the ✏️ icon, edit, click ✓ (or Ctrl/Cmd+Enter; Esc cancels)           |
+| **Impersonate**                   | Click the wand icon in the composer, review the draft, press Enter          |
+| **Continue**                      | Leave the input empty and press Enter                                       |
+| **Delete branch**                 | Trash icon on any message                                                   |
+| **Command menu**                  | Ctrl+K                                                                      |
 
 ---
 
 ## Import from SillyTavern
 
 ```bash
-# Copy your old data in
-cp -r /path/to/SillyTavern/public/* public/data/
+# Copy your old data into private migration storage
+cp -r /path/to/SillyTavern/public/* data/import/
 
 # Import into the database and private data/uploads/ storage
 pnpm run migrate
+
+# For installs with data still under the old public/data path
+pnpm run prepare:migration
 
 # For installs that already ran the old migration, move legacy public/data images
 pnpm run migrate:image-paths
