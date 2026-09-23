@@ -19,6 +19,7 @@ import {
   diskPathFromStored,
   storedPathFromDiskComponents,
 } from "@/server/uploads";
+import { decodeImageBase64, validateUploadedImage } from "@/server/image-limits";
 
 export type BackgroundListItem = Pick<Background, "id" | "name" | "path" | "createdAt">;
 
@@ -46,7 +47,8 @@ export const uploadBackground = createServerFn({ method: "POST" })
     const storedPath = storedPathFromDiskComponents("backgrounds", filename);
     const filepath = diskPathFromStored(storedPath);
 
-    const bytes = Buffer.from(data.fileBase64, "base64");
+    const bytes = decodeImageBase64(data.fileBase64);
+    await validateUploadedImage(bytes);
     await writeFile(filepath, bytes);
 
     return repoCreate({ name: data.name, path: storedPath });

@@ -23,6 +23,7 @@ import {
   diskPathFromStored,
   storedPathFromDiskComponents,
 } from "@/server/uploads";
+import { decodeImageBase64, validatePngDimensions } from "@/server/image-limits";
 import type { DB } from "@/db";
 
 export type ImportError =
@@ -57,7 +58,9 @@ export function parseAndValidateCard(
 ): { ok: true; parsed: ParsedCard } | { ok: false; error: ImportError } {
   let pngBytes: Uint8Array;
   try {
-    pngBytes = new Uint8Array(Buffer.from(pngBase64, "base64"));
+    const bytes = decodeImageBase64(pngBase64);
+    validatePngDimensions(bytes);
+    pngBytes = bytes;
   } catch (e) {
     return {
       ok: false,

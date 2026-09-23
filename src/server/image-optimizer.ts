@@ -12,10 +12,16 @@ import {
   isImageWidth,
 } from "@/lib/image-optimization";
 import { UPLOADS_DISK_ROOT } from "@/server/uploads";
+import {
+  MAX_IMAGE_BYTES,
+  MAX_IMAGE_PIXELS,
+  isAvifMetadata,
+  isSupportedRasterMetadata,
+  isUnsafeImageMetadata,
+  type ImageMetadata,
+} from "@/server/image-limits";
 
 const DEFAULT_CACHE_MAX_BYTES = 1024 * 1024 * 1024;
-const MAX_SOURCE_BYTES = 50 * 1024 * 1024;
-const MAX_INPUT_PIXELS = 100_000_000;
 const TRANSFORM_TIMEOUT_SECONDS = 5;
 const MIN_CACHE_PRUNE_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_CONCURRENT_TRANSFORMS = Math.max(1, Math.min(4, availableParallelism() - 1));
@@ -61,29 +67,19 @@ function sourceEtag(stats: Stats): string {
   return `"${stats.size.toString(16)}-${Math.trunc(stats.mtimeMs).toString(16)}"`;
 }
 
-type ImageMetadata = {
-  format?: string;
-  width?: number;
-  height?: number;
-  pages?: number;
-};
-
-function contentTypeForFormat(format?: string): string {
-  switch (format) {
+function contentTypeForMetadata(metadata: ImageMetadata): string {
+  if (isAvifMetadata(metadata)) return "image/avif";
+  switch (metadata.format) {
     case "jpeg":
       return "image/jpeg";
     case "png":
       return "image/png";
     case "webp":
       return "image/webp";
-    case "avif":
-      return "image/avif";
     case "gif":
       return "image/gif";
     case "tiff":
       return "image/tiff";
-    case "svg":
-      return "image/svg+xml";
     default:
       return "application/octet-stream";
   }
@@ -204,7 +200,7 @@ async function readOrTransformVariant(
     try {
       const bytes = await sharp(sourcePath, {
         failOn: "error",
-        limitInputPixels: MAX_INPUT_PIXELS,
+        limitInputPixels: MAX_IMAGE_PIXELS,
         sequentialRead: true,
       })
         .autoOrient()
@@ -247,7 +243,7 @@ export async function serveStoredImage(
     return errorResponse("File missing", 404);
   }
   if (!stats.isFile()) return errorResponse("File missing", 404);
-  if (stats.size > MAX_SOURCE_BYTES) return errorResponse("Image is too large", 413);
+  if (stats.size > MAX_IMAGE_BYTES) return errorResponse("Image is too large", 413);
 
   const url = new URL(request.url);
   const rawWidth = url.searchParams.get("w");
@@ -272,23 +268,29 @@ export async function serveStoredImage(
   try {
     metadata = await sharp(sourcePath, {
       failOn: "error",
-      limitInputPixels: MAX_INPUT_PIXELS,
+      limitInputPixels: MAX_IMAGE_PIXELS,
       sequentialRead: true,
     }).metadata();
   } catch {
     return errorResponse("Invalid image", 422);
   }
 
-  const supported = new Set(["jpeg", "png", "webp", "avif", "tiff"]);
-  if (!supported.has(metadata.format ?? "") || (metadata.pages ?? 1) > 1) {
-    return serveOriginal(sourcePath, stats, metadata, immutable);
+  if (
+    isUnsafeImageMetadata(metadata) ||
+    !isSupportedRasterMetadata(metadata) ||
+    metadata.format === "gif" ||
+    (metadata.pages ?? 1) > 1
+  ) {
+    return isUnsafeImageMetadata(metadata)
+      ? errorResponse("Unsupported image format", 415)
+      : serveOriginal(sourcePath, stats, metadata, immutable);
   }
-  if (stats.size < 10 * 1024 && (metadata.format === "webp" || metadata.format === "avif")) {
+  if (stats.size < 10 * 1024 && (metadata.format === "webp" || isAvifMetadata(metadata))) {
     return serveOriginal(sourcePath, stats, metadata, immutable);
   }
   if (
     (metadata.width ?? width) <= width &&
-    (metadata.format === "webp" || metadata.format === "avif")
+    (metadata.format === "webp" || isAvifMetadata(metadata))
   ) {
     return serveOriginal(sourcePath, stats, metadata, immutable);
   }
@@ -311,6 +313,7 @@ export async function serveStoredImage(
           : "private, max-age=300, must-revalidate",
         "content-length": String(variant.bytes.byteLength),
         "content-type": "image/webp",
+        "x-content-type-options": "nosniff",
         etag: `"${variant.cacheKey}"`,
         "x-image-cache": variant.cacheHit ? "hit" : "miss",
       },
@@ -331,9 +334,12 @@ async function serveOriginal(
       knownMetadata ??
       (await sharp(sourcePath, {
         failOn: "error",
-        limitInputPixels: MAX_INPUT_PIXELS,
+        limitInputPixels: MAX_IMAGE_PIXELS,
         sequentialRead: true,
       }).metadata());
+    if (isUnsafeImageMetadata(metadata)) {
+      return errorResponse("Unsupported image format", 415);
+    }
     const bytes = await readFile(sourcePath);
     return new Response(new Uint8Array(bytes), {
       headers: {
@@ -341,7 +347,8 @@ async function serveOriginal(
           ? "private, max-age=31536000, immutable"
           : "private, max-age=300",
         "content-length": String(bytes.byteLength),
-        "content-type": contentTypeForFormat(metadata.format),
+        "content-type": contentTypeForMetadata(metadata),
+        "x-content-type-options": "nosniff",
         etag: sourceEtag(stats),
         "last-modified": new Date(stats.mtimeMs).toUTCString(),
         "x-image-cache": "source",

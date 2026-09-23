@@ -9,6 +9,7 @@ import {
   diskPathFromStored,
   storedPathFromDiskComponents,
 } from "@/server/uploads";
+import { decodeImageBase64, validateUploadedImage } from "@/server/image-limits";
 import type { Persona } from "@/db/schema";
 import { UploadPersonaIconInput } from "@/server/schemas/persona";
 import {
@@ -127,7 +128,8 @@ export const uploadPersonaIcon = createServerFn({ method: "POST" })
 
     await ensureUploadsDirs();
 
-    const bytes = Buffer.from(data.fileBase64, "base64");
+    const bytes = decodeImageBase64(data.fileBase64);
+    await validateUploadedImage(bytes);
     await writeFile(diskPath, bytes);
 
     if (existing.iconPath) {

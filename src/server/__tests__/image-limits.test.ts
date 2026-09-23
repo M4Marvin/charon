@@ -1,0 +1,48 @@
+// @vitest-environment node
+import { describe, expect, it } from "vitest";
+import sharp from "sharp";
+import {
+  assertImagePixelCount,
+  decodeImageBase64,
+  isAvifMetadata,
+  validatePngDimensions,
+  validateUploadedImage,
+} from "@/server/image-limits";
+
+describe("image limits", () => {
+  it("rejects malformed Base64 before decoding", () => {
+    expect(() => decodeImageBase64("not-base64!")).toThrow("Invalid image data");
+    expect(() => decodeImageBase64("a")).toThrow("Invalid image data");
+  });
+
+  it("enforces the pixel budget", () => {
+    expect(() => assertImagePixelCount(10_000, 10_000)).not.toThrow();
+    expect(() => assertImagePixelCount(10_001, 10_000)).toThrow(
+      "Image dimensions exceed the allowed limit",
+    );
+
+    const pngHeader = new Uint8Array(24);
+    new DataView(pngHeader.buffer).setUint32(16, 10_001);
+    new DataView(pngHeader.buffer).setUint32(20, 10_000);
+    expect(() => validatePngDimensions(pngHeader)).toThrow(
+      "Image dimensions exceed the allowed limit",
+    );
+  });
+
+  it("rejects active SVG uploads", async () => {
+    const svg = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><script>alert(1)</script></svg>',
+    );
+    await expect(validateUploadedImage(svg)).rejects.toThrow("Unsupported image format");
+  });
+
+  it("recognizes AVIF reported through HEIF metadata", async () => {
+    const avif = await sharp({
+      create: { width: 20, height: 20, channels: 3, background: "red" },
+    })
+      .avif()
+      .toBuffer();
+    const metadata = await validateUploadedImage(avif);
+    expect(isAvifMetadata(metadata)).toBe(true);
+  });
+});
