@@ -13,14 +13,16 @@ The `charon-data:/app/data` volume in `docker-compose.yml` covers `/app/data/`, 
 ### Migration
 
 New imports write uploaded images directly to `data/uploads/`. For installations
-that still have legacy images under `public/data/`, run:
+that still have legacy images under `public/data/`, run this from the host
+checkout (the migration script is not included in the runtime container):
 
 ```
-pnpm migrate:image-paths
+pnpm run migrate:image-paths
 ```
 
-The script copies files to `data/uploads/`, updates DB paths, and then removes
-legacy files that are no longer referenced. It is idempotent (safe to re-run).
+The script verifies and copies files to `data/uploads/`, updates DB paths, and
+then removes legacy files that are no longer referenced. It is idempotent (safe
+to re-run).
 
 ## Historical (deprecated) approaches
 
@@ -41,6 +43,9 @@ On the server:
 docker exec <container> ls -la /app/data/uploads/avatars/
 docker exec <container> ls -la /app/data/uploads/backgrounds/
 
-# Verify HTTP response (should be 200)
+# Unauthenticated API requests must be rejected (401)
 curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/characters/<character-id>/avatar
+
+# With an authenticated browser session, the same route should return 200
+# (use the browser's authenticated request or a session cookie).
 ```
