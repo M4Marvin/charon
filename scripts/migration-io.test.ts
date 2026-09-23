@@ -30,7 +30,7 @@ describe("readMigrationFile", () => {
     await truncate(path, MAX_IMAGE_BYTES + 1);
 
     await expect(readMigrationFile(path)).rejects.toThrow(
-      "Migration file exceeds the allowed size limit",
+      "Private file exceeds the allowed size limit",
     );
   });
 });

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { rm, writeFile } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import {
   createCharacter as repoCreate,
   listCharacters as repoList,
@@ -22,6 +22,7 @@ import {
   ensureUploadsDirs,
   diskPathFromStored,
   storedPathFromDiskComponents,
+  writePrivateFileAtomic,
 } from "@/server/uploads";
 import {
   decodeImageBase64,
@@ -202,7 +203,7 @@ export async function importCharacterCard(pngBase64: string, db?: DB): Promise<I
 
   try {
     await ensureUploadsDirs();
-    await writeFile(writePath, pngBytes);
+    await writePrivateFileAtomic(writePath, pngBytes);
   } catch (e) {
     await rm(writePath, { force: true }).catch(() => {});
     return {

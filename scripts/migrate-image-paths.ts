@@ -7,20 +7,20 @@
 import { config } from "dotenv";
 config({ path: [".env.local", ".env"] });
 
-import { readdir, rename, rm, writeFile } from "node:fs/promises";
+import { readdir, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { eq, like } from "drizzle-orm";
 
 import { db } from "@/db";
 import { characters, backgrounds, personas } from "@/db/schema";
 import { validateUploadedImage } from "@/server/image-limits";
-import { readMigrationFile } from "./migration-io";
+import { readMigrationFile, resolveMigrationDirectory } from "./migration-io";
 import {
   ensureUploadsDirs,
   diskPathFromStored,
   storedPathFromDiskComponents,
+  writePrivateFileAtomic,
   UPLOADS_SUBDIRS,
   type UploadSubdir,
 } from "@/server/uploads";
@@ -33,8 +33,11 @@ type MigrationResult = Counts & { verified: Set<string> };
 async function migrateSubdir(subdir: UploadSubdir): Promise<MigrationResult> {
   const counts: Counts = { found: 0, moved: 0, skipped: 0, failed: 0 };
   const verified = new Set<string>();
-  const sourceDir = join(SOURCE_BASE, UPLOADS_SUBDIRS[subdir]);
-  if (!existsSync(sourceDir)) return { ...counts, verified };
+  const sourceDir = resolveMigrationDirectory(
+    SOURCE_BASE,
+    join(SOURCE_BASE, UPLOADS_SUBDIRS[subdir]),
+  );
+  if (!sourceDir) return { ...counts, verified };
 
   const entries = await readdir(sourceDir, { withFileTypes: true });
   const images = entries.filter(
@@ -70,13 +73,7 @@ async function migrateSubdir(subdir: UploadSubdir): Promise<MigrationResult> {
         await rm(dst, { force: true });
       }
 
-      const tempPath = `${dst}.tmp-${randomUUID()}`;
-      try {
-        await writeFile(tempPath, sourceBytes, { flag: "wx" });
-        await rename(tempPath, dst);
-      } finally {
-        await rm(tempPath, { force: true }).catch(() => {});
-      }
+      await writePrivateFileAtomic(dst, sourceBytes);
       verified.add(stored);
       counts.moved++;
     } catch (error) {
@@ -174,8 +171,8 @@ async function cleanOrphans(): Promise<{ deleted: string[] }> {
   const deleted: string[] = [];
 
   for (const subdir of Object.values(UPLOADS_SUBDIRS)) {
-    const dataDir = join(SOURCE_BASE, subdir);
-    if (!existsSync(dataDir)) continue;
+    const dataDir = resolveMigrationDirectory(SOURCE_BASE, join(SOURCE_BASE, subdir));
+    if (!dataDir) continue;
 
     const entries = await readdir(dataDir, { withFileTypes: true });
     const images = entries.filter(

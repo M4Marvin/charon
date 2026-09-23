@@ -1,11 +1,12 @@
 // @vitest-environment node
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { diskPathFromStored } from "@/server/uploads";
 
 describe("diskPathFromStored", () => {
   it("keeps valid stored paths under the uploads root", () => {
     expect(diskPathFromStored("uploads/personas/avatar.png")).toBe(
-      "data/uploads/personas/avatar.png",
+      resolve("data/uploads/personas/avatar.png"),
     );
   });
 

@@ -21,6 +21,7 @@ vi.mock("@/server/uploads", () => ({
   ensureUploadsDirs: vi.fn(async () => {}),
   diskPathFromStored: (p: string) => `/tmp/charon-test/${p}`,
   storedPathFromDiskComponents: (_s: string, f: string) => `uploads/avatars/${f}`,
+  writePrivateFileAtomic: vi.fn(async () => {}),
 }));
 vi.mock("node:fs/promises", async (importOriginal) => ({
   ...(await importOriginal<typeof import("node:fs/promises")>()),

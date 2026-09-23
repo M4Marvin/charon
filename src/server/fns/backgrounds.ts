@@ -1,4 +1,4 @@
-import { rm, writeFile } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import type { Background } from "@/db/schema";
@@ -18,6 +18,7 @@ import {
   ensureUploadsDirs,
   diskPathFromStored,
   storedPathFromDiskComponents,
+  writePrivateFileAtomic,
 } from "@/server/uploads";
 import { decodeImageBase64, validateUploadedImage } from "@/server/image-limits";
 import { invalidateStoredImageCache } from "@/server/image-optimizer";
@@ -51,7 +52,7 @@ export const uploadBackground = createServerFn({ method: "POST" })
     const bytes = decodeImageBase64(data.fileBase64);
     await validateUploadedImage(bytes);
     try {
-      await writeFile(filepath, bytes);
+      await writePrivateFileAtomic(filepath, bytes);
     } catch (error) {
       await rm(filepath, { force: true }).catch(() => {});
       throw error;

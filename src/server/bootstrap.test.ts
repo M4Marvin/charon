@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb, seedTestUser, type TestDb } from "@/db/__tests__/helpers";
 import { DEFAULT_IMAGE_PROMPT_EXAMPLE } from "@/features/chat/generation/image-prompt";
@@ -28,7 +29,14 @@ vi.mock("node:fs/promises", async (importOriginal) => ({
   ...(await importOriginal<typeof import("node:fs/promises")>()),
   mkdir: vi.fn(async () => {}),
   readdir: vi.fn(async () => ["one.jpg", "two.png"]),
-  cp: vi.fn(async () => {}),
+  realpath: vi.fn(async (path: string) => resolve(path)),
+  lstat: vi.fn(async () => ({ isFile: () => true, isDirectory: () => true })),
+}));
+
+vi.mock("@/server/uploads", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/server/uploads")>()),
+  readPrivateFile: vi.fn(async () => Buffer.from("image")),
+  writePrivateFileAtomic: vi.fn(async () => {}),
 }));
 
 import { ensureStartupTasks } from "@/server/bootstrap";

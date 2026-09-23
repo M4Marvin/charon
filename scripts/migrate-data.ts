@@ -12,7 +12,7 @@
 import { config } from "dotenv";
 config({ path: [".env.local", ".env"] });
 
-import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, rm } from "node:fs/promises";
 import { existsSync, realpathSync } from "node:fs";
 import { basename, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -22,7 +22,7 @@ import { user, characters, lorebooks, loreEntries, personas } from "@/db/schema"
 import { derivedColumns } from "@/db/repositories/characters";
 import { validateUploadedImage } from "@/server/image-limits";
 import { readMigrationFile } from "./migration-io";
-import { ensureUploadsDirs } from "@/server/uploads";
+import { ensureUploadsDirs, writePrivateFileAtomic } from "@/server/uploads";
 import { upsertUserSettings, type UserSettingsPatch } from "@/db/repositories/userSettings";
 import {
   parseCharacterCard,
@@ -258,7 +258,7 @@ async function migrateCharacters(
     const avatarPath = join(AVATAR_PUBLIC_PREFIX, filename);
 
     try {
-      await writeFile(writePath, bytes);
+      await writePrivateFileAtomic(writePath, bytes);
     } catch (e) {
       await rm(writePath, { force: true }).catch(() => {});
       console.log(`  ✗ ${fileBase}: avatar copy (${(e as Error).message})`);
@@ -470,7 +470,7 @@ async function migratePersonas(): Promise<Counts> {
       try {
         const iconBytes = await readMigrationFile(sourcePath);
         await validateUploadedImage(iconBytes);
-        await writeFile(iconWritePath, iconBytes);
+        await writePrivateFileAtomic(iconWritePath, iconBytes);
       } catch (e) {
         if (iconWritePath) await rm(iconWritePath, { force: true }).catch(() => {});
         console.log(`  ✗ ${name}: icon copy (${(e as Error).message})`);

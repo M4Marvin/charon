@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { rm, writeFile } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { createServerFn } from "@tanstack/react-start";
 import { type } from "arktype";
 import { getSession } from "@/server/session";
@@ -8,6 +8,7 @@ import {
   ensureUploadsDirs,
   diskPathFromStored,
   storedPathFromDiskComponents,
+  writePrivateFileAtomic,
 } from "@/server/uploads";
 import { decodeImageBase64, validateUploadedImage } from "@/server/image-limits";
 import { invalidateStoredImageCache } from "@/server/image-optimizer";
@@ -127,7 +128,7 @@ export const uploadPersonaIcon = createServerFn({ method: "POST" })
     const bytes = decodeImageBase64(data.fileBase64);
     await validateUploadedImage(bytes);
     try {
-      await writeFile(diskPath, bytes);
+      await writePrivateFileAtomic(diskPath, bytes);
     } catch (error) {
       await rm(diskPath, { force: true }).catch(() => {});
       throw error;
