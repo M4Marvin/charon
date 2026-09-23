@@ -44,19 +44,23 @@ function request(url: string): Request {
   return new Request(`http://localhost${url}`);
 }
 
-async function findWebpCache(root: string): Promise<string> {
+async function listWebpCacheFiles(root: string): Promise<string[]> {
+  const files: string[] = [];
   const entries = await readdir(root, { withFileTypes: true });
   for (const entry of entries) {
     const path = join(root, entry.name);
     if (entry.isDirectory()) {
-      try {
-        return await findWebpCache(path);
-      } catch {
-        continue;
-      }
+      files.push(...(await listWebpCacheFiles(path)));
+    } else if (entry.isFile() && entry.name.endsWith(".webp")) {
+      files.push(path);
     }
-    if (entry.isFile() && entry.name.endsWith(".webp")) return path;
   }
+  return files;
+}
+
+async function findWebpCache(root: string): Promise<string> {
+  const files = await listWebpCacheFiles(root);
+  if (files[0]) return files[0];
   throw new Error("WebP cache file not found");
 }
 
@@ -86,6 +90,30 @@ describe("serveStoredImage", () => {
     );
     expect(second.headers.get("x-image-cache")).toBe("hit");
     expect(Buffer.from(await second.arrayBuffer()).equals(transformed)).toBe(true);
+  });
+
+  it("shares one cached variant for widths larger than the source", async () => {
+    await writeFile(
+      sourcePath,
+      await sharp({
+        create: { width: 800, height: 600, channels: 3, background: { r: 40, g: 100, b: 180 } },
+      })
+        .png()
+        .toBuffer(),
+    );
+
+    for (const width of [1024, 1280, 1920, 2560]) {
+      const response = await serveStoredImage(
+        request(`/api/characters/test/avatar?w=${width}`),
+        storedPath,
+        optimizerOptions(),
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/webp");
+      await response.arrayBuffer();
+    }
+
+    expect(await listWebpCacheFiles(cacheDir)).toHaveLength(1);
   });
 
   it("returns 304 for a matching transformed validator", async () => {

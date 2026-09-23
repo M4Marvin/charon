@@ -1,7 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
 import { availableParallelism } from "node:os";
 import type { Stats } from "node:fs";
+import { createReadStream } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { Readable } from "node:stream";
 import { mkdir, readFile, readdir, rename, rm, stat, utimes, writeFile } from "node:fs/promises";
 import sharp from "sharp";
 import {
@@ -12,9 +14,11 @@ import {
   isImageWidth,
 } from "@/lib/image-optimization";
 import { UPLOADS_DISK_ROOT } from "@/server/uploads";
+import { createLogger } from "@/features/logging";
 import {
   MAX_IMAGE_BYTES,
   MAX_IMAGE_PIXELS,
+  assertImagePixelCount,
   isAvifMetadata,
   isSupportedRasterMetadata,
   isUnsafeImageMetadata,
@@ -26,10 +30,32 @@ const CACHE_SCHEMA_VERSION = "1";
 const TRANSFORM_TIMEOUT_SECONDS = 5;
 const MIN_CACHE_PRUNE_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_CONCURRENT_TRANSFORMS = Math.max(1, Math.min(4, availableParallelism() - 1));
+const MAX_TRANSFORM_QUEUE = 128;
+const log = createLogger("image-optimizer");
+sharp.concurrency(Math.max(1, Math.min(2, availableParallelism())));
 
 const inFlight = new Map<string, Promise<Buffer>>();
-const transformWaiters: Array<() => void> = [];
+const sourceMetadataCache = new Map<string, Promise<ImageMetadata>>();
+const MAX_SOURCE_METADATA_CACHE_ENTRIES = 256;
+type TransformWaiter = { resolve: () => void; reject: (error: Error) => void };
+const transformWaiters: TransformWaiter[] = [];
 let activeTransforms = 0;
+
+class TransformQueueFullError extends Error {
+  constructor() {
+    super("Image transformation queue is full");
+    this.name = "TransformQueueFullError";
+  }
+}
+
+function drainTransformQueue(): void {
+  while (activeTransforms < MAX_CONCURRENT_TRANSFORMS && transformWaiters.length > 0) {
+    const waiter = transformWaiters.shift();
+    if (!waiter) continue;
+    activeTransforms++;
+    waiter.resolve();
+  }
+}
 let lastCachePruneAt = 0;
 
 export type ImageOptimizerOptions = {
@@ -129,16 +155,54 @@ function contentTypeForMetadata(metadata: ImageMetadata): string {
   }
 }
 
-async function withTransformLimit<T>(task: () => Promise<T>): Promise<T> {
-  if (activeTransforms >= MAX_CONCURRENT_TRANSFORMS) {
-    await new Promise<void>((resolveWaiter) => transformWaiters.push(resolveWaiter));
+function sourceMetadataKey(sourcePath: string, stats: Stats): string {
+  return `${sourcePath}\0${stats.mtimeMs}\0${stats.size}`;
+}
+
+async function getSourceMetadata(sourcePath: string, stats: Stats): Promise<ImageMetadata> {
+  const key = sourceMetadataKey(sourcePath, stats);
+  const cached = sourceMetadataCache.get(key);
+  if (cached) return cached;
+
+  const pending = (async () => {
+    const metadata = await sharp(sourcePath, {
+      failOn: "error",
+      limitInputPixels: MAX_IMAGE_PIXELS,
+      sequentialRead: true,
+    }).metadata();
+    if (metadata.width !== undefined && metadata.height !== undefined) {
+      assertImagePixelCount(metadata.width, metadata.height, metadata.channels, metadata.depth);
+    }
+    return metadata;
+  })();
+  sourceMetadataCache.set(key, pending);
+  if (sourceMetadataCache.size > MAX_SOURCE_METADATA_CACHE_ENTRIES) {
+    const oldest = sourceMetadataCache.keys().next().value;
+    if (oldest) sourceMetadataCache.delete(oldest);
   }
-  activeTransforms++;
+
+  try {
+    return await pending;
+  } catch (error) {
+    sourceMetadataCache.delete(key);
+    throw error;
+  }
+}
+
+async function withTransformLimit<T>(task: () => Promise<T>): Promise<T> {
+  await new Promise<void>((resolve, reject) => {
+    if (transformWaiters.length >= MAX_TRANSFORM_QUEUE) {
+      reject(new TransformQueueFullError());
+      return;
+    }
+    transformWaiters.push({ resolve, reject });
+    drainTransformQueue();
+  });
   try {
     return await task();
   } finally {
     activeTransforms--;
-    transformWaiters.shift()?.();
+    drainTransformQueue();
   }
 }
 
@@ -205,19 +269,34 @@ async function writeCacheFile(cachePath: string, bytes: Buffer): Promise<boolean
     return true;
   } catch (error) {
     await rm(temporaryPath, { force: true }).catch(() => {});
-    console.warn("[image-optimizer] cache write failed", error);
+    log.warn(
+      "cache write failed",
+      undefined,
+      error instanceof Error ? error : new Error(String(error)),
+    );
     return false;
   }
 }
 
-async function readOrTransformVariant(
+type VariantIdentity = {
+  cacheKey: string;
+  cachePath: string;
+};
+
+type VariantResult = {
+  bytes: Buffer;
+  cacheKey: string;
+  cacheHit: boolean;
+};
+
+function getVariantIdentity(
   sourcePath: string,
   storedPath: string,
   cacheDir: string,
   width: number,
   quality: number,
   stats: Stats,
-): Promise<{ bytes: Buffer; cacheKey: string; cacheHit: boolean }> {
+): VariantIdentity {
   const cacheKey = createHash("sha256")
     .update(CACHE_SCHEMA_VERSION)
     .update("\0")
@@ -233,22 +312,35 @@ async function readOrTransformVariant(
     .update("\0")
     .update(String(quality))
     .digest("hex");
-  const cachePath = join(cacheDir, cacheKey.slice(0, 2), `${cacheKey}.webp`);
+  return {
+    cacheKey,
+    cachePath: join(cacheDir, cacheKey.slice(0, 2), `${cacheKey}.webp`),
+  };
+}
 
+async function readCachedVariant(identity: VariantIdentity): Promise<VariantResult | null> {
   try {
-    const bytes = await readFile(cachePath);
+    const bytes = await readFile(identity.cachePath);
     if (!isWebpBuffer(bytes)) {
-      await rm(cachePath, { force: true, recursive: true }).catch(() => {});
-    } else {
-      void utimes(cachePath, new Date(), new Date()).catch(() => {});
-      return { bytes, cacheKey, cacheHit: true };
+      await rm(identity.cachePath, { force: true, recursive: true }).catch(() => {});
+      return null;
     }
+    void utimes(identity.cachePath, new Date(), new Date()).catch(() => {});
+    return { bytes, cacheKey: identity.cacheKey, cacheHit: true };
   } catch {
     // A missing, unreadable, or partially written cache entry is a miss.
+    return null;
   }
+}
 
-  const existing = inFlight.get(cacheKey);
-  if (existing) return { bytes: await existing, cacheKey, cacheHit: true };
+async function transformVariant(
+  sourcePath: string,
+  width: number,
+  quality: number,
+  identity: VariantIdentity,
+): Promise<VariantResult> {
+  const existing = inFlight.get(identity.cacheKey);
+  if (existing) return { bytes: await existing, cacheKey: identity.cacheKey, cacheHit: true };
 
   const pending = withTransformLimit(async () => {
     try {
@@ -267,15 +359,15 @@ async function readOrTransformVariant(
         .webp({ quality, effort: 4, smartSubsample: true })
         .timeout({ seconds: TRANSFORM_TIMEOUT_SECONDS })
         .toBuffer();
-      await writeCacheFile(cachePath, bytes);
+      await writeCacheFile(identity.cachePath, bytes);
       return bytes;
     } finally {
-      inFlight.delete(cacheKey);
+      inFlight.delete(identity.cacheKey);
     }
   });
-  inFlight.set(cacheKey, pending);
+  inFlight.set(identity.cacheKey, pending);
 
-  return { bytes: await pending, cacheKey, cacheHit: false };
+  return { bytes: await pending, cacheKey: identity.cacheKey, cacheHit: false };
 }
 
 export async function serveStoredImage(
@@ -319,65 +411,86 @@ export async function serveStoredImage(
     return errorResponse(`Quality must be one of: ${IMAGE_QUALITIES.join(", ")}`, 400);
   }
 
-  let metadata: ImageMetadata;
-  try {
-    metadata = await sharp(sourcePath, {
-      failOn: "error",
-      limitInputPixels: MAX_IMAGE_PIXELS,
-      sequentialRead: true,
-    }).metadata();
-  } catch {
-    return errorResponse("Invalid image", 422);
-  }
+  let identity = getVariantIdentity(sourcePath, storedPath, cacheDir, width, quality, stats);
+  let variant = await readCachedVariant(identity);
 
-  if (
-    isUnsafeImageMetadata(metadata) ||
-    !isSupportedRasterMetadata(metadata) ||
-    metadata.format === "gif" ||
-    (metadata.pages ?? 1) > 1
-  ) {
-    return isUnsafeImageMetadata(metadata)
-      ? errorResponse("Unsupported image format", 415)
-      : serveOriginal(request, sourcePath, stats, metadata, immutable);
-  }
-  if (stats.size < 10 * 1024 && (metadata.format === "webp" || isAvifMetadata(metadata))) {
-    return serveOriginal(request, sourcePath, stats, metadata, immutable);
-  }
-  if (
-    (metadata.width ?? width) <= width &&
-    (metadata.format === "webp" || isAvifMetadata(metadata))
-  ) {
-    return serveOriginal(request, sourcePath, stats, metadata, immutable);
-  }
-
-  try {
-    const variant = await readOrTransformVariant(
-      sourcePath,
-      storedPath,
-      cacheDir,
-      width,
-      quality,
-      stats,
-    );
-    const etag = `"${variant.cacheKey}"`;
-    if (isNotModified(request, stats, etag, false)) {
-      return notModifiedResponse(etag, immutable);
+  if (!variant) {
+    let metadata: ImageMetadata;
+    try {
+      metadata = await getSourceMetadata(sourcePath, stats);
+    } catch {
+      return errorResponse("Invalid image", 422);
     }
-    return new Response(new Uint8Array(variant.bytes), {
-      headers: {
-        "cache-control": immutable
-          ? "private, max-age=31536000, immutable"
-          : "private, max-age=300, must-revalidate",
-        "content-length": String(variant.bytes.byteLength),
-        "content-type": "image/webp",
-        "x-content-type-options": "nosniff",
-        etag,
-        "x-image-cache": variant.cacheHit ? "hit" : "miss",
-      },
-    });
-  } catch {
-    return errorResponse("Image transformation failed", 422);
+
+    if (
+      isUnsafeImageMetadata(metadata) ||
+      !isSupportedRasterMetadata(metadata) ||
+      metadata.format === "gif" ||
+      (metadata.pages ?? 1) > 1
+    ) {
+      return isUnsafeImageMetadata(metadata)
+        ? errorResponse("Unsupported image format", 415)
+        : serveOriginal(request, sourcePath, stats, metadata, immutable);
+    }
+    if (stats.size < 10 * 1024 && (metadata.format === "webp" || isAvifMetadata(metadata))) {
+      return serveOriginal(request, sourcePath, stats, metadata, immutable);
+    }
+    if (
+      (metadata.width ?? width) <= width &&
+      (metadata.format === "webp" || isAvifMetadata(metadata))
+    ) {
+      return serveOriginal(request, sourcePath, stats, metadata, immutable);
+    }
+
+    const effectiveWidth =
+      metadata.width !== undefined && metadata.width > 0 && metadata.width < width
+        ? metadata.width
+        : width;
+    if (effectiveWidth !== width) {
+      identity = getVariantIdentity(
+        sourcePath,
+        storedPath,
+        cacheDir,
+        effectiveWidth,
+        quality,
+        stats,
+      );
+      variant = await readCachedVariant(identity);
+    }
+
+    if (!variant) {
+      try {
+        variant = await transformVariant(sourcePath, effectiveWidth, quality, identity);
+      } catch (error) {
+        if (error instanceof TransformQueueFullError) {
+          return errorResponse("Image transformation queue is full", 503);
+        }
+        return errorResponse("Image transformation failed", 422);
+      }
+    }
   }
+
+  const etag = `"${variant.cacheKey}"`;
+  if (isNotModified(request, stats, etag, false)) {
+    return notModifiedResponse(etag, immutable);
+  }
+  const body = new Uint8Array(
+    variant.bytes.buffer,
+    variant.bytes.byteOffset,
+    variant.bytes.byteLength,
+  );
+  return new Response(body as unknown as BodyInit, {
+    headers: {
+      "cache-control": immutable
+        ? "private, max-age=31536000, immutable"
+        : "private, max-age=300, must-revalidate",
+      "content-length": String(variant.bytes.byteLength),
+      "content-type": "image/webp",
+      "x-content-type-options": "nosniff",
+      etag,
+      "x-image-cache": variant.cacheHit ? "hit" : "miss",
+    },
+  });
 }
 
 async function serveOriginal(
@@ -393,23 +506,17 @@ async function serveOriginal(
   }
 
   try {
-    const metadata =
-      knownMetadata ??
-      (await sharp(sourcePath, {
-        failOn: "error",
-        limitInputPixels: MAX_IMAGE_PIXELS,
-        sequentialRead: true,
-      }).metadata());
+    const metadata = knownMetadata ?? (await getSourceMetadata(sourcePath, stats));
     if (isUnsafeImageMetadata(metadata)) {
       return errorResponse("Unsupported image format", 415);
     }
-    const bytes = await readFile(sourcePath);
-    return new Response(new Uint8Array(bytes), {
+    const body = Readable.toWeb(createReadStream(sourcePath));
+    return new Response(body as unknown as BodyInit, {
       headers: {
         "cache-control": immutable
           ? "private, max-age=31536000, immutable"
           : "private, max-age=300",
-        "content-length": String(bytes.byteLength),
+        "content-length": String(stats.size),
         "content-type": contentTypeForMetadata(metadata),
         "x-content-type-options": "nosniff",
         etag,

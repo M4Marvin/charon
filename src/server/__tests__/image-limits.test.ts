@@ -16,14 +16,14 @@ describe("image limits", () => {
   });
 
   it("enforces the pixel budget", () => {
-    expect(() => assertImagePixelCount(10_000, 10_000)).not.toThrow();
-    expect(() => assertImagePixelCount(10_001, 10_000)).toThrow(
+    expect(() => assertImagePixelCount(8_192, 8_192)).not.toThrow();
+    expect(() => assertImagePixelCount(8_193, 8_192)).toThrow(
       "Image dimensions exceed the allowed limit",
     );
 
     const pngHeader = new Uint8Array(24);
-    new DataView(pngHeader.buffer).setUint32(16, 10_001);
-    new DataView(pngHeader.buffer).setUint32(20, 10_000);
+    new DataView(pngHeader.buffer).setUint32(16, 8_193);
+    new DataView(pngHeader.buffer).setUint32(20, 8_192);
     expect(() => validatePngDimensions(pngHeader)).toThrow(
       "Image dimensions exceed the allowed limit",
     );

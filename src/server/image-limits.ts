@@ -2,6 +2,7 @@ import sharp from "sharp";
 
 export const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 export const MAX_IMAGE_PIXELS = 100_000_000;
+export const MAX_IMAGE_DECODED_BYTES = 256 * 1024 * 1024;
 
 const MAX_BASE64_LENGTH = Math.ceil(MAX_IMAGE_BYTES / 3) * 4;
 
@@ -12,6 +13,8 @@ export type ImageMetadata = {
   width?: number;
   height?: number;
   pages?: number;
+  channels?: number;
+  depth?: number | string;
 };
 
 export function decodeImageBase64(value: string): Buffer {
@@ -29,8 +32,22 @@ export function decodeImageBase64(value: string): Buffer {
   return bytes;
 }
 
-export function assertImagePixelCount(width: number, height: number): void {
-  if (width <= 0 || height <= 0 || width * height > MAX_IMAGE_PIXELS) {
+export function assertImagePixelCount(
+  width: number,
+  height: number,
+  channels = 4,
+  depth: number | string = 8,
+): void {
+  const pixels = width * height;
+  const bytesPerSample =
+    typeof depth === "number" ? Math.ceil(depth / 8) : depth === "ushort" ? 2 : 1;
+  const decodedBytes = pixels * channels * bytesPerSample;
+  if (
+    width <= 0 ||
+    height <= 0 ||
+    pixels > MAX_IMAGE_PIXELS ||
+    decodedBytes > MAX_IMAGE_DECODED_BYTES
+  ) {
     throw new Error("Image dimensions exceed the allowed limit");
   }
 }
@@ -70,7 +87,7 @@ export async function validateUploadedImage(bytes: Uint8Array): Promise<ImageMet
     throw new Error("Unsupported image format");
   }
   if (metadata.width !== undefined && metadata.height !== undefined) {
-    assertImagePixelCount(metadata.width, metadata.height);
+    assertImagePixelCount(metadata.width, metadata.height, metadata.channels, metadata.depth);
   }
   return metadata;
 }
