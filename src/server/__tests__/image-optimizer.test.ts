@@ -51,7 +51,7 @@ function optimizerOptions() {
 describe("serveStoredImage", () => {
   it("resizes, converts to WebP, and persists a cache variant", async () => {
     const first = await serveStoredImage(
-      request("/api/characters/test/avatar?w=512&q=80&v=test.png"),
+      request("/api/characters/test/avatar?w=512&q=80&v=test-image.png"),
       storedPath,
       optimizerOptions(),
     );
@@ -64,7 +64,7 @@ describe("serveStoredImage", () => {
     expect((await sharp(transformed).metadata()).width).toBe(512);
 
     const second = await serveStoredImage(
-      request("/api/characters/test/avatar?w=512&q=80&v=test.png"),
+      request("/api/characters/test/avatar?w=512&q=80&v=test-image.png"),
       storedPath,
       optimizerOptions(),
     );
@@ -95,8 +95,26 @@ describe("serveStoredImage", () => {
     expect(response.headers.get("cache-control")).toBe("private, max-age=300, must-revalidate");
   });
 
+  it("only grants immutable caching when the version matches the stored filename", async () => {
+    const spoofed = await serveStoredImage(
+      request("/api/characters/test/avatar?w=512&v=other.png"),
+      storedPath,
+      optimizerOptions(),
+    );
+    const versionedOriginal = await serveStoredImage(
+      request("/api/characters/test/avatar?v=test-image.png"),
+      storedPath,
+      optimizerOptions(),
+    );
+
+    expect(spoofed.headers.get("cache-control")).toBe("private, max-age=300, must-revalidate");
+    expect(versionedOriginal.headers.get("cache-control")).toBe(
+      "private, max-age=31536000, immutable",
+    );
+  });
+
   it("deduplicates concurrent transforms of the same variant", async () => {
-    const url = "/api/characters/test/avatar?w=384&q=70&v=test.png";
+    const url = "/api/characters/test/avatar?w=384&q=70&v=test-image.png";
     const [first, second] = await Promise.all([
       serveStoredImage(request(url), storedPath, optimizerOptions()),
       serveStoredImage(request(url), storedPath, optimizerOptions()),

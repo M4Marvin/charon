@@ -252,9 +252,11 @@ export async function serveStoredImage(
   const url = new URL(request.url);
   const rawWidth = url.searchParams.get("w");
   const rawQuality = url.searchParams.get("q");
+  const sourceVersion = storedPath.split(/[\\/]/).at(-1);
+  const immutable = url.searchParams.get("v") === sourceVersion;
   if (rawWidth === null) {
     if (rawQuality !== null) return errorResponse("Quality requires a width", 400);
-    return serveOriginal(sourcePath, stats);
+    return serveOriginal(sourcePath, stats, undefined, immutable);
   }
 
   const width = Number(rawWidth);
@@ -279,16 +281,16 @@ export async function serveStoredImage(
 
   const supported = new Set(["jpeg", "png", "webp", "avif", "tiff"]);
   if (!supported.has(metadata.format ?? "") || (metadata.pages ?? 1) > 1) {
-    return serveOriginal(sourcePath, stats, metadata);
+    return serveOriginal(sourcePath, stats, metadata, immutable);
   }
   if (stats.size < 10 * 1024 && (metadata.format === "webp" || metadata.format === "avif")) {
-    return serveOriginal(sourcePath, stats, metadata);
+    return serveOriginal(sourcePath, stats, metadata, immutable);
   }
   if (
     (metadata.width ?? width) <= width &&
     (metadata.format === "webp" || metadata.format === "avif")
   ) {
-    return serveOriginal(sourcePath, stats, metadata);
+    return serveOriginal(sourcePath, stats, metadata, immutable);
   }
 
   try {
@@ -302,7 +304,6 @@ export async function serveStoredImage(
     );
     if (!variant.cacheHit) scheduleCachePrune(cacheDir, maxCacheBytes, now());
 
-    const immutable = url.searchParams.has("v");
     return new Response(new Uint8Array(variant.bytes), {
       headers: {
         "cache-control": immutable
@@ -323,6 +324,7 @@ async function serveOriginal(
   sourcePath: string,
   stats: Stats,
   knownMetadata?: ImageMetadata,
+  immutable = false,
 ): Promise<Response> {
   try {
     const metadata =
@@ -335,7 +337,9 @@ async function serveOriginal(
     const bytes = await readFile(sourcePath);
     return new Response(new Uint8Array(bytes), {
       headers: {
-        "cache-control": "private, max-age=300",
+        "cache-control": immutable
+          ? "private, max-age=31536000, immutable"
+          : "private, max-age=300",
         "content-length": String(bytes.byteLength),
         "content-type": contentTypeForFormat(metadata.format),
         etag: sourceEtag(stats),
