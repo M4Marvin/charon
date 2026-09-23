@@ -1,5 +1,5 @@
-// Migrate existing SillyTavern data from public/data/ into the SQLite database and private uploads.
-// Run with: nub scripts/migrate-data.ts
+// Migrate existing SillyTavern data from data/import/ into the SQLite database and private uploads.
+// Run with: pnpm run prepare:migration && pnpm run migrate
 //
 // Migrates: characters (PNG + embedded books), standalone lorebooks (worlds/*.json),
 // personas (settings.json), and user prompt settings (system prompt,
@@ -34,7 +34,7 @@ import {
 import { DEFAULT_LORE_CONFIG, type LoreEntry as LoreEntryData } from "@/lib/st-core/lorebook";
 import { normalizeCardData, normalizeV3ToV2 } from "@/lib/character/normalize";
 
-const DATA_ROOT = "public/data";
+const DATA_ROOT = "data/import";
 const AVATAR_DIR = "data/uploads/avatars";
 const AVATAR_PUBLIC_PREFIX = "uploads/avatars";
 const PERSONA_ICON_DIR = "data/uploads/personas";

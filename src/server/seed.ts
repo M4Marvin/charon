@@ -332,7 +332,11 @@ function seedStarterLorebooks(): void {
   );
 }
 
-const SOURCE_DIRS = ["data/backgrounds-seed", "public/data/backgrounds-seed"] as const;
+const SOURCE_DIRS = [
+  "data/import/backgrounds-seed",
+  "data/backgrounds-seed",
+  "public/data/backgrounds-seed",
+] as const;
 const DEST_DIR = "data/uploads/backgrounds";
 const PUBLIC_PATH_PREFIX = "uploads/backgrounds";
 

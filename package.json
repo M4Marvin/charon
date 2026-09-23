@@ -1,7 +1,6 @@
 {
   "name": "charon",
   "private": true,
-  "packageManager": "pnpm@12.3.4",
   "type": "module",
   "imports": {
     "#/*": "./src/*"
@@ -15,6 +14,7 @@
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
     "test": "vitest run",
+    "prepare:migration": "tsx scripts/prepare-migration-input.ts",
     "migrate": "tsx scripts/migrate-data.ts",
     "backfill-chat-fields": "tsx --env-file=.env.local scripts/backfill-chat-character-fields.ts",
     "migrate:image-paths": "tsx scripts/migrate-image-paths.ts",
@@ -123,6 +123,7 @@
     "vite": "^8.1.4",
     "vitest": "^4.1.10"
   },
+  "packageManager": "pnpm@12.3.4",
   "pnpm": {
     "allowedBuiltDependencies": [
       "esbuild",

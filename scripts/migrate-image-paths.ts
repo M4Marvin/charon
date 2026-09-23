@@ -1,6 +1,6 @@
-// Migrate uploaded images from public/data/ to data/uploads/
+// Migrate uploaded images from data/import/ to data/uploads/
 // Changes the backend storage location and DB paths to match.
-// Run with: pnpm migrate:image-paths
+// Run with: pnpm run prepare:migration && pnpm run migrate:image-paths
 //
 // Idempotent — safe to re-run. Skips already-moved files and already-updated rows.
 
@@ -25,7 +25,7 @@ import {
   type UploadSubdir,
 } from "@/server/uploads";
 
-const SOURCE_BASE = "public/data";
+const SOURCE_BASE = "data/import";
 
 type Counts = { found: number; moved: number; skipped: number; failed: number };
 type MigrationResult = Counts & { verified: Set<string> };
