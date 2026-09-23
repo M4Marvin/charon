@@ -4,7 +4,7 @@ export const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 export const MAX_IMAGE_PIXELS = 100_000_000;
 export const MAX_IMAGE_DECODED_BYTES = 256 * 1024 * 1024;
 
-const MAX_BASE64_LENGTH = Math.ceil(MAX_IMAGE_BYTES / 3) * 4;
+export const MAX_IMAGE_BASE64_LENGTH = Math.ceil(MAX_IMAGE_BYTES / 3) * 4;
 
 export type ImageMetadata = {
   format?: string;
@@ -18,7 +18,7 @@ export type ImageMetadata = {
 };
 
 export function decodeImageBase64(value: string): Buffer {
-  if (!value || value.length > MAX_BASE64_LENGTH || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) {
+  if (!value || value.length > MAX_IMAGE_BASE64_LENGTH || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) {
     throw new Error("Invalid image data");
   }
   if (value.length % 4 === 1) throw new Error("Invalid image data");
@@ -51,6 +51,9 @@ export function assertImagePixelCount(
             : 1;
   const decodedBytes = pixels * channels * bytesPerSample;
   if (
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    !Number.isFinite(decodedBytes) ||
     width <= 0 ||
     height <= 0 ||
     pixels > MAX_IMAGE_PIXELS ||

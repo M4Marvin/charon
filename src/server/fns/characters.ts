@@ -18,6 +18,7 @@ import { getSession } from "@/server/session";
 import { validateId } from "@/server/validators";
 import { diskPathFromStored } from "@/server/uploads";
 import { invalidateStoredImageCache } from "@/server/image-optimizer";
+import { MAX_IMAGE_BASE64_LENGTH } from "@/server/image-limits";
 import {
   importCharacterCard,
   previewCharacterCard,
@@ -34,7 +35,7 @@ export type CharacterListItem = CharacterCardItem;
 
 // ── Validators (clean signatures, arktype under the hood) ───────────────────
 
-const ImportInput = type({ pngBase64: "string > 0" });
+const ImportInput = type({ pngBase64: `string > 0 & string <= ${MAX_IMAGE_BASE64_LENGTH}` });
 const UpdateInput = type({ id: "string > 0", name: "string > 0" });
 const UpdateDataInput = type({
   id: "string > 0",
