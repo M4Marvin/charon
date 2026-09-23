@@ -103,13 +103,13 @@ export const deletePersona = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ id: string }> => {
     await getSession();
     const existing = repoGet(data.id);
+    repoDelete(data.id);
     if (existing.iconPath) {
       await invalidateStoredImageCache(existing.iconPath).catch(() => {});
       try {
         await rm(diskPathFromStored(existing.iconPath), { force: true });
       } catch {}
     }
-    repoDelete(data.id);
     return { id: data.id };
   });
 
@@ -128,6 +128,13 @@ export const uploadPersonaIcon = createServerFn({ method: "POST" })
     await validateUploadedImage(bytes);
     await writeFile(diskPath, bytes);
 
+    try {
+      repoUpdate(data.id, { iconPath: storedPath });
+    } catch (error) {
+      await rm(diskPath, { force: true }).catch(() => {});
+      throw error;
+    }
+
     if (existing.iconPath) {
       await invalidateStoredImageCache(existing.iconPath).catch(() => {});
       try {
@@ -135,6 +142,5 @@ export const uploadPersonaIcon = createServerFn({ method: "POST" })
       } catch {}
     }
 
-    repoUpdate(data.id, { iconPath: storedPath });
     return { iconPath: storedPath };
   });

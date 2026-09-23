@@ -52,7 +52,12 @@ export const uploadBackground = createServerFn({ method: "POST" })
     await validateUploadedImage(bytes);
     await writeFile(filepath, bytes);
 
-    return repoCreate({ name: data.name, path: storedPath });
+    try {
+      return repoCreate({ name: data.name, path: storedPath });
+    } catch (error) {
+      await rm(filepath, { force: true }).catch(() => {});
+      throw error;
+    }
   });
 
 export const deleteBackground = createServerFn({ method: "POST" })
@@ -61,6 +66,7 @@ export const deleteBackground = createServerFn({ method: "POST" })
     await getSession();
 
     const bg = repoGet(data.id);
+    repoDelete(data.id);
 
     await invalidateStoredImageCache(bg.path).catch(() => {});
     try {
@@ -68,6 +74,4 @@ export const deleteBackground = createServerFn({ method: "POST" })
     } catch {
       // File might already be gone; that's fine.
     }
-
-    repoDelete(data.id);
   });
