@@ -1,8 +1,8 @@
 import sharp from "sharp";
-import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/image-optimization";
+import { MAX_IMAGE_PIXELS, MAX_IMAGE_UPLOAD_BYTES } from "@/lib/image-optimization";
 
+export { MAX_IMAGE_PIXELS };
 export const MAX_IMAGE_BYTES = MAX_IMAGE_UPLOAD_BYTES;
-export const MAX_IMAGE_PIXELS = 100_000_000;
 export const MAX_IMAGE_DECODED_BYTES = 256 * 1024 * 1024;
 
 export const MAX_IMAGE_BASE64_LENGTH = Math.ceil(MAX_IMAGE_BYTES / 3) * 4;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import { X, ImageIcon, ImagePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OptimizedImage } from "@/components/ui/optimized-image";
+import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/image-optimization";
 import { cn } from "@/lib/utils";
 
 interface CustomImagePanelProps {
@@ -26,10 +27,12 @@ export function CustomImagePanel({
   const fileRef = useRef<HTMLInputElement>(null);
   const [keepImageMounted, setKeepImageMounted] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setKeepImageMounted(true);
+      setUploadError(null);
       return;
     }
 
@@ -42,10 +45,15 @@ export function CustomImagePanel({
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) {
-        onUploadImage(file);
+      if (!file) return;
+      if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+        setUploadError(`File too large (max ${MAX_IMAGE_UPLOAD_BYTES / (1024 * 1024)} MB).`);
         e.target.value = "";
+        return;
       }
+      setUploadError(null);
+      onUploadImage(file);
+      e.target.value = "";
     },
     [onUploadImage],
   );
@@ -135,6 +143,11 @@ export function CustomImagePanel({
           <X className="size-3.5" />
         </Button>
       </div>
+      {uploadError ? (
+        <p className="max-w-64 text-xs text-white/80" role="alert">
+          {uploadError}
+        </p>
+      ) : null}
     </div>
   );
 }
