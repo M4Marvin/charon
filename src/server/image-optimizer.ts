@@ -58,7 +58,7 @@ function drainTransformQueue(): void {
     waiter.resolve();
   }
 }
-let lastCachePruneAt = 0;
+const lastCachePruneAt = new Map<string, number>();
 
 export type ImageOptimizerOptions = {
   rootDir?: string;
@@ -283,8 +283,9 @@ async function pruneCache(cacheDir: string, maxBytes: number): Promise<void> {
 }
 
 function scheduleCachePrune(cacheDir: string, maxBytes: number, now: Date): void {
-  if (now.getTime() - lastCachePruneAt < MIN_CACHE_PRUNE_INTERVAL_MS) return;
-  lastCachePruneAt = now.getTime();
+  const lastPrunedAt = lastCachePruneAt.get(cacheDir) ?? 0;
+  if (now.getTime() - lastPrunedAt < MIN_CACHE_PRUNE_INTERVAL_MS) return;
+  lastCachePruneAt.set(cacheDir, now.getTime());
   void pruneCache(cacheDir, maxBytes).catch(() => {});
 }
 

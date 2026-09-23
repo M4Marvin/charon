@@ -40,7 +40,15 @@ export function assertImagePixelCount(
 ): void {
   const pixels = width * height;
   const bytesPerSample =
-    typeof depth === "number" ? Math.ceil(depth / 8) : depth === "ushort" ? 2 : 1;
+    typeof depth === "number"
+      ? Math.ceil(depth / 8)
+      : depth === "short" || depth === "ushort"
+        ? 2
+        : depth === "int" || depth === "uint" || depth === "float"
+          ? 4
+          : depth === "double" || depth === "complex" || depth === "dpcomplex"
+            ? 8
+            : 1;
   const decodedBytes = pixels * channels * bytesPerSample;
   if (
     width <= 0 ||
