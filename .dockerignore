@@ -12,4 +12,7 @@ node_modules/
 scripts/migrate-data.ts
 scripts/migrate-image-paths.ts
 data/
-public/data/
+public/
+dev.db
+dev.db-*
+dev.db.bak-*

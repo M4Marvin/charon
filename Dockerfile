@@ -3,8 +3,13 @@ RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt
 RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile
-COPY . .
+COPY tsconfig.json tsr.config.json vite.config.ts ./
+COPY scripts/vite-dev-policy.ts ./scripts/vite-dev-policy.ts
+COPY src ./src
+COPY static ./static
+COPY drizzle ./drizzle
 RUN pnpm run build
 
 FROM node:22-slim
