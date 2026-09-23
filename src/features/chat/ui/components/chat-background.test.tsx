@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { ChatBackground } from "./chat-background";
 
 afterEach(cleanup);
@@ -21,5 +21,17 @@ describe("ChatBackground", () => {
     expect(image?.getAttribute("loading")).toBe("eager");
     expect(image?.hasAttribute("width")).toBe(false);
     expect(image?.hasAttribute("height")).toBe(false);
+  });
+
+  it("keeps a visual fallback when the current image fails", () => {
+    const { container } = render(
+      <ChatBackground
+        src="/api/backgrounds/background-1/image?v=background.png"
+        fallbackSrc={null}
+      />,
+    );
+
+    fireEvent.error(container.querySelector("img")!);
+    expect(container.querySelector("[data-background-fallback]")).toBeTruthy();
   });
 });

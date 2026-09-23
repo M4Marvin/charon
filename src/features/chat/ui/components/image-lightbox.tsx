@@ -13,6 +13,8 @@ interface ImageLightboxProps {
 
 export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxProps) {
   const [zoomed, setZoomed] = useState(false);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const imageFailed = src !== null && failedSrc === src;
 
   const toggleZoom = useCallback(() => {
     setZoomed((z) => !z);
@@ -22,7 +24,7 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
     <Dialog open={open && !!src} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-none max-h-none size-full border-0 bg-transparent p-0 shadow-none translate-x-0 translate-y-0 left-0 top-0">
         <DialogTitle className="sr-only">Image viewer</DialogTitle>
-        {src && (
+        {src && !imageFailed && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md"
             role="button"
@@ -48,7 +50,14 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
                   ? "max-w-none max-h-none scale-150"
                   : "max-h-[70vh] max-w-[min(90vw,40rem)] object-contain",
               )}
+              onError={() => setFailedSrc(src)}
             />
+          </div>
+        )}
+
+        {src && imageFailed && (
+          <div className="flex max-w-sm flex-col items-center gap-2 rounded-xl bg-raised px-6 py-8 text-center text-2">
+            <p>Image unavailable</p>
           </div>
         )}
 

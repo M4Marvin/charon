@@ -22,8 +22,10 @@ export function CharacterPortraitPanel({
   onImageClick,
 }: CharacterPortraitPanelProps) {
   const [keepImageMounted, setKeepImageMounted] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
+    setImageFailed(false);
     if (open) {
       setKeepImageMounted(true);
       return;
@@ -31,7 +33,7 @@ export function CharacterPortraitPanel({
 
     const timer = window.setTimeout(() => setKeepImageMounted(false), 300);
     return () => window.clearTimeout(timer);
-  }, [open]);
+  }, [open, imageSrc]);
 
   const shouldMountImage = open || keepImageMounted;
 
@@ -53,13 +55,15 @@ export function CharacterPortraitPanel({
         onKeyDown={(e) => e.key === "Enter" && onImageClick()}
       >
         <div className="aspect-[3/4] max-h-[70dvh] relative flex items-center justify-center bg-(--bg-base)/60">
-          {shouldMountImage && imageSrc ? (
+          {shouldMountImage && imageSrc && !imageFailed ? (
             <OptimizedImage
               src={imageSrc}
               alt={name}
               preset="portrait"
+              sizes="max(12rem, calc((100vw - 48rem)/2 - 2rem))"
               priority={open}
               className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+              onError={() => setImageFailed(true)}
             />
           ) : (
             <div className="text-(--sea-ink-soft) text-sm">No portrait</div>

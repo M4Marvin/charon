@@ -25,6 +25,7 @@ export function CustomImagePanel({
 }: CustomImagePanelProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [keepImageMounted, setKeepImageMounted] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -52,7 +53,10 @@ export function CustomImagePanel({
   const displaySrc = customImageSrc ?? imageSrc;
   const isCustom = customImageSrc !== null;
   const hasImage = displaySrc !== null;
+  const canOpen = hasImage && !imageFailed;
   const label = isCustom ? "Custom" : "Scene";
+
+  useEffect(() => setImageFailed(false), [displaySrc]);
 
   return (
     <div
@@ -65,20 +69,22 @@ export function CustomImagePanel({
     >
       <div
         className="glass-strong rounded-2xl overflow-hidden w-[max(12rem,calc((100vw-48rem)/2-2rem))] shadow-xl cursor-pointer group"
-        onClick={hasImage ? onImageClick : undefined}
+        onClick={canOpen ? onImageClick : undefined}
         role="button"
-        tabIndex={hasImage ? 0 : -1}
-        aria-label={hasImage ? `View ${label.toLowerCase()} image` : "No image set"}
-        onKeyDown={(e) => e.key === "Enter" && hasImage && onImageClick()}
+        tabIndex={canOpen ? 0 : -1}
+        aria-label={canOpen ? `View ${label.toLowerCase()} image` : "No image set"}
+        onKeyDown={(e) => e.key === "Enter" && canOpen && onImageClick()}
       >
         <div className="relative flex items-center justify-center bg-(--bg-base)/60">
-          {shouldMountImage && hasImage ? (
+          {shouldMountImage && canOpen ? (
             <OptimizedImage
               src={displaySrc}
               alt={label}
               preset="scene"
               intrinsicSize={false}
+              sizes="max(12rem, calc((100vw - 48rem)/2 - 2rem))"
               className="w-full h-auto block transition-transform duration-300 group-hover:scale-105"
+              onError={() => setImageFailed(true)}
             />
           ) : (
             <div className="flex flex-col items-center gap-2 text-(--sea-ink-soft) py-10 w-full">

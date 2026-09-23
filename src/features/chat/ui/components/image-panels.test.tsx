@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CharacterPortraitPanel } from "./character-portrait-panel";
@@ -57,7 +57,17 @@ describe("off-canvas image panels", () => {
       />,
     );
 
-    expect(screen.getByAltText("Zephyr").getAttribute("srcset")).toContain("w=480&q=80");
+    const image = screen.getByAltText("Zephyr");
+    expect(image.getAttribute("srcset")).toContain("w=480&q=80");
+    expect(image.getAttribute("sizes")).toBe("max(12rem, calc((100vw - 48rem)/2 - 2rem))");
+  });
+
+  it("shows the portrait fallback when the image fails", () => {
+    renderPortrait(true);
+    fireEvent.error(screen.getByAltText("Zephyr"));
+
+    expect(screen.queryByAltText("Zephyr")).toBeNull();
+    expect(screen.getByText("No portrait")).toBeTruthy();
   });
 
   it("keeps the portrait mounted through its closing transition", () => {
@@ -97,6 +107,16 @@ describe("off-canvas image panels", () => {
       />,
     );
 
-    expect(screen.getByAltText("Scene").getAttribute("srcset")).toContain("v=background.png");
+    const image = screen.getByAltText("Scene");
+    expect(image.getAttribute("srcset")).toContain("v=background.png");
+    expect(image.getAttribute("sizes")).toBe("max(12rem, calc((100vw - 48rem)/2 - 2rem))");
+  });
+
+  it("shows the scene fallback when the image fails", () => {
+    renderBackground(true);
+    fireEvent.error(screen.getByAltText("Scene"));
+
+    expect(screen.queryByAltText("Scene")).toBeNull();
+    expect(screen.getByText("No scene set")).toBeTruthy();
   });
 });

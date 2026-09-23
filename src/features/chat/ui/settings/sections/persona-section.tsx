@@ -56,6 +56,7 @@ export function PersonaSection(_props: SectionProps) {
   const [description, setDescription] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [pendingIconPath, setPendingIconPath] = useState<string | null>(null);
+  const [failedIconPath, setFailedIconPath] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedId = settings?.defaultPersonaId ?? "";
@@ -105,6 +106,7 @@ export function PersonaSection(_props: SectionProps) {
 
   const displayStoredIconPath =
     pendingIconPath ?? (dialog?.kind === "edit" ? dialog.iconPath : null);
+  const showIcon = displayStoredIconPath !== null && failedIconPath !== displayStoredIconPath;
 
   const handleSave = useCallback(() => {
     const trimmed = name.trim();
@@ -225,8 +227,9 @@ export function PersonaSection(_props: SectionProps) {
               <div className="space-y-1.5">
                 <Label>Icon</Label>
                 <div className="flex items-center gap-3">
-                  {displayStoredIconPath ? (
+                  {showIcon && displayStoredIconPath ? (
                     <OptimizedImage
+                      key={displayStoredIconPath}
                       src={withImageVersion(
                         `/api/personas/${dialog.id}/icon`,
                         displayStoredIconPath,
@@ -239,9 +242,7 @@ export function PersonaSection(_props: SectionProps) {
                       quality={70}
                       priority
                       className="size-16 rounded-lg object-cover border border-border"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
+                      onError={() => setFailedIconPath(displayStoredIconPath)}
                     />
                   ) : (
                     <div className="size-16 rounded-lg bg-muted flex items-center justify-center border border-border">

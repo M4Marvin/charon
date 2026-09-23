@@ -72,13 +72,21 @@ export function SceneSection({ chatId, isStreaming }: SectionProps) {
               aria-label={`${bg.name}${bg.id === selectedId ? " (selected)" : ""}`}
             >
               <OptimizedImage
+                key={bg.path}
                 src={withImageVersion(`/api/backgrounds/${bg.id}/image`, bg.path)}
                 alt={bg.name}
                 preset="scene"
                 intrinsicSize={false}
                 quality={70}
                 className="size-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                  e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                }}
               />
+              <div className="hidden size-full items-center justify-center bg-raised">
+                <span className="font-heading text-2xl text-3">{bg.name.charAt(0)}</span>
+              </div>
             </button>
             <button
               type="button"
