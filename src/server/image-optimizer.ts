@@ -391,31 +391,32 @@ async function transformVariant(
   if (existing) return { bytes: await existing, cacheKey: identity.cacheKey, cacheHit: true };
 
   const pending = withTransformLimit(async () => {
-    try {
-      const bytes = await sharp(sourcePath, {
-        failOn: "error",
-        limitInputPixels: MAX_IMAGE_PIXELS,
-        sequentialRead: true,
+    const bytes = await sharp(sourcePath, {
+      failOn: "error",
+      limitInputPixels: MAX_IMAGE_PIXELS,
+      sequentialRead: true,
+    })
+      .autoOrient()
+      .resize({
+        width,
+        fit: "inside",
+        withoutEnlargement: true,
+        fastShrinkOnLoad: true,
       })
-        .autoOrient()
-        .resize({
-          width,
-          fit: "inside",
-          withoutEnlargement: true,
-          fastShrinkOnLoad: true,
-        })
-        .webp({ quality, effort: 4, smartSubsample: true })
-        .timeout({ seconds: TRANSFORM_TIMEOUT_SECONDS })
-        .toBuffer();
-      await writeCacheFile(identity.cachePath, bytes, identity.sourceKey);
-      return bytes;
-    } finally {
-      inFlight.delete(identity.cacheKey);
-    }
+      .webp({ quality, effort: 4, smartSubsample: true })
+      .timeout({ seconds: TRANSFORM_TIMEOUT_SECONDS })
+      .toBuffer();
+    await writeCacheFile(identity.cachePath, bytes, identity.sourceKey);
+    return bytes;
   });
   inFlight.set(identity.cacheKey, pending);
 
-  return { bytes: await pending, cacheKey: identity.cacheKey, cacheHit: false };
+  try {
+    const bytes = await pending;
+    return { bytes, cacheKey: identity.cacheKey, cacheHit: false };
+  } finally {
+    inFlight.delete(identity.cacheKey);
+  }
 }
 
 export async function serveStoredImage(
