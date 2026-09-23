@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtemp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readdir, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import sharp from "sharp";
@@ -204,6 +204,40 @@ describe("serveStoredImage", () => {
 
     expect(revalidated.status).toBe(304);
     expect((await revalidated.arrayBuffer()).byteLength).toBe(0);
+  });
+
+  it("does not revalidate originals from a date-only validator", async () => {
+    const url = "/api/characters/test/avatar?v=test-image.png";
+    const first = await serveStoredImage(request(url), storedPath, optimizerOptions());
+    const lastModified = first.headers.get("last-modified");
+    const before = await stat(sourcePath);
+    expect(lastModified).not.toBeNull();
+
+    await writeFile(
+      sourcePath,
+      await sharp({
+        create: {
+          width: 1200,
+          height: 800,
+          channels: 3,
+          background: { r: 220, g: 40, b: 40 },
+        },
+      })
+        .png()
+        .toBuffer(),
+    );
+    await utimes(sourcePath, before.atime, before.mtime);
+
+    const revalidated = await serveStoredImage(
+      new Request(`http://localhost${url}`, {
+        headers: { "if-modified-since": lastModified ?? "" },
+      }),
+      storedPath,
+      optimizerOptions(),
+    );
+
+    expect(revalidated.status).toBe(200);
+    expect(revalidated.headers.get("etag")).not.toBe(first.headers.get("etag"));
   });
 
   it("serves transformed bytes when the cache cannot be written", async () => {

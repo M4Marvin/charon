@@ -544,7 +544,8 @@ async function serveOriginal(
   knownMetadata?: ImageMetadata,
 ): Promise<Response> {
   const etag = sourceEtag(stats);
-  if (isNotModified(request, stats, etag)) {
+  // A date-only validator cannot detect a replacement that preserves mtime; use the ETag.
+  if (isNotModified(request, stats, etag, false)) {
     return notModifiedResponse(etag, new Date(stats.mtimeMs));
   }
 
