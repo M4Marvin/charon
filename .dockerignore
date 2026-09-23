@@ -1,4 +1,7 @@
 node_modules/
+.env
+.env.*
+!.env.example
 .git/
 .gitignore
 *.log
@@ -7,3 +10,10 @@ node_modules/
 .output/
 .github/
 scripts/migrate-data.ts
+scripts/migrate-image-paths.ts
+data/
+public/
+dev.db
+dev.db-*
+dev.db.bak-*
+*.tar.gz

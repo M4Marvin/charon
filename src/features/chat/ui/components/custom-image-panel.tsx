@@ -1,6 +1,8 @@
-import { useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { X, ImageIcon, ImagePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OptimizedImage } from "@/components/ui/optimized-image";
+import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/image-optimization";
 import { cn } from "@/lib/utils";
 
 interface CustomImagePanelProps {
@@ -23,14 +25,35 @@ export function CustomImagePanel({
   onClearImage,
 }: CustomImagePanelProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [keepImageMounted, setKeepImageMounted] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setKeepImageMounted(true);
+      setUploadError(null);
+      return;
+    }
+
+    const timer = window.setTimeout(() => setKeepImageMounted(false), 300);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
+  const shouldMountImage = open || keepImageMounted;
 
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) {
-        onUploadImage(file);
+      if (!file) return;
+      if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+        setUploadError(`File too large (max ${MAX_IMAGE_UPLOAD_BYTES / (1024 * 1024)} MB).`);
         e.target.value = "";
+        return;
       }
+      setUploadError(null);
+      onUploadImage(file);
+      e.target.value = "";
     },
     [onUploadImage],
   );
@@ -38,10 +61,15 @@ export function CustomImagePanel({
   const displaySrc = customImageSrc ?? imageSrc;
   const isCustom = customImageSrc !== null;
   const hasImage = displaySrc !== null;
+  const canOpen = hasImage && !imageFailed;
   const label = isCustom ? "Custom" : "Scene";
+
+  useEffect(() => setImageFailed(false), [displaySrc]);
 
   return (
     <div
+      aria-hidden={!open}
+      inert={!open}
       className={cn(
         "fixed right-4 top-1/2 -translate-y-1/2 z-20 hidden lg:flex flex-col gap-2 transition-all duration-300",
         open ? "translate-x-0 opacity-100" : "translate-x-[calc(100%+2rem)] opacity-0",
@@ -49,18 +77,23 @@ export function CustomImagePanel({
     >
       <div
         className="glass-strong rounded-2xl overflow-hidden w-[max(12rem,calc((100vw-48rem)/2-2rem))] shadow-xl cursor-pointer group"
-        onClick={hasImage ? onImageClick : undefined}
+        onClick={canOpen ? onImageClick : undefined}
         role="button"
-        tabIndex={hasImage ? 0 : -1}
-        aria-label={hasImage ? `View ${label.toLowerCase()} image` : "No image set"}
-        onKeyDown={(e) => e.key === "Enter" && hasImage && onImageClick()}
+        tabIndex={canOpen ? 0 : -1}
+        aria-label={canOpen ? `View ${label.toLowerCase()} image` : "No image set"}
+        onKeyDown={(e) => e.key === "Enter" && canOpen && onImageClick()}
       >
         <div className="relative flex items-center justify-center bg-(--bg-base)/60">
-          {hasImage ? (
-            <img
+          {shouldMountImage && canOpen ? (
+            <OptimizedImage
+              key={displaySrc}
               src={displaySrc}
               alt={label}
+              preset="scene"
+              intrinsicSize={false}
+              sizes="max(12rem, calc((100vw - 48rem)/2 - 2rem))"
               className="w-full h-auto block transition-transform duration-300 group-hover:scale-105"
+              onError={() => setImageFailed(true)}
             />
           ) : (
             <div className="flex flex-col items-center gap-2 text-(--sea-ink-soft) py-10 w-full">
@@ -110,6 +143,11 @@ export function CustomImagePanel({
           <X className="size-3.5" />
         </Button>
       </div>
+      {uploadError ? (
+        <p className="max-w-64 text-xs text-white/80" role="alert">
+          {uploadError}
+        </p>
+      ) : null}
     </div>
   );
 }

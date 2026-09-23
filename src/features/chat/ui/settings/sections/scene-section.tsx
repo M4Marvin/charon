@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback } from "react";
 import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { useBackgrounds, useUploadBackground, useDeleteBackground } from "@/hooks/useBackgrounds";
+import { MAX_IMAGE_UPLOAD_BYTES, withImageVersion } from "@/lib/image-optimization";
 import { useChatConfig, useUpdateChatOverrides } from "@/hooks/useChatConfig";
 import { ConfirmDialog } from "../confirm-dialog";
 import { SectionHeader } from "../section-header";
@@ -19,6 +21,7 @@ export function SceneSection({ chatId, isStreaming }: SectionProps) {
   const deleteBgMutation = useDeleteBackground();
 
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const selectedId = config?.chat.backgroundId ?? null;
@@ -34,6 +37,12 @@ export function SceneSection({ chatId, isStreaming }: SectionProps) {
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+        setUploadError(`File too large (max ${MAX_IMAGE_UPLOAD_BYTES / (1024 * 1024)} MB).`);
+        e.target.value = "";
+        return;
+      }
+      setUploadError(null);
       const reader = new FileReader();
       reader.onload = () => {
         const base64 = (reader.result as string).split(",")[1];
@@ -69,11 +78,22 @@ export function SceneSection({ chatId, isStreaming }: SectionProps) {
               }`}
               aria-label={`${bg.name}${bg.id === selectedId ? " (selected)" : ""}`}
             >
-              <img
-                src={`/api/backgrounds/${bg.id}/image`}
+              <OptimizedImage
+                key={bg.path}
+                src={withImageVersion(`/api/backgrounds/${bg.id}/image`, bg.path)}
                 alt={bg.name}
+                preset="scene"
+                intrinsicSize={false}
+                quality={70}
                 className="size-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                  e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                }}
               />
+              <div className="hidden size-full items-center justify-center bg-raised">
+                <span className="font-heading text-2xl text-3">{bg.name.charAt(0)}</span>
+              </div>
             </button>
             <button
               type="button"
@@ -120,12 +140,18 @@ export function SceneSection({ chatId, isStreaming }: SectionProps) {
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept="image/png,image/jpeg,image/webp,image/tiff,image/gif,image/avif"
           className="hidden"
           onChange={handleUpload}
           aria-label="Upload background image"
         />
       </div>
+
+      {uploadError ? (
+        <p className="text-xs text-destructive" role="alert">
+          {uploadError}
+        </p>
+      ) : null}
 
       <ConfirmDialog
         open={deleteTarget !== null}

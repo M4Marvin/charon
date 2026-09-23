@@ -1,13 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { readFile } from "node:fs/promises";
 import { getSession } from "@/server/session";
 import { getPersona } from "@/db/repositories/personas";
-import { diskPathFromStored, contentTypeForPath } from "@/server/uploads";
+import { serveStoredImage } from "@/server/image-optimizer";
 
 export const Route = createFileRoute("/api/personas/$id/icon")({
   server: {
     handlers: {
-      GET: async ({ params }) => {
+      GET: async ({ params, request }) => {
         try {
           await getSession();
         } catch {
@@ -25,17 +24,7 @@ export const Route = createFileRoute("/api/personas/$id/icon")({
           return new Response("No icon", { status: 404 });
         }
 
-        try {
-          const bytes = await readFile(diskPathFromStored(persona.iconPath));
-          return new Response(new Uint8Array(bytes), {
-            headers: {
-              "content-type": contentTypeForPath(persona.iconPath),
-              "cache-control": "private, max-age=300",
-            },
-          });
-        } catch {
-          return new Response("File missing", { status: 404 });
-        }
+        return serveStoredImage(request, persona.iconPath);
       },
     },
   },

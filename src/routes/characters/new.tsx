@@ -1,10 +1,12 @@
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Upload, ArrowLeft, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
+import { OptimizedImage } from "@/components/ui/optimized-image";
+import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/image-optimization";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { fileToBase64, useImportCharacter } from "@/hooks/useCharacters";
@@ -31,6 +33,18 @@ export function NewCharacterPage() {
   // snapshot is per-render and cannot stop a same-tick re-entry).
   const [processing, setProcessing] = useState(false);
   const processingRef = useRef(false);
+  const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewObjectUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewObjectUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
 
   const processFile = async (f: File | null) => {
     if (processingRef.current) return;
@@ -42,8 +56,8 @@ export function NewCharacterPage() {
       setPreviewErr("Only PNG files are supported.");
       return;
     }
-    if (f.size > 50 * 1024 * 1024) {
-      setPreviewErr("File too large (max 5 MB).");
+    if (f.size > MAX_IMAGE_UPLOAD_BYTES) {
+      setPreviewErr("File too large (max 50 MB).");
       return;
     }
     processingRef.current = true;
@@ -167,10 +181,12 @@ export function NewCharacterPage() {
           {/* Preview card */}
           <div className="rounded-xl border bg-card p-6">
             <div className="flex gap-4">
-              {file ? (
-                <img
-                  src={URL.createObjectURL(file)}
+              {previewObjectUrl ? (
+                <OptimizedImage
+                  src={previewObjectUrl}
                   alt={preview.preview.name}
+                  preset="portrait"
+                  intrinsicSize={false}
                   className="size-32 aspect-[3/4] rounded-lg object-cover border shrink-0"
                 />
               ) : null}

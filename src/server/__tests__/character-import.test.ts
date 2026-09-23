@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { deflateSync } from "node:zlib";
 import PNGtext from "png-chunk-text";
 import { crc32 } from "crc";
 import {
@@ -20,6 +21,9 @@ vi.mock("@/server/uploads", () => ({
   ensureUploadsDirs: vi.fn(async () => {}),
   diskPathFromStored: (p: string) => `/tmp/charon-test/${p}`,
   storedPathFromDiskComponents: (_s: string, f: string) => `uploads/avatars/${f}`,
+  writePrivateFileAtomic: vi.fn(async () => {}),
+  removePrivatePath: vi.fn(async () => {}),
+  UPLOADS_DISK_ROOT: "data",
 }));
 vi.mock("node:fs/promises", async (importOriginal) => ({
   ...(await importOriginal<typeof import("node:fs/promises")>()),
@@ -28,10 +32,9 @@ vi.mock("node:fs/promises", async (importOriginal) => ({
 }));
 
 /**
- * Build a minimal PNG with arbitrary tEXt chunks + IEND. Same approach as
- * the st-core parser test: IHDR + tEXt chunks + IEND, using the `crc`
- * package for correct CRC values. No IDAT needed — the parser only reads
- * tEXt chunks.
+ * Build a minimal valid PNG with arbitrary tEXt chunks + IEND. It includes
+ * one decoded IDAT row so upload-level validation exercises the pixel data as
+ * well as the character metadata.
  */
 function buildPng(textChunks: Array<{ keyword: string; text: string }>): Uint8Array {
   const ihdr = new Uint8Array(13);
@@ -50,6 +53,7 @@ function buildPng(textChunks: Array<{ keyword: string; text: string }>): Uint8Ar
   ihdr[12] = 0;
   const chunks: Array<{ name: string; data: Uint8Array }> = [
     { name: "IHDR", data: ihdr },
+    { name: "IDAT", data: new Uint8Array(deflateSync(Buffer.from([0, 255, 0, 0, 0]))) },
     ...textChunks.map((t) =>
       PNGtext.encode(t.keyword, Buffer.from(t.text, "utf8").toString("base64")),
     ),
@@ -171,9 +175,9 @@ describe("previewCharacterCard", () => {
     ctx.sqlite.close();
   });
 
-  it("returns preview with warnings and counts", () => {
+  it("returns preview with warnings and counts", async () => {
     const b64 = makeCard("Zephyr");
-    const result = previewCharacterCard(b64, db);
+    const result = await previewCharacterCard(b64, db);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.preview.name).toBe("Zephyr");
@@ -186,7 +190,7 @@ describe("previewCharacterCard", () => {
     }
   });
 
-  it("returns duplicateOf when name matches an existing character", () => {
+  it("returns duplicateOf when name matches an existing character", async () => {
     createCharacter(
       {
         id: "char-1",
@@ -214,7 +218,7 @@ describe("previewCharacterCard", () => {
     );
 
     const b64 = makeCard("Zephyr");
-    const result = previewCharacterCard(b64, db);
+    const result = await previewCharacterCard(b64, db);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.duplicateOf).not.toBeNull();
@@ -223,7 +227,7 @@ describe("previewCharacterCard", () => {
     }
   });
 
-  it("handles cards with minimal data", () => {
+  it("handles cards with minimal data", async () => {
     const minimalCard = JSON.stringify({
       spec: "chara_card_v2",
       spec_version: "2.0",
@@ -246,7 +250,7 @@ describe("previewCharacterCard", () => {
     });
     const png = buildPng([{ keyword: "chara", text: minimalCard }]);
     const b64 = Buffer.from(png).toString("base64");
-    const result = previewCharacterCard(b64, db);
+    const result = await previewCharacterCard(b64, db);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.preview.name).toBe("Echo");

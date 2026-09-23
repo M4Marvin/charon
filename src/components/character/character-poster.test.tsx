@@ -62,6 +62,8 @@ describe("CharacterPoster", () => {
     const img = screen.getByAltText("Zephyr") as HTMLImageElement;
     const fallback = img.nextElementSibling as HTMLElement | null;
 
+    expect(img.getAttribute("srcset")).toContain("v=abc.png");
+    expect(img.getAttribute("srcset")).toContain("w=320&q=80");
     expect(fallback).not.toBeNull();
     expect(fallback?.classList.contains("hidden")).toBe(true);
     expect(fallback?.textContent).toBe("Z");

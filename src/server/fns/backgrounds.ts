@@ -1,4 +1,3 @@
-import { rm, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import type { Background } from "@/db/schema";
@@ -17,8 +16,13 @@ import {
 import {
   ensureUploadsDirs,
   diskPathFromStored,
+  removePrivatePath,
   storedPathFromDiskComponents,
+  writePrivateFileAtomic,
+  UPLOADS_DISK_ROOT,
 } from "@/server/uploads";
+import { decodeImageBase64, validateUploadedImage } from "@/server/image-limits";
+import { invalidateStoredImageCache } from "@/server/image-optimizer";
 
 export type BackgroundListItem = Pick<Background, "id" | "name" | "path" | "createdAt">;
 
@@ -46,10 +50,21 @@ export const uploadBackground = createServerFn({ method: "POST" })
     const storedPath = storedPathFromDiskComponents("backgrounds", filename);
     const filepath = diskPathFromStored(storedPath);
 
-    const bytes = Buffer.from(data.fileBase64, "base64");
-    await writeFile(filepath, bytes);
+    const bytes = decodeImageBase64(data.fileBase64);
+    await validateUploadedImage(bytes);
+    try {
+      await writePrivateFileAtomic(filepath, bytes, { rootDir: UPLOADS_DISK_ROOT });
+    } catch (error) {
+      await removePrivatePath(filepath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
+      throw error;
+    }
 
-    return repoCreate({ name: data.name, path: storedPath });
+    try {
+      return repoCreate({ name: data.name, path: storedPath });
+    } catch (error) {
+      await removePrivatePath(filepath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
+      throw error;
+    }
   });
 
 export const deleteBackground = createServerFn({ method: "POST" })
@@ -58,12 +73,12 @@ export const deleteBackground = createServerFn({ method: "POST" })
     await getSession();
 
     const bg = repoGet(data.id);
+    repoDelete(data.id);
 
+    await invalidateStoredImageCache(bg.path).catch(() => {});
     try {
-      await rm(diskPathFromStored(bg.path), { force: true });
+      await removePrivatePath(diskPathFromStored(bg.path), { rootDir: UPLOADS_DISK_ROOT });
     } catch {
       // File might already be gone; that's fine.
     }
-
-    repoDelete(data.id);
   });

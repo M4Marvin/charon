@@ -1,15 +1,35 @@
 import * as React from "react";
 import { Avatar as AvatarPrimitive } from "radix-ui";
 
+import { getOptimizedImageProps } from "@/components/ui/optimized-image";
+import type { ImageQuality } from "@/lib/image-optimization";
 import { cn } from "#/lib/utils.ts";
+
+type AvatarImageStatus = "idle" | "loading" | "loaded" | "error";
+type AvatarImageState = {
+  src: string | null;
+  status: AvatarImageStatus;
+};
+type AvatarImageContextValue = {
+  state: AvatarImageState;
+  setState: React.Dispatch<React.SetStateAction<AvatarImageState>>;
+};
+
+const AvatarImageContext = React.createContext<AvatarImageContextValue | null>(null);
 
 function Avatar({
   className,
   size = "default",
+  children,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Root> & {
   size?: "default" | "sm" | "lg";
 }) {
+  const [imageState, setImageState] = React.useState<AvatarImageState>({
+    src: null,
+    status: "idle",
+  });
+
   return (
     <AvatarPrimitive.Root
       data-slot="avatar"
@@ -19,24 +39,86 @@ function Avatar({
         className,
       )}
       {...props}
-    />
+    >
+      <AvatarImageContext.Provider value={{ state: imageState, setState: setImageState }}>
+        {children}
+      </AvatarImageContext.Provider>
+    </AvatarPrimitive.Root>
   );
 }
 
-function AvatarImage({ className, ...props }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+type AvatarImageProps = React.ComponentProps<"img"> & {
+  priority?: boolean;
+  quality?: ImageQuality;
+  unoptimized?: boolean;
+};
+
+const AvatarImage = React.forwardRef<HTMLImageElement, AvatarImageProps>(function AvatarImage(
+  { className, priority, quality, unoptimized, src, width, height, onLoad, onError, ...props },
+  ref,
+) {
+  const [loadedSrc, setLoadedSrc] = React.useState<string | null>(null);
+  const [failedSrc, setFailedSrc] = React.useState<string | null>(null);
+  const context = React.useContext(AvatarImageContext);
+  const setImageState = context?.setState;
+  const normalizedSrc = src || null;
+
+  React.useEffect(() => {
+    if (!setImageState) return;
+    setImageState({ src: normalizedSrc, status: normalizedSrc ? "loading" : "idle" });
+    return () => {
+      setImageState((current) =>
+        current.src === normalizedSrc ? { src: null, status: "idle" } : current,
+      );
+    };
+  }, [setImageState, normalizedSrc]);
+
+  if (!src) return null;
+
+  const imageProps = getOptimizedImageProps({
+    ...props,
+    src,
+    alt: props.alt ?? "",
+    width: width == null ? undefined : Number(width),
+    height: height == null ? undefined : Number(height),
+    preset: "avatar",
+    priority,
+    quality,
+    unoptimized,
+  });
+  const visible = loadedSrc === src && failedSrc !== src;
+
   return (
-    <AvatarPrimitive.Image
+    <img
+      ref={ref}
       data-slot="avatar-image"
-      className={cn("aspect-square size-full rounded-full object-cover", className)}
-      {...props}
+      className={cn(
+        "absolute inset-0 z-10 aspect-square size-full rounded-full object-cover",
+        !visible && "opacity-0",
+        className,
+      )}
+      {...imageProps}
+      onLoad={(event) => {
+        setLoadedSrc(src);
+        setImageState?.({ src: normalizedSrc, status: "loaded" });
+        onLoad?.(event);
+      }}
+      onError={(event) => {
+        setFailedSrc(src);
+        setImageState?.({ src: normalizedSrc, status: "error" });
+        onError?.(event);
+      }}
     />
   );
-}
+});
 
 function AvatarFallback({
   className,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
+  const context = React.useContext(AvatarImageContext);
+  if (context?.state.status === "loaded" && context.state.src !== null) return null;
+
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"

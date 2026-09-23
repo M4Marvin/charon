@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { Label } from "@/components/ui/label";
 import { EmbeddedLorebookPanel } from "@/components/character/EmbeddedLorebookPanel";
 import { MarkdownContent } from "@/components/MarkdownContent";
@@ -28,6 +29,7 @@ import { SkeletonForm } from "@/components/common/Skeletons";
 import type { CharacterDetail } from "@/db/repositories/characters";
 import { useCharacter, useDeleteCharacter, useUpdateCharacter } from "@/hooks/useCharacters";
 import { useCreateChat, useChatsByCharacter } from "@/hooks/useChats";
+import { withImageVersion } from "@/lib/image-optimization";
 import { characterDeleteDescription } from "./delete-stats";
 
 export const Route = createFileRoute("/characters/$id")({
@@ -83,7 +85,9 @@ export function CharacterDetailPage() {
 
   const data = character.data;
   const creator = character.creator || data.creator;
-  const avatarUrl = character.imagePath ? `/api/characters/${character.id}/avatar` : null;
+  const avatarUrl = character.imagePath
+    ? withImageVersion(`/api/characters/${character.id}/avatar`, character.imagePath)
+    : null;
 
   return (
     <main className="relative isolate mx-auto flex w-full max-w-[1200px] flex-col px-4 py-6 lg:h-[calc(100dvh-3.5rem)] lg:overflow-hidden">
@@ -92,11 +96,13 @@ export function CharacterDetailPage() {
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[360px] overflow-hidden"
         >
-          <img
+          <OptimizedImage
+            key={avatarUrl}
             src={avatarUrl}
             alt=""
-            width={1200}
-            height={360}
+            preset="background"
+            intrinsicSize={false}
+            quality={60}
             className="h-full w-full scale-110 object-cover opacity-20 blur-3xl"
             onError={(e) => {
               e.currentTarget.style.display = "none";

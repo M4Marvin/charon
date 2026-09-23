@@ -1,5 +1,5 @@
-// Migrate existing SillyTavern data from public/data/ into the SQLite database.
-// Run with: nub scripts/migrate-data.ts
+// Migrate existing SillyTavern data from data/import/ into the SQLite database and private uploads.
+// Run with: pnpm run prepare:migration && pnpm run migrate
 //
 // Migrates: characters (PNG + embedded books), standalone lorebooks (worlds/*.json),
 // personas (settings.json), and user prompt settings (system prompt,
@@ -9,24 +9,28 @@
 // Re-runnable: skips existing rows by name so it is safe to re-run after a
 // partial failure.
 
-import { copyFile, mkdir, readdir, readFile } from "node:fs/promises";
-import { existsSync, readFileSync } from "node:fs";
-import { basename, extname, join } from "node:path";
+import { config } from "dotenv";
+config({ path: [".env.local", ".env"] });
+
+import { realpathSync } from "node:fs";
+import { basename, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { db } from "@/db";
-import {
-  user,
-  characters,
-  lorebooks,
-  loreEntries,
-  personas,
-} from "@/db/schema";
+import { user, characters, lorebooks, loreEntries, personas } from "@/db/schema";
 import { derivedColumns } from "@/db/repositories/characters";
+import { MAX_IMAGE_BYTES, validateUploadedImage } from "@/server/image-limits";
+import { readMigrationFile, resolveMigrationDirectory, resolveMigrationFile } from "./migration-io";
 import {
-  upsertUserSettings,
-  type UserSettingsPatch,
-} from "@/db/repositories/userSettings";
+  diskPathFromStored,
+  ensureUploadsDirs,
+  readPrivateDirectory,
+  removePrivatePath,
+  storedPathFromDiskComponents,
+  writePrivateFileAtomic,
+  UPLOADS_DISK_ROOT,
+} from "@/server/uploads";
+import { upsertUserSettings, type UserSettingsPatch } from "@/db/repositories/userSettings";
 import {
   parseCharacterCard,
   validateCharacterCard,
@@ -35,13 +39,106 @@ import {
   type CharacterDataV2,
 } from "@/lib/st-core/character";
 import { DEFAULT_LORE_CONFIG, type LoreEntry as LoreEntryData } from "@/lib/st-core/lorebook";
+import { parseWorldFile } from "@/lib/lorebook/world-file";
 import { normalizeCardData, normalizeV3ToV2 } from "@/lib/character/normalize";
 
-const DATA_ROOT = "public/data";
-const AVATAR_DIR = "public/data/avatars";
-const AVATAR_PUBLIC_PREFIX = "data/avatars";
-const PERSONA_ICON_DIR = "public/data/personas";
-const PERSONA_PUBLIC_PREFIX = "data/personas";
+const DATA_ROOT = "data/import";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isWithin(root: string, candidate: string): boolean {
+  const pathFromRoot = relative(root, candidate);
+  return (
+    pathFromRoot === "" ||
+    (pathFromRoot !== ".." && !pathFromRoot.startsWith(`..${sep}`) && !isAbsolute(pathFromRoot))
+  );
+}
+
+function isSafeAvatarKey(key: string): boolean {
+  return (
+    key.length > 0 &&
+    key !== "." &&
+    key !== ".." &&
+    !key.includes("/") &&
+    !key.includes("\\") &&
+    !key.includes("\0")
+  );
+}
+
+function resolveMigrationSource(rootDir: string, key: string): string | null {
+  if (!isSafeAvatarKey(key)) return null;
+
+  try {
+    const dataRoot = realpathSync(DATA_ROOT);
+    const root = realpathSync(rootDir);
+    if (!isWithin(dataRoot, root)) return null;
+
+    const candidate = resolve(root, key);
+    if (!isWithin(root, candidate)) return null;
+    const realCandidate = realpathSync(candidate);
+    return isWithin(root, realCandidate) ? realCandidate : null;
+  } catch {
+    return null;
+  }
+}
+
+type ParsedSettings = {
+  personas: Record<string, string>;
+  descriptions: Record<string, string>;
+  systemPrompt?: string;
+  impersonationPrompt?: string;
+  postHistoryInstructions?: string;
+};
+
+function parseSettingsFile(value: unknown): ParsedSettings | null {
+  if (!isRecord(value)) return null;
+
+  const powerUser = value.power_user;
+  if (powerUser !== undefined && !isRecord(powerUser)) return null;
+
+  const rawPersonas = powerUser?.personas;
+  if (rawPersonas !== undefined && !isRecord(rawPersonas)) return null;
+  const personas: Record<string, string> = {};
+  for (const [key, name] of Object.entries(rawPersonas ?? {})) {
+    if (typeof name !== "string") return null;
+    personas[key] = name;
+  }
+
+  const rawDescriptions = powerUser?.persona_descriptions;
+  if (rawDescriptions !== undefined && !isRecord(rawDescriptions)) return null;
+  const descriptions: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(rawDescriptions ?? {})) {
+    if (!isRecord(raw)) return null;
+    if (raw.description !== undefined && typeof raw.description !== "string") return null;
+    descriptions[key] = raw.description ?? "";
+  }
+
+  const sysprompt = powerUser?.sysprompt;
+  if (sysprompt !== undefined && !isRecord(sysprompt)) return null;
+  if (sysprompt?.content !== undefined && typeof sysprompt.content !== "string") return null;
+
+  const oai = value.oai_settings;
+  if (oai !== undefined && !isRecord(oai)) return null;
+  if (oai?.impersonation_prompt !== undefined && typeof oai.impersonation_prompt !== "string") {
+    return null;
+  }
+
+  const extensions = value.extension_settings;
+  if (extensions !== undefined && !isRecord(extensions)) return null;
+  const note = extensions?.note;
+  if (note !== undefined && !isRecord(note)) return null;
+  if (note?.default !== undefined && typeof note.default !== "string") return null;
+
+  return {
+    personas,
+    descriptions,
+    systemPrompt: sysprompt?.content,
+    impersonationPrompt: oai?.impersonation_prompt,
+    postHistoryInstructions: note?.default,
+  };
+}
 
 type Counts = {
   found: number;
@@ -63,19 +160,21 @@ const ZERO: Counts = { found: 0, inserted: 0, skipped: 0, failed: 0 };
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 async function listPngs(dir: string): Promise<string[]> {
-  if (!existsSync(dir)) return [];
-  const entries = await readdir(dir, { withFileTypes: true });
+  const sourceDir = resolveMigrationDirectory(DATA_ROOT, dir);
+  if (!sourceDir) return [];
+  const entries = await readPrivateDirectory(sourceDir, DATA_ROOT);
   return entries
     .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".png"))
-    .map((e) => join(dir, e.name));
+    .map((e) => join(sourceDir, e.name));
 }
 
 async function listFilesByExt(dir: string, ext: string): Promise<string[]> {
-  if (!existsSync(dir)) return [];
-  const entries = await readdir(dir, { withFileTypes: true });
+  const sourceDir = resolveMigrationDirectory(DATA_ROOT, dir);
+  if (!sourceDir) return [];
+  const entries = await readPrivateDirectory(sourceDir, DATA_ROOT);
   return entries
     .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(ext.toLowerCase()))
-    .map((e) => join(dir, e.name));
+    .map((e) => join(sourceDir, e.name));
 }
 
 function lorebookNameExists(name: string): boolean {
@@ -156,14 +255,13 @@ async function migrateCharacters(
 
   const pngs = await listPngs(join(DATA_ROOT, "characters"));
   counts.found = pngs.length;
-  await mkdir(AVATAR_DIR, { recursive: true });
 
   for (const pngPath of pngs) {
     const fileBase = basename(pngPath, ".png");
 
     let bytes: Uint8Array;
     try {
-      bytes = new Uint8Array(await readFile(pngPath));
+      bytes = new Uint8Array(await readMigrationFile(pngPath, MAX_IMAGE_BYTES, DATA_ROOT));
     } catch (e) {
       console.log(`  ✗ ${fileBase}: failed to read PNG (${(e as Error).message})`);
       counts.failed++;
@@ -185,7 +283,7 @@ async function migrateCharacters(
     // unchanged.
     const detectedSpec =
       typeof (raw as { spec?: unknown }).spec === "string"
-        ? ((raw as { spec: string }).spec)
+        ? (raw as { spec: string }).spec
         : "chara_card_v2";
     const isV3 = detectedSpec === "chara_card_v3";
     const projected = isV3 ? normalizeV3ToV2(raw) : raw;
@@ -194,10 +292,16 @@ async function migrateCharacters(
       ? validateCharacterCardV3(normalized)
       : validateCharacterCard(normalized);
     if (!validation.ok) {
-      const errs = validation.errors
-        .map((e) => `${e.field || "(root)"}: ${e.message}`)
-        .join("; ");
+      const errs = validation.errors.map((e) => `${e.field || "(root)"}: ${e.message}`).join("; ");
       console.log(`  ✗ ${fileBase}: validation (${errs})`);
+      counts.failed++;
+      continue;
+    }
+
+    try {
+      await validateUploadedImage(bytes);
+    } catch (e) {
+      console.log(`  ✗ ${fileBase}: image validation (${(e as Error).message})`);
       counts.failed++;
       continue;
     }
@@ -215,12 +319,13 @@ async function migrateCharacters(
 
     const id = randomUUID();
     const filename = `${id}.png`;
-    const writePath = join(AVATAR_DIR, filename);
-    const avatarPath = join(AVATAR_PUBLIC_PREFIX, filename);
+    const avatarPath = storedPathFromDiskComponents("avatars", filename);
+    const writePath = diskPathFromStored(avatarPath);
 
     try {
-      await copyFile(pngPath, writePath);
+      await writePrivateFileAtomic(writePath, bytes, { rootDir: UPLOADS_DISK_ROOT });
     } catch (e) {
+      await removePrivatePath(writePath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
       console.log(`  ✗ ${fileBase}: avatar copy (${(e as Error).message})`);
       counts.failed++;
       continue;
@@ -242,6 +347,7 @@ async function migrateCharacters(
         })
         .run();
     } catch (e) {
+      await removePrivatePath(writePath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
       console.log(`  ✗ ${fileBase}: insert (${(e as Error).message})`);
       counts.failed++;
       continue;
@@ -265,61 +371,52 @@ async function migrateCharacters(
 
 // ── Standalone lorebooks (worlds/*.json) ───────────────────────────────────
 
-interface WorldEntry {
-  uid?: number;
-  [k: string]: unknown;
-}
-
-interface WorldFile {
-  entries?: Record<string, WorldEntry>;
-  [k: string]: unknown;
-}
-
 function insertLorebookFromWorldFile(
   name: string,
-  world: WorldFile,
-): { id: string; entries: number } | null {
-  const id = randomUUID();
-  const now = new Date();
+  json: string,
+): { id: string; entries: number; skipped: number } | null {
+  let parsed: ReturnType<typeof parseWorldFile>;
   try {
-    db.insert(lorebooks)
-      .values({
-        id,
-        name,
-        config: { ...DEFAULT_LORE_CONFIG },
-        createdAt: now,
-        updatedAt: now,
-      })
-      .run();
+    parsed = parseWorldFile(json);
   } catch (e) {
     console.log(`  ✗ Lorebook "${name}": ${(e as Error).message}`);
     return null;
   }
 
-  const entries = world.entries ?? {};
-  let inserted = 0;
-  let nextUid = 1;
-  for (const [, entry] of Object.entries(entries)) {
-    const uid = typeof entry.uid === "number" ? entry.uid : nextUid++;
-    if (uid >= nextUid) nextUid = uid + 1;
-    try {
-      db.insert(loreEntries)
+  const id = randomUUID();
+  const now = new Date();
+  try {
+    db.transaction((tx) => {
+      tx.insert(lorebooks)
         .values({
-          id: randomUUID(),
-          lorebookId: id,
-          uid,
-          data: entry as unknown as LoreEntryData,
+          id,
+          name,
+          description: parsed.description,
+          config: parsed.config,
           createdAt: now,
           updatedAt: now,
         })
         .run();
-      inserted++;
-    } catch {
-      // (lorebookId, uid) collision — skip
-    }
+
+      for (const entry of parsed.entries) {
+        tx.insert(loreEntries)
+          .values({
+            id: randomUUID(),
+            lorebookId: id,
+            uid: entry.uid,
+            data: entry,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+      }
+    });
+  } catch (e) {
+    console.log(`  ✗ Lorebook "${name}": ${(e as Error).message}`);
+    return null;
   }
 
-  return { id, entries: inserted };
+  return { id, entries: parsed.entries.length, skipped: parsed.entriesSkipped };
 }
 
 async function migrateLorebooks(): Promise<{ lorebooks: Counts; loreEntries: number }> {
@@ -327,10 +424,6 @@ async function migrateLorebooks(): Promise<{ lorebooks: Counts; loreEntries: num
   let totalEntries = 0;
 
   const worldDir = join(DATA_ROOT, "worlds");
-  if (!existsSync(worldDir)) {
-    return { lorebooks: counts, loreEntries: totalEntries };
-  }
-
   const files = await listFilesByExt(worldDir, ".json");
   counts.found = files.length;
 
@@ -341,22 +434,28 @@ async function migrateLorebooks(): Promise<{ lorebooks: Counts; loreEntries: num
       continue;
     }
 
-    let world: WorldFile;
+    let json: string;
     try {
-      const text = readFileSync(filePath, "utf8");
-      world = JSON.parse(text) as WorldFile;
+      json = (await readMigrationFile(filePath, MAX_IMAGE_BYTES, DATA_ROOT)).toString("utf8");
     } catch (e) {
-      console.log(`  ✗ ${name}: parse (${(e as Error).message})`);
+      console.log(`  ✗ ${name}: read (${(e as Error).message})`);
       counts.failed++;
       continue;
     }
 
-    const result = insertLorebookFromWorldFile(name, world);
-    if (result) {
-      counts.inserted++;
-      totalEntries += result.entries;
-      console.log(`  ✓ ${name} (${result.entries} entries)`);
-    } else {
+    try {
+      const result = insertLorebookFromWorldFile(name, json);
+      if (result) {
+        counts.inserted++;
+        totalEntries += result.entries;
+        console.log(
+          `  ✓ ${name} (${result.entries} entries${result.skipped ? `, ${result.skipped} skipped` : ""})`,
+        );
+      } else {
+        counts.failed++;
+      }
+    } catch (e) {
+      console.log(`  ✗ ${name}: migration (${(e as Error).message})`);
       counts.failed++;
     }
   }
@@ -366,39 +465,29 @@ async function migrateLorebooks(): Promise<{ lorebooks: Counts; loreEntries: num
 
 // ── Personas (settings.json) ──────────────────────────────────────────────
 
-interface PersonaDescription {
-  description?: string;
-  position?: number;
-  [k: string]: unknown;
-}
-
-interface SettingsFile {
-  power_user?: {
-    personas?: Record<string, string>;
-    persona_descriptions?: Record<string, PersonaDescription>;
-    [k: string]: unknown;
-  };
-  [k: string]: unknown;
-}
-
 async function migratePersonas(): Promise<Counts> {
   const counts: Counts = { ...ZERO };
-  const settingsPath = join(DATA_ROOT, "settings.json");
-  if (!existsSync(settingsPath)) return counts;
+  const settingsPath = resolveMigrationFile(DATA_ROOT, join(DATA_ROOT, "settings.json"));
+  if (!settingsPath) return counts;
 
-  await mkdir(PERSONA_ICON_DIR, { recursive: true });
-
-  let settings: SettingsFile;
+  let settings: ParsedSettings;
   try {
-    const text = await readFile(settingsPath, "utf8");
-    settings = JSON.parse(text) as SettingsFile;
+    const text = (await readMigrationFile(settingsPath, MAX_IMAGE_BYTES, DATA_ROOT)).toString(
+      "utf8",
+    );
+    const parsed = parseSettingsFile(JSON.parse(text));
+    if (!parsed) {
+      console.log("  ✗ settings.json: expected a settings object");
+      return counts;
+    }
+    settings = parsed;
   } catch (e) {
     console.log(`  ✗ settings.json: ${(e as Error).message}`);
     return counts;
   }
 
-  const personasMap = settings.power_user?.personas ?? {};
-  const descriptionsMap = settings.power_user?.persona_descriptions ?? {};
+  const personasMap = settings.personas;
+  const descriptionsMap = settings.descriptions;
   counts.found = Object.keys(personasMap).length;
 
   for (const [avatarKey, name] of Object.entries(personasMap)) {
@@ -407,25 +496,32 @@ async function migratePersonas(): Promise<Counts> {
       continue;
     }
 
-    const description = descriptionsMap[avatarKey]?.description ?? "";
+    if (!isSafeAvatarKey(avatarKey)) {
+      console.log(`  ✗ ${name}: unsafe avatar key`);
+      counts.failed++;
+      continue;
+    }
+
+    const description = descriptionsMap[avatarKey] ?? "";
     const id = randomUUID();
 
     let iconPath: string | null = null;
-    const userAvatarPath = join(DATA_ROOT, "User Avatars", avatarKey);
-    const thumbnailPath = join(DATA_ROOT, "thumbnails", "persona", avatarKey);
-    const sourcePath = existsSync(userAvatarPath)
-      ? userAvatarPath
-      : existsSync(thumbnailPath)
-        ? thumbnailPath
-        : null;
+    let iconWritePath: string | null = null;
+    const sourcePath =
+      resolveMigrationSource(join(DATA_ROOT, "User Avatars"), avatarKey) ??
+      resolveMigrationSource(join(DATA_ROOT, "thumbnails", "persona"), avatarKey);
 
     if (sourcePath) {
       const iconFilename = `${id}.png`;
-      const iconWritePath = join(PERSONA_ICON_DIR, iconFilename);
-      iconPath = join(PERSONA_PUBLIC_PREFIX, iconFilename);
+      iconPath = storedPathFromDiskComponents("personas", iconFilename);
+      iconWritePath = diskPathFromStored(iconPath);
       try {
-        await copyFile(sourcePath, iconWritePath);
+        const iconBytes = await readMigrationFile(sourcePath, MAX_IMAGE_BYTES, DATA_ROOT);
+        await validateUploadedImage(iconBytes);
+        await writePrivateFileAtomic(iconWritePath, iconBytes, { rootDir: UPLOADS_DISK_ROOT });
       } catch (e) {
+        if (iconWritePath)
+          await removePrivatePath(iconWritePath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
         console.log(`  ✗ ${name}: icon copy (${(e as Error).message})`);
         iconPath = null;
       }
@@ -446,6 +542,8 @@ async function migratePersonas(): Promise<Counts> {
       counts.inserted++;
       console.log(`  ✓ ${name}${iconPath ? " (with icon)" : " (no icon)"}`);
     } catch (e) {
+      if (iconWritePath)
+        await removePrivatePath(iconWritePath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
       console.log(`  ✗ ${name}: ${(e as Error).message}`);
       counts.failed++;
     }
@@ -456,43 +554,40 @@ async function migratePersonas(): Promise<Counts> {
 
 // ── User settings (prompts from settings.json) ───────────────────────────
 
-function migrateUserSettings(accountId: string): void {
-  const settingsPath = join(DATA_ROOT, "settings.json");
-  if (!existsSync(settingsPath)) return;
+async function migrateUserSettings(accountId: string): Promise<void> {
+  const settingsPath = resolveMigrationFile(DATA_ROOT, join(DATA_ROOT, "settings.json"));
+  if (!settingsPath) return;
 
-  let settings: Record<string, unknown>;
+  let settings: ParsedSettings;
   try {
-    settings = JSON.parse(readFileSync(settingsPath, "utf8")) as Record<string, unknown>;
+    const text = (await readMigrationFile(settingsPath, MAX_IMAGE_BYTES, DATA_ROOT)).toString(
+      "utf8",
+    );
+    const parsed = parseSettingsFile(JSON.parse(text));
+    if (!parsed) return;
+    settings = parsed;
   } catch {
     return;
   }
 
   const patch: UserSettingsPatch = {};
-
-  // systemPrompt — from power_user.sysprompt.content
-  const sysprompt = (settings as any).power_user?.sysprompt;
-  if (sysprompt?.content) {
-    patch.systemPrompt = String(sysprompt.content);
+  if (settings.systemPrompt !== undefined) patch.systemPrompt = settings.systemPrompt;
+  if (settings.impersonationPrompt !== undefined) {
+    patch.impersonationPrompt = settings.impersonationPrompt;
   }
-
-  // impersonationPrompt — from oai_settings.impersonation_prompt
-  const oai = (settings as any).oai_settings;
-  if (oai?.impersonation_prompt) {
-    patch.impersonationPrompt = String(oai.impersonation_prompt);
-  }
-
-  // postHistoryInstructions — from extension_settings.note.default
-  const note = (settings as any).extension_settings?.note;
-  if (note?.default) {
-    patch.postHistoryInstructions = String(note.default);
+  if (settings.postHistoryInstructions !== undefined) {
+    patch.postHistoryInstructions = settings.postHistoryInstructions;
   }
 
   const keys = Object.keys(patch);
   if (keys.length === 0) return;
 
-  upsertUserSettings(accountId, patch);
-
-  console.log(`  → migrated user settings: ${keys.join(", ")}`);
+  try {
+    upsertUserSettings(accountId, patch);
+    console.log(`  → migrated user settings: ${keys.join(", ")}`);
+  } catch (error) {
+    console.log(`  ✗ user settings: ${(error as Error).message}`);
+  }
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────
@@ -533,6 +628,8 @@ async function main() {
 
   const characterByName = new Map<string, string>();
 
+  await ensureUploadsDirs();
+
   console.log("\n[2/5] Migrating characters...");
   const charResult = await migrateCharacters(characterByName);
   console.log(
@@ -552,7 +649,7 @@ async function main() {
   );
 
   console.log("\n[5/5] Migrating user settings (prompts)...");
-  migrateUserSettings(account.id);
+  await migrateUserSettings(account.id);
 
   printSummary({
     characters: charResult.characters,

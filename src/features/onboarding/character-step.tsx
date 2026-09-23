@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { fileToBase64, useImportCharacter } from "@/hooks/useCharacters";
 import { previewCharacter } from "@/server/fns/characters";
+import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/image-optimization";
 
 export function CharacterStep({
   hasCharacter,
@@ -23,7 +24,7 @@ export function CharacterStep({
       setError("Only PNG files are supported.");
       return;
     }
-    if (f.size > 50 * 1024 * 1024) {
+    if (f.size > MAX_IMAGE_UPLOAD_BYTES) {
       setError("File too large (max 50 MB).");
       return;
     }

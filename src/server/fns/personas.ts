@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { rm, writeFile } from "node:fs/promises";
 import { createServerFn } from "@tanstack/react-start";
 import { type } from "arktype";
 import { getSession } from "@/server/session";
@@ -7,8 +6,13 @@ import { validateId } from "@/server/validators";
 import {
   ensureUploadsDirs,
   diskPathFromStored,
+  removePrivatePath,
   storedPathFromDiskComponents,
+  writePrivateFileAtomic,
+  UPLOADS_DISK_ROOT,
 } from "@/server/uploads";
+import { decodeImageBase64, validateUploadedImage } from "@/server/image-limits";
+import { invalidateStoredImageCache } from "@/server/image-optimizer";
 import type { Persona } from "@/db/schema";
 import { UploadPersonaIconInput } from "@/server/schemas/persona";
 import {
@@ -28,20 +32,17 @@ export type PersonaListItem = Persona;
 const CreatePersonaInput = type({
   name: "string > 0",
   "description?": "string",
-  "iconPath?": "string",
 });
 
 const UpdatePersonaInput = type({
   id: "string > 0",
   "name?": "string > 0",
   "description?": "string | null",
-  "iconPath?": "string | null",
 });
 
 function validateCreateInput(data: unknown): {
   name: string;
   description?: string;
-  iconPath?: string;
 } {
   const result = CreatePersonaInput(data);
   if (result instanceof type.errors) throw new Error("Invalid persona input");
@@ -52,7 +53,6 @@ function validateUpdateInput(data: unknown): {
   id: string;
   name?: string;
   description?: string | null;
-  iconPath?: string | null;
 } {
   const result = UpdatePersonaInput(data);
   if (result instanceof type.errors) throw new Error("Invalid persona update");
@@ -84,7 +84,6 @@ export const createPersona = createServerFn({ method: "POST" })
       id,
       name: data.name,
       description: data.description ?? null,
-      iconPath: data.iconPath ?? null,
     };
     repoCreate(input);
     return { id };
@@ -97,7 +96,6 @@ export const updatePersona = createServerFn({ method: "POST", strict: { output: 
     const patch: UpdatePersonaInput = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.description !== undefined) patch.description = data.description;
-    if (data.iconPath !== undefined) patch.iconPath = data.iconPath;
     repoUpdate(data.id, patch);
     return { id: data.id };
   });
@@ -107,12 +105,15 @@ export const deletePersona = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ id: string }> => {
     await getSession();
     const existing = repoGet(data.id);
+    repoDelete(data.id);
     if (existing.iconPath) {
+      await invalidateStoredImageCache(existing.iconPath).catch(() => {});
       try {
-        await rm(diskPathFromStored(existing.iconPath), { force: true });
+        await removePrivatePath(diskPathFromStored(existing.iconPath), {
+          rootDir: UPLOADS_DISK_ROOT,
+        });
       } catch {}
     }
-    repoDelete(data.id);
     return { id: data.id };
   });
 
@@ -127,15 +128,30 @@ export const uploadPersonaIcon = createServerFn({ method: "POST" })
 
     await ensureUploadsDirs();
 
-    const bytes = Buffer.from(data.fileBase64, "base64");
-    await writeFile(diskPath, bytes);
+    const bytes = decodeImageBase64(data.fileBase64);
+    await validateUploadedImage(bytes);
+    try {
+      await writePrivateFileAtomic(diskPath, bytes, { rootDir: UPLOADS_DISK_ROOT });
+    } catch (error) {
+      await removePrivatePath(diskPath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
+      throw error;
+    }
+
+    try {
+      repoUpdate(data.id, { iconPath: storedPath });
+    } catch (error) {
+      await removePrivatePath(diskPath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
+      throw error;
+    }
 
     if (existing.iconPath) {
+      await invalidateStoredImageCache(existing.iconPath).catch(() => {});
       try {
-        await rm(diskPathFromStored(existing.iconPath), { force: true });
+        await removePrivatePath(diskPathFromStored(existing.iconPath), {
+          rootDir: UPLOADS_DISK_ROOT,
+        });
       } catch {}
     }
 
-    repoUpdate(data.id, { iconPath: storedPath });
     return { iconPath: storedPath };
   });

@@ -3,10 +3,12 @@ import { Link } from "@tanstack/react-router";
 import { Coins, Maximize2, MessageCircle, MessagesSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { StatChip } from "@/components/common/StatChip";
 import { RelativeTime } from "@/components/common/RelativeTime";
 import type { CharacterDetail } from "@/db/repositories/characters";
 import type { ChatWithCharacter } from "@/db/repositories/chats.js";
+import { withImageVersion } from "@/lib/image-optimization";
 import { tokenBreakdown } from "@/routes/characters/detail-helpers";
 
 interface CharacterPosterProps {
@@ -18,7 +20,9 @@ interface CharacterPosterProps {
 
 export function CharacterPoster({ character, chats, onStartChat, starting }: CharacterPosterProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const avatarUrl = character.imagePath ? `/api/characters/${character.id}/avatar` : null;
+  const avatarUrl = character.imagePath
+    ? withImageVersion(`/api/characters/${character.id}/avatar`, character.imagePath)
+    : null;
 
   return (
     <div className="overflow-hidden rounded-xl border border-subtle bg-surface lg:flex lg:h-full lg:min-h-0 lg:flex-col">
@@ -30,13 +34,12 @@ export function CharacterPoster({ character, chats, onStartChat, starting }: Cha
       >
         <div className="relative lg:h-full">
           {avatarUrl ? (
-            <img
+            <OptimizedImage
+              key={avatarUrl}
               src={avatarUrl}
               alt={character.name}
-              width={340}
-              height={453}
-              loading="eager"
-              decoding="async"
+              preset="portrait"
+              priority
               className="aspect-[3/4] w-full object-cover lg:h-full lg:object-cover"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
@@ -168,13 +171,13 @@ function PortraitLightbox({
       <DialogContent className="max-w-3xl border-0 bg-transparent p-0 shadow-none">
         <DialogTitle className="sr-only">Portrait of {name}</DialogTitle>
         {avatarUrl ? (
-          <img
+          <OptimizedImage
+            key={avatarUrl}
             src={avatarUrl}
             alt={name}
-            width={340}
-            height={453}
-            loading="lazy"
-            decoding="async"
+            preset="lightbox"
+            intrinsicSize={false}
+            priority={open}
             className="mx-auto max-h-[85vh] w-auto rounded-lg"
             onError={(e) => {
               e.currentTarget.style.display = "none";

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { cp, mkdir, readdir } from "node:fs/promises";
-import { join, extname } from "node:path";
+import { realpath } from "node:fs/promises";
+import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { db as defaultDb } from "@/db";
 import { createBackground } from "@/db/repositories/backgrounds";
 import { createCharacter } from "@/db/repositories/characters";
@@ -12,6 +12,17 @@ import { backgrounds } from "@/db/schema";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import { DEFAULT_LORE_CONFIG, DEFAULT_LORE_ENTRY } from "@/lib/st-core/lorebook";
 import { DEFAULT_IMAGE_PROMPT_EXAMPLE } from "@/features/chat/generation/image-prompt";
+import {
+  diskPathFromStored,
+  ensureUploadsDirs,
+  readPrivateDirectory,
+  readPrivateFile,
+  removePrivatePath,
+  statPrivateFile,
+  storedPathFromDiskComponents,
+  writePrivateFileAtomic,
+  UPLOADS_DISK_ROOT,
+} from "@/server/uploads";
 
 export async function seedSampleData(userId: string): Promise<void> {
   // Default persona
@@ -332,42 +343,86 @@ function seedStarterLorebooks(): void {
   );
 }
 
-const SOURCE_DIR = "public/data/backgrounds-seed";
-const DEST_DIR = "data/uploads/backgrounds";
-const PUBLIC_PATH_PREFIX = "uploads/backgrounds";
-
+const SOURCE_DIRS = [
+  "data/import/backgrounds-seed",
+  "data/backgrounds-seed",
+  "public/data/backgrounds-seed",
+] as const;
 function cleanBackgroundName(filename: string): string {
   const name = filename.replace(extname(filename), "");
   const cleaned = name.replace(/\(.*?\)/g, "").trim();
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
 
+async function resolveSeedSource(rootDir: string, filename: string): Promise<string | null> {
+  try {
+    const root = await realpath(rootDir);
+    if (root !== resolve(rootDir)) return null;
+
+    const candidate = resolve(root, filename);
+    const realCandidate = await realpath(candidate);
+    const pathFromRoot = relative(root, realCandidate);
+    if (
+      realCandidate !== candidate ||
+      !pathFromRoot ||
+      isAbsolute(pathFromRoot) ||
+      pathFromRoot === ".." ||
+      pathFromRoot.startsWith(`..${sep}`) ||
+      !(await statPrivateFile(realCandidate, Number.MAX_SAFE_INTEGER)).isFile()
+    ) {
+      return null;
+    }
+    return realCandidate;
+  } catch {
+    return null;
+  }
+}
+
 export async function seedDefaultBackgrounds(): Promise<void> {
   const count = defaultDb.select({ id: backgrounds.id }).from(backgrounds).limit(1).get();
   if (count) return;
 
-  let files: string[];
-  try {
-    files = await readdir(SOURCE_DIR);
-  } catch {
-    return;
+  let sourceDir: string | null = null;
+  let fileNames: string[] = [];
+  for (const candidate of SOURCE_DIRS) {
+    try {
+      const root = await realpath(candidate);
+      if (root !== resolve(candidate)) continue;
+      const entries = await readPrivateDirectory(root);
+      fileNames = entries
+        .map((entry) => (typeof entry === "string" ? entry : entry.name))
+        .filter((name) => !name.startsWith("_"));
+      sourceDir = root;
+      break;
+    } catch {
+      // Try the next local/private seed location.
+    }
   }
+  if (!sourceDir) return;
 
-  await mkdir(DEST_DIR, { recursive: true });
+  await ensureUploadsDirs();
 
-  const bgFiles = files.filter((f) => !f.startsWith("_"));
+  for (const fileName of fileNames) {
+    const sourcePath = await resolveSeedSource(sourceDir, fileName);
+    if (!sourcePath) continue;
 
-  for (const file of bgFiles) {
-    const ext = extname(file);
-    const uuid = randomUUID();
-    const destFilename = `${uuid}${ext}`;
-    const destPath = join(DEST_DIR, destFilename);
+    const storedPath = storedPathFromDiskComponents(
+      "backgrounds",
+      `${randomUUID()}${extname(fileName)}`,
+    );
+    const destPath = diskPathFromStored(storedPath);
 
-    await cp(join(SOURCE_DIR, file), destPath);
+    try {
+      const bytes = await readPrivateFile(sourcePath);
+      await writePrivateFileAtomic(destPath, bytes, { rootDir: UPLOADS_DISK_ROOT });
 
-    createBackground({
-      name: cleanBackgroundName(file),
-      path: join(PUBLIC_PATH_PREFIX, destFilename),
-    });
+      createBackground({
+        name: cleanBackgroundName(fileName),
+        path: storedPath,
+      });
+    } catch (error) {
+      await removePrivatePath(destPath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
+      throw error;
+    }
   }
 }

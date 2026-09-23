@@ -1,38 +1,59 @@
-// Migrate uploaded images from public/data/ to data/uploads/
+// Migrate uploaded images from data/import/ to data/uploads/
 // Changes the backend storage location and DB paths to match.
-// Run with: pnpm migrate:image-paths
+// Run with: pnpm run prepare:migration && pnpm run migrate:image-paths
 //
 // Idempotent — safe to re-run. Skips already-moved files and already-updated rows.
 
 import { config } from "dotenv";
 config({ path: [".env.local", ".env"] });
 
-import { cp, readdir, rm } from "node:fs/promises";
-import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { eq, like } from "drizzle-orm";
 
 import { db } from "@/db";
 import { characters, backgrounds, personas } from "@/db/schema";
+import { MAX_IMAGE_BYTES, validateUploadedImage } from "@/server/image-limits";
+import { readMigrationFile, resolveMigrationDirectory } from "./migration-io";
 import {
   ensureUploadsDirs,
   diskPathFromStored,
+  readPrivateDirectory,
+  removePrivatePath,
+  statPrivateFile,
   storedPathFromDiskComponents,
+  writePrivateFileAtomic,
+  UPLOADS_DISK_ROOT,
   UPLOADS_SUBDIRS,
   type UploadSubdir,
 } from "@/server/uploads";
 
-const SOURCE_BASE = "public/data";
+const SOURCE_BASE = "data/import";
 
-type Counts = { found: number; moved: number; skipped: number };
+async function privateFileExists(filePath: string, rootDir: string): Promise<boolean> {
+  try {
+    await statPrivateFile(filePath, Number.MAX_SAFE_INTEGER, rootDir);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-async function migrateSubdir(subdir: UploadSubdir): Promise<Counts> {
-  const counts: Counts = { found: 0, moved: 0, skipped: 0 };
-  const sourceDir = join(SOURCE_BASE, UPLOADS_SUBDIRS[subdir]);
-  if (!existsSync(sourceDir)) return counts;
+type Counts = { found: number; moved: number; skipped: number; failed: number };
+type MigrationResult = Counts & { verified: Set<string> };
 
-  const entries = await readdir(sourceDir, { withFileTypes: true });
-  const images = entries.filter((e) => e.isFile() && /\.(png|jpe?g|webp)$/i.test(e.name));
+async function migrateSubdir(subdir: UploadSubdir): Promise<MigrationResult> {
+  const counts: Counts = { found: 0, moved: 0, skipped: 0, failed: 0 };
+  const verified = new Set<string>();
+  const sourceDir = resolveMigrationDirectory(
+    SOURCE_BASE,
+    join(SOURCE_BASE, UPLOADS_SUBDIRS[subdir]),
+  );
+  if (!sourceDir) return { ...counts, verified };
+
+  const entries = await readPrivateDirectory(sourceDir, SOURCE_BASE);
+  const images = entries.filter(
+    (e) => e.isFile() && /\.(png|jpe?g|webp|gif|tiff?|avif)$/i.test(e.name),
+  );
   counts.found = images.length;
 
   for (const img of images) {
@@ -40,30 +61,72 @@ async function migrateSubdir(subdir: UploadSubdir): Promise<Counts> {
     const stored = storedPathFromDiskComponents(subdir, img.name);
     const dst = diskPathFromStored(stored);
 
-    if (existsSync(dst)) {
-      counts.skipped++;
-      continue;
-    }
+    try {
+      const sourceBytes = await readMigrationFile(src, MAX_IMAGE_BYTES, SOURCE_BASE);
+      await validateUploadedImage(sourceBytes);
 
-    await cp(src, dst);
-    counts.moved++;
+      if (await privateFileExists(dst, UPLOADS_DISK_ROOT)) {
+        const destinationBytes = await readMigrationFile(dst, MAX_IMAGE_BYTES, UPLOADS_DISK_ROOT);
+        let destinationIsValid = true;
+        try {
+          await validateUploadedImage(destinationBytes);
+        } catch {
+          destinationIsValid = false;
+        }
+        if (destinationIsValid) {
+          if (!sourceBytes.equals(destinationBytes)) {
+            throw new Error(`Refusing to overwrite different destination: ${dst}`);
+          }
+          verified.add(stored);
+          counts.skipped++;
+          continue;
+        }
+        await removePrivatePath(dst, { rootDir: UPLOADS_DISK_ROOT });
+      }
+
+      await writePrivateFileAtomic(dst, sourceBytes, { rootDir: UPLOADS_DISK_ROOT });
+      verified.add(stored);
+      counts.moved++;
+    } catch (error) {
+      console.warn(`  ! ${subdir}/${img.name}: ${(error as Error).message}`);
+      counts.failed++;
+    }
   }
 
-  return counts;
+  return { ...counts, verified };
 }
 
-function updateDbPaths(): void {
+function verifiedPath(
+  path: string | null,
+  oldPrefix: string,
+  newPrefix: string,
+  verified: Set<string>,
+): string | null {
+  if (!path) return null;
+  const next = path.replace(oldPrefix, newPrefix);
+  if (!verified.has(next)) {
+    console.warn(`  ! skipped unverified path: ${path}`);
+    return null;
+  }
+  try {
+    diskPathFromStored(next);
+  } catch {
+    console.warn(`  ! skipped invalid path: ${path}`);
+    return null;
+  }
+  return next;
+}
+
+function updateDbPaths(verified: Set<string>): void {
   const chars = db
     .select({ id: characters.id, p: characters.imagePath })
     .from(characters)
     .where(like(characters.imagePath, "data/avatars/%"))
     .all();
   for (const c of chars) {
-    if (c.p) {
-      db.update(characters)
-        .set({ imagePath: c.p.replace("data/avatars/", "uploads/avatars/") })
-        .where(eq(characters.id, c.id))
-        .run();
+    const next = verifiedPath(c.p, "data/avatars/", "uploads/avatars/", verified);
+    if (next) {
+      db.update(characters).set({ imagePath: next }).where(eq(characters.id, c.id)).run();
     }
   }
 
@@ -73,11 +136,9 @@ function updateDbPaths(): void {
     .where(like(backgrounds.path, "data/backgrounds/%"))
     .all();
   for (const b of bgs) {
-    if (b.p) {
-      db.update(backgrounds)
-        .set({ path: b.p.replace("data/backgrounds/", "uploads/backgrounds/") })
-        .where(eq(backgrounds.id, b.id))
-        .run();
+    const next = verifiedPath(b.p, "data/backgrounds/", "uploads/backgrounds/", verified);
+    if (next) {
+      db.update(backgrounds).set({ path: next }).where(eq(backgrounds.id, b.id)).run();
     }
   }
 
@@ -87,34 +148,31 @@ function updateDbPaths(): void {
     .where(like(personas.iconPath, "data/personas/%"))
     .all();
   for (const p of pers) {
-    if (p.p) {
-      db.update(personas)
-        .set({ iconPath: p.p.replace("data/personas/", "uploads/personas/") })
-        .where(eq(personas.id, p.id))
-        .run();
+    const next = verifiedPath(p.p, "data/personas/", "uploads/personas/", verified);
+    if (next) {
+      db.update(personas).set({ iconPath: next }).where(eq(personas.id, p.id)).run();
     }
   }
 }
 
 function isReferenced(path: string): boolean {
-  const likePattern = `data/${path}%`;
   return (
     db
       .select({ id: characters.id })
       .from(characters)
-      .where(like(characters.imagePath, likePattern))
+      .where(eq(characters.imagePath, path))
       .limit(1)
       .get() !== undefined ||
     db
       .select({ id: backgrounds.id })
       .from(backgrounds)
-      .where(like(backgrounds.path, likePattern))
+      .where(eq(backgrounds.path, path))
       .limit(1)
       .get() !== undefined ||
     db
       .select({ id: personas.id })
       .from(personas)
-      .where(like(personas.iconPath, likePattern))
+      .where(eq(personas.iconPath, path))
       .limit(1)
       .get() !== undefined
   );
@@ -122,17 +180,23 @@ function isReferenced(path: string): boolean {
 
 async function cleanOrphans(): Promise<{ deleted: string[] }> {
   const deleted: string[] = [];
-  const dataDir = join(SOURCE_BASE);
-  if (!existsSync(dataDir)) return { deleted };
 
-  const entries = await readdir(dataDir, { withFileTypes: true });
-  const images = entries.filter((e) => e.isFile() && /\.(png|jpe?g|webp)$/i.test(e.name));
+  for (const subdir of Object.values(UPLOADS_SUBDIRS)) {
+    const dataDir = resolveMigrationDirectory(SOURCE_BASE, join(SOURCE_BASE, subdir));
+    if (!dataDir) continue;
 
-  for (const img of images) {
-    if (isReferenced(img.name)) continue;
-    const path = join(dataDir, img.name);
-    await rm(path, { force: true });
-    deleted.push(img.name);
+    const entries = await readPrivateDirectory(dataDir, SOURCE_BASE);
+    const images = entries.filter(
+      (e) => e.isFile() && /\.(png|jpe?g|webp|gif|tiff?|avif)$/i.test(e.name),
+    );
+
+    for (const img of images) {
+      const legacyPath = join("data", subdir, img.name);
+      if (isReferenced(legacyPath)) continue;
+      const path = join(dataDir, img.name);
+      await removePrivatePath(path, { rootDir: SOURCE_BASE });
+      deleted.push(join(subdir, img.name));
+    }
   }
 
   return { deleted };
@@ -142,23 +206,34 @@ async function main() {
   console.log("=== image path migration ===\n");
   await ensureUploadsDirs();
 
+  const verified = new Set<string>();
+
   console.log("[1/3] Moving avatars...");
   const avatarResult = await migrateSubdir("avatars");
-  console.log(`  → ${avatarResult.found} found, ${avatarResult.moved} moved, ${avatarResult.skipped} skipped`);
+  for (const path of avatarResult.verified) verified.add(path);
+  console.log(
+    `  → ${avatarResult.found} found, ${avatarResult.moved} moved, ${avatarResult.skipped} skipped, ${avatarResult.failed} failed`,
+  );
 
   console.log("[2/3] Moving backgrounds...");
   const bgResult = await migrateSubdir("backgrounds");
-  console.log(`  → ${bgResult.found} found, ${bgResult.moved} moved, ${bgResult.skipped} skipped`);
+  for (const path of bgResult.verified) verified.add(path);
+  console.log(
+    `  → ${bgResult.found} found, ${bgResult.moved} moved, ${bgResult.skipped} skipped, ${bgResult.failed} failed`,
+  );
 
   console.log("[3/3] Moving personas...");
   const personaResult = await migrateSubdir("personas");
-  console.log(`  → ${personaResult.found} found, ${personaResult.moved} moved, ${personaResult.skipped} skipped`);
+  for (const path of personaResult.verified) verified.add(path);
+  console.log(
+    `  → ${personaResult.found} found, ${personaResult.moved} moved, ${personaResult.skipped} skipped, ${personaResult.failed} failed`,
+  );
 
   console.log("\n[DB] Updating stored paths...");
-  updateDbPaths();
+  updateDbPaths(verified);
   console.log("  → done");
 
-  console.log("\n[Cleanup] Removing orphan PNGs from public/data/...");
+  console.log("\n[Cleanup] Removing migrated/orphan image files from data/import/...");
   const { deleted } = await cleanOrphans();
   if (deleted.length > 0) {
     for (const f of deleted) console.log(`  → deleted ${f}`);

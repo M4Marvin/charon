@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { cn } from "@/lib/utils";
 
 interface CharacterPortraitPanelProps {
@@ -19,8 +21,26 @@ export function CharacterPortraitPanel({
   onClose,
   onImageClick,
 }: CharacterPortraitPanelProps) {
+  const [keepImageMounted, setKeepImageMounted] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+    if (open) {
+      setKeepImageMounted(true);
+      return;
+    }
+
+    const timer = window.setTimeout(() => setKeepImageMounted(false), 300);
+    return () => window.clearTimeout(timer);
+  }, [open, imageSrc]);
+
+  const shouldMountImage = open || keepImageMounted;
+
   return (
     <div
+      aria-hidden={!open}
+      inert={!open}
       className={cn(
         "fixed left-4 top-1/2 -translate-y-1/2 z-20 hidden lg:flex flex-col gap-2 transition-all duration-300",
         open ? "translate-x-0 opacity-100" : "-translate-x-[calc(100%+2rem)] opacity-0",
@@ -35,11 +55,16 @@ export function CharacterPortraitPanel({
         onKeyDown={(e) => e.key === "Enter" && onImageClick()}
       >
         <div className="aspect-[3/4] max-h-[70dvh] relative flex items-center justify-center bg-(--bg-base)/60">
-          {imageSrc ? (
-            <img
+          {shouldMountImage && imageSrc && !imageFailed ? (
+            <OptimizedImage
+              key={imageSrc}
               src={imageSrc}
               alt={name}
+              preset="portrait"
+              sizes="max(12rem, calc((100vw - 48rem)/2 - 2rem))"
+              priority={open}
               className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+              onError={() => setImageFailed(true)}
             />
           ) : (
             <div className="text-(--sea-ink-soft) text-sm">No portrait</div>

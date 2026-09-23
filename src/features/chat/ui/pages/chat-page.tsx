@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from "react";
+import { withImageVersion } from "@/lib/image-optimization";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 
@@ -99,9 +100,15 @@ export function ChatPage() {
     : false;
   const composerDisabled = config?.chat.lockState === "generating" && activePlaceholderId === null;
 
-  const userAvatarUrl = persona?.iconPath ? `/api/personas/${persona.id}/icon` : null;
-  const characterAvatarUrl = character?.imagePath ? `/api/characters/${character.id}/avatar` : null;
-  const backgroundUrl = background?.path ? `/api/backgrounds/${background.id}/image` : null;
+  const userAvatarUrl = persona?.iconPath
+    ? withImageVersion(`/api/personas/${persona.id}/icon`, persona.iconPath)
+    : null;
+  const characterAvatarUrl = character?.imagePath
+    ? withImageVersion(`/api/characters/${character.id}/avatar`, character.imagePath)
+    : null;
+  const backgroundUrl = background?.path
+    ? withImageVersion(`/api/backgrounds/${background.id}/image`, background.path)
+    : null;
 
   const ensureModelConfigured = useCallback(() => {
     // A provider row exists but has no resolvable model (neither a selected

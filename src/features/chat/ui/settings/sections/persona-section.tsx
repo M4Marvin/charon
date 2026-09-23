@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import {
   usePersonas,
   useCreatePersona,
@@ -28,6 +29,7 @@ import {
   useUploadPersonaIcon,
 } from "@/hooks/usePersonas";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
+import { MAX_IMAGE_UPLOAD_BYTES, withImageVersion } from "@/lib/image-optimization";
 import { ConfirmDialog } from "../confirm-dialog";
 import { SectionHeader } from "../section-header";
 
@@ -54,6 +56,8 @@ export function PersonaSection(_props: SectionProps) {
   const [description, setDescription] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [pendingIconPath, setPendingIconPath] = useState<string | null>(null);
+  const [failedIconPath, setFailedIconPath] = useState<string | null>(null);
+  const [iconError, setIconError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedId = settings?.defaultPersonaId ?? "";
@@ -68,6 +72,7 @@ export function PersonaSection(_props: SectionProps) {
   const openCreate = useCallback(() => {
     setName("");
     setDescription("");
+    setIconError(null);
     setDialog({ kind: "create" });
   }, []);
 
@@ -75,6 +80,7 @@ export function PersonaSection(_props: SectionProps) {
     setName(n);
     setDescription(d ?? "");
     setPendingIconPath(null);
+    setIconError(null);
     setDialog({ kind: "edit", id, name: n, description: d ?? "", iconPath: icon });
   }, []);
 
@@ -84,6 +90,12 @@ export function PersonaSection(_props: SectionProps) {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file || dialog?.kind !== "edit") return;
+      if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+        setIconError(`File too large (max ${MAX_IMAGE_UPLOAD_BYTES / (1024 * 1024)} MB).`);
+        e.target.value = "";
+        return;
+      }
+      setIconError(null);
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUrl = reader.result as string;
@@ -101,7 +113,9 @@ export function PersonaSection(_props: SectionProps) {
     [dialog, uploadPersonaIcon],
   );
 
-  const displayIconPath = pendingIconPath ?? (dialog?.kind === "edit" ? dialog.iconPath : null);
+  const displayStoredIconPath =
+    pendingIconPath ?? (dialog?.kind === "edit" ? dialog.iconPath : null);
+  const showIcon = displayStoredIconPath !== null && failedIconPath !== displayStoredIconPath;
 
   const handleSave = useCallback(() => {
     const trimmed = name.trim();
@@ -222,14 +236,22 @@ export function PersonaSection(_props: SectionProps) {
               <div className="space-y-1.5">
                 <Label>Icon</Label>
                 <div className="flex items-center gap-3">
-                  {displayIconPath ? (
-                    <img
-                      src={`/api/personas/${dialog.id}/icon`}
+                  {showIcon && displayStoredIconPath ? (
+                    <OptimizedImage
+                      key={displayStoredIconPath}
+                      src={withImageVersion(
+                        `/api/personas/${dialog.id}/icon`,
+                        displayStoredIconPath,
+                      )}
                       alt=""
+                      preset="avatar"
+                      width={64}
+                      height={64}
+                      sizes="64px"
+                      quality={70}
+                      priority
                       className="size-16 rounded-lg object-cover border border-border"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
+                      onError={() => setFailedIconPath(displayStoredIconPath)}
                     />
                   ) : (
                     <div className="size-16 rounded-lg bg-muted flex items-center justify-center border border-border">
@@ -250,11 +272,16 @@ export function PersonaSection(_props: SectionProps) {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/png"
+                    accept="image/png,image/jpeg,image/webp,image/tiff,image/gif,image/avif"
                     className="hidden"
                     onChange={handleFileChange}
                     aria-label="Upload persona icon"
                   />
+                  {iconError ? (
+                    <p className="text-xs text-destructive" role="alert">
+                      {iconError}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             )}

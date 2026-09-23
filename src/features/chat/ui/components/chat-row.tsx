@@ -9,6 +9,7 @@ import { getChatMessages } from "@/server/fns/chats";
 import { getChatConfigFn } from "@/features/chat/config/fns";
 import { chatKeys } from "@/hooks/useChats";
 import { chatConfigKeys } from "@/hooks/useChatConfig";
+import { withImageVersion } from "@/lib/image-optimization";
 
 interface ChatRowProps {
   chat: ChatListItem;
@@ -43,13 +44,20 @@ export function ChatRow({ chat, onRename, onDelete }: ChatRowProps) {
         aria-label={`Open chat ${chat.title}`}
         className="absolute inset-0 rounded-xl focus-ring z-0"
       />
-      <Avatar className="size-11 shrink-0 rounded-xl">
+      <Avatar className="size-11 shrink-0 rounded-full">
         <AvatarImage
-          src={chat.characterImagePath ? `/api/characters/${chat.characterId}/avatar` : undefined}
+          src={
+            chat.characterImagePath
+              ? withImageVersion(
+                  `/api/characters/${chat.characterId}/avatar`,
+                  chat.characterImagePath,
+                )
+              : undefined
+          }
           alt={chat.characterName}
           className="object-cover"
         />
-        <AvatarFallback className="rounded-xl bg-brand/20 text-brand text-lg">
+        <AvatarFallback className="rounded-full bg-brand/20 text-brand text-lg">
           {chat.characterName.charAt(0).toUpperCase()}
         </AvatarFallback>
       </Avatar>
