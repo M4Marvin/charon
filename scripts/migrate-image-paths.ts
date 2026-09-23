@@ -7,13 +7,14 @@
 import { config } from "dotenv";
 config({ path: [".env.local", ".env"] });
 
-import { cp, readdir, rm } from "node:fs/promises";
+import { readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { eq, like } from "drizzle-orm";
 
 import { db } from "@/db";
 import { characters, backgrounds, personas } from "@/db/schema";
+import { validateUploadedImage } from "@/server/image-limits";
 import {
   ensureUploadsDirs,
   diskPathFromStored,
@@ -41,13 +42,20 @@ async function migrateSubdir(subdir: UploadSubdir): Promise<Counts> {
     const src = join(sourceDir, img.name);
     const stored = storedPathFromDiskComponents(subdir, img.name);
     const dst = diskPathFromStored(stored);
+    const sourceBytes = await readFile(src);
+    await validateUploadedImage(sourceBytes);
 
     if (existsSync(dst)) {
+      const destinationBytes = await readFile(dst);
+      await validateUploadedImage(destinationBytes);
+      if (!sourceBytes.equals(destinationBytes)) {
+        throw new Error(`Refusing to overwrite different destination: ${dst}`);
+      }
       counts.skipped++;
       continue;
     }
 
-    await cp(src, dst);
+    await writeFile(dst, sourceBytes, { flag: "wx" });
     counts.moved++;
   }
 

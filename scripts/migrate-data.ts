@@ -9,7 +9,7 @@
 // Re-runnable: skips existing rows by name so it is safe to re-run after a
 // partial failure.
 
-import { copyFile, mkdir, readdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -17,6 +17,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/db";
 import { user, characters, lorebooks, loreEntries, personas } from "@/db/schema";
 import { derivedColumns } from "@/db/repositories/characters";
+import { validateUploadedImage } from "@/server/image-limits";
 import { ensureUploadsDirs } from "@/server/uploads";
 import { upsertUserSettings, type UserSettingsPatch } from "@/db/repositories/userSettings";
 import {
@@ -192,6 +193,8 @@ async function migrateCharacters(
       continue;
     }
 
+    await validateUploadedImage(bytes);
+
     const data = validation.card.data as CharacterDataV2;
     const spec: "chara_card_v2" | "chara_card_v3" = isV3 ? "chara_card_v3" : "chara_card_v2";
     const specVersion = isV3 ? "3.0" : "2.0";
@@ -209,7 +212,7 @@ async function migrateCharacters(
     const avatarPath = join(AVATAR_PUBLIC_PREFIX, filename);
 
     try {
-      await copyFile(pngPath, writePath);
+      await writeFile(writePath, bytes);
     } catch (e) {
       console.log(`  ✗ ${fileBase}: avatar copy (${(e as Error).message})`);
       counts.failed++;
@@ -414,7 +417,9 @@ async function migratePersonas(): Promise<Counts> {
       const iconWritePath = join(PERSONA_ICON_DIR, iconFilename);
       iconPath = join(PERSONA_PUBLIC_PREFIX, iconFilename);
       try {
-        await copyFile(sourcePath, iconWritePath);
+        const iconBytes = await readFile(sourcePath);
+        await validateUploadedImage(iconBytes);
+        await writeFile(iconWritePath, iconBytes);
       } catch (e) {
         console.log(`  ✗ ${name}: icon copy (${(e as Error).message})`);
         iconPath = null;
