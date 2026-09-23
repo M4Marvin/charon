@@ -1,6 +1,8 @@
 import * as React from "react";
 import { Avatar as AvatarPrimitive } from "radix-ui";
 
+import { getOptimizedImageProps } from "@/components/ui/optimized-image";
+import type { ImageQuality } from "@/lib/image-optimization";
 import { cn } from "#/lib/utils.ts";
 
 function Avatar({
@@ -23,12 +25,40 @@ function Avatar({
   );
 }
 
-function AvatarImage({ className, ...props }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+type AvatarImageProps = React.ComponentProps<typeof AvatarPrimitive.Image> & {
+  priority?: boolean;
+  quality?: ImageQuality;
+  unoptimized?: boolean;
+};
+
+function AvatarImage({
+  className,
+  priority,
+  quality,
+  unoptimized,
+  width,
+  height,
+  ...props
+}: AvatarImageProps) {
+  const imageProps = props.src
+    ? getOptimizedImageProps({
+        ...props,
+        src: props.src,
+        alt: props.alt ?? "",
+        width: width == null ? undefined : Number(width),
+        height: height == null ? undefined : Number(height),
+        preset: "avatar",
+        priority,
+        quality,
+        unoptimized,
+      })
+    : { ...props, width, height };
+
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
       className={cn("aspect-square size-full rounded-full object-cover", className)}
-      {...props}
+      {...imageProps}
     />
   );
 }
