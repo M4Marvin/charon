@@ -19,7 +19,7 @@ const lanHosts = (env.VITE_ALLOWED_HOSTS ?? "")
 
 const config = defineConfig({
   // Keep migration inputs under public/ out of both dev and production static serving.
-  publicDir: false,
+  publicDir: "static",
   // Dev-only (ignored by `vite build` and the prod server): extra hosts for
   // `pnpm dev:lan`, via VITE_ALLOWED_HOSTS in .env.local. Unset = localhost only.
   ...(lanHosts.length > 0 ? { server: { allowedHosts: lanHosts } } : {}),
