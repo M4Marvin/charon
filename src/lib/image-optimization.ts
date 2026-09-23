@@ -16,6 +16,12 @@ export const IMAGE_PRESETS = {
     sizes: "48px",
     breakpoints: [48, 64, 96, 128],
   },
+  thumbnail: {
+    width: 112,
+    height: 112,
+    sizes: "112px",
+    breakpoints: [96, 128, 192, 256],
+  },
   card: {
     width: 320,
     height: 320,

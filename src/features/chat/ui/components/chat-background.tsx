@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 
 interface ChatBackgroundProps {
   src: string | null;
@@ -8,12 +9,14 @@ interface ChatBackgroundProps {
 export function ChatBackground({ src, fallbackSrc }: ChatBackgroundProps) {
   const effectiveSrc = src ?? fallbackSrc;
   const [loaded, setLoaded] = useState(false);
-  const prevSrc = useRef<string | null>(effectiveSrc);
+  const currentSrc = useRef(effectiveSrc);
+  const previousSrc = useRef<string | null>(null);
 
   const onLoad = useCallback(() => setLoaded(true), []);
 
-  if (prevSrc.current !== effectiveSrc) {
-    prevSrc.current = effectiveSrc;
+  if (currentSrc.current !== effectiveSrc) {
+    previousSrc.current = currentSrc.current;
+    currentSrc.current = effectiveSrc;
     if (loaded) setLoaded(false);
   }
 
@@ -21,16 +24,21 @@ export function ChatBackground({ src, fallbackSrc }: ChatBackgroundProps) {
     <div className="pointer-events-none fixed inset-0 select-none">
       {effectiveSrc ? (
         <>
-          {prevSrc.current && !loaded && (
-            <img
-              src={prevSrc.current ?? undefined}
+          {previousSrc.current && !loaded && (
+            <OptimizedImage
+              src={previousSrc.current}
               alt=""
+              preset="background"
+              intrinsicSize={false}
               className="absolute inset-0 size-full object-cover brightness-[0.8] blur-sm scale-110"
             />
           )}
-          <img
-            src={effectiveSrc ?? undefined}
+          <OptimizedImage
+            src={effectiveSrc}
             alt=""
+            preset="background"
+            intrinsicSize={false}
+            priority
             onLoad={onLoad}
             className="absolute inset-0 size-full object-cover brightness-[0.8] blur-sm scale-110 transition-opacity duration-700"
             style={{ opacity: loaded ? 1 : 0 }}

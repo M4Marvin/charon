@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { cn } from "@/lib/utils";
 
 interface CharacterPortraitPanelProps {
@@ -36,9 +37,11 @@ export function CharacterPortraitPanel({
       >
         <div className="aspect-[3/4] max-h-[70dvh] relative flex items-center justify-center bg-(--bg-base)/60">
           {imageSrc ? (
-            <img
+            <OptimizedImage
               src={imageSrc}
               alt={name}
+              preset="portrait"
+              priority={open}
               className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (

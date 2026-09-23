@@ -1,6 +1,8 @@
 import { MessagesSquare } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import type { CharacterCardItem } from "@/db/repositories/characters";
+import { withImageVersion } from "@/lib/image-optimization";
 import { useCharacterSearch } from "@/hooks/useCharacters";
 import { pickMoreByCreator } from "@/routes/characters/detail-helpers";
 
@@ -16,7 +18,9 @@ export function MoreByCreator({ creator, currentId }: { creator: string; current
       <h2 className="text-title">More by {creator}</h2>
       <div className="flex gap-3 overflow-x-auto no-scrollbar scroll-fade-x pb-1">
         {more.map((item) => {
-          const avatarUrl = item.imagePath ? `/api/characters/${item.id}/avatar` : null;
+          const avatarUrl = item.imagePath
+            ? withImageVersion(`/api/characters/${item.id}/avatar`, item.imagePath)
+            : null;
           return (
             <Link
               key={item.id}
@@ -26,13 +30,13 @@ export function MoreByCreator({ creator, currentId }: { creator: string; current
             >
               <div className="aspect-square overflow-hidden rounded-t-lg bg-muted">
                 {avatarUrl ? (
-                  <img
+                  <OptimizedImage
                     src={avatarUrl}
                     alt={item.name}
                     width={112}
                     height={112}
-                    loading="lazy"
-                    decoding="async"
+                    preset="thumbnail"
+                    quality={70}
                     className="size-full object-cover"
                     onError={(e) => {
                       e.currentTarget.style.display = "none";

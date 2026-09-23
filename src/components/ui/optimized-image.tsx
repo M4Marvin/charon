@@ -1,4 +1,4 @@
-import type { ImgHTMLAttributes } from "react";
+import type { ComponentProps } from "react";
 import { transformBaseImageProps } from "@unpic/core/base";
 import {
   DEFAULT_IMAGE_QUALITY,
@@ -10,13 +10,13 @@ import {
   type ImageQuality,
 } from "@/lib/image-optimization";
 
-type CoreImageProps = ImgHTMLAttributes<HTMLImageElement> & {
+type CoreImageProps = ComponentProps<"img"> & {
   fetchpriority?: "high" | "low" | "auto";
   srcset?: string;
 };
 
 export type OptimizedImageProps = Omit<
-  ImgHTMLAttributes<HTMLImageElement>,
+  ComponentProps<"img">,
   "height" | "src" | "srcSet" | "width"
 > & {
   src: string;
@@ -27,6 +27,7 @@ export type OptimizedImageProps = Omit<
   sizes?: string;
   quality?: ImageQuality;
   priority?: boolean;
+  intrinsicSize?: boolean;
   unoptimized?: boolean;
 };
 
@@ -49,9 +50,10 @@ export function getOptimizedImageProps({
   sizes,
   quality = DEFAULT_IMAGE_QUALITY,
   priority = false,
+  intrinsicSize = true,
   unoptimized = false,
   ...props
-}: OptimizedImageProps): ImgHTMLAttributes<HTMLImageElement> {
+}: OptimizedImageProps): ComponentProps<"img"> {
   const dimensions = IMAGE_PRESETS[preset];
   const intrinsicWidth = width ?? dimensions.width;
   const intrinsicHeight = height ?? dimensions.height;
@@ -63,8 +65,8 @@ export function getOptimizedImageProps({
       ...props,
       src,
       alt,
-      width: intrinsicWidth,
-      height: intrinsicHeight,
+      width: intrinsicSize ? intrinsicWidth : undefined,
+      height: intrinsicSize ? intrinsicHeight : undefined,
       sizes: resolvedSizes,
       loading: props.loading ?? (priority ? "eager" : "lazy"),
       decoding: props.decoding ?? "async",
@@ -88,12 +90,20 @@ export function getOptimizedImageProps({
     unstyled: true,
   }) as CoreImageProps;
 
-  const { fetchpriority, srcset, ...rest } = transformed;
+  const {
+    fetchpriority,
+    srcset,
+    width: transformedWidth,
+    height: transformedHeight,
+    ...rest
+  } = transformed;
   return {
     ...rest,
     srcSet: srcset,
     fetchPriority: props.fetchPriority ?? fetchpriority,
-  } as ImgHTMLAttributes<HTMLImageElement>;
+    width: intrinsicSize ? transformedWidth : undefined,
+    height: intrinsicSize ? transformedHeight : undefined,
+  } as ComponentProps<"img">;
 }
 
 export function OptimizedImage(props: OptimizedImageProps) {

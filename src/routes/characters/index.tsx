@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ import {
 } from "@/hooks/useCharacters";
 import { RelativeTime } from "@/components/common/RelativeTime";
 import type { CharacterListItem } from "@/server/fns/characters";
+import { withImageVersion } from "@/lib/image-optimization";
 
 const searchSchema = type({
   "q?": "string",
@@ -427,12 +429,11 @@ function CharacterCard({
       >
         <div className="relative aspect-square bg-muted overflow-hidden">
           {character.imagePath ? (
-            <img
+            <OptimizedImage
               ref={imgRef}
-              src={`/api/characters/${character.id}/avatar`}
+              src={withImageVersion(`/api/characters/${character.id}/avatar`, character.imagePath)}
               alt={character.name}
-              loading="lazy"
-              decoding="async"
+              preset="card"
               className="size-full object-cover motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out"
               onError={(e) => {
                 e.currentTarget.style.display = "none";

@@ -64,6 +64,16 @@ describe("MoreByCreator", () => {
     expect(mockUseCharacterSearch).toHaveBeenCalledWith({ q: "Aria" });
   });
 
+  it("renders a versioned responsive thumbnail for cards with portraits", () => {
+    mockItems([card("alpha", { imagePath: "uploads/avatars/alpha.png" })]);
+    render(<MoreByCreator creator="Aria" currentId="current" />);
+
+    const image = screen.getByAltText("alpha");
+    expect(image.getAttribute("srcset")).toContain("v=alpha.png");
+    expect(image.getAttribute("srcset")).toContain("w=128&q=70");
+    expect(image.getAttribute("sizes")).toBe("112px");
+  });
+
   it("excludes an item whose name contains the creator but whose creator differs", () => {
     mockItems([card("fan", { name: "Aria Fanart", creator: "someone-else" }), card("real")]);
     render(<MoreByCreator creator="Aria" currentId="current" />);

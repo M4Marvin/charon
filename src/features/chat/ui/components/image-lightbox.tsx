@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { X, ZoomIn, ZoomOut } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { cn } from "@/lib/utils";
 
 interface ImageLightboxProps {
@@ -35,9 +36,12 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
               }
             }}
           >
-            <img
+            <OptimizedImage
               src={src}
               alt={alt ?? ""}
+              preset="lightbox"
+              intrinsicSize={false}
+              priority={open}
               className={cn(
                 "select-none transition-transform duration-200",
                 zoomed

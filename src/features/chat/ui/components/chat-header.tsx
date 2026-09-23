@@ -40,7 +40,12 @@ export function ChatHeader({
 
       <div className="flex items-center gap-3 min-w-0">
         <Avatar className="size-7 shrink-0">
-          <AvatarImage src={avatarSrc ?? undefined} alt={characterName} className="object-cover" />
+          <AvatarImage
+            src={avatarSrc ?? undefined}
+            alt={characterName}
+            className="object-cover"
+            priority
+          />
           <AvatarFallback className="rounded-lg bg-white/10 text-sm text-lagoon">
             {characterName.charAt(0).toUpperCase()}
           </AvatarFallback>

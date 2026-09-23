@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
+import { withImageVersion } from "@/lib/image-optimization";
 import { OptimizedImage } from "./optimized-image";
 
 afterEach(cleanup);
 
 describe("OptimizedImage", () => {
+  it("versions persistent API image URLs from their stored filename", () => {
+    expect(
+      withImageVersion("/api/personas/persona-1/icon?dialog=1", "uploads/personas/avatar-v2.png"),
+    ).toBe("/api/personas/persona-1/icon?dialog=1&v=avatar-v2.png");
+  });
+
   it("generates a bounded responsive avatar srcset", () => {
     render(
       <OptimizedImage

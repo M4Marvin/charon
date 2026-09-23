@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback } from "react";
 import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { useBackgrounds, useUploadBackground, useDeleteBackground } from "@/hooks/useBackgrounds";
+import { withImageVersion } from "@/lib/image-optimization";
 import { useChatConfig, useUpdateChatOverrides } from "@/hooks/useChatConfig";
 import { ConfirmDialog } from "../confirm-dialog";
 import { SectionHeader } from "../section-header";
@@ -69,9 +71,12 @@ export function SceneSection({ chatId, isStreaming }: SectionProps) {
               }`}
               aria-label={`${bg.name}${bg.id === selectedId ? " (selected)" : ""}`}
             >
-              <img
-                src={`/api/backgrounds/${bg.id}/image`}
+              <OptimizedImage
+                src={withImageVersion(`/api/backgrounds/${bg.id}/image`, bg.path)}
                 alt={bg.name}
+                preset="scene"
+                intrinsicSize={false}
+                quality={70}
                 className="size-full object-cover"
               />
             </button>

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { fileToBase64, useImportCharacter } from "@/hooks/useCharacters";
@@ -168,9 +169,11 @@ export function NewCharacterPage() {
           <div className="rounded-xl border bg-card p-6">
             <div className="flex gap-4">
               {file ? (
-                <img
+                <OptimizedImage
                   src={URL.createObjectURL(file)}
                   alt={preview.preview.name}
+                  preset="portrait"
+                  intrinsicSize={false}
                   className="size-32 aspect-[3/4] rounded-lg object-cover border shrink-0"
                 />
               ) : null}

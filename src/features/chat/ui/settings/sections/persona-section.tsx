@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import {
   usePersonas,
   useCreatePersona,
@@ -28,6 +29,7 @@ import {
   useUploadPersonaIcon,
 } from "@/hooks/usePersonas";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
+import { withImageVersion } from "@/lib/image-optimization";
 import { ConfirmDialog } from "../confirm-dialog";
 import { SectionHeader } from "../section-header";
 
@@ -101,7 +103,8 @@ export function PersonaSection(_props: SectionProps) {
     [dialog, uploadPersonaIcon],
   );
 
-  const displayIconPath = pendingIconPath ?? (dialog?.kind === "edit" ? dialog.iconPath : null);
+  const displayStoredIconPath =
+    pendingIconPath ?? (dialog?.kind === "edit" ? dialog.iconPath : null);
 
   const handleSave = useCallback(() => {
     const trimmed = name.trim();
@@ -222,10 +225,19 @@ export function PersonaSection(_props: SectionProps) {
               <div className="space-y-1.5">
                 <Label>Icon</Label>
                 <div className="flex items-center gap-3">
-                  {displayIconPath ? (
-                    <img
-                      src={`/api/personas/${dialog.id}/icon`}
+                  {displayStoredIconPath ? (
+                    <OptimizedImage
+                      src={withImageVersion(
+                        `/api/personas/${dialog.id}/icon`,
+                        displayStoredIconPath,
+                      )}
                       alt=""
+                      preset="avatar"
+                      width={64}
+                      height={64}
+                      sizes="64px"
+                      quality={70}
+                      priority
                       className="size-16 rounded-lg object-cover border border-border"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";

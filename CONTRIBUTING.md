@@ -160,20 +160,33 @@ Don't fix unless asked:
 ### Data flow
 
 ```
-DB stores "uploads/{type}/{uuid}.png" (storedPath)
+DB stores "uploads/{type}/{uuid}.{ext}" (storedPath)
         ↓
-Component constructs URL: "/api/{entity}/{id}/{field}"
+Component builds a versioned API URL: "/api/{entity}/{id}/{field}?v={filename}"
         ↓
-<img src={url} onError={hideImgShowFallback} />
+<OptimizedImage> adds bounded width/quality variants via srcset
         ↓
-Browser → GET /api/{entity}/{id}/{field}
+Browser → GET /api/{entity}/{id}/{field}?v={filename}&w={width}&q={quality}
         ↓
 1. getSession() → 401 if unauth
 2. repo.getXxx(user.id, params.id) → 404 if missing
-3. diskPathFromStored(record.imagePath) → "data/uploads/{type}/{uuid}.png"
-4. readFile(diskPath) → bytes
-5. Response(bytes, { content-type: <from extension>, cache-control: "private, max-age=300" })
+3. diskPathFromStored(record.imagePath) → "data/uploads/{type}/{uuid}.{ext}"
+4. serveStoredImage validates bounded transform parameters
+5. Cache hit → cached WebP bytes; miss → Sharp resize/transcode → atomic disk write
+6. Response(bytes, immutable cache headers for versioned variants)
 ```
+
+`OptimizedImage` is the shared entry point for app-owned images. Use a
+surface preset (`avatar`, `thumbnail`, `card`, `portrait`, `scene`,
+`background`, or `lightbox`) so its `srcset`, default quality, intrinsic size,
+and `sizes` hint match the layout. Persistent API sources are resized to WebP
+by `src/server/image-optimizer.ts`; blob, object, and data URLs pass through
+without a server round trip.
+
+The source upload remains untouched. This preserves character-card metadata
+and lets existing files optimize lazily. Generated variants live under
+`data/.image-cache/` and are keyed by source modification data and transform
+parameters. `IMAGE_CACHE_MAX_MB` controls the disk budget (default: 1024 MB).
 
 ### API routes
 
@@ -222,6 +235,7 @@ For Radix `Avatar`, the `<AvatarFallback>` handles the error state automatically
 | `diskPathFromStored(stored)` | `"data/uploads/avatars/uuid.png"` |
 | `contentTypeForPath(storedPath)` | `"image/png"` / `"image/jpeg"` / `"image/webp"` |
 | `ensureUploadsDirs()` | Creates `data/uploads/avatars/`, etc. |
+| `serveStoredImage()` (`server/image-optimizer.ts`) | Resizes/transcodes authenticated source files and serves cached variants |
 
 ### Custom (ephemeral) images
 

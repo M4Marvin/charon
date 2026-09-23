@@ -1,6 +1,7 @@
 import { useRef, useCallback } from "react";
 import { X, ImageIcon, ImagePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import { cn } from "@/lib/utils";
 
 interface CustomImagePanelProps {
@@ -57,9 +58,11 @@ export function CustomImagePanel({
       >
         <div className="relative flex items-center justify-center bg-(--bg-base)/60">
           {hasImage ? (
-            <img
+            <OptimizedImage
               src={displaySrc}
               alt={label}
+              preset="scene"
+              intrinsicSize={false}
               className="w-full h-auto block transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
