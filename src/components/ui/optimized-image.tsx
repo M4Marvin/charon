@@ -3,11 +3,14 @@ import { transformBaseImageProps } from "@unpic/core/base";
 import {
   DEFAULT_IMAGE_QUALITY,
   IMAGE_PRESETS,
+  IMAGE_WIDTHS,
   isImageQuality,
+  isImageWidth,
   isOptimizableImageSource,
   withImageParams,
   type ImagePreset,
   type ImageQuality,
+  type ImageWidth,
 } from "@/lib/image-optimization";
 
 type CoreImageProps = ComponentProps<"img"> & {
@@ -35,11 +38,20 @@ const transformer = (
   src: string | URL,
   operations: { width?: number; quality?: number | string },
 ) => {
-  if (typeof operations.width !== "number") return src.toString();
+  if (typeof operations.width !== "number" || !isImageWidth(operations.width)) {
+    return src.toString();
+  }
   const requestedQuality = Number(operations.quality ?? DEFAULT_IMAGE_QUALITY);
   const quality = isImageQuality(requestedQuality) ? requestedQuality : DEFAULT_IMAGE_QUALITY;
   return withImageParams(src.toString(), operations.width, quality);
 };
+
+function nearestImageWidth(width: number): ImageWidth {
+  if (isImageWidth(width)) return width;
+  return IMAGE_WIDTHS.reduce((closest, candidate) =>
+    Math.abs(candidate - width) < Math.abs(closest - width) ? candidate : closest,
+  );
+}
 
 export function getOptimizedImageProps({
   src,
@@ -57,6 +69,7 @@ export function getOptimizedImageProps({
   const dimensions = IMAGE_PRESETS[preset];
   const intrinsicWidth = width ?? dimensions.width;
   const intrinsicHeight = height ?? dimensions.height;
+  const transformWidth = nearestImageWidth(intrinsicWidth);
   const resolvedSizes = sizes ?? dimensions.sizes;
   const shouldOptimize = !unoptimized && isOptimizableImageSource(src);
 
@@ -80,7 +93,7 @@ export function getOptimizedImageProps({
     src,
     alt,
     transformer,
-    width: intrinsicWidth,
+    width: transformWidth,
     height: intrinsicHeight,
     layout: "fixed",
     breakpoints: [...dimensions.breakpoints],
@@ -101,8 +114,8 @@ export function getOptimizedImageProps({
     ...rest,
     srcSet: srcset,
     fetchPriority: props.fetchPriority ?? fetchpriority,
-    width: intrinsicSize ? transformedWidth : undefined,
-    height: intrinsicSize ? transformedHeight : undefined,
+    width: intrinsicSize ? (width ?? transformedWidth) : undefined,
+    height: intrinsicSize ? (height ?? transformedHeight) : undefined,
   } as ComponentProps<"img">;
 }
 

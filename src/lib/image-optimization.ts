@@ -1,5 +1,6 @@
 export const IMAGE_WIDTHS = [
-  48, 64, 96, 128, 192, 256, 320, 384, 480, 512, 640, 768, 960, 1024, 1280, 1536, 1920, 2560,
+  48, 64, 96, 112, 128, 192, 256, 320, 340, 384, 480, 512, 640, 768, 960, 1024, 1200, 1280, 1536,
+  1920, 2560,
 ] as const;
 
 export const IMAGE_QUALITIES = [60, 70, 80, 90] as const;
@@ -76,7 +77,7 @@ export function isImageQuality(value: number): value is ImageQuality {
 
 export function withImageParams(
   src: string,
-  width: number,
+  width: ImageWidth,
   quality: ImageQuality = DEFAULT_IMAGE_QUALITY,
 ): string {
   if (!isOptimizableImageSource(src)) return src;

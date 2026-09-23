@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import { withImageVersion } from "@/lib/image-optimization";
-import { OptimizedImage } from "./optimized-image";
+import { IMAGE_PRESETS, IMAGE_WIDTHS, withImageVersion } from "@/lib/image-optimization";
+import { getOptimizedImageProps, OptimizedImage } from "./optimized-image";
 
 afterEach(cleanup);
 
@@ -42,6 +42,31 @@ describe("OptimizedImage", () => {
     expect(entries[0]).toContain("v=portrait.png");
     expect(entries[0].endsWith(" 48w")).toBe(true);
     expect(entries[3].endsWith(" 128w")).toBe(true);
+  });
+
+  it("uses an allowlisted fallback width for every preset", () => {
+    for (const preset of Object.keys(IMAGE_PRESETS) as Array<keyof typeof IMAGE_PRESETS>) {
+      const props = getOptimizedImageProps({
+        src: "/api/characters/character-1/avatar",
+        alt: "",
+        preset,
+      });
+      const width = Number(new URL(props.src ?? "", "http://charon.local").searchParams.get("w"));
+      expect(IMAGE_WIDTHS).toContain(width);
+    }
+  });
+
+  it("snaps arbitrary transform widths while preserving intrinsic dimensions", () => {
+    const props = getOptimizedImageProps({
+      src: "/api/characters/character-1/avatar",
+      alt: "",
+      width: 500,
+      height: 400,
+    });
+
+    expect(new URL(props.src ?? "", "http://charon.local").searchParams.get("w")).toBe("512");
+    expect(props.width).toBe(500);
+    expect(props.height).toBe(400);
   });
 
   it("passes through data URLs without duplicate srcset candidates", () => {
