@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -51,5 +51,15 @@ describe("prepareMigrationInput", () => {
     await symlink(outside, join(cwd, "public/data"), "dir");
 
     await expect(prepareMigrationInput(cwd)).rejects.toThrow("must not be symlinks");
+  });
+
+  it("rejects a symlinked public parent before moving anything", async () => {
+    const cwd = await makeTempDir();
+    const outside = await makeTempDir();
+    await mkdir(join(outside, "data"), { recursive: true });
+    await symlink(outside, join(cwd, "public"), "dir");
+
+    await expect(prepareMigrationInput(cwd)).rejects.toThrow("must not be symlinks");
+    await expect(readdir(join(outside, "data"))).resolves.toEqual([]);
   });
 });

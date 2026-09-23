@@ -11,7 +11,9 @@ async function pathKind(path: string): Promise<"missing" | "directory" | "symlin
     if (stats.isSymbolicLink()) return "symlink";
     return stats.isDirectory() ? "directory" : "other";
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return "missing";
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return "missing";
+    if (code === "ENOTDIR") return "other";
     throw error;
   }
 }
@@ -21,12 +23,27 @@ export async function prepareMigrationInput(
 ): Promise<"created" | "moved" | "already-prepared"> {
   const legacyPath = resolve(cwd, LEGACY_DIR);
   const targetPath = resolve(cwd, TARGET_DIR);
-  const [legacyKind, targetKind] = await Promise.all([pathKind(legacyPath), pathKind(targetPath)]);
+  const [legacyKind, targetKind, publicKind, dataKind] = await Promise.all([
+    pathKind(legacyPath),
+    pathKind(targetPath),
+    pathKind(resolve(cwd, "public")),
+    pathKind(resolve(cwd, "data")),
+  ]);
 
-  if (legacyKind === "symlink" || targetKind === "symlink") {
+  if (
+    legacyKind === "symlink" ||
+    targetKind === "symlink" ||
+    publicKind === "symlink" ||
+    dataKind === "symlink"
+  ) {
     throw new Error("Migration input directories must not be symlinks");
   }
-  if (legacyKind === "other" || targetKind === "other") {
+  if (
+    legacyKind === "other" ||
+    targetKind === "other" ||
+    publicKind === "other" ||
+    dataKind === "other"
+  ) {
     throw new Error("Migration input paths must be directories");
   }
   if (legacyKind === "missing") {
@@ -42,7 +59,9 @@ export async function prepareMigrationInput(
   await mkdir(dirname(targetPath), { recursive: true });
   await rename(legacyPath, targetPath);
   await rmdir(resolve(cwd, "public")).catch((error: NodeJS.ErrnoException) => {
-    if (error.code !== "ENOENT" && error.code !== "ENOTEMPTY") throw error;
+    if (error.code !== "ENOENT" && error.code !== "ENOTEMPTY" && error.code !== "ENOTDIR") {
+      throw error;
+    }
   });
   return "moved";
 }

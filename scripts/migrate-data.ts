@@ -13,7 +13,7 @@ import { config } from "dotenv";
 config({ path: [".env.local", ".env"] });
 
 import { readdir, rm } from "node:fs/promises";
-import { existsSync, realpathSync } from "node:fs";
+import { realpathSync } from "node:fs";
 import { basename, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -21,7 +21,7 @@ import { db } from "@/db";
 import { user, characters, lorebooks, loreEntries, personas } from "@/db/schema";
 import { derivedColumns } from "@/db/repositories/characters";
 import { validateUploadedImage } from "@/server/image-limits";
-import { readMigrationFile } from "./migration-io";
+import { readMigrationFile, resolveMigrationDirectory, resolveMigrationFile } from "./migration-io";
 import {
   diskPathFromStored,
   ensureUploadsDirs,
@@ -158,19 +158,21 @@ const ZERO: Counts = { found: 0, inserted: 0, skipped: 0, failed: 0 };
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 async function listPngs(dir: string): Promise<string[]> {
-  if (!existsSync(dir)) return [];
-  const entries = await readdir(dir, { withFileTypes: true });
+  const sourceDir = resolveMigrationDirectory(DATA_ROOT, dir);
+  if (!sourceDir) return [];
+  const entries = await readdir(sourceDir, { withFileTypes: true });
   return entries
     .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".png"))
-    .map((e) => join(dir, e.name));
+    .map((e) => join(sourceDir, e.name));
 }
 
 async function listFilesByExt(dir: string, ext: string): Promise<string[]> {
-  if (!existsSync(dir)) return [];
-  const entries = await readdir(dir, { withFileTypes: true });
+  const sourceDir = resolveMigrationDirectory(DATA_ROOT, dir);
+  if (!sourceDir) return [];
+  const entries = await readdir(sourceDir, { withFileTypes: true });
   return entries
     .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(ext.toLowerCase()))
-    .map((e) => join(dir, e.name));
+    .map((e) => join(sourceDir, e.name));
 }
 
 function lorebookNameExists(name: string): boolean {
@@ -420,10 +422,6 @@ async function migrateLorebooks(): Promise<{ lorebooks: Counts; loreEntries: num
   let totalEntries = 0;
 
   const worldDir = join(DATA_ROOT, "worlds");
-  if (!existsSync(worldDir)) {
-    return { lorebooks: counts, loreEntries: totalEntries };
-  }
-
   const files = await listFilesByExt(worldDir, ".json");
   counts.found = files.length;
 
@@ -467,8 +465,8 @@ async function migrateLorebooks(): Promise<{ lorebooks: Counts; loreEntries: num
 
 async function migratePersonas(): Promise<Counts> {
   const counts: Counts = { ...ZERO };
-  const settingsPath = join(DATA_ROOT, "settings.json");
-  if (!existsSync(settingsPath)) return counts;
+  const settingsPath = resolveMigrationFile(DATA_ROOT, join(DATA_ROOT, "settings.json"));
+  if (!settingsPath) return counts;
 
   let settings: ParsedSettings;
   try {
@@ -551,8 +549,8 @@ async function migratePersonas(): Promise<Counts> {
 // ── User settings (prompts from settings.json) ───────────────────────────
 
 async function migrateUserSettings(accountId: string): Promise<void> {
-  const settingsPath = join(DATA_ROOT, "settings.json");
-  if (!existsSync(settingsPath)) return;
+  const settingsPath = resolveMigrationFile(DATA_ROOT, join(DATA_ROOT, "settings.json"));
+  if (!settingsPath) return;
 
   let settings: ParsedSettings;
   try {

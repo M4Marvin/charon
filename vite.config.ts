@@ -5,7 +5,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 
 import viteReact from "@vitejs/plugin-react";
-import { privateAssetDevPlugin, VITE_FS_DENY } from "./scripts/vite-dev-policy";
+import { privateAssetDevPlugin, viteFsDeny } from "./scripts/vite-dev-policy";
 import tailwindcss from "@tailwindcss/vite";
 
 // Vite does not populate `process.env` from `.env*` files when evaluating an
@@ -30,7 +30,7 @@ const config = defineConfig({
       // The middleware below also blocks ordinary /data URLs; these deny
       // Vite's raw filesystem handler for equivalent /@fs requests. Keep
       // Vite's default secret/repository denials when extending the list.
-      deny: [...VITE_FS_DENY],
+      deny: viteFsDeny(process.cwd()),
     },
   },
   resolve: {
