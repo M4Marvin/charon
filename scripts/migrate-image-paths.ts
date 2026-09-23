@@ -7,25 +7,36 @@
 import { config } from "dotenv";
 config({ path: [".env.local", ".env"] });
 
-import { readdir, rm } from "node:fs/promises";
-import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { eq, like } from "drizzle-orm";
 
 import { db } from "@/db";
 import { characters, backgrounds, personas } from "@/db/schema";
-import { validateUploadedImage } from "@/server/image-limits";
+import { MAX_IMAGE_BYTES, validateUploadedImage } from "@/server/image-limits";
 import { readMigrationFile, resolveMigrationDirectory } from "./migration-io";
 import {
   ensureUploadsDirs,
   diskPathFromStored,
+  readPrivateDirectory,
+  removePrivatePath,
+  statPrivateFile,
   storedPathFromDiskComponents,
   writePrivateFileAtomic,
+  UPLOADS_DISK_ROOT,
   UPLOADS_SUBDIRS,
   type UploadSubdir,
 } from "@/server/uploads";
 
 const SOURCE_BASE = "data/import";
+
+async function privateFileExists(filePath: string, rootDir: string): Promise<boolean> {
+  try {
+    await statPrivateFile(filePath, Number.MAX_SAFE_INTEGER, rootDir);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 type Counts = { found: number; moved: number; skipped: number; failed: number };
 type MigrationResult = Counts & { verified: Set<string> };
@@ -39,7 +50,7 @@ async function migrateSubdir(subdir: UploadSubdir): Promise<MigrationResult> {
   );
   if (!sourceDir) return { ...counts, verified };
 
-  const entries = await readdir(sourceDir, { withFileTypes: true });
+  const entries = await readPrivateDirectory(sourceDir, SOURCE_BASE);
   const images = entries.filter(
     (e) => e.isFile() && /\.(png|jpe?g|webp|gif|tiff?|avif)$/i.test(e.name),
   );
@@ -51,11 +62,11 @@ async function migrateSubdir(subdir: UploadSubdir): Promise<MigrationResult> {
     const dst = diskPathFromStored(stored);
 
     try {
-      const sourceBytes = await readMigrationFile(src);
+      const sourceBytes = await readMigrationFile(src, MAX_IMAGE_BYTES, SOURCE_BASE);
       await validateUploadedImage(sourceBytes);
 
-      if (existsSync(dst)) {
-        const destinationBytes = await readMigrationFile(dst);
+      if (await privateFileExists(dst, UPLOADS_DISK_ROOT)) {
+        const destinationBytes = await readMigrationFile(dst, MAX_IMAGE_BYTES, UPLOADS_DISK_ROOT);
         let destinationIsValid = true;
         try {
           await validateUploadedImage(destinationBytes);
@@ -70,10 +81,10 @@ async function migrateSubdir(subdir: UploadSubdir): Promise<MigrationResult> {
           counts.skipped++;
           continue;
         }
-        await rm(dst, { force: true });
+        await removePrivatePath(dst, { rootDir: UPLOADS_DISK_ROOT });
       }
 
-      await writePrivateFileAtomic(dst, sourceBytes);
+      await writePrivateFileAtomic(dst, sourceBytes, { rootDir: UPLOADS_DISK_ROOT });
       verified.add(stored);
       counts.moved++;
     } catch (error) {
@@ -174,7 +185,7 @@ async function cleanOrphans(): Promise<{ deleted: string[] }> {
     const dataDir = resolveMigrationDirectory(SOURCE_BASE, join(SOURCE_BASE, subdir));
     if (!dataDir) continue;
 
-    const entries = await readdir(dataDir, { withFileTypes: true });
+    const entries = await readPrivateDirectory(dataDir, SOURCE_BASE);
     const images = entries.filter(
       (e) => e.isFile() && /\.(png|jpe?g|webp|gif|tiff?|avif)$/i.test(e.name),
     );
@@ -183,7 +194,7 @@ async function cleanOrphans(): Promise<{ deleted: string[] }> {
       const legacyPath = join("data", subdir, img.name);
       if (isReferenced(legacyPath)) continue;
       const path = join(dataDir, img.name);
-      await rm(path, { force: true });
+      await removePrivatePath(path, { rootDir: SOURCE_BASE });
       deleted.push(join(subdir, img.name));
     }
   }

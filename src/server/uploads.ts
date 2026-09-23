@@ -9,5 +9,12 @@ export {
   ensureUploadsDirs,
   readPrivateFile,
   writePrivateFileAtomic,
+  createPrivateReadStream,
+  readPrivateDirectory,
+  removePrivatePath,
+  resolvePrivateDirectory,
+  resolvePrivateFilePath,
+  statPrivateFile,
+  touchPrivateFile,
   type UploadSubdir,
 } from "@/server/private-fs";

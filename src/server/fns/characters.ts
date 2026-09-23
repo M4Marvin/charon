@@ -1,4 +1,3 @@
-import { rm } from "node:fs/promises";
 import { createServerFn } from "@tanstack/react-start";
 import { type } from "arktype";
 import type { Character } from "@/db/schema";
@@ -16,7 +15,7 @@ import {
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import { getSession } from "@/server/session";
 import { validateId } from "@/server/validators";
-import { diskPathFromStored } from "@/server/uploads";
+import { diskPathFromStored, removePrivatePath, UPLOADS_DISK_ROOT } from "@/server/uploads";
 import { invalidateStoredImageCache } from "@/server/image-optimizer";
 import { MAX_IMAGE_BASE64_LENGTH } from "@/server/image-limits";
 import {
@@ -156,7 +155,9 @@ export const deleteCharacter = createServerFn({ method: "POST" })
     if (imagePath) {
       await invalidateStoredImageCache(imagePath).catch(() => {});
       try {
-        await rm(diskPathFromStored(imagePath), { force: true });
+        await removePrivatePath(diskPathFromStored(imagePath), {
+          rootDir: UPLOADS_DISK_ROOT,
+        });
       } catch {}
     }
 

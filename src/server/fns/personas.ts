@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { rm } from "node:fs/promises";
 import { createServerFn } from "@tanstack/react-start";
 import { type } from "arktype";
 import { getSession } from "@/server/session";
@@ -7,8 +6,10 @@ import { validateId } from "@/server/validators";
 import {
   ensureUploadsDirs,
   diskPathFromStored,
+  removePrivatePath,
   storedPathFromDiskComponents,
   writePrivateFileAtomic,
+  UPLOADS_DISK_ROOT,
 } from "@/server/uploads";
 import { decodeImageBase64, validateUploadedImage } from "@/server/image-limits";
 import { invalidateStoredImageCache } from "@/server/image-optimizer";
@@ -108,7 +109,9 @@ export const deletePersona = createServerFn({ method: "POST" })
     if (existing.iconPath) {
       await invalidateStoredImageCache(existing.iconPath).catch(() => {});
       try {
-        await rm(diskPathFromStored(existing.iconPath), { force: true });
+        await removePrivatePath(diskPathFromStored(existing.iconPath), {
+          rootDir: UPLOADS_DISK_ROOT,
+        });
       } catch {}
     }
     return { id: data.id };
@@ -128,23 +131,25 @@ export const uploadPersonaIcon = createServerFn({ method: "POST" })
     const bytes = decodeImageBase64(data.fileBase64);
     await validateUploadedImage(bytes);
     try {
-      await writePrivateFileAtomic(diskPath, bytes);
+      await writePrivateFileAtomic(diskPath, bytes, { rootDir: UPLOADS_DISK_ROOT });
     } catch (error) {
-      await rm(diskPath, { force: true }).catch(() => {});
+      await removePrivatePath(diskPath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
       throw error;
     }
 
     try {
       repoUpdate(data.id, { iconPath: storedPath });
     } catch (error) {
-      await rm(diskPath, { force: true }).catch(() => {});
+      await removePrivatePath(diskPath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
       throw error;
     }
 
     if (existing.iconPath) {
       await invalidateStoredImageCache(existing.iconPath).catch(() => {});
       try {
-        await rm(diskPathFromStored(existing.iconPath), { force: true });
+        await removePrivatePath(diskPathFromStored(existing.iconPath), {
+          rootDir: UPLOADS_DISK_ROOT,
+        });
       } catch {}
     }
 

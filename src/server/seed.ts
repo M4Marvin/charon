@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { lstat, realpath, readdir, rm } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { db as defaultDb } from "@/db";
 import { createBackground } from "@/db/repositories/backgrounds";
@@ -15,9 +15,13 @@ import { DEFAULT_IMAGE_PROMPT_EXAMPLE } from "@/features/chat/generation/image-p
 import {
   diskPathFromStored,
   ensureUploadsDirs,
+  readPrivateDirectory,
   readPrivateFile,
+  removePrivatePath,
+  statPrivateFile,
   storedPathFromDiskComponents,
   writePrivateFileAtomic,
+  UPLOADS_DISK_ROOT,
 } from "@/server/uploads";
 
 export async function seedSampleData(userId: string): Promise<void> {
@@ -364,7 +368,7 @@ async function resolveSeedSource(rootDir: string, filename: string): Promise<str
       isAbsolute(pathFromRoot) ||
       pathFromRoot === ".." ||
       pathFromRoot.startsWith(`..${sep}`) ||
-      !(await lstat(realCandidate)).isFile()
+      !(await statPrivateFile(realCandidate, Number.MAX_SAFE_INTEGER)).isFile()
     ) {
       return null;
     }
@@ -384,7 +388,7 @@ export async function seedDefaultBackgrounds(): Promise<void> {
     try {
       const root = await realpath(candidate);
       if (root !== resolve(candidate)) continue;
-      const entries = await readdir(root, { withFileTypes: true });
+      const entries = await readPrivateDirectory(root);
       fileNames = entries
         .map((entry) => (typeof entry === "string" ? entry : entry.name))
         .filter((name) => !name.startsWith("_"));
@@ -410,14 +414,14 @@ export async function seedDefaultBackgrounds(): Promise<void> {
 
     try {
       const bytes = await readPrivateFile(sourcePath);
-      await writePrivateFileAtomic(destPath, bytes);
+      await writePrivateFileAtomic(destPath, bytes, { rootDir: UPLOADS_DISK_ROOT });
 
       createBackground({
         name: cleanBackgroundName(fileName),
         path: storedPath,
       });
     } catch (error) {
-      await rm(destPath, { force: true }).catch(() => {});
+      await removePrivatePath(destPath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
       throw error;
     }
   }

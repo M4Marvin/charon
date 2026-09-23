@@ -1,4 +1,3 @@
-import { rm } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import type { Background } from "@/db/schema";
@@ -17,8 +16,10 @@ import {
 import {
   ensureUploadsDirs,
   diskPathFromStored,
+  removePrivatePath,
   storedPathFromDiskComponents,
   writePrivateFileAtomic,
+  UPLOADS_DISK_ROOT,
 } from "@/server/uploads";
 import { decodeImageBase64, validateUploadedImage } from "@/server/image-limits";
 import { invalidateStoredImageCache } from "@/server/image-optimizer";
@@ -52,16 +53,16 @@ export const uploadBackground = createServerFn({ method: "POST" })
     const bytes = decodeImageBase64(data.fileBase64);
     await validateUploadedImage(bytes);
     try {
-      await writePrivateFileAtomic(filepath, bytes);
+      await writePrivateFileAtomic(filepath, bytes, { rootDir: UPLOADS_DISK_ROOT });
     } catch (error) {
-      await rm(filepath, { force: true }).catch(() => {});
+      await removePrivatePath(filepath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
       throw error;
     }
 
     try {
       return repoCreate({ name: data.name, path: storedPath });
     } catch (error) {
-      await rm(filepath, { force: true }).catch(() => {});
+      await removePrivatePath(filepath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
       throw error;
     }
   });
@@ -76,7 +77,7 @@ export const deleteBackground = createServerFn({ method: "POST" })
 
     await invalidateStoredImageCache(bg.path).catch(() => {});
     try {
-      await rm(diskPathFromStored(bg.path), { force: true });
+      await removePrivatePath(diskPathFromStored(bg.path), { rootDir: UPLOADS_DISK_ROOT });
     } catch {
       // File might already be gone; that's fine.
     }

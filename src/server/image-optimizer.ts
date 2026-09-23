@@ -1,10 +1,8 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { availableParallelism } from "node:os";
 import type { Stats } from "node:fs";
-import { createReadStream } from "node:fs";
-import { dirname, join } from "node:path";
+import { join, resolve } from "node:path";
 import { Readable } from "node:stream";
-import { mkdir, readFile, readdir, rename, rm, stat, utimes, writeFile } from "node:fs/promises";
 import sharp from "sharp";
 import {
   DEFAULT_IMAGE_QUALITY,
@@ -13,7 +11,18 @@ import {
   isImageQuality,
   isImageWidth,
 } from "@/lib/image-optimization";
-import { resolveStoredUploadPath, UPLOADS_DISK_ROOT } from "@/server/uploads";
+import {
+  createPrivateReadStream,
+  readPrivateDirectory,
+  readPrivateFile,
+  removePrivatePath,
+  resolvePrivateDirectory,
+  resolveStoredUploadPath,
+  statPrivateFile,
+  touchPrivateFile,
+  UPLOADS_DISK_ROOT,
+  writePrivateFileAtomic,
+} from "@/server/uploads";
 import { createLogger } from "@/features/logging";
 import {
   MAX_IMAGE_BYTES,
@@ -26,6 +35,7 @@ import {
 } from "@/server/image-limits";
 
 const DEFAULT_CACHE_MAX_BYTES = 1024 * 1024 * 1024;
+const MAX_CACHE_FILE_BYTES = MAX_IMAGE_BYTES;
 const CACHE_SCHEMA_VERSION = "3";
 const INVALIDATION_TTL_MS = 10 * 60 * 1000;
 const TRANSFORM_TIMEOUT_SECONDS = 5;
@@ -83,16 +93,22 @@ export async function invalidateStoredImageCache(
   const sourcePath = resolveStoredPath(rootDir, storedPath);
   if (!sourcePath) return;
 
-  const cacheDir = options.cacheDir ?? join(rootDir, ".image-cache");
+  const cacheDir = resolveOptimizerCacheDir(rootDir, options.cacheDir);
+  if (!cacheDir) return;
   const sourceKey = sourceCacheKey(sourcePath);
   invalidatedSourceKeys.add(sourceKey);
   const timer = setTimeout(() => invalidatedSourceKeys.delete(sourceKey), INVALIDATION_TTL_MS);
   timer.unref();
-  await rm(join(cacheDir, sourceKey), { recursive: true, force: true });
+  await removePrivatePath(join(cacheDir, sourceKey), { rootDir: cacheDir, recursive: true });
 }
 
 function resolveStoredPath(rootDir: string, storedPath: string): string | null {
   return resolveStoredUploadPath(rootDir, storedPath);
+}
+
+function resolveOptimizerCacheDir(rootDir: string, cacheDir?: string): string | null {
+  const root = resolve(rootDir);
+  return resolvePrivateDirectory(root, cacheDir ?? join(root, ".image-cache"));
 }
 
 function errorResponse(message: string, status: number): Response {
@@ -186,13 +202,17 @@ function sourceMetadataKey(sourcePath: string, stats: Stats): string {
   return `${sourcePath}\0${stats.ctimeMs}\0${stats.mtimeMs}\0${stats.size}`;
 }
 
-async function getSourceMetadata(sourcePath: string, stats: Stats): Promise<ImageMetadata> {
+async function getSourceMetadata(
+  sourcePath: string,
+  stats: Stats,
+  rootDir: string,
+): Promise<ImageMetadata> {
   const key = sourceMetadataKey(sourcePath, stats);
   const cached = sourceMetadataCache.get(key);
   if (cached) return cached;
 
   const pending = (async () => {
-    const metadata = await sharp(sourcePath, {
+    const metadata = await sharp(await readPrivateFile(sourcePath, MAX_IMAGE_BYTES, rootDir), {
       failOn: "error",
       limitInputPixels: MAX_IMAGE_PIXELS,
       sequentialRead: true,
@@ -250,7 +270,7 @@ async function walkCacheFiles(
     if (!dir) continue;
     let entries;
     try {
-      entries = await readdir(dir, { withFileTypes: true });
+      entries = await readPrivateDirectory(dir, root);
     } catch {
       continue;
     }
@@ -263,7 +283,7 @@ async function walkCacheFiles(
       }
       if (!entry.isFile() || !entry.name.endsWith(".webp")) continue;
       try {
-        const stats = await stat(path);
+        const stats = await statPrivateFile(path, MAX_CACHE_FILE_BYTES, root);
         files.push({ path, size: stats.size, accessedAt: stats.atimeMs });
       } catch {}
     }
@@ -281,7 +301,7 @@ async function pruneCache(cacheDir: string, maxBytes: number): Promise<void> {
   for (const file of files) {
     if (total <= maxBytes) break;
     try {
-      await rm(file.path, { force: true });
+      await removePrivatePath(file.path, { rootDir: cacheDir });
       total -= file.size;
     } catch {}
   }
@@ -296,22 +316,17 @@ function scheduleCachePrune(cacheDir: string, maxBytes: number, now: Date): void
 
 async function writeCacheFile(
   cachePath: string,
+  cacheRoot: string,
   bytes: Buffer,
   sourceKey?: string,
 ): Promise<boolean> {
   if (sourceKey && invalidatedSourceKeys.has(sourceKey)) return false;
-  const temporaryPath = `${cachePath}.${process.pid}.${randomUUID()}.tmp`;
   try {
-    await mkdir(dirname(cachePath), { recursive: true });
-    await writeFile(temporaryPath, bytes, { flag: "wx" });
-    if (sourceKey && invalidatedSourceKeys.has(sourceKey)) {
-      await rm(temporaryPath, { force: true }).catch(() => {});
-      return false;
-    }
-    await rename(temporaryPath, cachePath);
-    return true;
+    return await writePrivateFileAtomic(cachePath, bytes, {
+      rootDir: cacheRoot,
+      beforeCommit: () => !sourceKey || !invalidatedSourceKeys.has(sourceKey),
+    });
   } catch (error) {
-    await rm(temporaryPath, { force: true }).catch(() => {});
     log.warn(
       "cache write failed",
       undefined,
@@ -325,6 +340,7 @@ type VariantIdentity = {
   cacheKey: string;
   sourceKey: string;
   cachePath: string;
+  cacheRoot: string;
 };
 
 type VariantResult = {
@@ -363,26 +379,33 @@ function getVariantIdentity(
     cacheKey,
     sourceKey,
     cachePath: join(cacheDir, sourceKey, `${cacheKey}.webp`),
+    cacheRoot: cacheDir,
   };
 }
 
 async function readCachedVariant(identity: VariantIdentity): Promise<VariantResult | null> {
   try {
-    const bytes = await readFile(identity.cachePath);
+    const bytes = await readPrivateFile(
+      identity.cachePath,
+      MAX_CACHE_FILE_BYTES,
+      identity.cacheRoot,
+    );
     if (!isWebpBuffer(bytes)) {
-      await rm(identity.cachePath, { force: true, recursive: true }).catch(() => {});
+      await removePrivatePath(identity.cachePath, { rootDir: identity.cacheRoot }).catch(() => {});
       return null;
     }
-    void utimes(identity.cachePath, new Date(), new Date()).catch(() => {});
+    void touchPrivateFile(identity.cachePath, identity.cacheRoot).catch(() => {});
     return { bytes, cacheKey: identity.cacheKey, cacheHit: true };
   } catch {
     // A missing, unreadable, or partially written cache entry is a miss.
+    await removePrivatePath(identity.cachePath, { rootDir: identity.cacheRoot }).catch(() => {});
     return null;
   }
 }
 
 async function transformVariant(
   sourcePath: string,
+  rootDir: string,
   width: number,
   quality: number,
   identity: VariantIdentity,
@@ -391,7 +414,7 @@ async function transformVariant(
   if (existing) return { bytes: await existing, cacheKey: identity.cacheKey, cacheHit: true };
 
   const pending = withTransformLimit(async () => {
-    const bytes = await sharp(sourcePath, {
+    const bytes = await sharp(await readPrivateFile(sourcePath, MAX_IMAGE_BYTES, rootDir), {
       failOn: "error",
       limitInputPixels: MAX_IMAGE_PIXELS,
       sequentialRead: true,
@@ -406,7 +429,7 @@ async function transformVariant(
       .webp({ quality, effort: 4, smartSubsample: true })
       .timeout({ seconds: TRANSFORM_TIMEOUT_SECONDS })
       .toBuffer();
-    await writeCacheFile(identity.cachePath, bytes, identity.sourceKey);
+    await writeCacheFile(identity.cachePath, identity.cacheRoot, bytes, identity.sourceKey);
     return bytes;
   });
   inFlight.set(identity.cacheKey, pending);
@@ -425,7 +448,8 @@ export async function serveStoredImage(
   options: ImageOptimizerOptions = {},
 ): Promise<Response> {
   const rootDir = options.rootDir ?? UPLOADS_DISK_ROOT;
-  const cacheDir = options.cacheDir ?? join(rootDir, ".image-cache");
+  const cacheDir = resolveOptimizerCacheDir(rootDir, options.cacheDir);
+  if (!cacheDir) return errorResponse("Invalid image cache path", 500);
   const maxCacheBytes = options.maxCacheBytes ?? cacheMaxBytes();
   const now = options.now ?? (() => new Date());
   const sourcePath = resolveStoredPath(rootDir, storedPath);
@@ -433,11 +457,10 @@ export async function serveStoredImage(
 
   let stats: Stats;
   try {
-    stats = await stat(sourcePath);
+    stats = await statPrivateFile(sourcePath, Number.MAX_SAFE_INTEGER, rootDir);
   } catch {
     return errorResponse("File missing", 404);
   }
-  if (!stats.isFile()) return errorResponse("File missing", 404);
   if (stats.size > MAX_IMAGE_BYTES) return errorResponse("Image is too large", 413);
   scheduleCachePrune(cacheDir, maxCacheBytes, now());
 
@@ -446,7 +469,7 @@ export async function serveStoredImage(
   const rawQuality = url.searchParams.get("q");
   if (rawWidth === null) {
     if (rawQuality !== null) return errorResponse("Quality requires a width", 400);
-    return serveOriginal(request, sourcePath, stats);
+    return serveOriginal(request, sourcePath, rootDir, stats);
   }
 
   const width = Number(rawWidth);
@@ -464,7 +487,7 @@ export async function serveStoredImage(
   if (!variant) {
     let metadata: ImageMetadata;
     try {
-      metadata = await getSourceMetadata(sourcePath, stats);
+      metadata = await getSourceMetadata(sourcePath, stats, rootDir);
     } catch {
       return errorResponse("Invalid image", 422);
     }
@@ -477,17 +500,17 @@ export async function serveStoredImage(
     ) {
       return isUnsafeImageMetadata(metadata)
         ? errorResponse("Unsupported image format", 415)
-        : serveOriginal(request, sourcePath, stats, metadata);
+        : serveOriginal(request, sourcePath, rootDir, stats, metadata);
     }
     if (stats.size < 10 * 1024 && (metadata.format === "webp" || isAvifMetadata(metadata))) {
-      return serveOriginal(request, sourcePath, stats, metadata);
+      return serveOriginal(request, sourcePath, rootDir, stats, metadata);
     }
     const sourceWidth = metadata.autoOrient?.width ?? metadata.width;
     if (
       (sourceWidth ?? width) <= width &&
       (metadata.format === "webp" || isAvifMetadata(metadata))
     ) {
-      return serveOriginal(request, sourcePath, stats, metadata);
+      return serveOriginal(request, sourcePath, rootDir, stats, metadata);
     }
 
     const effectiveWidth =
@@ -506,7 +529,7 @@ export async function serveStoredImage(
 
     if (!variant) {
       try {
-        variant = await transformVariant(sourcePath, effectiveWidth, quality, identity);
+        variant = await transformVariant(sourcePath, rootDir, effectiveWidth, quality, identity);
       } catch (error) {
         if (error instanceof TransformQueueFullError) {
           return errorResponse("Image transformation queue is full", 503);
@@ -540,6 +563,7 @@ export async function serveStoredImage(
 async function serveOriginal(
   request: Request,
   sourcePath: string,
+  rootDir: string,
   stats: Stats,
   knownMetadata?: ImageMetadata,
 ): Promise<Response> {
@@ -550,11 +574,13 @@ async function serveOriginal(
   }
 
   try {
-    const metadata = knownMetadata ?? (await getSourceMetadata(sourcePath, stats));
+    const metadata = knownMetadata ?? (await getSourceMetadata(sourcePath, stats, rootDir));
     if (isUnsafeImageMetadata(metadata)) {
       return errorResponse("Unsupported image format", 415);
     }
-    const body = Readable.toWeb(createReadStream(sourcePath));
+    const body = Readable.toWeb(
+      await createPrivateReadStream(sourcePath, MAX_IMAGE_BYTES, rootDir),
+    );
     return new Response(body as unknown as BodyInit, {
       headers: {
         "cache-control": "private, max-age=300, must-revalidate",

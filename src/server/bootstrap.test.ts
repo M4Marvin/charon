@@ -31,11 +31,19 @@ vi.mock("node:fs/promises", async (importOriginal) => ({
   readdir: vi.fn(async () => ["one.jpg", "two.png"]),
   realpath: vi.fn(async (path: string) => resolve(path)),
   lstat: vi.fn(async () => ({ isFile: () => true, isDirectory: () => true })),
+  open: vi.fn(async () => ({
+    stat: vi.fn(async () => ({ isFile: () => true, size: 0 })),
+    close: vi.fn(async () => {}),
+  })),
 }));
 
 vi.mock("@/server/uploads", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/server/uploads")>()),
   readPrivateFile: vi.fn(async () => Buffer.from("image")),
+  readPrivateDirectory: vi.fn(async () => [
+    { name: "one.jpg", isFile: () => true },
+    { name: "two.png", isFile: () => true },
+  ]),
   writePrivateFileAtomic: vi.fn(async () => {}),
 }));
 
@@ -47,6 +55,7 @@ import { listEntries, listLorebooks } from "@/db/repositories/lorebooks";
 import { listPersonas } from "@/db/repositories/personas";
 import { listPresets } from "@/db/repositories/presets";
 import { getUserSettings } from "@/db/repositories/userSettings";
+import { readPrivateDirectory } from "@/server/uploads";
 
 describe("ensureStartupTasks", () => {
   let ctx: ReturnType<typeof makeTestDb>;
@@ -75,7 +84,7 @@ describe("ensureStartupTasks", () => {
         "data/uploads/personas",
       ]),
     );
-    expect(fs.readdir as unknown as ReturnType<typeof vi.fn>).toHaveBeenCalledTimes(1);
+    expect(readPrivateDirectory as unknown as ReturnType<typeof vi.fn>).toHaveBeenCalledTimes(1);
 
     const bgs = listBackgrounds(holder.db);
     expect(bgs).toHaveLength(2);
@@ -89,8 +98,7 @@ describe("ensureStartupTasks", () => {
     await ensureStartupTasks();
 
     expect(listBackgrounds(holder.db)).toHaveLength(seeded);
-    const fs = await import("node:fs/promises");
-    expect(fs.readdir as unknown as ReturnType<typeof vi.fn>).toHaveBeenCalledTimes(1);
+    expect(readPrivateDirectory as unknown as ReturnType<typeof vi.fn>).toHaveBeenCalledTimes(1);
   });
 });
 

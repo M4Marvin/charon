@@ -12,7 +12,6 @@
 import { config } from "dotenv";
 config({ path: [".env.local", ".env"] });
 
-import { readdir, rm } from "node:fs/promises";
 import { realpathSync } from "node:fs";
 import { basename, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -20,13 +19,16 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/db";
 import { user, characters, lorebooks, loreEntries, personas } from "@/db/schema";
 import { derivedColumns } from "@/db/repositories/characters";
-import { validateUploadedImage } from "@/server/image-limits";
+import { MAX_IMAGE_BYTES, validateUploadedImage } from "@/server/image-limits";
 import { readMigrationFile, resolveMigrationDirectory, resolveMigrationFile } from "./migration-io";
 import {
   diskPathFromStored,
   ensureUploadsDirs,
+  readPrivateDirectory,
+  removePrivatePath,
   storedPathFromDiskComponents,
   writePrivateFileAtomic,
+  UPLOADS_DISK_ROOT,
 } from "@/server/uploads";
 import { upsertUserSettings, type UserSettingsPatch } from "@/db/repositories/userSettings";
 import {
@@ -160,7 +162,7 @@ const ZERO: Counts = { found: 0, inserted: 0, skipped: 0, failed: 0 };
 async function listPngs(dir: string): Promise<string[]> {
   const sourceDir = resolveMigrationDirectory(DATA_ROOT, dir);
   if (!sourceDir) return [];
-  const entries = await readdir(sourceDir, { withFileTypes: true });
+  const entries = await readPrivateDirectory(sourceDir, DATA_ROOT);
   return entries
     .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(".png"))
     .map((e) => join(sourceDir, e.name));
@@ -169,7 +171,7 @@ async function listPngs(dir: string): Promise<string[]> {
 async function listFilesByExt(dir: string, ext: string): Promise<string[]> {
   const sourceDir = resolveMigrationDirectory(DATA_ROOT, dir);
   if (!sourceDir) return [];
-  const entries = await readdir(sourceDir, { withFileTypes: true });
+  const entries = await readPrivateDirectory(sourceDir, DATA_ROOT);
   return entries
     .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(ext.toLowerCase()))
     .map((e) => join(sourceDir, e.name));
@@ -259,7 +261,7 @@ async function migrateCharacters(
 
     let bytes: Uint8Array;
     try {
-      bytes = new Uint8Array(await readMigrationFile(pngPath));
+      bytes = new Uint8Array(await readMigrationFile(pngPath, MAX_IMAGE_BYTES, DATA_ROOT));
     } catch (e) {
       console.log(`  ✗ ${fileBase}: failed to read PNG (${(e as Error).message})`);
       counts.failed++;
@@ -321,9 +323,9 @@ async function migrateCharacters(
     const writePath = diskPathFromStored(avatarPath);
 
     try {
-      await writePrivateFileAtomic(writePath, bytes);
+      await writePrivateFileAtomic(writePath, bytes, { rootDir: UPLOADS_DISK_ROOT });
     } catch (e) {
-      await rm(writePath, { force: true }).catch(() => {});
+      await removePrivatePath(writePath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
       console.log(`  ✗ ${fileBase}: avatar copy (${(e as Error).message})`);
       counts.failed++;
       continue;
@@ -345,7 +347,7 @@ async function migrateCharacters(
         })
         .run();
     } catch (e) {
-      await rm(writePath, { force: true }).catch(() => {});
+      await removePrivatePath(writePath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
       console.log(`  ✗ ${fileBase}: insert (${(e as Error).message})`);
       counts.failed++;
       continue;
@@ -434,7 +436,7 @@ async function migrateLorebooks(): Promise<{ lorebooks: Counts; loreEntries: num
 
     let json: string;
     try {
-      json = (await readMigrationFile(filePath)).toString("utf8");
+      json = (await readMigrationFile(filePath, MAX_IMAGE_BYTES, DATA_ROOT)).toString("utf8");
     } catch (e) {
       console.log(`  ✗ ${name}: read (${(e as Error).message})`);
       counts.failed++;
@@ -470,7 +472,9 @@ async function migratePersonas(): Promise<Counts> {
 
   let settings: ParsedSettings;
   try {
-    const text = (await readMigrationFile(settingsPath)).toString("utf8");
+    const text = (await readMigrationFile(settingsPath, MAX_IMAGE_BYTES, DATA_ROOT)).toString(
+      "utf8",
+    );
     const parsed = parseSettingsFile(JSON.parse(text));
     if (!parsed) {
       console.log("  ✗ settings.json: expected a settings object");
@@ -512,11 +516,12 @@ async function migratePersonas(): Promise<Counts> {
       iconPath = storedPathFromDiskComponents("personas", iconFilename);
       iconWritePath = diskPathFromStored(iconPath);
       try {
-        const iconBytes = await readMigrationFile(sourcePath);
+        const iconBytes = await readMigrationFile(sourcePath, MAX_IMAGE_BYTES, DATA_ROOT);
         await validateUploadedImage(iconBytes);
-        await writePrivateFileAtomic(iconWritePath, iconBytes);
+        await writePrivateFileAtomic(iconWritePath, iconBytes, { rootDir: UPLOADS_DISK_ROOT });
       } catch (e) {
-        if (iconWritePath) await rm(iconWritePath, { force: true }).catch(() => {});
+        if (iconWritePath)
+          await removePrivatePath(iconWritePath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
         console.log(`  ✗ ${name}: icon copy (${(e as Error).message})`);
         iconPath = null;
       }
@@ -537,7 +542,8 @@ async function migratePersonas(): Promise<Counts> {
       counts.inserted++;
       console.log(`  ✓ ${name}${iconPath ? " (with icon)" : " (no icon)"}`);
     } catch (e) {
-      if (iconWritePath) await rm(iconWritePath, { force: true }).catch(() => {});
+      if (iconWritePath)
+        await removePrivatePath(iconWritePath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
       console.log(`  ✗ ${name}: ${(e as Error).message}`);
       counts.failed++;
     }
@@ -554,7 +560,9 @@ async function migrateUserSettings(accountId: string): Promise<void> {
 
   let settings: ParsedSettings;
   try {
-    const text = (await readMigrationFile(settingsPath)).toString("utf8");
+    const text = (await readMigrationFile(settingsPath, MAX_IMAGE_BYTES, DATA_ROOT)).toString(
+      "utf8",
+    );
     const parsed = parseSettingsFile(JSON.parse(text));
     if (!parsed) return;
     settings = parsed;

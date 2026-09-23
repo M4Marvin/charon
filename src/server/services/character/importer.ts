@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { rm } from "node:fs/promises";
 import {
   createCharacter as repoCreate,
   listCharacters as repoList,
@@ -21,8 +20,10 @@ import type { CharacterDataV2 } from "@/lib/st-core/character";
 import {
   ensureUploadsDirs,
   diskPathFromStored,
+  removePrivatePath,
   storedPathFromDiskComponents,
   writePrivateFileAtomic,
+  UPLOADS_DISK_ROOT,
 } from "@/server/uploads";
 import {
   decodeImageBase64,
@@ -203,9 +204,9 @@ export async function importCharacterCard(pngBase64: string, db?: DB): Promise<I
 
   try {
     await ensureUploadsDirs();
-    await writePrivateFileAtomic(writePath, pngBytes);
+    await writePrivateFileAtomic(writePath, pngBytes, { rootDir: UPLOADS_DISK_ROOT });
   } catch (e) {
-    await rm(writePath, { force: true }).catch(() => {});
+    await removePrivatePath(writePath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
     return {
       ok: false,
       error: {
@@ -230,7 +231,7 @@ export async function importCharacterCard(pngBase64: string, db?: DB): Promise<I
     );
   } catch (e) {
     try {
-      await rm(writePath);
+      await removePrivatePath(writePath, { rootDir: UPLOADS_DISK_ROOT });
     } catch {
       // best-effort
     }

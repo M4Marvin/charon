@@ -15,6 +15,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { MAX_IMAGE_BYTES } from "@/server/image-limits";
 import {
+  readPrivateDirectory,
   readPrivateFile,
   resolveStoredUploadPath,
   writePrivateFileAtomic,
@@ -62,6 +63,31 @@ describe("private file I/O", () => {
 
     await expect(readFile(path, "utf8")).resolves.toBe("image");
     await expect(readdir(root)).resolves.toEqual(["image.png"]);
+  });
+
+  it("enforces cache roots and cleans up an uncommitted atomic write", async () => {
+    const root = await makeTempDir();
+    const cacheDir = join(root, "cache");
+    const path = join(cacheDir, "nested", "image.webp");
+    const outside = await makeTempDir();
+    await mkdir(join(cacheDir, "nested"), { recursive: true });
+    await symlink(outside, join(cacheDir, "escape"), "dir");
+
+    await expect(
+      writePrivateFileAtomic(path, Buffer.from("image"), {
+        rootDir: root,
+        beforeCommit: () => false,
+      }),
+    ).resolves.toBe(false);
+    await expect(readdir(join(cacheDir, "nested"))).resolves.toEqual([]);
+    await expect(readPrivateDirectory(join(cacheDir, "escape"), root)).rejects.toThrow(
+      "Private path",
+    );
+    await expect(
+      writePrivateFileAtomic(join(cacheDir, "escape", "outside.webp"), Buffer.from("no"), {
+        rootDir: root,
+      }),
+    ).rejects.toThrow("Private path escapes");
   });
 
   it("rejects oversized reads before allocating their contents", async () => {
