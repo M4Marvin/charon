@@ -68,8 +68,18 @@ const config = defineConfig({
     fs: {
       strict: true,
       // The middleware below also blocks ordinary /data URLs; these deny
-      // Vite's raw filesystem handler for equivalent /@fs requests.
-      deny: ["public/data/**", "public/uploads/**", "data/**"],
+      // Vite's raw filesystem handler for equivalent /@fs requests. Keep
+      // Vite's default secret/repository denials when extending the list.
+      deny: [
+        ".env",
+        ".env.*",
+        "*.{crt,pem}",
+        "**/.git/**",
+        ".npmrc",
+        "public/data/**",
+        "public/uploads/**",
+        "data/**",
+      ],
     },
   },
   resolve: {
