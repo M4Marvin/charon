@@ -7,3 +7,6 @@ node_modules/
 .output/
 .github/
 scripts/migrate-data.ts
+scripts/migrate-image-paths.ts
+data/
+public/data/

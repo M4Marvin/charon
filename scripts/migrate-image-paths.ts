@@ -32,7 +32,9 @@ async function migrateSubdir(subdir: UploadSubdir): Promise<Counts> {
   if (!existsSync(sourceDir)) return counts;
 
   const entries = await readdir(sourceDir, { withFileTypes: true });
-  const images = entries.filter((e) => e.isFile() && /\.(png|jpe?g|webp)$/i.test(e.name));
+  const images = entries.filter(
+    (e) => e.isFile() && /\.(png|jpe?g|webp|gif|tiff?|avif)$/i.test(e.name),
+  );
   counts.found = images.length;
 
   for (const img of images) {
@@ -97,24 +99,23 @@ function updateDbPaths(): void {
 }
 
 function isReferenced(path: string): boolean {
-  const likePattern = `data/${path}%`;
   return (
     db
       .select({ id: characters.id })
       .from(characters)
-      .where(like(characters.imagePath, likePattern))
+      .where(eq(characters.imagePath, path))
       .limit(1)
       .get() !== undefined ||
     db
       .select({ id: backgrounds.id })
       .from(backgrounds)
-      .where(like(backgrounds.path, likePattern))
+      .where(eq(backgrounds.path, path))
       .limit(1)
       .get() !== undefined ||
     db
       .select({ id: personas.id })
       .from(personas)
-      .where(like(personas.iconPath, likePattern))
+      .where(eq(personas.iconPath, path))
       .limit(1)
       .get() !== undefined
   );
@@ -122,17 +123,23 @@ function isReferenced(path: string): boolean {
 
 async function cleanOrphans(): Promise<{ deleted: string[] }> {
   const deleted: string[] = [];
-  const dataDir = join(SOURCE_BASE);
-  if (!existsSync(dataDir)) return { deleted };
 
-  const entries = await readdir(dataDir, { withFileTypes: true });
-  const images = entries.filter((e) => e.isFile() && /\.(png|jpe?g|webp)$/i.test(e.name));
+  for (const subdir of Object.values(UPLOADS_SUBDIRS)) {
+    const dataDir = join(SOURCE_BASE, subdir);
+    if (!existsSync(dataDir)) continue;
 
-  for (const img of images) {
-    if (isReferenced(img.name)) continue;
-    const path = join(dataDir, img.name);
-    await rm(path, { force: true });
-    deleted.push(img.name);
+    const entries = await readdir(dataDir, { withFileTypes: true });
+    const images = entries.filter(
+      (e) => e.isFile() && /\.(png|jpe?g|webp|gif|tiff?|avif)$/i.test(e.name),
+    );
+
+    for (const img of images) {
+      const legacyPath = join("data", subdir, img.name);
+      if (isReferenced(legacyPath)) continue;
+      const path = join(dataDir, img.name);
+      await rm(path, { force: true });
+      deleted.push(join(subdir, img.name));
+    }
   }
 
   return { deleted };
@@ -144,7 +151,9 @@ async function main() {
 
   console.log("[1/3] Moving avatars...");
   const avatarResult = await migrateSubdir("avatars");
-  console.log(`  → ${avatarResult.found} found, ${avatarResult.moved} moved, ${avatarResult.skipped} skipped`);
+  console.log(
+    `  → ${avatarResult.found} found, ${avatarResult.moved} moved, ${avatarResult.skipped} skipped`,
+  );
 
   console.log("[2/3] Moving backgrounds...");
   const bgResult = await migrateSubdir("backgrounds");
@@ -152,13 +161,15 @@ async function main() {
 
   console.log("[3/3] Moving personas...");
   const personaResult = await migrateSubdir("personas");
-  console.log(`  → ${personaResult.found} found, ${personaResult.moved} moved, ${personaResult.skipped} skipped`);
+  console.log(
+    `  → ${personaResult.found} found, ${personaResult.moved} moved, ${personaResult.skipped} skipped`,
+  );
 
   console.log("\n[DB] Updating stored paths...");
   updateDbPaths();
   console.log("  → done");
 
-  console.log("\n[Cleanup] Removing orphan PNGs from public/data/...");
+  console.log("\n[Cleanup] Removing migrated/orphan image files from public/data/...");
   const { deleted } = await cleanOrphans();
   if (deleted.length > 0) {
     for (const f of deleted) console.log(`  → deleted ${f}`);

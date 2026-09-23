@@ -29,7 +29,7 @@ import {
   useUploadPersonaIcon,
 } from "@/hooks/usePersonas";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
-import { withImageVersion } from "@/lib/image-optimization";
+import { MAX_IMAGE_UPLOAD_BYTES, withImageVersion } from "@/lib/image-optimization";
 import { ConfirmDialog } from "../confirm-dialog";
 import { SectionHeader } from "../section-header";
 
@@ -57,6 +57,7 @@ export function PersonaSection(_props: SectionProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [pendingIconPath, setPendingIconPath] = useState<string | null>(null);
   const [failedIconPath, setFailedIconPath] = useState<string | null>(null);
+  const [iconError, setIconError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedId = settings?.defaultPersonaId ?? "";
@@ -71,6 +72,7 @@ export function PersonaSection(_props: SectionProps) {
   const openCreate = useCallback(() => {
     setName("");
     setDescription("");
+    setIconError(null);
     setDialog({ kind: "create" });
   }, []);
 
@@ -78,6 +80,7 @@ export function PersonaSection(_props: SectionProps) {
     setName(n);
     setDescription(d ?? "");
     setPendingIconPath(null);
+    setIconError(null);
     setDialog({ kind: "edit", id, name: n, description: d ?? "", iconPath: icon });
   }, []);
 
@@ -87,6 +90,12 @@ export function PersonaSection(_props: SectionProps) {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file || dialog?.kind !== "edit") return;
+      if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+        setIconError(`File too large (max ${MAX_IMAGE_UPLOAD_BYTES / (1024 * 1024)} MB).`);
+        e.target.value = "";
+        return;
+      }
+      setIconError(null);
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUrl = reader.result as string;
@@ -263,11 +272,16 @@ export function PersonaSection(_props: SectionProps) {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/png"
+                    accept="image/png,image/jpeg,image/webp,image/tiff,image/gif,image/avif"
                     className="hidden"
                     onChange={handleFileChange}
                     aria-label="Upload persona icon"
                   />
+                  {iconError ? (
+                    <p className="text-xs text-destructive" role="alert">
+                      {iconError}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             )}

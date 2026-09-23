@@ -85,7 +85,12 @@ Characters not included. Grab some from [Chub](https://chub.ai) or copy `.png` f
 ```bash
 # Copy your old data in
 cp -r /path/to/SillyTavern/public/* public/data/
+
+# Import into the database and private data/uploads/ storage
 pnpm run migrate
+
+# For installs that already ran the old migration, move legacy public/data images
+pnpm run migrate:image-paths
 ```
 
 ---

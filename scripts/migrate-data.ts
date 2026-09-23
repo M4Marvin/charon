@@ -1,4 +1,4 @@
-// Migrate existing SillyTavern data from public/data/ into the SQLite database.
+// Migrate existing SillyTavern data from public/data/ into the SQLite database and private uploads.
 // Run with: nub scripts/migrate-data.ts
 //
 // Migrates: characters (PNG + embedded books), standalone lorebooks (worlds/*.json),
@@ -15,18 +15,10 @@ import { basename, extname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { db } from "@/db";
-import {
-  user,
-  characters,
-  lorebooks,
-  loreEntries,
-  personas,
-} from "@/db/schema";
+import { user, characters, lorebooks, loreEntries, personas } from "@/db/schema";
 import { derivedColumns } from "@/db/repositories/characters";
-import {
-  upsertUserSettings,
-  type UserSettingsPatch,
-} from "@/db/repositories/userSettings";
+import { ensureUploadsDirs } from "@/server/uploads";
+import { upsertUserSettings, type UserSettingsPatch } from "@/db/repositories/userSettings";
 import {
   parseCharacterCard,
   validateCharacterCard,
@@ -38,10 +30,10 @@ import { DEFAULT_LORE_CONFIG, type LoreEntry as LoreEntryData } from "@/lib/st-c
 import { normalizeCardData, normalizeV3ToV2 } from "@/lib/character/normalize";
 
 const DATA_ROOT = "public/data";
-const AVATAR_DIR = "public/data/avatars";
-const AVATAR_PUBLIC_PREFIX = "data/avatars";
-const PERSONA_ICON_DIR = "public/data/personas";
-const PERSONA_PUBLIC_PREFIX = "data/personas";
+const AVATAR_DIR = "data/uploads/avatars";
+const AVATAR_PUBLIC_PREFIX = "uploads/avatars";
+const PERSONA_ICON_DIR = "data/uploads/personas";
+const PERSONA_PUBLIC_PREFIX = "uploads/personas";
 
 type Counts = {
   found: number;
@@ -185,7 +177,7 @@ async function migrateCharacters(
     // unchanged.
     const detectedSpec =
       typeof (raw as { spec?: unknown }).spec === "string"
-        ? ((raw as { spec: string }).spec)
+        ? (raw as { spec: string }).spec
         : "chara_card_v2";
     const isV3 = detectedSpec === "chara_card_v3";
     const projected = isV3 ? normalizeV3ToV2(raw) : raw;
@@ -194,9 +186,7 @@ async function migrateCharacters(
       ? validateCharacterCardV3(normalized)
       : validateCharacterCard(normalized);
     if (!validation.ok) {
-      const errs = validation.errors
-        .map((e) => `${e.field || "(root)"}: ${e.message}`)
-        .join("; ");
+      const errs = validation.errors.map((e) => `${e.field || "(root)"}: ${e.message}`).join("; ");
       console.log(`  ✗ ${fileBase}: validation (${errs})`);
       counts.failed++;
       continue;
@@ -532,6 +522,8 @@ async function main() {
   console.log(`  → using account: ${account.id}`);
 
   const characterByName = new Map<string, string>();
+
+  await ensureUploadsDirs();
 
   console.log("\n[2/5] Migrating characters...");
   const charResult = await migrateCharacters(characterByName);
