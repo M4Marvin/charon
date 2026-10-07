@@ -66,7 +66,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   errorComponent: RootErrorComponent,
   notFoundComponent: RootNotFoundComponent,
   beforeLoad: async ({ location }) => {
-    const publicPrefixes = ["/", "/signin", "/setup"];
+    const publicPrefixes = ["/", "/signin", "/setup", "/up"];
     const isApiRoute = location.pathname.startsWith("/api/");
     const isAssetRoute = location.pathname.startsWith("/assets/");
     if (
