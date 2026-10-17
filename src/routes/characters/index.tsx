@@ -238,7 +238,7 @@ function CharactersPage() {
         </EmptyState>
       ) : (
         <>
-          <div className="sticky top-0 z-30 -mx-4 px-4 py-3 bg-base/85 backdrop-blur-sm space-y-3">
+          <div className="sticky top-0 z-30 -mx-4 px-4 py-3 bg-(--bg-base)/85 backdrop-blur-sm space-y-3">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

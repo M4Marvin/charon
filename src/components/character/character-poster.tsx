@@ -58,7 +58,7 @@ export function CharacterPoster({ character, chats, onStartChat, starting }: Cha
           </div>
 
           {character.chatCount > 0 ? (
-            <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-base/70 px-2 py-0.5 text-[10px] text-1 backdrop-blur">
+            <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-(--bg-base)/70 px-2 py-0.5 text-xs text-1 backdrop-blur">
               <MessagesSquare className="size-3" />
               {character.chatCount}
             </span>
@@ -66,7 +66,7 @@ export function CharacterPoster({ character, chats, onStartChat, starting }: Cha
 
           <span
             aria-hidden
-            className="absolute top-2 right-2 inline-flex size-7 items-center justify-center rounded-full bg-base/60 backdrop-blur"
+            className="absolute top-2 right-2 inline-flex size-7 items-center justify-center rounded-full bg-(--bg-base)/60 backdrop-blur"
           >
             <Maximize2 className="size-3.5 text-1" />
           </span>

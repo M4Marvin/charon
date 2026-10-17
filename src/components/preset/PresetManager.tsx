@@ -113,7 +113,7 @@ export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet"
                       {isDefault ? (
                         <Badge
                           variant="default"
-                          className={`shrink-0 text-[10px] ${
+                          className={`shrink-0 text-xs ${
                             isSheet ? "bg-(--lagoon)/15 text-(--lagoon) border-(--lagoon)/20" : ""
                           }`}
                         >

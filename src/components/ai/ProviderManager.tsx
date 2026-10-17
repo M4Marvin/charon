@@ -136,7 +136,7 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
                       {isDefault ? (
                         <Badge
                           variant="default"
-                          className={`text-[10px] ml-1 ${
+                          className={`text-xs ml-1 ${
                             isSheet ? "bg-(--lagoon)/15 text-(--lagoon) border-(--lagoon)/20" : ""
                           }`}
                         >
