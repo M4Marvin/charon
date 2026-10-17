@@ -35,6 +35,9 @@ import { CustomImagePanel } from "../components/custom-image-panel";
 import { ImageLightbox } from "../components/image-lightbox";
 import { SettingsPanel } from "../settings/settings-panel";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { EmptyState } from "@/components/common/EmptyState";
+import { SkeletonRows } from "@/components/common/Skeletons";
+import { MessageSquareX } from "lucide-react";
 
 export function ChatPage() {
   const { id: chatId } = useParams({ from: "/chat/$id" });
@@ -95,10 +98,16 @@ export function ChatPage() {
 
   const isBusy = config ? config.chat.lockState !== "idle" : false;
   const hasMessages = activePath.length > 0;
+  // The placeholder id lives in a global store. Only the chat that owns the
+  // live run may read it, otherwise a navigation would render another chat's
+  // streamed text.
+  const ownsGeneration = generation.ownerChatId === chatId;
+  const scopedPlaceholderId = ownsGeneration ? activePlaceholderId : null;
+  const scopedStreamingText = ownsGeneration ? generation.streamingText : "";
   const pendingVisible = pendingSend
-    ? isPendingVisible(pendingSend, chatId, activePath, activePlaceholderId)
+    ? isPendingVisible(pendingSend, chatId, activePath, scopedPlaceholderId)
     : false;
-  const composerDisabled = config?.chat.lockState === "generating" && activePlaceholderId === null;
+  const composerDisabled = config?.chat.lockState === "generating" && scopedPlaceholderId === null;
 
   const characterAvatarUrl = config?.characterImagePath
     ? withImageVersion(
@@ -129,10 +138,32 @@ export function ChatPage() {
     return true;
   }, [config]);
 
+  const refuseBusy = useCallback(() => {
+    toast.error("Wait for the current reply to finish");
+  }, []);
+
+  // Wand and impersonation output must never overwrite text the user typed.
+  const applyGeneratedText = useCallback(
+    (text: string) => {
+      const draft = useChatUiStore.getState().inputDrafts[chatId] ?? "";
+      if (draft.trim()) {
+        setInput(chatId, `${draft}\n${text}`);
+        toast.success("Inserted below your draft");
+      } else {
+        setInput(chatId, text);
+      }
+    },
+    [chatId, setInput],
+  );
+
   // Callbacks below depend on `.mutate`/`.start` alone, not on the mutation or
   // generation objects: both are recreated every render and would defeat the
   // memo on ChatMessage during streaming.
   const handleSend = useCallback(() => {
+    if (isBusy) {
+      refuseBusy();
+      return;
+    }
     if (generation.isStreaming) return;
     if (!ensureModelConfigured()) return;
     const trimmed = (useChatUiStore.getState().inputDrafts[chatId] ?? "").trim();
@@ -148,6 +179,8 @@ export function ChatPage() {
     chatId,
     substitute,
     clearInput,
+    isBusy,
+    refuseBusy,
     generation.isStreaming,
     generation.start,
     hasMessages,
@@ -156,39 +189,52 @@ export function ChatPage() {
 
   const handleSwipe = useCallback(
     (messageLocalId: number, direction: "next" | "prev") => {
-      if (isBusy || generation.isStreaming) return;
+      if (isBusy || generation.isStreaming) {
+        refuseBusy();
+        return;
+      }
       swipeMutation.mutate(
         { chatId, messageLocalId, direction },
         { onError: () => toast.error("Swipe failed") },
       );
     },
-    [chatId, isBusy, generation.isStreaming, swipeMutation.mutate],
+    [chatId, isBusy, refuseBusy, generation.isStreaming, swipeMutation.mutate],
   );
 
   const handleRegenerate = useCallback(
     (messageLocalId: number) => {
-      if (isBusy || generation.isStreaming) return;
+      if (isBusy || generation.isStreaming) {
+        refuseBusy();
+        return;
+      }
       if (!ensureModelConfigured()) return;
       generation.start("regenerate", { messageLocalId });
     },
-    [isBusy, generation.isStreaming, generation.start, ensureModelConfigured],
+    [isBusy, refuseBusy, generation.isStreaming, generation.start, ensureModelConfigured],
   );
 
   const handleEdit = useCallback(
     (messageLocalId: number, content: string) => {
-      if (isBusy || generation.isStreaming) return;
+      if (isBusy || generation.isStreaming) {
+        refuseBusy();
+        return false;
+      }
       const final = substitute(content);
       editMutation.mutate(
         { chatId, messageLocalId, content: final },
         { onError: () => toast.error("Edit failed — message restored") },
       );
+      return true;
     },
-    [chatId, isBusy, generation.isStreaming, substitute, editMutation.mutate],
+    [chatId, isBusy, refuseBusy, generation.isStreaming, substitute, editMutation.mutate],
   );
 
   const handleDelete = useCallback(
     (messageLocalId: number) => {
-      if (isBusy || generation.isStreaming) return;
+      if (isBusy || generation.isStreaming) {
+        refuseBusy();
+        return false;
+      }
       deleteMsgMutation.mutate(
         { chatId, messageLocalId },
         {
@@ -199,27 +245,46 @@ export function ChatPage() {
           onError: () => toast.error("Delete failed"),
         },
       );
+      return true;
     },
-    [chatId, isBusy, generation.isStreaming, deleteMsgMutation.mutate, focusComposer],
+    [chatId, isBusy, refuseBusy, generation.isStreaming, deleteMsgMutation.mutate, focusComposer],
   );
 
   const handleImpersonate = useCallback(() => {
-    if (isBusy || generation.isStreaming) return;
+    if (isBusy || generation.isStreaming) {
+      refuseBusy();
+      return;
+    }
+    if (!activePath.some((entry) => entry.message.role === "user")) {
+      toast.error("Add a message before impersonating");
+      return;
+    }
     impersonateMutation.mutate(
       { chatId },
       {
         onSuccess: (result) => {
-          setInput(chatId, result.text);
+          applyGeneratedText(result.text);
         },
-        onError: () => {
-          toast.error("Impersonation failed");
+        onError: (error) => {
+          toast.error(error.message || "Impersonation failed");
         },
       },
     );
-  }, [chatId, isBusy, generation.isStreaming, impersonateMutation, setInput]);
+  }, [
+    chatId,
+    isBusy,
+    refuseBusy,
+    generation.isStreaming,
+    activePath,
+    impersonateMutation.mutate,
+    applyGeneratedText,
+  ]);
 
   const handleImagePrompt = useCallback(() => {
-    if (isBusy || generation.isStreaming) return;
+    if (isBusy || generation.isStreaming) {
+      refuseBusy();
+      return;
+    }
     imagePromptMutation.mutate(
       { chatId },
       {
@@ -228,7 +293,7 @@ export function ChatPage() {
             toast.error("Failed to generate image prompt");
             return;
           }
-          setInput(chatId, result.text);
+          applyGeneratedText(result.text);
           focusComposer();
         },
         onError: () => {
@@ -236,7 +301,15 @@ export function ChatPage() {
         },
       },
     );
-  }, [chatId, isBusy, generation.isStreaming, imagePromptMutation, setInput, focusComposer]);
+  }, [
+    chatId,
+    isBusy,
+    refuseBusy,
+    generation.isStreaming,
+    imagePromptMutation.mutate,
+    applyGeneratedText,
+    focusComposer,
+  ]);
 
   const handleUploadImage = useCallback(
     async (file: File) => {
@@ -256,22 +329,23 @@ export function ChatPage() {
 
   if (configLoading || messagesLoading) {
     return (
-      <div
-        className="fixed inset-0 flex items-center justify-center"
-        style={{ background: "var(--bg-base)" }}
+      <main
+        role="status"
+        aria-busy="true"
+        className="flex h-dvh w-full flex-col overflow-hidden bg-base [&_[data-slot=skeleton]]:motion-reduce:animate-none"
       >
-        <div className="flex items-center gap-2 text-(--sea-ink-soft)">
-          <span className="size-2 rounded-full bg-(--lagoon) animate-bounce" />
-          <span
-            className="size-2 rounded-full bg-(--lagoon) animate-bounce"
-            style={{ animationDelay: "150ms" }}
-          />
-          <span
-            className="size-2 rounded-full bg-(--lagoon) animate-bounce"
-            style={{ animationDelay: "300ms" }}
-          />
+        <span className="sr-only">Loading chat</span>
+        <div
+          aria-hidden="true"
+          className="flex h-12 shrink-0 items-center gap-3 border-b border-subtle px-3 md:px-5"
+        >
+          <span className="size-7 rounded-full bg-raised" />
+          <span className="h-4 w-32 rounded bg-raised" />
         </div>
-      </div>
+        <div aria-hidden="true" className="mx-auto w-full max-w-3xl flex-1 px-3 pt-12 md:px-6">
+          <SkeletonRows rows={5} />
+        </div>
+      </main>
     );
   }
 
@@ -283,10 +357,7 @@ export function ChatPage() {
   if (configFailed || messagesFailed) {
     const errorObj = configFailed ? configErrorObj : messagesErrorObj;
     return (
-      <div
-        className="fixed inset-0 flex items-center justify-center p-6"
-        style={{ background: "var(--bg-base)" }}
-      >
+      <main className="flex h-dvh w-full flex-col items-center justify-center bg-base p-6">
         <div className="w-full max-w-md">
           <ErrorBanner
             message={errorObj instanceof Error ? errorObj.message : "Failed to load chat"}
@@ -296,26 +367,26 @@ export function ChatPage() {
             }}
           />
         </div>
-      </div>
+      </main>
     );
   }
 
   if (!config) {
     return (
-      <div
-        className="fixed inset-0 flex items-center justify-center"
-        style={{ background: "var(--bg-base)" }}
-      >
-        <p className="text-red-400">Chat not found.</p>
-      </div>
+      <main className="flex h-dvh w-full flex-col items-center justify-center bg-base p-6">
+        <div role="alert" className="w-full max-w-md">
+          <EmptyState
+            icon={MessageSquareX}
+            title="Chat not found"
+            description="This chat may have been deleted, or the link is wrong."
+          />
+        </div>
+      </main>
     );
   }
 
   return (
-    <main
-      className="flex h-dvh w-full flex-col overflow-hidden"
-      style={{ background: "var(--bg-base)" }}
-    >
+    <main className="flex h-dvh w-full flex-col overflow-hidden bg-base">
       <ChatBackground src={backgroundUrl} fallbackSrc={characterAvatarUrl} />
 
       <ChatHeader
@@ -331,9 +402,10 @@ export function ChatPage() {
       />
 
       <MessageList
+        chatId={chatId}
         entries={activePath}
-        activePlaceholderId={activePlaceholderId}
-        streamingText={generation.streamingText}
+        activePlaceholderId={scopedPlaceholderId}
+        streamingText={scopedStreamingText}
         pendingUserContent={pendingVisible ? (pendingSend?.content ?? null) : null}
         showPendingAssistant={pendingVisible}
         characterName={config.character.name}
@@ -363,6 +435,7 @@ export function ChatPage() {
         open={sceneOpen}
         imageSrc={backgroundUrl}
         customImageSrc={customImage}
+        alt="Scene"
         onClose={() => {
           setSceneOpen(false);
           focusComposer();
@@ -377,6 +450,13 @@ export function ChatPage() {
 
       <ImageLightbox
         src={lightboxSrc}
+        alt={
+          lightboxSrc === characterAvatarUrl
+            ? `${config.character.name} portrait`
+            : lightboxSrc === customImage
+              ? "Uploaded scene"
+              : "Scene"
+        }
         open={lightboxSrc !== null}
         onOpenChange={(open) => {
           if (!open) {
@@ -394,6 +474,7 @@ export function ChatPage() {
         onImpersonate={handleImpersonate}
         onImagePrompt={handleImagePrompt}
         isStreaming={generation.isStreaming}
+        isFinalizing={generation.status === "finalizing"}
         impersonatePending={impersonateMutation.isPending}
         imagePromptPending={imagePromptMutation.isPending}
         disabled={composerDisabled}

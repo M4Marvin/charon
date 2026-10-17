@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   MessageScrollerProvider,
   MessageScroller,
@@ -9,12 +10,30 @@ import {
   useMessageScrollerVisibility,
 } from "@/components/ui/message-scroller";
 import { Button } from "@/components/ui/button";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { EmptyState } from "@/components/common/EmptyState";
+import { ChevronUp, ChevronDown, MessageCircle } from "lucide-react";
 import { ChatMessage } from "./chat-message";
 import { MessageOverviewRail } from "./message-overview-rail";
 import type { ActivePathEntry } from "@/features/chat/tree/types";
 
+/** Matches chat-header's fixed `h-12`. */
+const CHAT_HEADER_HEIGHT = 48;
+const COMPOSER_FALLBACK_HEIGHT = 80;
+const SCROLL_EDGE_THRESHOLD = 80;
+
+/**
+ * Offset that leaves a message above the composer. The primitive subtracts
+ * `scrollMargin` from an `align: "end"` jump, so this is the bottom gap.
+ */
+function composerScrollMargin(): number {
+  if (typeof window === "undefined") return CHAT_HEADER_HEIGHT;
+  const raw = window.getComputedStyle(document.documentElement).getPropertyValue("--composer-h");
+  const height = Number.parseFloat(raw);
+  return Number.isFinite(height) && height > 0 ? height + 16 : COMPOSER_FALLBACK_HEIGHT;
+}
+
 interface MessageListProps {
+  chatId: string;
   entries: ActivePathEntry[];
   activePlaceholderId: number | null;
   streamingText: string;
@@ -25,8 +44,8 @@ interface MessageListProps {
   disabled: boolean;
   onSwipe: (messageLocalId: number, direction: "next" | "prev") => void;
   onRegenerate: (messageLocalId: number) => void;
-  onEdit: (messageLocalId: number, content: string) => void;
-  onDelete: (messageLocalId: number) => void;
+  onEdit: (messageLocalId: number, content: string) => boolean;
+  onDelete: (messageLocalId: number) => boolean;
   /** Instant-send overlay: user bubble content, null when absent. */
   pendingUserContent: string | null;
   /** Instant-send overlay: assistant typing-dots bubble. */
@@ -45,16 +64,17 @@ function MessageNavButtons({ ids }: { ids: string[] }) {
   if (ids.length < 2) return null;
 
   return (
-    <div className="absolute bottom-24 right-4 z-10 flex flex-col gap-1.5 md:hidden">
+    <div className="absolute right-4 bottom-[calc(var(--composer-h,5rem)+1rem)] z-10 flex flex-col gap-1.5 md:hidden">
       <Button
         variant="ghost"
         size="icon"
-        className="size-8 rounded-full glass text-white/40 hover:text-white/90 disabled:opacity-20"
+        className="size-10 rounded-full glass text-2 hover:text-1 disabled:opacity-40"
         disabled={!canPrev}
         onClick={() =>
           scrollToMessage(ids[currentIdx - 1], {
             align: "end",
             behavior: "smooth",
+            scrollMargin: composerScrollMargin(),
           })
         }
         aria-label="Previous message"
@@ -64,7 +84,7 @@ function MessageNavButtons({ ids }: { ids: string[] }) {
       <Button
         variant="ghost"
         size="icon"
-        className="size-8 rounded-full glass text-white/40 hover:text-white/90 disabled:opacity-20"
+        className="size-10 rounded-full glass text-2 hover:text-1 disabled:opacity-40"
         disabled={!canNext}
         onClick={() =>
           scrollToMessage(ids[currentIdx + 1], {
@@ -80,7 +100,24 @@ function MessageNavButtons({ ids }: { ids: string[] }) {
   );
 }
 
+/**
+ * Re-arms bottom-following after the user returns to the bottom. Toggling
+ * `autoScroll` alone only updates the ref; the mode stays "free-scrolling".
+ */
+function AutoScrollGate({ scrolledUp }: { scrolledUp: boolean }) {
+  const { scrollToEnd } = useMessageScroller();
+  const wasScrolledUp = useRef(false);
+
+  useEffect(() => {
+    if (wasScrolledUp.current && !scrolledUp) scrollToEnd({ behavior: "auto" });
+    wasScrolledUp.current = scrolledUp;
+  }, [scrolledUp, scrollToEnd]);
+
+  return null;
+}
+
 export function MessageList({
+  chatId,
   entries,
   activePlaceholderId,
   streamingText,
@@ -129,64 +166,91 @@ export function MessageList({
       }
     : null;
 
-  if (entries.length === 0 && pendingUserEntry === null && pendingAssistantEntry === null) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center px-6 pb-16">
-        <div className="glass rounded-2xl px-8 py-10 text-center max-w-xs">
-          <p className="font-heading text-xl text-(--sea-ink) mb-2">{characterName}</p>
-          <p className="text-sm text-(--sea-ink-soft) leading-relaxed">
-            Start the story by sending a message.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const isEmpty =
+    entries.length === 0 && pendingUserEntry === null && pendingAssistantEntry === null;
+  const isStreamingPlaceholder = activePlaceholderId !== null || pendingAssistantEntry !== null;
+
+  // App-level follow gate: with `autoScroll` pinned on, the primitive re-arms
+  // "following bottom" on every scroll event, yanking the viewport back down
+  // mid-stream. Disable it while the reader is away from the bottom.
+  const [userScrolledUp, setUserScrolledUp] = useState(false);
+
+  useEffect(() => {
+    setUserScrolledUp(false);
+  }, [chatId]);
+
+  const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    const el = event.currentTarget;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const next = distanceFromBottom > SCROLL_EDGE_THRESHOLD;
+    setUserScrolledUp((prev) => (prev === next ? prev : next));
+  }, []);
 
   const ids = entries.map((e) => String(e.message.localId));
 
   return (
     <MessageScrollerProvider
-      autoScroll
+      key={chatId}
+      autoScroll={!userScrolledUp}
       defaultScrollPosition="last-anchor"
-      scrollEdgeThreshold={80}
+      scrollEdgeThreshold={SCROLL_EDGE_THRESHOLD}
+      scrollMargin={CHAT_HEADER_HEIGHT}
     >
       <MessageScroller className="size-full">
-        <MessageScrollerViewport className="px-3 md:px-6 pt-20 pb-24">
-          <MessageScrollerContent className="mx-auto max-w-3xl flex flex-col justify-end gap-3 pb-6">
-            {entries.map((entry) => {
-              const isPlaceholder =
-                activePlaceholderId !== null && entry.message.localId === activePlaceholderId;
-              const isUserMessage = entry.message.role === "user";
+        <MessageScrollerViewport
+          className="px-3 pb-[calc(var(--composer-h,5rem)+1rem)] md:px-6"
+          style={{ paddingTop: CHAT_HEADER_HEIGHT + 12 }}
+          aria-busy={isStreamingPlaceholder || undefined}
+          onScroll={handleScroll}
+        >
+          <MessageScrollerContent
+            className="mx-auto max-w-3xl flex-col justify-end gap-3 pb-6"
+            aria-relevant="additions text"
+          >
+            {isEmpty ? (
+              <div className="flex min-h-[50vh] flex-1 items-center justify-center px-4">
+                <EmptyState
+                  icon={MessageCircle}
+                  title={characterName}
+                  description="Start the story by sending a message."
+                />
+              </div>
+            ) : (
+              entries.map((entry) => {
+                const isPlaceholder =
+                  activePlaceholderId !== null && entry.message.localId === activePlaceholderId;
+                const isUserMessage = entry.message.role === "user";
 
-              return (
-                <MessageScrollerItem
-                  key={entry.message.localId}
-                  messageId={String(entry.message.localId)}
-                  scrollAnchor={isUserMessage}
-                >
-                  <ChatMessage
-                    entry={entry}
-                    isStreaming={isPlaceholder}
-                    streamingText={isPlaceholder ? streamingText : ""}
-                    isNewest={entry === entries[entries.length - 1]}
-                    characterName={characterName}
-                    userName={userName}
-                    avatarSrc={
-                      entry.message.role === "assistant"
-                        ? characterAvatarSrc
-                        : entry.message.role === "user"
-                          ? userAvatarSrc
-                          : null
-                    }
-                    disabled={disabled}
-                    onSwipe={onSwipe}
-                    onRegenerate={onRegenerate}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                  />
-                </MessageScrollerItem>
-              );
-            })}
+                return (
+                  <MessageScrollerItem
+                    key={entry.message.localId}
+                    messageId={String(entry.message.localId)}
+                    scrollAnchor={isUserMessage}
+                  >
+                    <ChatMessage
+                      entry={entry}
+                      isStreaming={isPlaceholder}
+                      streamingText={isPlaceholder ? streamingText : ""}
+                      isNewest={entry === entries[entries.length - 1]}
+                      characterName={characterName}
+                      userName={userName}
+                      avatarSrc={
+                        entry.message.role === "assistant"
+                          ? characterAvatarSrc
+                          : entry.message.role === "user"
+                            ? userAvatarSrc
+                            : null
+                      }
+                      disabled={disabled}
+                      onSwipe={onSwipe}
+                      onRegenerate={onRegenerate}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                    />
+                  </MessageScrollerItem>
+                );
+              })
+            )}
             {pendingUserEntry && (
               <MessageScrollerItem messageId="pending-user" scrollAnchor>
                 <ChatMessage
@@ -237,13 +301,14 @@ export function MessageList({
             Assistant is responding.
           </span>
         )}
+        <AutoScrollGate scrolledUp={userScrolledUp} />
         <MessageScrollerButton
           direction="end"
           variant="secondary"
           size="icon-sm"
-          className="bottom-24 z-10"
+          className="z-10"
         />
-        <MessageOverviewRail entries={entries} />
+        <MessageOverviewRail entries={entries} characterName={characterName} userName={userName} />
         <MessageNavButtons ids={ids} />
       </MessageScroller>
     </MessageScrollerProvider>

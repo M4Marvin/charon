@@ -27,23 +27,54 @@ function prefersReducedMotion(): boolean {
   );
 }
 
+/** Strip inline markdown so the hover preview reads as plain prose. */
+function toPlainText(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, " ")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/^[\s|:-]+$/gm, " ")
+    .replace(/\|/g, " ")
+    .replace(/(?:^|\s)-{3,}(?=\s|$)/g, " ")
+    .replace(/\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~/g, (_m, a, b, c) => a ?? b ?? c)
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/(^|\s)_(.+?)_(?=\s|$)/g, "$1$2")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+interface MessageOverviewRailProps {
+  entries: ActivePathEntry[];
+  characterName: string;
+  userName: string;
+}
+
 /**
  * Right-edge message overview: one decorative tick per active-path message.
  *
  * The stack keeps a fixed centre-to-centre gap, so spacing is independent of
  * the message count. The natural span is `(count - 1) * TICK_GAP`, which is
  * known at render time, so the track height is expressed as
- * `min(100%, (count - 1) * TICK_GAP)` — `100%` is the cap box
- * ({@link MAX_HEIGHT_FRACTION} of the message area). Ticks are spread evenly
- * across whatever the track resolves to: while the natural span fits the cap
- * that yields exactly `TICK_GAP`; once it exceeds the cap, `100%` wins and the
- * gap compresses proportionally. All of that is pure CSS — no measurement.
+ * `min(100%, (count - 1) * TICK_GAP)` with a 24px `min-height` — `100%` is
+ * the cap box ({@link MAX_HEIGHT_FRACTION} of the message area), and the floor
+ * keeps short chats tappable. Ticks are spread evenly across whatever the
+ * track resolves to: while the natural span fits the cap that yields exactly
+ * `TICK_GAP`; once it exceeds the cap, `100%` wins and the gap compresses
+ * proportionally. All of that is pure CSS — no measurement.
  *
  * The track itself is the control (a vertical slider) — click or arrow-key to
  * jump to the nearest message.
  */
-export function MessageOverviewRail({ entries }: { entries: ActivePathEntry[] }) {
-  const ticks = useMemo(() => toTicks(entries), [entries]);
+export function MessageOverviewRail({
+  entries,
+  characterName,
+  userName,
+}: MessageOverviewRailProps) {
+  const ticks = useMemo(
+    () => toTicks(entries).map((tick) => ({ ...tick, preview: toPlainText(tick.preview) })),
+    [entries],
+  );
   const count = ticks.length;
   const { scrollToMessage } = useMessageScroller();
   const { currentAnchorId, visibleMessageIds } = useMessageScrollerVisibility();
@@ -138,7 +169,7 @@ export function MessageOverviewRail({ entries }: { entries: ActivePathEntry[] })
 
   return (
     <div
-      className="pointer-events-none absolute top-1/2 right-4 z-20 hidden w-6 -translate-y-1/2 items-center md:flex"
+      className="pointer-events-none absolute top-1/2 right-4 z-10 hidden w-6 -translate-y-1/2 items-center lg:flex"
       style={{ height: `${MAX_HEIGHT_FRACTION * 100}%` }}
     >
       <div
@@ -152,7 +183,7 @@ export function MessageOverviewRail({ entries }: { entries: ActivePathEntry[] })
         aria-valuenow={activeIndex + 1}
         aria-valuetext={`Message ${activeIndex + 1} of ${count}, ${ticks[activeIndex]?.role ?? "message"}`}
         className="focus-ring pointer-events-auto relative w-full cursor-pointer outline-none"
-        style={{ height: `min(100%, ${naturalSpan}px)` }}
+        style={{ height: `min(100%, ${naturalSpan}px)`, minHeight: 24 }}
         onPointerMove={handlePointerMove}
         onPointerLeave={() => setHovered(null)}
         onBlur={() => setHovered(null)}
@@ -165,13 +196,13 @@ export function MessageOverviewRail({ entries }: { entries: ActivePathEntry[] })
             aria-hidden="true"
             style={{ top: `${(index / (count - 1)) * 100}%` }}
             className={cn(
-              "absolute right-0 h-px -translate-y-1/2 rounded-full transition-colors duration-150",
+              "absolute right-0 h-0.5 -translate-y-1/2 rounded-full transition-colors duration-150",
               ROLE_WIDTH[tick.role],
               index === activeIndex
                 ? "bg-(--lagoon)"
                 : index === hovered
-                  ? "bg-(--text-2)"
-                  : "bg-(--text-3)/40",
+                  ? "bg-(--text-1)"
+                  : "bg-(--text-3)",
             )}
           />
         ))}
@@ -184,8 +215,8 @@ export function MessageOverviewRail({ entries }: { entries: ActivePathEntry[] })
               nearTop ? "top-0" : nearBottom ? "bottom-0" : "top-1/2 -translate-y-1/2",
             )}
           >
-            <div className="text-3 mb-1 flex items-center justify-between gap-2 text-[10px] tracking-widest uppercase">
-              <span>{previewTick.role === "user" ? "You" : "Assistant"}</span>
+            <div className="text-2 mb-1 flex items-center justify-between gap-2 text-xs tracking-widest uppercase">
+              <span>{previewTick.role === "user" ? userName : characterName}</span>
               <span className="tabular-nums">
                 {highlightIndex + 1}/{count}
               </span>

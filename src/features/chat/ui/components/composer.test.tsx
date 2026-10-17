@@ -12,6 +12,9 @@ const mockOnImpersonate = vi.fn();
 const mockOnImagePrompt = vi.fn();
 const mockSetInputDraft = vi.fn();
 
+const { mockToastInfo } = vi.hoisted(() => ({ mockToastInfo: vi.fn() }));
+vi.mock("sonner", () => ({ toast: { info: mockToastInfo } }));
+
 const mockChatUiState = {
   inputDrafts: {},
   setInputDraft: mockSetInputDraft,
@@ -40,7 +43,11 @@ const baseProps = {
   characterName: "Test Character",
 };
 
-describe("Composer image prompt button", () => {
+function getTextarea() {
+  return screen.getByLabelText("Message") as HTMLTextAreaElement;
+}
+
+describe("Composer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // jsdom has no matchMedia; matches: true skips the coarse-pointer auto-focus effect.
@@ -80,5 +87,79 @@ describe("Composer image prompt button", () => {
 
     expect(mockOnImpersonate).toHaveBeenCalledTimes(1);
     expect(mockOnSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends on plain Enter but not during IME composition", () => {
+    render(<Composer {...baseProps} />);
+
+    fireEvent.keyDown(getTextarea(), { key: "Enter" });
+    expect(mockOnSend).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(getTextarea(), { key: "Enter", isComposing: true });
+    fireEvent.keyDown(getTextarea(), { key: "Enter", keyCode: 229 });
+    expect(mockOnSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores repeated Enter and modifier combos", () => {
+    render(<Composer {...baseProps} />);
+
+    fireEvent.keyDown(getTextarea(), { key: "Enter", repeat: true });
+    fireEvent.keyDown(getTextarea(), { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(getTextarea(), { key: "Enter", metaKey: true });
+    fireEvent.keyDown(getTextarea(), { key: "Enter", altKey: true });
+
+    expect(mockOnSend).not.toHaveBeenCalled();
+  });
+
+  it("stops generation on Enter while streaming and says so in the placeholder", () => {
+    render(<Composer {...baseProps} isStreaming />);
+
+    expect(getTextarea().placeholder).toContain("stop");
+
+    fireEvent.keyDown(getTextarea(), { key: "Enter", isComposing: true });
+    fireEvent.keyDown(getTextarea(), { key: "Enter", keyCode: 229 });
+    expect(mockOnStop).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(getTextarea(), { key: "Enter" });
+
+    expect(mockOnStop).toHaveBeenCalledTimes(1);
+    expect(mockOnSend).not.toHaveBeenCalled();
+  });
+
+  it("shows a disabled pending stop control while finalizing", () => {
+    const { container } = render(<Composer {...baseProps} isStreaming isFinalizing />);
+
+    const stop = screen.getByLabelText("Stopping generation") as HTMLButtonElement;
+    expect(stop.disabled).toBe(true);
+    expect(container.querySelector('[data-slot="spinner"]')).not.toBeNull();
+    expect(getTextarea().placeholder).toContain("Finishing");
+  });
+
+  it("keeps the draft editable when sending is blocked", () => {
+    render(<Composer {...baseProps} disabled />);
+
+    fireEvent.change(getTextarea(), { target: { value: "draft" } });
+
+    expect(getTextarea().disabled).toBe(false);
+    expect(mockSetInputDraft).toHaveBeenCalledWith("c1", "draft");
+    expect((screen.getByLabelText("Send message") as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.keyDown(getTextarea(), { key: "Enter" });
+    expect(mockOnSend).not.toHaveBeenCalled();
+  });
+
+  it("warns instead of silently swallowing dropped images", () => {
+    render(<Composer {...baseProps} />);
+
+    fireEvent.drop(getTextarea(), {
+      dataTransfer: {
+        types: ["Files"],
+        files: [new File(["x"], "image.png", { type: "image/png" })],
+      },
+    });
+
+    expect(mockToastInfo).toHaveBeenCalledWith(
+      "Images aren't supported in the composer — use the scene panel",
+    );
   });
 });

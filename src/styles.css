@@ -52,27 +52,96 @@
 
 /* ── Message text (parity with SillyTavern .mes_text) ── */
 
+.rt-mes-text {
+  overflow-wrap: anywhere;
+}
+
 .rt-mes-text p {
   margin-top: 0;
-  margin-bottom: 10px;
+  margin-bottom: 0.75em;
 }
 
 .rt-mes-text p:last-child {
   margin-bottom: 0;
 }
 
+.rt-mes-text > :first-child {
+  margin-top: 0;
+}
+
 .rt-mes-text li tt {
   display: inline-block;
 }
 
-.rt-mes-text ol,
-.rt-mes-text ul {
-  margin-top: 5px;
-  margin-bottom: 5px;
+.rt-mes-text ul,
+.rt-mes-text ol {
+  margin-block: 0.5em;
+  padding-inline-start: 1.5em;
 }
 
-.rt-mes-text br {
-  content: " ";
+.rt-mes-text ul {
+  list-style: disc;
+}
+
+.rt-mes-text ol {
+  list-style: decimal;
+}
+
+.rt-mes-text ul ul {
+  list-style: circle;
+}
+
+.rt-mes-text ul ul ul {
+  list-style: square;
+}
+
+.rt-mes-text li > ul,
+.rt-mes-text li > ol {
+  margin-block: 0.25em;
+}
+
+.rt-mes-text li + li {
+  margin-top: 0.15em;
+}
+
+.rt-mes-text h1,
+.rt-mes-text h2,
+.rt-mes-text h3,
+.rt-mes-text h4,
+.rt-mes-text h5,
+.rt-mes-text h6 {
+  margin: 1em 0 0.5em;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.rt-mes-text h1 {
+  font-size: 1.25em;
+}
+
+.rt-mes-text h2 {
+  font-size: 1.125em;
+}
+
+.rt-mes-text h3 {
+  font-size: 1em;
+}
+
+.rt-mes-text h4,
+.rt-mes-text h5,
+.rt-mes-text h6 {
+  font-size: 1em;
+  font-weight: 600;
+}
+
+.rt-mes-text a {
+  color: var(--brand);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.rt-mes-text a:hover {
+  color: var(--brand-strong);
 }
 
 .rt-mes-text i,
@@ -113,21 +182,35 @@
   border-left: 3px solid var(--dialogue);
   padding-left: 10px;
   background-color: oklch(0 0 0 / 0.3);
-  margin: 0;
+  margin-block: 0.75em;
 }
 
-.rt-mes-text strong em,
 .rt-mes-text strong,
-.rt-mes-text h2,
-.rt-mes-text h1 {
+.rt-mes-text strong em {
   font-weight: bold;
+}
+
+.rt-mes-text code {
+  padding: 0.15em 0.35em;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-raised);
+  font-size: 0.9em;
+}
+
+.rt-mes-text pre {
+  margin-block: 0.75em;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-raised);
+  overflow-x: auto;
 }
 
 .rt-mes-text pre code {
   position: relative;
   display: block;
-  overflow-x: auto;
-  padding: 1em;
+  padding: 0.85em 1em;
+  border-radius: 0;
+  background-color: transparent;
 }
 
 .rt-mes-text img:not(.mes_img) {
@@ -136,16 +219,53 @@
 }
 
 .rt-mes-text table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
   border-spacing: 0;
   border-collapse: collapse;
-  margin-bottom: 10px;
+  margin-bottom: 0.75em;
 }
 
 .rt-mes-text td,
 .rt-mes-text th {
-  border: 1px solid;
+  border: 1px solid var(--border-subtle);
   border-collapse: collapse;
-  padding: 0.25em;
+  padding: 0.35em 0.6em;
+}
+
+.rt-mes-text th {
+  font-weight: 600;
+  background-color: var(--bg-raised);
+}
+
+/* Streaming caret, rendered inside the last block so it sits at the text edge. */
+@keyframes rt-caret-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.rt-mes-text-streaming > :last-child::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1.15em;
+  margin-inline-start: 0.15em;
+  vertical-align: text-bottom;
+  background-color: var(--brand);
+  animation: rt-caret-blink 1s step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rt-mes-text-streaming > :last-child::after {
+    animation: none;
+  }
 }
 
 /* ── Code copy button ── */
@@ -163,7 +283,7 @@
   background: var(--muted);
   color: var(--muted-foreground);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s;
@@ -172,6 +292,12 @@
 .code-copy-wrapper:hover .code-copy-button,
 .code-copy-button:focus-visible {
   opacity: 1;
+}
+
+@media (hover: none) {
+  .code-copy-button {
+    opacity: 1;
+  }
 }
 
 /* ── Custom variants ── */
@@ -801,13 +927,13 @@
 @utility glass {
   backdrop-filter: blur(24px);
   background-color: oklch(0.145 0 0 / 0.6);
-  border: 1px solid oklch(1 0 0 / 0.1);
+  border: 1px solid var(--border-subtle);
 }
 
 @utility glass-strong {
   backdrop-filter: blur(48px);
   background-color: oklch(0.145 0 0 / 0.8);
-  border: 1px solid oklch(1 0 0 / 0.1);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
 
 @utility vn-vignette {

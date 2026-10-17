@@ -30,6 +30,7 @@ function entry(
 }
 
 const baseProps = {
+  chatId: "chat-1",
   activePlaceholderId: null as number | null,
   streamingText: "",
   characterName: "Test Character",
@@ -39,8 +40,8 @@ const baseProps = {
   disabled: false,
   onSwipe: () => {},
   onRegenerate: () => {},
-  onEdit: () => {},
-  onDelete: () => {},
+  onEdit: () => true,
+  onDelete: () => true,
   pendingUserContent: null as string | null,
   showPendingAssistant: false,
 };
@@ -113,6 +114,40 @@ describe("MessageList pending overlay", () => {
     expect(screen.queryByText("hello")).not.toBeNull();
     // Typing dots only come from the pending/streaming placeholder.
     expect(container.querySelector(".animate-bounce")).toBeNull();
+  });
+});
+
+describe("empty state", () => {
+  it("keeps the scroller and message log mounted", () => {
+    const { container } = render(<MessageList {...baseProps} entries={[]} />);
+
+    expect(screen.getByText("Start the story by sending a message.")).not.toBeNull();
+    expect(screen.getByRole("region", { name: "Messages" })).not.toBeNull();
+    expect(screen.getByRole("log")).not.toBeNull();
+    expect(container.querySelector('[data-slot="message-scroller"]')).not.toBeNull();
+  });
+});
+
+describe("streaming accessibility", () => {
+  it("marks the message region busy and announces growing text", () => {
+    render(
+      <MessageList
+        {...baseProps}
+        entries={[entry(1, "partial reply")]}
+        activePlaceholderId={1}
+        streamingText="partial reply"
+      />,
+    );
+
+    const region = screen.getByRole("region", { name: "Messages" });
+    expect(region.getAttribute("aria-busy")).toBe("true");
+    expect(screen.getByRole("log").getAttribute("aria-relevant")).toBe("additions text");
+  });
+
+  it("is not busy without a placeholder", () => {
+    render(<MessageList {...baseProps} entries={[entry(1, "a finished reply")]} />);
+
+    expect(screen.getByRole("region", { name: "Messages" }).getAttribute("aria-busy")).toBeNull();
   });
 });
 

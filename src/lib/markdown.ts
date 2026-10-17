@@ -318,42 +318,58 @@ function wrapQuotes(text: string): string {
   return text;
 }
 
-function fixMarkdown(text: string, forDisplay: boolean): string {
-  const format = /([*_]{1,2})([\s\S]*?)\1/gm;
+function fixMarkdown(text: string): string {
+  const out: string[] = [];
+  let openFence: string | null = null;
+
+  for (const line of text.split("\n")) {
+    const fence = FENCE_LINE_RE.exec(line);
+    if (openFence !== null) {
+      out.push(line);
+      if (fence && fence[1][0] === openFence[0] && fence[1].length >= openFence.length) {
+        openFence = null;
+      }
+      continue;
+    }
+    if (fence) {
+      openFence = fence[1];
+      out.push(line);
+      continue;
+    }
+    out.push(normalizeEmphasisSpacing(line));
+  }
+
+  return out.join("\n");
+}
+
+/**
+ * Drop whitespace that sits directly inside emphasis runs (`** bold **`).
+ * Matching is line-scoped and runs against the masked line, so list bullets,
+ * fenced blocks, backslash escapes and inline code are left untouched.
+ */
+function normalizeEmphasisSpacing(line: string): string {
+  const masked = maskInlineCode(line);
+  const format = /([*_]{1,2})([\s\S]*?)\1/g;
   const matches: RegExpExecArray[] = [];
   let match: RegExpExecArray | null;
 
-  while ((match = format.exec(text)) !== null) {
+  while ((match = format.exec(masked)) !== null) {
     matches.push(match);
   }
 
-  let newText = text;
+  let result = line;
   for (let i = matches.length - 1; i >= 0; i--) {
-    const matchText = matches[i][0];
-    const replacementText = matchText.replace(
-      /(\*|_)([\t \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]+)|([\t \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]+)(\*|_)/g,
-      "$1$4",
-    );
-    newText =
-      newText.slice(0, matches[i].index) +
-      replacementText +
-      newText.slice(matches[i].index + matchText.length);
+    const { index, 0: matched } = matches[i];
+    const replacement = line
+      .slice(index, index + matched.length)
+      .replace(
+        /(\*|_)([\t \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]+)|([\t \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]+)(\*|_)/g,
+        "$1$4",
+      );
+    result = result.slice(0, index) + replacement + result.slice(index + matched.length);
   }
 
-  if (!forDisplay) return newText;
-
-  const splitText = newText.split("\n");
-  for (let index = 0; index < splitText.length; index++) {
-    const line = splitText[index];
-    const charsToCheck = ["*", '"'];
-    for (const char of charsToCheck) {
-      if (line.includes(char) && isOdd(countOccurrences(line, char))) {
-        splitText[index] = line.trimEnd() + char;
-      }
-    }
-  }
-
-  return splitText.join("\n");
+  return result;
 }
 
 function addCopyToCodeBlocks(html: string): string {
@@ -390,7 +406,7 @@ export function renderMarkdown(content: string, opts?: RenderMarkdownOpts): stri
   let text = content;
 
   if (opts?.autoFixMarkdown) {
-    text = fixMarkdown(text, true);
+    text = fixMarkdown(text);
   }
 
   if (opts?.highlightDialogue) {
@@ -419,6 +435,8 @@ export function renderMarkdown(content: string, opts?: RenderMarkdownOpts): stri
 
   const purgeCfg: DOMPurifyConfig = {
     ADD_ATTR: ["color"],
+    FORBID_ATTR: ["style"],
+    FORBID_TAGS: ["form", "input", "button", "textarea", "select", "option"],
     MESSAGE_SANITIZE: true,
   } as DOMPurifyConfig;
 

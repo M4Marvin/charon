@@ -48,6 +48,8 @@ const entries = [
   entry(3, "assistant", "reply"),
 ];
 
+const baseProps = { characterName: "Aria", userName: "Marv" };
+
 function stubRect(el: Element) {
   el.getBoundingClientRect = () =>
     ({ top: 100, height: 200, left: 0, right: 24, width: 24, bottom: 300 }) as DOMRect;
@@ -55,13 +57,15 @@ function stubRect(el: Element) {
 
 describe("MessageOverviewRail", () => {
   it("renders nothing for a single message", () => {
-    const { container } = render(<MessageOverviewRail entries={[entry(1, "assistant", "hi")]} />);
+    const { container } = render(
+      <MessageOverviewRail entries={[entry(1, "assistant", "hi")]} {...baseProps} />,
+    );
     expect(container.querySelector('[role="slider"]')).toBeNull();
   });
 
   it("exposes the message count and the active message on the slider", () => {
     mocks.visibility.currentAnchorId = "2";
-    render(<MessageOverviewRail entries={entries} />);
+    render(<MessageOverviewRail entries={entries} {...baseProps} />);
     const slider = screen.getByRole("slider");
     expect(slider.getAttribute("aria-valuemax")).toBe("3");
     expect(slider.getAttribute("aria-valuenow")).toBe("2");
@@ -70,7 +74,7 @@ describe("MessageOverviewRail", () => {
   });
 
   it("jumps to the pointer position on click", () => {
-    render(<MessageOverviewRail entries={entries} />);
+    render(<MessageOverviewRail entries={entries} {...baseProps} />);
     const slider = screen.getByRole("slider");
     stubRect(slider);
 
@@ -84,7 +88,7 @@ describe("MessageOverviewRail", () => {
 
   it("moves and jumps with the keyboard from the active message", () => {
     mocks.visibility.currentAnchorId = "1";
-    render(<MessageOverviewRail entries={entries} />);
+    render(<MessageOverviewRail entries={entries} {...baseProps} />);
     const slider = screen.getByRole("slider");
 
     fireEvent.keyDown(slider, { key: "ArrowDown" });
@@ -107,21 +111,55 @@ describe("MessageOverviewRail", () => {
   });
 
   it("shows a message preview on mouse hover", () => {
-    render(<MessageOverviewRail entries={entries} />);
+    render(<MessageOverviewRail entries={entries} {...baseProps} />);
     const slider = screen.getByRole("slider");
     stubRect(slider);
 
     fireEvent.pointerMove(slider, { clientY: 200, pointerType: "mouse" });
 
     expect(screen.getByText("hello there")).not.toBeNull();
-    expect(screen.getByText("You")).not.toBeNull();
+    expect(screen.getByText("Marv")).not.toBeNull();
     expect(screen.getByText("2/3")).not.toBeNull();
     // Hover is visual only: the announced value stays on the current message.
     expect(slider.getAttribute("aria-valuenow")).toBe("1");
   });
 
+  it("labels the preview with the character and user names", () => {
+    render(<MessageOverviewRail entries={entries} {...baseProps} />);
+    const slider = screen.getByRole("slider");
+    stubRect(slider);
+
+    fireEvent.pointerMove(slider, { clientY: 300, pointerType: "mouse" });
+
+    expect(screen.getByText("Aria")).not.toBeNull();
+  });
+
+  it("renders previews as plain text instead of raw markdown", () => {
+    const markdownEntries = [
+      entry(1, "assistant", "**bold** `code` [link](https://example.com) | a | b |\n| --- | --- |"),
+      entry(2, "user", "hello"),
+    ];
+    render(<MessageOverviewRail entries={markdownEntries} {...baseProps} />);
+    const slider = screen.getByRole("slider");
+    stubRect(slider);
+
+    fireEvent.pointerMove(slider, { clientY: 100, pointerType: "mouse" });
+
+    const preview = screen.getByText(/bold code link/).textContent ?? "";
+    expect(preview).not.toContain("**");
+    expect(preview).not.toContain("`");
+    expect(preview).not.toContain("|");
+    expect(preview).not.toContain("---");
+  });
+
+  it("keeps the track at least 24px tall for short chats", () => {
+    render(<MessageOverviewRail entries={entries} {...baseProps} />);
+    const slider = screen.getByRole("slider");
+    expect(slider.style.minHeight).toBe("24px");
+  });
+
   it("ignores touch pointer movement so taps still scroll", () => {
-    render(<MessageOverviewRail entries={entries} />);
+    render(<MessageOverviewRail entries={entries} {...baseProps} />);
     const slider = screen.getByRole("slider");
     stubRect(slider);
 
@@ -134,7 +172,7 @@ describe("MessageOverviewRail", () => {
     window.matchMedia = vi
       .fn()
       .mockReturnValue({ matches: true }) as unknown as typeof window.matchMedia;
-    render(<MessageOverviewRail entries={entries} />);
+    render(<MessageOverviewRail entries={entries} {...baseProps} />);
     const slider = screen.getByRole("slider");
     stubRect(slider);
 

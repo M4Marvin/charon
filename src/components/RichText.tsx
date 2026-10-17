@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import morphdom from "morphdom";
 import { renderMarkdown } from "@/lib/markdown";
 import { useRichTextSettings } from "@/lib/richtext-settings";
+
+// Layout effects run before paint on the client; fall back to useEffect during
+// SSR so React does not warn about useLayoutEffect on the server.
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 const BLOCK_TAGS = new Set([
   "p",
@@ -23,9 +27,9 @@ const BLOCK_TAGS = new Set([
   "figcaption",
 ]);
 
-export function RichText({ content }: { content: string }) {
+export function RichText({ content, className }: { content: string; className?: string }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     setMounted(true);
   }, []);
 
@@ -55,7 +59,7 @@ export function RichText({ content }: { content: string }) {
     }
   }, []);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!html || !ref.current) return;
     const toDiv = document.createElement("div");
     toDiv.innerHTML = html;
@@ -67,6 +71,7 @@ export function RichText({ content }: { content: string }) {
   }, [html, onNodeAdded]);
 
   useEffect(() => {
+    if (!mounted) return;
     const el = ref.current;
     if (!el) return;
     const handler = (e: MouseEvent) => {
@@ -82,9 +87,24 @@ export function RichText({ content }: { content: string }) {
     };
     el.addEventListener("click", handler);
     return () => el.removeEventListener("click", handler);
-  }, []);
+  }, [mounted]);
 
-  if (!mounted || !html) return null;
+  if (!mounted || !html) {
+    if (!content) return null;
+    // Plain-text fallback for SSR/hydration; replaced with rendered HTML in a
+    // layout effect before the first client paint.
+    return (
+      <div
+        className={[scopeId, "rt-mes-text", "whitespace-pre-wrap", className]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {content}
+      </div>
+    );
+  }
 
-  return <div ref={ref} className={`${scopeId} rt-mes-text`} />;
+  return (
+    <div ref={ref} className={[scopeId, "rt-mes-text", className].filter(Boolean).join(" ")} />
+  );
 }

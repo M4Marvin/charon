@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface ImageLightboxProps {
   src: string | null;
-  alt?: string;
+  alt: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -16,10 +16,11 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const imageFailed = src !== null && failedSrc === src;
 
-  // A reopen (or a different image) must start unzoomed. useLayoutEffect so
-  // the reset lands before paint — an effect would flash the zoomed image once.
+  // A reopen (or a different image) must start unzoomed and retry a previous
+  // load failure. useLayoutEffect so the reset lands before paint.
   useLayoutEffect(() => {
     setZoomed(false);
+    setFailedSrc(null);
   }, [open, src]);
 
   const toggleZoom = useCallback(() => {
@@ -28,37 +29,36 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
 
   return (
     <Dialog open={open && !!src} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-none max-h-none size-full border-0 bg-transparent p-0 shadow-none translate-x-0 translate-y-0 left-0 top-0">
+      <DialogContent
+        showCloseButton={false}
+        className="inset-0 top-0 left-0 grid h-dvh w-screen max-h-none max-w-none translate-x-0 translate-y-0 place-items-center gap-0 overflow-hidden rounded-none border-0 bg-transparent p-0 shadow-none ring-0 sm:max-w-none motion-reduce:animate-none"
+      >
         <DialogTitle className="sr-only">Image viewer</DialogTitle>
         {src && !imageFailed && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md"
-            role="button"
-            tabIndex={0}
-            aria-label="Close image viewer"
-            onClick={() => onOpenChange(false)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onOpenChange(false);
-              }
-            }}
+            className="absolute inset-0 overflow-auto overscroll-contain bg-(--bg-base)/90 backdrop-blur-md"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
           >
-            <OptimizedImage
-              key={src}
-              src={src}
-              alt={alt ?? ""}
-              preset="lightbox"
-              intrinsicSize={false}
-              priority={open}
-              className={cn(
-                "select-none transition-transform duration-200",
-                zoomed
-                  ? "max-w-none max-h-none scale-150"
-                  : "max-h-[70vh] max-w-[min(90vw,40rem)] object-contain",
-              )}
-              onError={() => setFailedSrc(src)}
-            />
+            <div className="flex min-h-full w-max min-w-full p-4">
+              <OptimizedImage
+                key={src}
+                src={src}
+                alt={alt}
+                preset="lightbox"
+                sizes="100vw"
+                intrinsicSize={false}
+                priority={open}
+                draggable={false}
+                className={cn(
+                  "m-auto block select-none",
+                  zoomed
+                    ? "max-h-none max-w-none"
+                    : "max-h-[calc(100dvh_-_2rem)] max-w-[calc(100vw_-_2rem)] object-contain",
+                )}
+                onError={() => setFailedSrc(src)}
+              />
+            </div>
           </div>
         )}
 
@@ -69,25 +69,26 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
         )}
 
         {src && (
-          <>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="absolute top-4 right-4 z-50 size-10 rounded-full glass flex items-center justify-center text-white/70 hover:text-white"
-              aria-label="Close lightbox"
-            >
-              <X className="size-5" />
-            </button>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="absolute top-4 right-4 z-50 size-10 rounded-full glass flex items-center justify-center text-2 hover:text-1"
+            aria-label="Close lightbox"
+          >
+            <X className="size-5" />
+          </button>
+        )}
 
-            <button
-              type="button"
-              onClick={toggleZoom}
-              className="absolute bottom-4 right-4 z-50 size-10 rounded-full glass flex items-center justify-center text-white/70 hover:text-white"
-              aria-label={zoomed ? "Fit to screen" : "Zoom in"}
-            >
-              {zoomed ? <ZoomOut className="size-5" /> : <ZoomIn className="size-5" />}
-            </button>
-          </>
+        {src && !imageFailed && (
+          <button
+            type="button"
+            onClick={toggleZoom}
+            aria-pressed={zoomed}
+            className="absolute bottom-4 right-4 z-50 size-10 rounded-full glass flex items-center justify-center text-2 hover:text-1"
+            aria-label={zoomed ? "Fit to screen" : "Zoom in"}
+          >
+            {zoomed ? <ZoomOut className="size-5" /> : <ZoomIn className="size-5" />}
+          </button>
         )}
       </DialogContent>
     </Dialog>

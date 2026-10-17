@@ -18,11 +18,21 @@ interface RenameChatDialogProps {
   onRename: (id: string, title: string) => void;
 }
 
-export function RenameChatDialog({ chat, loading, onClose, onRename }: RenameChatDialogProps) {
-  const [title, setTitle] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
+export function RenameChatDialog(props: RenameChatDialogProps) {
+  const { chat } = props;
   if (!chat) return null;
+  // Key by chat id so the form state is seeded from the title of the chat
+  // currently being renamed, not from a previous one.
+  return <RenameChatForm key={chat.id} {...props} chat={chat} />;
+}
+
+type RenameChatFormProps = RenameChatDialogProps & {
+  chat: { id: string; title: string };
+};
+
+function RenameChatForm({ chat, loading, onClose, onRename }: RenameChatFormProps) {
+  const [title, setTitle] = useState(chat.title);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -63,18 +73,24 @@ export function RenameChatDialog({ chat, loading, onClose, onRename }: RenameCha
             <Label htmlFor="rename-title">Title</Label>
             <Input
               id="rename-title"
-              defaultValue={chat.title}
+              value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
                 setError(null);
               }}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? "rename-title-error" : undefined}
               disabled={loading}
               autoFocus
               required
               minLength={1}
             />
           </div>
-          {error ? <p className="text-destructive text-sm">{error}</p> : null}
+          {error ? (
+            <p id="rename-title-error" role="alert" className="text-danger text-sm">
+              {error}
+            </p>
+          ) : null}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
               Cancel

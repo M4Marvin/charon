@@ -34,8 +34,8 @@ interface ChatMessageProps {
   synthetic?: boolean;
   onSwipe: (messageLocalId: number, direction: "next" | "prev") => void;
   onRegenerate: (messageLocalId: number) => void;
-  onEdit: (messageLocalId: number, content: string) => void;
-  onDelete: (messageLocalId: number) => void;
+  onEdit: (messageLocalId: number, content: string) => boolean;
+  onDelete: (messageLocalId: number) => boolean;
 }
 
 export const ChatMessage = memo(function ChatMessage({
@@ -79,7 +79,7 @@ export const ChatMessage = memo(function ChatMessage({
   }, [message.content, editing]);
 
   const handleSaveEdit = useCallback(() => {
-    onEdit(message.localId, editContent);
+    if (!onEdit(message.localId, editContent)) return;
     setEditing(false);
     useChatUiStore.getState().focusComposer();
   }, [message.localId, editContent, onEdit]);
@@ -114,13 +114,13 @@ export const ChatMessage = memo(function ChatMessage({
     return (
       <div
         className={cn(
-          "flex items-center gap-3 text-[11px] uppercase tracking-widest text-muted-foreground/50 my-2",
+          "my-2 flex items-center gap-3 text-xs uppercase tracking-widest text-2",
           isNewest && "motion-safe:animate-msg-in",
         )}
       >
-        <div className="h-px flex-1 bg-white/5" />
+        <div className="h-px flex-1 bg-raised" />
         <span className="shrink-0">{displayContent}</span>
-        <div className="h-px flex-1 bg-white/5" />
+        <div className="h-px flex-1 bg-raised" />
       </div>
     );
   }
@@ -130,7 +130,7 @@ export const ChatMessage = memo(function ChatMessage({
       <div
         className={cn(
           "group relative rounded-2xl px-4 py-3.5 md:px-5 md:py-4",
-          isAssistant ? "glass-strong border-l-2 border-(--lagoon)/40" : "glass",
+          isAssistant ? "glass-strong border-l-2 border-brand/40" : "glass",
           isNewest && "motion-safe:animate-msg-in",
         )}
         inert={synthetic || undefined}
@@ -141,9 +141,7 @@ export const ChatMessage = memo(function ChatMessage({
             <AvatarFallback
               className={cn(
                 "rounded-full text-sm",
-                isAssistant
-                  ? "bg-(--lagoon)/20 text-(--lagoon)"
-                  : "bg-white/10 text-(--sea-ink-soft)",
+                isAssistant ? "bg-brand/20 text-brand" : "bg-raised text-2",
               )}
             >
               {name.charAt(0).toUpperCase()}
@@ -154,8 +152,8 @@ export const ChatMessage = memo(function ChatMessage({
             <div className="mb-2 flex items-center gap-2">
               <span
                 className={cn(
-                  "text-sm font-semibold tracking-wide truncate",
-                  isAssistant ? "text-(--lagoon)" : "text-(--sea-ink-soft)",
+                  "min-w-0 flex-1 truncate text-sm font-semibold tracking-wide",
+                  isAssistant ? "text-brand" : "text-2",
                 )}
               >
                 {name}
@@ -163,14 +161,16 @@ export const ChatMessage = memo(function ChatMessage({
               {!synthetic && (
                 <span
                   className={cn(
-                    "ml-auto flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity shrink-0",
+                    "ml-auto flex shrink-0 items-center gap-0.5 transition-opacity",
+                    "opacity-40 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100",
+                    "motion-reduce:transition-none",
                     disabled && "pointer-events-none",
                   )}
                 >
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-6 text-white/40 hover:text-white"
+                    className="size-9 text-2 hover:text-1"
                     onClick={() => {
                       void navigator.clipboard.writeText(displayContent).then(() => {
                         setCopied(true);
@@ -184,7 +184,7 @@ export const ChatMessage = memo(function ChatMessage({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-6 text-white/40 hover:text-white"
+                    className="size-9 text-2 hover:text-1"
                     onClick={() => {
                       setEditContent(message.content);
                       setEditing(true);
@@ -196,7 +196,7 @@ export const ChatMessage = memo(function ChatMessage({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-6 text-white/40 hover:text-red-400"
+                    className="size-9 text-2 hover:text-danger"
                     onClick={() => setDeleteOpen(true)}
                     aria-label="Delete message"
                   >
@@ -214,7 +214,7 @@ export const ChatMessage = memo(function ChatMessage({
                   onChange={(e) => setEditContent(e.target.value)}
                   onKeyDown={handleKeyDown}
                   aria-label="Edit message"
-                  className="min-h-[60px] resize-none rounded-lg border-0 bg-white/5 p-3 text-sm leading-6 text-foreground ring-1 ring-white/10 focus-visible:ring-1 focus-visible:ring-(--lagoon)/60"
+                  className="min-h-[60px] resize-none rounded-lg border-0 bg-raised p-3 text-sm leading-6 text-foreground ring-1 ring-(--border-subtle) focus-visible:ring-1 focus-visible:ring-brand/60"
                   style={{ maxHeight: TEXTAREA_MAX_HEIGHT }}
                 />
                 <div className="mt-2 flex items-center gap-2">
@@ -230,7 +230,7 @@ export const ChatMessage = memo(function ChatMessage({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 text-xs text-muted-foreground"
+                    className="h-7 text-xs text-2"
                     onClick={() => {
                       setEditing(false);
                       useChatUiStore.getState().focusComposer();
@@ -238,7 +238,7 @@ export const ChatMessage = memo(function ChatMessage({
                   >
                     Cancel
                   </Button>
-                  <span className="ml-auto text-[10px] text-muted-foreground">⌘+Enter</span>
+                  <span className="ml-auto text-xs text-3">Ctrl/⌘+Enter</span>
                 </div>
               </div>
             ) : isStreaming && !streamingText ? (
@@ -246,16 +246,23 @@ export const ChatMessage = memo(function ChatMessage({
                 {[0, 150, 300].map((delay) => (
                   <span
                     key={delay}
-                    className="size-1.5 rounded-full bg-(--lagoon) animate-bounce"
+                    className="size-1.5 rounded-full bg-brand animate-bounce motion-reduce:animate-none"
                     style={{ animationDelay: `${delay}ms` }}
                   />
                 ))}
               </div>
             ) : (
-              <div className="text-sm leading-6">
-                <RichText content={renderContent} />
-                {isStreaming && streamingText && (
-                  <span className="inline-block w-[2px] h-[1.15em] bg-(--lagoon) animate-pulse align-baseline ml-0.5" />
+              <div className="text-sm leading-6" dir="auto">
+                {displayContent.trim() || isStreaming ? (
+                  <RichText
+                    content={renderContent}
+                    className={cn(
+                      "md:max-w-[72ch]",
+                      isStreaming && streamingText && "rt-mes-text-streaming",
+                    )}
+                  />
+                ) : (
+                  <span className="text-3 italic">Empty message</span>
                 )}
               </div>
             )}
@@ -272,7 +279,7 @@ export const ChatMessage = memo(function ChatMessage({
             <Button
               variant="ghost"
               size="icon"
-              className="size-6 text-white/30 hover:text-white disabled:opacity-20"
+              className="size-9 text-2 hover:text-1 disabled:opacity-20"
               disabled={siblingIndex <= 0}
               onClick={() => onSwipe(message.localId, "prev")}
               aria-label="Previous response"
@@ -281,7 +288,7 @@ export const ChatMessage = memo(function ChatMessage({
             </Button>
 
             {canSwipe && (
-              <span className="min-w-[2.5rem] text-center text-[11px] tabular-nums text-white/40 select-none">
+              <span className="min-w-[2.5rem] text-center text-xs tabular-nums text-2 select-none">
                 {siblingIndex + 1}/{siblingTotal}
               </span>
             )}
@@ -290,7 +297,7 @@ export const ChatMessage = memo(function ChatMessage({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-6 text-white/30 hover:text-white disabled:opacity-20"
+                className="size-9 text-2 hover:text-1 disabled:opacity-20"
                 onClick={() => onSwipe(message.localId, "next")}
                 aria-label="Next response"
               >
@@ -302,7 +309,7 @@ export const ChatMessage = memo(function ChatMessage({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-6 text-white/30 hover:text-(--lagoon)"
+                className="size-9 text-2 hover:text-brand"
                 onClick={() => onRegenerate(message.localId)}
                 aria-label="Regenerate response"
               >
@@ -325,7 +332,9 @@ export const ChatMessage = memo(function ChatMessage({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => onDelete(message.localId)}
+              onClick={(event) => {
+                if (!onDelete(message.localId)) event.preventDefault();
+              }}
             >
               Delete
             </AlertDialogAction>
