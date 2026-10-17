@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createPersona,
   deletePersona,
-  getPersona,
   listPersonas,
   updatePersona,
   uploadPersonaIcon,
@@ -19,14 +18,6 @@ export function usePersonas() {
   return useQuery({
     queryKey: personaKeys.list(),
     queryFn: () => listPersonas(),
-  });
-}
-
-export function usePersona(id: string) {
-  return useQuery({
-    queryKey: personaKeys.detail(id),
-    queryFn: () => getPersona({ data: { id } }),
-    enabled: id.length > 0,
   });
 }
 

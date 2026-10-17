@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createChat,
   deleteChat,
-  getChat,
   getChatMessages,
   listChats,
   listChatsByCharacter,
@@ -16,12 +15,7 @@ import {
   impersonateFn,
   prepareStreamFn,
 } from "@/features/chat/generation/fns";
-import {
-  appendUserAndReplyFn,
-  deleteBranchFn,
-  editMessageFn,
-  swipeFn,
-} from "@/features/chat/tree/fns";
+import { deleteBranchFn, editMessageFn, swipeFn } from "@/features/chat/tree/fns";
 import type { PrepareStreamResult } from "@/features/chat/generation/types";
 import type { ChatConfigClient } from "@/features/chat/config/types";
 import { applyDeleteOptimistic, applySwipeOptimistic } from "@/features/chat/tree/optimistic";
@@ -51,14 +45,6 @@ export function useChatsByCharacter(characterId: string) {
   });
 }
 
-export function useChat(id: string) {
-  return useQuery({
-    queryKey: chatKeys.detail(id),
-    queryFn: () => getChat({ data: { id } }),
-    enabled: id.length > 0,
-  });
-}
-
 export function useChatMessages(id: string) {
   return useQuery({
     queryKey: chatKeys.messages(id),
@@ -73,17 +59,6 @@ export function useCreateChat() {
     mutationFn: (input: { characterId: string }) => createChat({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.all });
-    },
-  });
-}
-
-export function useAppendUserAndReply() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { chatId: string; content: string }) =>
-      appendUserAndReplyFn({ data: input }),
-    onSuccess: (_result, variables) => {
-      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
     },
   });
 }

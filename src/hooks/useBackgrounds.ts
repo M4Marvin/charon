@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   listBackgrounds,
-  getBackground,
   uploadBackground,
   deleteBackground,
   type BackgroundListItem,
@@ -11,21 +10,12 @@ import type { Background } from "@/db/schema";
 const backgroundKeys = {
   all: ["backgrounds"] as const,
   list: () => [...backgroundKeys.all, "list"] as const,
-  detail: (id: string) => [...backgroundKeys.all, "detail", id] as const,
 };
 
 export function useBackgrounds() {
   return useQuery({
     queryKey: backgroundKeys.list(),
     queryFn: () => listBackgrounds(),
-  });
-}
-
-export function useBackground(id: string) {
-  return useQuery({
-    queryKey: backgroundKeys.detail(id),
-    queryFn: () => getBackground({ data: { id } }),
-    enabled: id.length > 0,
   });
 }
 
