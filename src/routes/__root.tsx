@@ -96,7 +96,8 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         name: "viewport",
-        content: "width=device-width, initial-scale=1",
+        content:
+          "width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content",
       },
       {
         title: "Charon",
@@ -216,7 +217,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 </RichTextSettingsProvider>
               </div>
               {isAuthed && !hideGlobalHeader && <MobileTabBar />}
-              {isAuthed && !hideGlobalHeader && <CommandMenu />}
+              {isAuthed && <CommandMenu />}
               <Toaster />
             </ErrorBoundary>
             <TanStackDevtools

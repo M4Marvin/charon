@@ -27,45 +27,40 @@ export function ChatHeader({
   onOpenSettings,
 }: ChatHeaderProps) {
   return (
-    <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between border-b border-white/5 bg-black/40 backdrop-blur-xl px-3 py-1 md:px-5">
+    <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center justify-between border-b border-subtle bg-(--header-bg) px-3 backdrop-blur-xl md:px-5">
       <Button
         variant="ghost"
         size="icon"
-        className="size-7 rounded-full glass shrink-0 text-white/80 hover:text-white"
+        className="size-10 rounded-full glass shrink-0 text-2 hover:text-1"
         onClick={onBack}
         aria-label="Back to chats"
       >
-        <ArrowLeft className="size-3.5" />
+        <ArrowLeft className="size-4" />
       </Button>
 
-      <div className="flex items-center gap-3 min-w-0">
-        <Avatar className="size-7 shrink-0">
-          <AvatarImage
-            src={avatarSrc ?? undefined}
-            alt={characterName}
-            className="object-cover"
-            priority
-          />
-          <AvatarFallback className="rounded-full bg-white/10 text-sm text-lagoon">
+      <div className="flex min-w-0 items-center gap-3">
+        <Avatar className="size-7 shrink-0" aria-hidden="true">
+          <AvatarImage src={avatarSrc ?? undefined} alt="" className="object-cover" />
+          <AvatarFallback className="rounded-full text-brand">
             {characterName.charAt(0).toUpperCase()}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0">
-          <p className="font-heading text-(--sea-ink) text-xs md:text-sm leading-5 truncate">
+          <h1 className="font-heading text-1 text-xs leading-5 truncate md:text-sm">
             {characterName}
-          </p>
+          </h1>
         </div>
-        {isGenerating && (
-          <span className="flex items-center gap-0.5 ml-0.5">
-            {[0, 150, 300].map((delay) => (
+        {/* Fixed-width slot: the dots never reflow the name. */}
+        <span className="flex w-4 shrink-0 items-center gap-0.5" aria-hidden="true">
+          {isGenerating &&
+            [0, 150, 300].map((delay) => (
               <span
                 key={delay}
-                className="size-1 rounded-full bg-(--lagoon) animate-bounce"
+                className="size-1 rounded-full bg-(--lagoon) motion-safe:animate-bounce motion-reduce:animate-none"
                 style={{ animationDelay: `${delay}ms` }}
               />
             ))}
-          </span>
-        )}
+        </span>
       </div>
 
       <div className="flex items-center gap-1">
@@ -73,34 +68,38 @@ export function ChatHeader({
           variant="ghost"
           size="icon"
           className={cn(
-            "size-7 rounded-full glass shrink-0 text-white/70 hover:text-white hidden lg:inline-flex",
-            portraitOpen && "text-(--lagoon) ring-1 ring-(--lagoon)/30",
+            "hidden size-10 rounded-full glass shrink-0 text-2 hover:text-1 xl:inline-flex",
+            portraitOpen && "text-brand ring-1 ring-brand/30",
           )}
           onClick={onTogglePortrait}
           aria-label="Toggle character portrait"
+          aria-expanded={portraitOpen}
+          aria-controls="character-portrait-panel"
         >
-          <User className="size-3.5" />
+          <User className="size-4" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
           className={cn(
-            "size-7 rounded-full glass shrink-0 text-white/70 hover:text-white hidden lg:inline-flex",
-            sceneOpen && "text-(--lagoon) ring-1 ring-(--lagoon)/30",
+            "hidden size-10 rounded-full glass shrink-0 text-2 hover:text-1 xl:inline-flex",
+            sceneOpen && "text-brand ring-1 ring-brand/30",
           )}
           onClick={onToggleScene}
           aria-label="Toggle scene panel"
+          aria-expanded={sceneOpen}
+          aria-controls="custom-image-panel"
         >
-          <ImageIcon className="size-3.5" />
+          <ImageIcon className="size-4" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 rounded-full glass shrink-0 text-white/80 hover:text-white"
+          className="size-10 rounded-full glass shrink-0 text-2 hover:text-1"
           onClick={onOpenSettings}
           aria-label="Open settings"
         >
-          <Settings className="size-3.5" />
+          <Settings className="size-4" />
         </Button>
       </div>
     </header>

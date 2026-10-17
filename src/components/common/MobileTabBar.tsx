@@ -3,15 +3,15 @@ import { MessageCircle, Users, BookOpen, Plus } from "lucide-react";
 
 export function MobileTabBar() {
   const base =
-    "flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-lg text-[11px] leading-none transition-colors no-underline";
+    "flex min-h-11 min-w-11 flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-lg text-xs leading-none transition-colors no-underline";
   const active = "text-brand-strong font-medium";
 
   return (
     <nav
       aria-label="Mobile"
-      className="fixed inset-x-0 bottom-0 z-50 border-t bg-popover/95 backdrop-blur-sm md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t bg-popover/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden"
     >
-      <div className="mx-auto flex h-16 max-w-lg items-center justify-around pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto flex h-16 max-w-lg items-center justify-around">
         <Link to="/chat" className={base} activeProps={{ className: `${base} ${active}` }}>
           <MessageCircle className="size-5" />
           Chats
@@ -20,7 +20,7 @@ export function MobileTabBar() {
           <Users className="size-5" />
           Characters
         </Link>
-        <Link to="/characters" className={base} aria-label="New chat">
+        <Link to="/characters" className={base} aria-label="Choose a character">
           <div className="flex size-10 items-center justify-center rounded-full bg-brand text-primary-foreground shadow-lg">
             <Plus className="size-5" />
           </div>
