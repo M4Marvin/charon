@@ -59,10 +59,17 @@ export function acquireGenerationLock(
   log.info("Lock acquired", { chatId, messageLocalId });
 }
 
-export function releaseLock(chatId: string, db: DB = defaultDb): void {
+export function releaseLock(chatId: string, messageLocalId: number, db: DB = defaultDb): void {
   const previousLock = readLock(chatId, db);
-  repoUpdateMessage(chatId, 0, { extra: null }, db);
-  if (previousLock) {
-    log.info("Lock released", { chatId, messageLocalId: previousLock.messageId });
+  if (!previousLock) return;
+  if (previousLock.messageId !== messageLocalId) {
+    log.warn("release skipped: lock owned by another generation", {
+      chatId,
+      messageLocalId,
+      ownerMessageId: previousLock.messageId,
+    });
+    return;
   }
+  repoUpdateMessage(chatId, 0, { extra: null }, db);
+  log.info("Lock released", { chatId, messageLocalId });
 }

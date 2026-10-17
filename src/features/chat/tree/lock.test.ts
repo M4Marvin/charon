@@ -140,13 +140,26 @@ describe("lock", () => {
     it("clears root.extra to null", () => {
       const chat = createTestChat();
       acquireGenerationLock(chat.id, 1, db);
-      releaseLock(chat.id, db);
+      releaseLock(chat.id, 1, db);
       expect(readRootExtra(chat.id)).toBeNull();
     });
 
     it("is no-op when not locked", () => {
       const chat = createTestChat();
-      expect(() => releaseLock(chat.id, db)).not.toThrow();
+      expect(() => releaseLock(chat.id, 1, db)).not.toThrow();
+      expect(readRootExtra(chat.id)).toBeNull();
+    });
+
+    it("does not release a lock owned by another generation", () => {
+      const chat = createTestChat();
+      acquireGenerationLock(chat.id, 5, db);
+
+      releaseLock(chat.id, 6, db);
+      expect(getChat(chat.id, db).lockState).toBe("generating");
+      expect(readRootExtra(chat.id)).not.toBeNull();
+
+      releaseLock(chat.id, 5, db);
+      expect(getChat(chat.id, db).lockState).toBe("idle");
       expect(readRootExtra(chat.id)).toBeNull();
     });
   });

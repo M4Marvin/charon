@@ -69,7 +69,13 @@ export function ChatPage() {
     error: configErrorObj,
     refetch: refetchConfig,
   } = useChatConfig(chatId);
-  const { data: messages, isLoading: messagesLoading } = useChatMessages(chatId);
+  const {
+    data: messages,
+    isLoading: messagesLoading,
+    isError: messagesError,
+    error: messagesErrorObj,
+    refetch: refetchMessages,
+  } = useChatMessages(chatId);
   const { data: character } = useCharacter(config?.chat.characterId ?? "");
   const { data: background } = useBackground(config?.chat.backgroundId ?? "");
   const { data: persona } = usePersona(config?.settings.defaultPersonaId ?? "");
@@ -252,7 +258,13 @@ export function ChatPage() {
     );
   }
 
-  if (configError) {
+  // Only a load failure with no usable data replaces the page: TanStack keeps
+  // data on a failed background refetch but still flips `isError`, and every
+  // generation mutation invalidates these queries.
+  const configFailed = configError && config === undefined;
+  const messagesFailed = messagesError && messages === undefined;
+  if (configFailed || messagesFailed) {
+    const errorObj = configFailed ? configErrorObj : messagesErrorObj;
     return (
       <div
         className="fixed inset-0 flex items-center justify-center p-6"
@@ -260,10 +272,11 @@ export function ChatPage() {
       >
         <div className="w-full max-w-md">
           <ErrorBanner
-            message={
-              configErrorObj instanceof Error ? configErrorObj.message : "Failed to load chat"
-            }
-            onRetry={() => void refetchConfig()}
+            message={errorObj instanceof Error ? errorObj.message : "Failed to load chat"}
+            onRetry={() => {
+              void refetchConfig();
+              void refetchMessages();
+            }}
           />
         </div>
       </div>

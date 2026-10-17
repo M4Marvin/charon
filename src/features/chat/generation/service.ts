@@ -168,7 +168,7 @@ export function finalizeStream(
   const finalContent = substituteMessageMacros(content, macroEnv);
 
   repoUpdateMessage(chatId, messageLocalId, { content: finalContent, extra: null }, db);
-  releaseLock(chatId, db);
+  releaseLock(chatId, messageLocalId, db);
   log.info("finalizeStream done", { messageLocalId, contentLen: finalContent.length });
   return { messageLocalId, content: finalContent };
 }
@@ -181,6 +181,14 @@ export function cancelStream(
   log.debug("cancelStream start", { chatId, messageLocalId });
   if (messageLocalId === 0) throw new Error("Cannot cancel the root message");
 
+  const existing = repoGetMessage(chatId, messageLocalId, db);
+  if (existing && (existing.extra?.isStreaming ?? false) !== true) {
+    // Finalize won the race: the message is real content now — keep it.
+    releaseLock(chatId, messageLocalId, db);
+    log.info("cancelStream: message already finalized, kept", { messageLocalId });
+    return { deletedIds: [] };
+  }
+
   let deletedIds: number[] = [];
   try {
     const result = deleteBranch(chatId, messageLocalId, db, { skipIdleCheck: true });
@@ -192,7 +200,7 @@ export function cancelStream(
       error: (err as Error).message,
     });
   }
-  releaseLock(chatId, db);
+  releaseLock(chatId, messageLocalId, db);
   log.info("cancelStream done", { messageLocalId, deletedCount: deletedIds.length });
   return { deletedIds };
 }

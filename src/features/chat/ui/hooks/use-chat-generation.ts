@@ -33,15 +33,15 @@ function extractAssistantText(messages: unknown[]): string {
 }
 
 /**
- * Clears all generation UI state. Placeholder and pending overlay are
- * always cleared together — the overlay's visibility is derived from the
- * placeholder match (see isPendingVisible), so clearing one without the
- * other either leaks the overlay or breaks the dots.
+ * Clears the generation overlay only when it still belongs to this run:
+ * a continuation that outlives the hook must not wipe a newer run's state.
  */
-function clearGenerationOverlay() {
+function clearGenerationOverlay(chatId: string, placeholderId: number | null) {
   const store = useChatUiStore.getState();
-  store.clearPlaceholder();
-  store.clearPendingSend();
+  if (store.pendingSend?.chatId === chatId) store.clearPendingSend();
+  if (placeholderId !== null && store.activePlaceholderId === placeholderId) {
+    store.clearPlaceholder();
+  }
 }
 
 export function useChatGeneration(
@@ -56,10 +56,16 @@ export function useChatGeneration(
   const recoveredForRef = useRef<string | null>(null);
   /** Bumped by stop(); a start() whose id no longer matches was superseded. */
   const generationRef = useRef(0);
+  /** Mirrors status for synchronous reads in stop(). */
+  const statusRef = useRef<StreamStatus>("idle");
 
   useEffect(() => {
     chatIdRef.current = chatId;
   }, [chatId]);
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
 
   const prepareStream = usePrepareStream();
   const finalizeStream = useFinalizeStream();
@@ -94,7 +100,7 @@ export function useChatGeneration(
           cancelRef.current.mutateAsync({ chatId: cid, messageLocalId: ph }).catch(() => {});
         }
         placeholderRef.current = null;
-        clearGenerationOverlay();
+        clearGenerationOverlay(cid, ph);
         setStatus("idle");
         setStreamingText("");
         return;
@@ -105,7 +111,7 @@ export function useChatGeneration(
         .mutateAsync({ chatId: cid, messageLocalId: ph, content: text })
         .then(() => {
           placeholderRef.current = null;
-          clearGenerationOverlay();
+          clearGenerationOverlay(cid, ph);
           setStatus("idle");
           setStreamingText("");
           void aiChatRef.current.setMessages([]);
@@ -113,7 +119,7 @@ export function useChatGeneration(
         .catch(() => {
           cancelRef.current.mutateAsync({ chatId: cid, messageLocalId: ph }).catch(() => {});
           placeholderRef.current = null;
-          clearGenerationOverlay();
+          clearGenerationOverlay(cid, ph);
           setStatus("idle");
           setStreamingText("");
         });
@@ -121,13 +127,14 @@ export function useChatGeneration(
     onError: (err: unknown) => {
       const e = err as { message?: string };
       console.error("[chat] stream error:", e?.message ?? err);
+      toast.error("Generation failed");
       const ph = placeholderRef.current;
       const cid = chatIdRef.current;
       if (ph) {
         cancelRef.current.mutateAsync({ chatId: cid, messageLocalId: ph }).catch(() => {});
       }
       placeholderRef.current = null;
-      clearGenerationOverlay();
+      clearGenerationOverlay(cid, ph);
       setStatus("idle");
       setStreamingText("");
     },
@@ -163,13 +170,22 @@ export function useChatGeneration(
 
   useEffect(() => {
     return () => {
-      if (placeholderRef.current) {
-        const oldId = chatIdRef.current;
+      // Supersede any in-flight prepare so a late resolve takes the
+      // "superseded" branch and cancels the rows it created.
+      generationRef.current++;
+      // The finalize request already owns teardown; cancelling now would
+      // race the write and can delete the completed reply. Its settling
+      // promise clears the overlay once it resolves.
+      if (placeholderRef.current !== null && statusRef.current === "finalizing") return;
+      const owned = placeholderRef.current;
+      if (owned) {
         cancelRef.current.mutate(
-          { chatId: oldId, messageLocalId: placeholderRef.current },
+          { chatId: chatIdRef.current, messageLocalId: owned },
           { onError: () => {} },
         );
+        placeholderRef.current = null;
       }
+      clearGenerationOverlay(chatIdRef.current, owned);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -213,7 +229,7 @@ export function useChatGeneration(
         if (result.mode === "fallback") {
           toast.info("No AI provider configured — using a fallback reply");
           placeholderRef.current = null;
-          clearGenerationOverlay();
+          clearGenerationOverlay(activeChatId, null);
           setStatus("idle");
           setStreamingText("");
           return;
@@ -238,7 +254,7 @@ export function useChatGeneration(
             .catch(() => {});
         }
         placeholderRef.current = null;
-        clearGenerationOverlay();
+        clearGenerationOverlay(activeChatId, ph);
         if (ph === null && mode === "send" && opts?.content) {
           // prepareStream is transactional: a throw before the placeholder
           // resolves means nothing was persisted, so the draft is safe to
@@ -256,6 +272,9 @@ export function useChatGeneration(
   );
 
   const stop = useCallback(() => {
+    // The finalize request already owns teardown; cancelling now would race
+    // the write and can delete the completed reply.
+    if (statusRef.current === "finalizing") return;
     // Invalidate any in-flight start() so a late prepare resolves into the
     // superseded branch above instead of starting an orphaned stream.
     generationRef.current++;
@@ -270,7 +289,7 @@ export function useChatGeneration(
     if (ph) {
       cancelRef.current.mutateAsync({ chatId: cid, messageLocalId: ph }).catch(() => {});
     }
-    clearGenerationOverlay();
+    clearGenerationOverlay(cid, ph);
     setStatus("idle");
     setStreamingText("");
     void aiChatRef.current.setMessages([]);

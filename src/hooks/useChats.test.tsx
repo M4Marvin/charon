@@ -5,7 +5,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { ChatMessageRow } from "@/db/schema";
 import { deleteBranchFn, editMessageFn, swipeFn } from "@/features/chat/tree/fns";
-import { chatKeys, useDeleteMessage, useEditMessage, useSwipeMessage } from "./useChats";
+import { finalizeStreamFn } from "@/features/chat/generation/fns";
+import {
+  chatKeys,
+  useDeleteMessage,
+  useEditMessage,
+  useFinalizeStream,
+  useSwipeMessage,
+} from "./useChats";
 
 vi.mock("@/server/fns/chats", () => ({
   createChat: vi.fn(),
@@ -197,5 +204,33 @@ describe("useDeleteMessage", () => {
     pending.reject(new Error("busy"));
     await expect(mutation).rejects.toThrow("busy");
     await waitFor(() => expect(messages(queryClient, key)).toHaveLength(3));
+  });
+});
+
+describe("useFinalizeStream", () => {
+  it("does not settle mutateAsync until the invalidations complete", async () => {
+    const { queryClient, wrapper } = setup();
+    vi.mocked(finalizeStreamFn).mockResolvedValueOnce({ messageLocalId: 1, content: "done" });
+
+    const invalidation = deferred<void>();
+    const invalidateSpy = vi
+      .spyOn(queryClient, "invalidateQueries")
+      .mockReturnValue(invalidation.promise);
+
+    const { result } = renderHook(() => useFinalizeStream(), { wrapper });
+    let settled = false;
+    const mutation = result.current
+      .mutateAsync({ chatId: "c1", messageLocalId: 1, content: "done" })
+      .then(() => {
+        settled = true;
+      });
+
+    await waitFor(() => expect(invalidateSpy).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    invalidation.resolve(undefined);
+    await mutation;
+    expect(settled).toBe(true);
   });
 });

@@ -362,6 +362,29 @@ describe("generation service", () => {
       expect((root.extra as any)?.lock).toBeUndefined();
     });
 
+    it("keeps an already-finalized message and releases the lock", () => {
+      seedProvider();
+      const result = prepareStream(
+        userId,
+        { chatId, mode: "send", content: "Hi" },
+        "Test User",
+        db,
+      );
+      const localId = (result as { mode: "stream"; assistantMessageLocalId: number })
+        .assistantMessageLocalId;
+      finalizeStream(userId, chatId, localId, "Final reply", "Test User", db);
+
+      const cancelResult = cancelStream(chatId, localId, db);
+
+      expect(cancelResult).toEqual({ deletedIds: [] });
+      const msg = db.select().from(chatMessages).where(eq(chatMessages.localId, localId)).get()!;
+      expect(msg.content).toBe("Final reply");
+      expect(msg.extra).toBeNull();
+
+      const root = db.select().from(chatMessages).where(eq(chatMessages.localId, 0)).get()!;
+      expect((root.extra as any)?.lock).toBeUndefined();
+    });
+
     it("throws on root", () => {
       expect(() => cancelStream(chatId, 0, db)).toThrow("root");
     });

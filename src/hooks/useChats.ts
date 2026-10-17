@@ -23,6 +23,7 @@ import {
   swipeFn,
 } from "@/features/chat/tree/fns";
 import type { PrepareStreamResult } from "@/features/chat/generation/types";
+import type { ChatConfigClient } from "@/features/chat/config/types";
 import { applyDeleteOptimistic, applySwipeOptimistic } from "@/features/chat/tree/optimistic";
 import type { ChatMessageRow } from "@/db/schema";
 
@@ -181,9 +182,28 @@ export function useFinalizeStream() {
       messageLocalId: number;
       content: string;
     }): Promise<{ messageLocalId: number; content: string }> => finalizeStreamFn({ data: input }),
-    onSuccess: (_result, variables) => {
-      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
-      void queryClient.invalidateQueries({ queryKey: ["chatConfig", variables.chatId] });
+    onSuccess: (result, variables) => {
+      // Write the server's persisted content and lock release into the cache
+      // first: a failed refetch otherwise leaves an empty bubble and a stuck
+      // "generating" lock in the UI even though the reply is saved.
+      queryClient.setQueryData<ChatMessageRow[]>(chatKeys.messages(variables.chatId), (rows) =>
+        rows?.map((row) =>
+          row.localId === result.messageLocalId
+            ? { ...row, content: result.content, extra: null }
+            : row,
+        ),
+      );
+      queryClient.setQueryData<ChatConfigClient | undefined>(
+        ["chatConfig", variables.chatId],
+        (config) =>
+          config
+            ? { ...config, chat: { ...config.chat, lockState: "idle", lockMessageLocalId: null } }
+            : config,
+      );
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) }),
+        queryClient.invalidateQueries({ queryKey: ["chatConfig", variables.chatId] }),
+      ]);
     },
   });
 }
@@ -195,7 +215,22 @@ export function useCancelStream() {
       chatId: string;
       messageLocalId: number;
     }): Promise<{ deletedIds: number[] }> => cancelStreamFn({ data: input }),
-    onSuccess: (_result, variables) => {
+    onSuccess: (result, variables) => {
+      // Same cache-first cleanup as finalize: on a failed refetch the deleted
+      // placeholder would linger and the stale lock would disable the composer.
+      // The guard matters — a finalized-race cancel keeps the reply.
+      if (result.deletedIds.length > 0) {
+        queryClient.setQueryData<ChatMessageRow[]>(chatKeys.messages(variables.chatId), (rows) =>
+          rows ? (applyDeleteOptimistic(rows, variables.messageLocalId) ?? rows) : rows,
+        );
+      }
+      queryClient.setQueryData<ChatConfigClient | undefined>(
+        ["chatConfig", variables.chatId],
+        (config) =>
+          config
+            ? { ...config, chat: { ...config.chat, lockState: "idle", lockMessageLocalId: null } }
+            : config,
+      );
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
       void queryClient.invalidateQueries({ queryKey: ["chatConfig", variables.chatId] });
     },
