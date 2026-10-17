@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect, useRef, useCallback } from "react";
+import { memo, useState, useLayoutEffect, useRef, useCallback } from "react";
 import { ChevronLeft, ChevronRight, RotateCw, Pencil, Trash2, Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -38,7 +38,7 @@ interface ChatMessageProps {
   onDelete: (messageLocalId: number) => void;
 }
 
-export function ChatMessage({
+export const ChatMessage = memo(function ChatMessage({
   entry,
   isStreaming,
   streamingText,
@@ -330,4 +330,4 @@ export function ChatMessage({
       </AlertDialog>
     </>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useLayoutEffect, useCallback } from "react";
 import { X, ZoomIn, ZoomOut } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { OptimizedImage } from "@/components/ui/optimized-image";
@@ -15,6 +15,12 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
   const [zoomed, setZoomed] = useState(false);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const imageFailed = src !== null && failedSrc === src;
+
+  // A reopen (or a different image) must start unzoomed. useLayoutEffect so
+  // the reset lands before paint — an effect would flash the zoomed image once.
+  useLayoutEffect(() => {
+    setZoomed(false);
+  }, [open, src]);
 
   const toggleZoom = useCallback(() => {
     setZoomed((z) => !z);

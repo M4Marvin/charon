@@ -127,6 +127,9 @@ export function ChatPage() {
     return true;
   }, [config]);
 
+  // Callbacks below depend on `.mutate`/`.start` alone, not on the mutation or
+  // generation objects: both are recreated every render and would defeat the
+  // memo on ChatMessage during streaming.
   const handleSend = useCallback(() => {
     if (generation.isStreaming) return;
     if (!ensureModelConfigured()) return;
@@ -139,14 +142,22 @@ export function ChatPage() {
     } else if (hasMessages) {
       generation.start("continue");
     }
-  }, [chatId, substitute, clearInput, generation, hasMessages, ensureModelConfigured]);
+  }, [
+    chatId,
+    substitute,
+    clearInput,
+    generation.isStreaming,
+    generation.start,
+    hasMessages,
+    ensureModelConfigured,
+  ]);
 
   const handleSwipe = useCallback(
     (messageLocalId: number, direction: "next" | "prev") => {
       if (isBusy || generation.isStreaming) return;
       swipeMutation.mutate({ chatId, messageLocalId, direction });
     },
-    [chatId, isBusy, generation.isStreaming, swipeMutation],
+    [chatId, isBusy, generation.isStreaming, swipeMutation.mutate],
   );
 
   const handleRegenerate = useCallback(
@@ -155,7 +166,7 @@ export function ChatPage() {
       if (!ensureModelConfigured()) return;
       generation.start("regenerate", { messageLocalId });
     },
-    [isBusy, generation, ensureModelConfigured],
+    [isBusy, generation.isStreaming, generation.start, ensureModelConfigured],
   );
 
   const handleEdit = useCallback(
@@ -167,7 +178,7 @@ export function ChatPage() {
         { onError: () => toast.error("Edit failed — message restored") },
       );
     },
-    [chatId, isBusy, generation.isStreaming, substitute, editMutation],
+    [chatId, isBusy, generation.isStreaming, substitute, editMutation.mutate],
   );
 
   const handleDelete = useCallback(
@@ -183,7 +194,7 @@ export function ChatPage() {
         },
       );
     },
-    [chatId, isBusy, generation.isStreaming, deleteMsgMutation, focusComposer],
+    [chatId, isBusy, generation.isStreaming, deleteMsgMutation.mutate, focusComposer],
   );
 
   const handleImpersonate = useCallback(() => {
@@ -295,7 +306,7 @@ export function ChatPage() {
   }
 
   return (
-    <div
+    <main
       className="flex h-dvh w-full flex-col overflow-hidden"
       style={{ background: "var(--bg-base)" }}
     >
@@ -391,6 +402,6 @@ export function ChatPage() {
           if (!open) focusComposer();
         }}
       />
-    </div>
+    </main>
   );
 }

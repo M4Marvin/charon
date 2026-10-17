@@ -149,8 +149,8 @@ export function MessageOverviewRail({ entries }: { entries: ActivePathEntry[] })
         aria-orientation="vertical"
         aria-valuemin={1}
         aria-valuemax={count}
-        aria-valuenow={highlightIndex + 1}
-        aria-valuetext={`Message ${highlightIndex + 1} of ${count}, ${previewTick?.role ?? "message"}`}
+        aria-valuenow={activeIndex + 1}
+        aria-valuetext={`Message ${activeIndex + 1} of ${count}, ${ticks[activeIndex]?.role ?? "message"}`}
         className="focus-ring pointer-events-auto relative w-full cursor-pointer outline-none"
         style={{ height: `min(100%, ${naturalSpan}px)` }}
         onPointerMove={handlePointerMove}

@@ -92,14 +92,12 @@ describe("MessageOverviewRail", () => {
       align: "center",
       behavior: "smooth",
     });
-    expect(slider.getAttribute("aria-valuenow")).toBe("2");
 
     fireEvent.keyDown(slider, { key: "End" });
     expect(mocks.scrollToMessage).toHaveBeenLastCalledWith("3", {
       align: "center",
       behavior: "smooth",
     });
-    expect(slider.getAttribute("aria-valuenow")).toBe("3");
 
     fireEvent.keyDown(slider, { key: "Home" });
     expect(mocks.scrollToMessage).toHaveBeenLastCalledWith("1", {
@@ -118,6 +116,8 @@ describe("MessageOverviewRail", () => {
     expect(screen.getByText("hello there")).not.toBeNull();
     expect(screen.getByText("You")).not.toBeNull();
     expect(screen.getByText("2/3")).not.toBeNull();
+    // Hover is visual only: the announced value stays on the current message.
+    expect(slider.getAttribute("aria-valuenow")).toBe("1");
   });
 
   it("ignores touch pointer movement so taps still scroll", () => {

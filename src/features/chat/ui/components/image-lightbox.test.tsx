@@ -19,4 +19,37 @@ describe("ImageLightbox", () => {
     fireEvent.error(screen.getByAltText("Portrait"));
     expect(screen.getByText("Image unavailable")).toBeTruthy();
   });
+
+  it("resets zoom when the lightbox closes and reopens", () => {
+    const { rerender } = render(
+      <ImageLightbox
+        src="/api/characters/character-1/avatar?v=portrait.png"
+        alt="Portrait"
+        open
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+    expect(screen.getByRole("button", { name: "Fit to screen" })).toBeTruthy();
+
+    rerender(
+      <ImageLightbox
+        src="/api/characters/character-1/avatar?v=portrait.png"
+        alt="Portrait"
+        open={false}
+        onOpenChange={vi.fn()}
+      />,
+    );
+    rerender(
+      <ImageLightbox
+        src="/api/characters/character-1/avatar?v=portrait.png"
+        alt="Portrait"
+        open
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Zoom in" })).toBeTruthy();
+  });
 });

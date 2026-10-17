@@ -71,6 +71,11 @@ export function useChatGeneration(
   const finalizeStream = useFinalizeStream();
   const cancelStream = useCancelStream();
 
+  // Only the stable `mutateAsync` goes into start()'s deps: the mutation object
+  // is recreated every render and would make `start` unstable, defeating the
+  // memo on ChatMessage during streaming.
+  const prepareStreamAsync = prepareStream.mutateAsync;
+
   const cancelRef = useRef(cancelStream);
 
   useEffect(() => {
@@ -204,7 +209,7 @@ export function useChatGeneration(
         content: mode === "send" ? (opts?.content ?? null) : null,
       });
       try {
-        const result = await prepareStream.mutateAsync({
+        const result = await prepareStreamAsync({
           chatId: activeChatId,
           mode,
           content: opts?.content,
@@ -268,7 +273,7 @@ export function useChatGeneration(
         setStreamingText("");
       }
     },
-    [prepareStream],
+    [prepareStreamAsync],
   );
 
   const stop = useCallback(() => {
