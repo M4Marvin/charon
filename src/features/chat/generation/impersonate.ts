@@ -4,6 +4,7 @@ import { getMessages } from "../tree/service";
 import { getPathToNode } from "../tree/active-path";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import { getActiveLeafId } from "@/lib/st-core/chat-tree/tree";
+import { completeChat } from "./complete";
 import { createLogger } from "@/features/logging";
 
 const log = createLogger("chat:gen:impersonate");
@@ -89,39 +90,7 @@ export async function impersonateMessage(
     }
   }
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${provider.provider.apiKey}`,
-  };
-  if (provider.provider.defaultHeaders) {
-    for (const [k, v] of Object.entries(provider.provider.defaultHeaders)) {
-      if (v) headers[k] = v;
-    }
-  }
-
-  const response = await fetchFn(`${provider.provider.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: provider.model,
-      messages: finalMessages,
-      stream: false,
-    }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    log.error("impersonateMessage: provider error", {
-      status: response.status,
-      body: body.substring(0, 500),
-    });
-    throw new Error(`Provider returned ${response.status}: ${body}`);
-  }
-
-  const json = (await response.json()) as {
-    choices: Array<{ message: { content: string | null } }>;
-  };
-  const text = json.choices[0]?.message?.content ?? "";
+  const text = await completeChat(provider, finalMessages, fetchFn);
   log.info("impersonateMessage done", { textLen: text.length });
   return { text };
 }
