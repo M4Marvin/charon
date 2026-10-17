@@ -12,9 +12,6 @@ import {
   useImagePrompt,
 } from "@/hooks/useChats";
 import { useChatConfig } from "@/hooks/useChatConfig";
-import { useCharacter } from "@/hooks/useCharacters";
-import { useBackground } from "@/hooks/useBackgrounds";
-import { usePersona } from "@/hooks/usePersonas";
 import { computeActivePathFromMessages } from "@/features/chat/tree/active-path";
 import { useChatGeneration } from "../hooks/use-chat-generation";
 import {
@@ -76,9 +73,6 @@ export function ChatPage() {
     error: messagesErrorObj,
     refetch: refetchMessages,
   } = useChatMessages(chatId);
-  const { data: character } = useCharacter(config?.chat.characterId ?? "");
-  const { data: background } = useBackground(config?.chat.backgroundId ?? "");
-  const { data: persona } = usePersona(config?.settings.defaultPersonaId ?? "");
 
   const substitute = useChatMacros(config);
   const generation = useChatGeneration(chatId, config?.chat.lockMessageLocalId ?? null);
@@ -106,15 +100,23 @@ export function ChatPage() {
     : false;
   const composerDisabled = config?.chat.lockState === "generating" && activePlaceholderId === null;
 
-  const userAvatarUrl = persona?.iconPath
-    ? withImageVersion(`/api/personas/${persona.id}/icon`, persona.iconPath)
+  const characterAvatarUrl = config?.characterImagePath
+    ? withImageVersion(
+        `/api/characters/${config.chat.characterId}/avatar`,
+        config.characterImagePath,
+      )
     : null;
-  const characterAvatarUrl = character?.imagePath
-    ? withImageVersion(`/api/characters/${character.id}/avatar`, character.imagePath)
-    : null;
-  const backgroundUrl = background?.path
-    ? withImageVersion(`/api/backgrounds/${background.id}/image`, background.path)
-    : null;
+  const userAvatarUrl =
+    config?.personaId && config.personaIconPath
+      ? withImageVersion(`/api/personas/${config.personaId}/icon`, config.personaIconPath)
+      : null;
+  const backgroundUrl =
+    config?.chat.backgroundId && config.backgroundPath
+      ? withImageVersion(
+          `/api/backgrounds/${config.chat.backgroundId}/image`,
+          config.backgroundPath,
+        )
+      : null;
 
   const ensureModelConfigured = useCallback(() => {
     // A provider row exists but has no resolvable model (neither a selected

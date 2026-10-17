@@ -14,8 +14,10 @@ export function resolvePersona(
       try {
         const persona = getPersona(settings.defaultPersonaId, db);
         return {
+          id: persona.id,
           name: persona.name,
           description: persona.description ?? undefined,
+          iconPath: persona.iconPath,
         };
       } catch {
         // persona deleted — fall through to fallback

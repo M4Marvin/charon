@@ -20,6 +20,9 @@ export interface UserSettingsView {
 export interface PersonaInfo {
   name: string;
   description?: string;
+  /** Set only when a stored persona was resolved (not the account-name fallback). */
+  id?: string;
+  iconPath?: string | null;
 }
 
 export interface ChatConfig {
@@ -29,6 +32,10 @@ export interface ChatConfig {
   provider: ResolvedProvider | null;
   persona: PersonaInfo;
   loreEntries: LoreEntry[];
+  characterImagePath: string | null;
+  personaId: string | null;
+  personaIconPath: string | null;
+  backgroundPath: string | null;
 }
 
 export interface ChatConfigClient {
@@ -38,6 +45,10 @@ export interface ChatConfigClient {
   provider: { model: string; preset: Partial<ChatCompletionPreset> } | null;
   persona: PersonaInfo;
   loreEntries: LoreEntry[];
+  characterImagePath: string | null;
+  personaId: string | null;
+  personaIconPath: string | null;
+  backgroundPath: string | null;
 }
 
 export function toClientConfig(config: ChatConfig): ChatConfigClient {
@@ -50,5 +61,9 @@ export function toClientConfig(config: ChatConfig): ChatConfigClient {
       : null,
     persona: config.persona,
     loreEntries: config.loreEntries,
+    characterImagePath: config.characterImagePath,
+    personaId: config.personaId,
+    personaIconPath: config.personaIconPath,
+    backgroundPath: config.backgroundPath,
   };
 }

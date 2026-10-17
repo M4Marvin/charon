@@ -76,6 +76,8 @@ export function useUploadPersonaIcon() {
     mutationFn: (input: { id: string; fileBase64: string }) => uploadPersonaIcon({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: personaKeys.all });
+      // The chat page sources its avatar from the chat config.
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
       queryClient.removeQueries({ queryKey: personaKeys.detail(variables.id) });
     },
   });

@@ -35,6 +35,8 @@ export function useUploadBackground() {
     mutationFn: (input: { name: string; fileBase64: string }) => uploadBackground({ data: input }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: backgroundKeys.list() });
+      // The chat page sources its scene path from the chat config.
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }
@@ -45,6 +47,7 @@ export function useDeleteBackground() {
     mutationFn: (input: { id: string }) => deleteBackground({ data: input }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: backgroundKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }

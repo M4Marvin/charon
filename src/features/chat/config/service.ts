@@ -1,4 +1,5 @@
 import { db as defaultDb, type DB } from "@/db";
+import { getBackground as repoGetBackground } from "@/db/repositories/backgrounds";
 import { getCharacter as repoGetCharacter } from "@/db/repositories/characters";
 import { getUserSettings } from "@/db/repositories/userSettings";
 import { getChat } from "../tree/service";
@@ -53,5 +54,27 @@ export async function loadChatConfig(
     loreEntryCount: loreEntries.length,
   });
 
-  return { chat, character: char.data, settings, provider, persona, loreEntries };
+  // A dangling backgroundId must degrade to "no scene", exactly like the
+  // separate useBackground query did before this moved into the config.
+  let backgroundPath: string | null = null;
+  if (chat.backgroundId) {
+    try {
+      backgroundPath = repoGetBackground(chat.backgroundId, db).path;
+    } catch {
+      backgroundPath = null;
+    }
+  }
+
+  return {
+    chat,
+    character: char.data,
+    settings,
+    provider,
+    persona,
+    loreEntries,
+    characterImagePath: char.imagePath,
+    personaId: persona.id ?? null,
+    personaIconPath: persona.iconPath ?? null,
+    backgroundPath,
+  };
 }
