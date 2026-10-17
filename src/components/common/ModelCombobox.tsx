@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Search, RotateCw, TriangleAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SkeletonText } from "@/components/common/Skeletons";
 import { useProviderModels } from "@/hooks/useProviderModels";
 
 interface ModelComboboxProps {
@@ -83,7 +84,7 @@ export function ModelCombobox({
           className="absolute inset-x-0 top-full z-50 mt-1 max-h-48 overflow-auto rounded-lg border bg-popover shadow-lg"
         >
           {isLoading && filtered.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-muted-foreground">Loading models...</p>
+            <SkeletonText lines={1} className="px-3 py-2" />
           ) : error ? (
             <div className="flex items-center gap-1.5 px-3 py-2 text-xs text-danger">
               <TriangleAlert className="size-3 shrink-0" />

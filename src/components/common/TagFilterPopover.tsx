@@ -33,7 +33,7 @@ export function TagFilterPopover({ tags, selected, onChange }: TagFilterPopoverP
           <Filter className="size-3.5" data-icon="inline-start" />
           Tags
           {selected.length > 0 ? (
-            <Badge variant="secondary" className="ml-1 h-5 px-1 py-0 text-[10px]">
+            <Badge variant="secondary" className="ml-1 h-5 px-1 py-0 text-xs">
               {selected.length}
             </Badge>
           ) : null}

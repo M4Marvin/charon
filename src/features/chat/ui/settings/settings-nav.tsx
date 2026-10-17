@@ -16,11 +16,11 @@ export function SettingsNav({ sections, activeId, onChange }: SettingsNavProps) 
   return (
     <nav
       aria-label="Settings sections"
-      className="flex w-14 shrink-0 flex-col gap-1 overflow-y-auto border-r border-white/5 py-2 scrollbar-thin sm:w-44"
+      className="flex w-14 shrink-0 flex-col gap-1 overflow-y-auto border-r border-subtle py-2 scrollbar-thin sm:w-44"
     >
       {groups.map((group) => (
         <div key={group.id} className="flex flex-col gap-0.5">
-          <p className="hidden px-3 pt-2 pb-1 text-[10px] font-medium uppercase tracking-wider text-white/30 sm:block">
+          <p className="hidden px-3 pt-2 pb-1 text-xs font-medium uppercase tracking-wider text-3 sm:block">
             {group.label}
           </p>
           {group.items.map((s) => (
@@ -30,13 +30,13 @@ export function SettingsNav({ sections, activeId, onChange }: SettingsNavProps) 
                   type="button"
                   onClick={() => onChange(s.id)}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-xs transition-colors focus-ring",
-                    s.secondary ? "ml-5" : "ml-1",
+                    "flex items-center justify-center gap-2.5 rounded-lg px-2 py-1.5 text-xs transition-colors focus-ring sm:mr-1 sm:justify-start",
+                    s.secondary ? "sm:ml-5" : "sm:ml-1",
                     activeId === s.id
                       ? "bg-(--lagoon)/15 text-(--lagoon)"
-                      : "text-(--sea-ink-soft) hover:bg-white/5 hover:text-(--sea-ink)",
+                      : "text-(--sea-ink-soft) hover:bg-raised hover:text-(--sea-ink)",
                   )}
-                  aria-current={activeId === s.id ? "page" : undefined}
+                  aria-current={activeId === s.id ? "true" : undefined}
                   aria-label={s.label}
                 >
                   <s.icon className="size-4 shrink-0" />

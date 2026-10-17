@@ -54,7 +54,7 @@ export function ChatRow({ chat, onRename, onDelete }: ChatRowProps) {
                 )
               : undefined
           }
-          alt={chat.characterName}
+          alt=""
           className="object-cover"
         />
         <AvatarFallback className="rounded-full bg-brand/20 text-brand text-lg">
@@ -78,12 +78,12 @@ export function ChatRow({ chat, onRename, onDelete }: ChatRowProps) {
           to="/characters/$id"
           params={{ id: chat.characterId }}
           aria-label={`View ${chat.characterName}`}
-          className="p-1 text-3 hover:text-brand transition-colors -m-1"
+          className="inline-flex size-10 items-center justify-center rounded-lg text-2 transition-colors hover:text-brand focus-ring"
         >
-          <ExternalLink className="size-3.5" />
+          <ExternalLink className="size-4" />
         </Link>
       </div>
-      <div className="relative opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="relative opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
         <RowActionsMenu
           label={`Actions for ${chat.title}`}
           items={[

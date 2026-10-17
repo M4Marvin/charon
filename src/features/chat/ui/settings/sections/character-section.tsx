@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { useChatConfig } from "@/hooks/useChatConfig";
 import { useUpdateChatOverrides } from "@/hooks/useChatConfig";
 import { BlurCommitTextarea } from "../blur-commit-textarea";
@@ -13,6 +14,8 @@ export function CharacterSection({ chatId, isStreaming }: SectionProps) {
   const updateOverrides = useUpdateChatOverrides();
 
   const chat = config?.chat;
+  const onSaveError = (err: unknown) =>
+    toast.error(`Save failed: ${err instanceof Error ? err.message : String(err)}`);
 
   return (
     <div className="flex flex-col gap-5">
@@ -27,7 +30,12 @@ export function CharacterSection({ chatId, isStreaming }: SectionProps) {
             : "Character description"
         }
         defaultValue={chat?.characterDescription ?? ""}
-        onCommit={(v) => updateOverrides.mutate({ id: chatId, characterDescription: v || null })}
+        onCommit={(v) =>
+          updateOverrides.mutate(
+            { id: chatId, characterDescription: v || null },
+            { onError: onSaveError },
+          )
+        }
         disabled={isStreaming}
       />
       <BlurCommitTextarea
@@ -39,7 +47,12 @@ export function CharacterSection({ chatId, isStreaming }: SectionProps) {
             : "Character personality"
         }
         defaultValue={chat?.characterPersonality ?? ""}
-        onCommit={(v) => updateOverrides.mutate({ id: chatId, characterPersonality: v || null })}
+        onCommit={(v) =>
+          updateOverrides.mutate(
+            { id: chatId, characterPersonality: v || null },
+            { onError: onSaveError },
+          )
+        }
         disabled={isStreaming}
       />
       <BlurCommitTextarea
@@ -51,7 +64,12 @@ export function CharacterSection({ chatId, isStreaming }: SectionProps) {
             : "Character scenario"
         }
         defaultValue={chat?.characterScenario ?? ""}
-        onCommit={(v) => updateOverrides.mutate({ id: chatId, characterScenario: v || null })}
+        onCommit={(v) =>
+          updateOverrides.mutate(
+            { id: chatId, characterScenario: v || null },
+            { onError: onSaveError },
+          )
+        }
         disabled={isStreaming}
       />
       <BlurCommitTextarea
@@ -63,7 +81,12 @@ export function CharacterSection({ chatId, isStreaming }: SectionProps) {
             : "Character system prompt"
         }
         defaultValue={chat?.characterSystemPrompt ?? ""}
-        onCommit={(v) => updateOverrides.mutate({ id: chatId, characterSystemPrompt: v || null })}
+        onCommit={(v) =>
+          updateOverrides.mutate(
+            { id: chatId, characterSystemPrompt: v || null },
+            { onError: onSaveError },
+          )
+        }
         disabled={isStreaming}
       />
     </div>

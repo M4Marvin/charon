@@ -33,9 +33,10 @@ describe("PromptsSection", () => {
     });
     fireEvent.blur(textarea as HTMLElement);
 
-    expect(mockMutate).toHaveBeenCalledWith({
-      imagePromptExample: "masterpiece, best quality, 1girl",
-    });
+    expect(mockMutate).toHaveBeenCalledWith(
+      { imagePromptExample: "masterpiece, best quality, 1girl" },
+      expect.objectContaining({ onError: expect.any(Function) }),
+    );
   });
 
   it("still renders and commits the impersonation prompt (regression)", () => {
@@ -47,6 +48,9 @@ describe("PromptsSection", () => {
     fireEvent.change(textarea as HTMLElement, { target: { value: "you are my persona" } });
     fireEvent.blur(textarea as HTMLElement);
 
-    expect(mockMutate).toHaveBeenCalledWith({ impersonationPrompt: "you are my persona" });
+    expect(mockMutate).toHaveBeenCalledWith(
+      { impersonationPrompt: "you are my persona" },
+      expect.objectContaining({ onError: expect.any(Function) }),
+    );
   });
 });

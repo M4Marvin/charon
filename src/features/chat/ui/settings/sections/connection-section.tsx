@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { Zap, RotateCw, ArrowRight } from "lucide-react";
+import { Zap, RotateCw, ArrowRight, CircleAlert, CircleCheck, CircleX } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -12,6 +13,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { SkeletonText } from "@/components/common/Skeletons";
 import { SectionHeader } from "../section-header";
 import { useAiProviders, useTestProviderConnection } from "@/hooks/useAiProviders";
 import { usePresets } from "@/hooks/usePresets";
@@ -25,9 +28,9 @@ interface SectionProps {
 }
 
 export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
-  const { data: settings } = useUserSettings();
-  const { data: providers } = useAiProviders();
-  const { data: presets } = usePresets();
+  const { data: settings, error: settingsError, refetch: refetchSettings } = useUserSettings();
+  const { data: providers, error: providersError, refetch: refetchProviders } = useAiProviders();
+  const { data: presets, error: presetsError, refetch: refetchPresets } = usePresets();
   const updateUserSettings = useUpdateUserSettings();
   const {
     data: models,
@@ -36,6 +39,12 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
     refetch: refetchModels,
   } = useProviderModels(settings?.defaultProviderId ?? "");
   const testConnection = useTestProviderConnection();
+
+  const queryError = settingsError ?? providersError ?? presetsError;
+
+  const reportSaveError = useCallback((err: unknown) => {
+    toast.error(`Save failed: ${err instanceof Error ? err.message : String(err)}`);
+  }, []);
 
   const [testResult, setTestResult] = useState<{
     ok: boolean;
@@ -51,31 +60,37 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
 
   const handleProviderChange = useCallback(
     (providerId: string) => {
-      updateUserSettings.mutate({
-        defaultProviderId: providerId,
-        defaultSelectedModel: null,
-        defaultPresetId: null,
-      });
+      updateUserSettings.mutate(
+        {
+          defaultProviderId: providerId,
+          defaultSelectedModel: null,
+          defaultPresetId: null,
+        },
+        { onError: reportSaveError },
+      );
       setTestResult(null);
       setModelInput("");
     },
-    [updateUserSettings],
+    [updateUserSettings, reportSaveError],
   );
 
   const handleModelChange = useCallback(
     (model: string) => {
       const v = model.trim() || null;
-      updateUserSettings.mutate({ defaultSelectedModel: v ?? null });
+      updateUserSettings.mutate({ defaultSelectedModel: v ?? null }, { onError: reportSaveError });
       setModelInput(v ?? "");
     },
-    [updateUserSettings],
+    [updateUserSettings, reportSaveError],
   );
 
   const handlePresetChange = useCallback(
     (presetId: string) => {
-      updateUserSettings.mutate({ defaultPresetId: presetId === "_none" ? null : presetId });
+      updateUserSettings.mutate(
+        { defaultPresetId: presetId === "_none" ? null : presetId },
+        { onError: reportSaveError },
+      );
     },
-    [updateUserSettings],
+    [updateUserSettings, reportSaveError],
   );
 
   const handleTest = useCallback(() => {
@@ -97,7 +112,7 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
             <Button
               variant="link"
               size="sm"
-              className="h-auto gap-1 p-0 text-[11px] text-(--lagoon)"
+              className="h-auto gap-1 p-0 text-xs text-(--lagoon)"
               onClick={() => onNavigate("providers")}
             >
               Providers
@@ -106,7 +121,7 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
             <Button
               variant="link"
               size="sm"
-              className="h-auto gap-1 p-0 text-[11px] text-(--lagoon)"
+              className="h-auto gap-1 p-0 text-xs text-(--lagoon)"
               onClick={() => onNavigate("presets")}
             >
               Presets
@@ -115,6 +130,17 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
           </>
         }
       />
+
+      {queryError ? (
+        <ErrorBanner
+          message={
+            queryError instanceof Error ? queryError.message : "Failed to load connection settings"
+          }
+          onRetry={() => {
+            void Promise.all([refetchSettings(), refetchProviders(), refetchPresets()]);
+          }}
+        />
+      ) : null}
 
       <Field className="space-y-1.5">
         <FieldLabel htmlFor="cs-provider">Provider</FieldLabel>
@@ -151,15 +177,24 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
       </Field>
 
       {testResult && (
-        <div role="status" className="rounded-lg border border-white/5 px-3 py-2 text-xs">
+        <div
+          role="status"
+          className="flex items-center gap-2 rounded-lg border border-subtle px-3 py-2 text-xs"
+        >
           {testResult.ok ? (
-            <span className="text-green-400">
-              Connected — {testResult.latencyMs}ms, {testResult.modelCount} models
-            </span>
+            <>
+              <CircleCheck className="size-4 shrink-0 text-success" aria-hidden />
+              <span className="text-success">
+                Connected — {testResult.latencyMs}ms, {testResult.modelCount} models
+              </span>
+            </>
           ) : (
-            <span className="text-red-400">
-              Failed{testResult.error ? `: ${testResult.error}` : ""}
-            </span>
+            <>
+              <CircleX className="size-4 shrink-0 text-danger" aria-hidden />
+              <span className="text-danger">
+                Failed{testResult.error ? `: ${testResult.error}` : ""}
+              </span>
+            </>
           )}
         </div>
       )}
@@ -177,11 +212,12 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {modelsLoading && (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground">Loading models…</div>
-                )}
+                {modelsLoading && <SkeletonText lines={1} className="mx-2 my-1.5" />}
                 {modelsError && (
-                  <div className="px-2 py-1.5 text-xs text-red-400">Failed to load models</div>
+                  <div className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-danger">
+                    <CircleAlert className="size-3" aria-hidden />
+                    Failed to load models
+                  </div>
                 )}
                 {models?.map((m) => (
                   <SelectItem key={m.id} value={m.id}>

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { Plus, Pencil, Trash2, Image as ImageIcon, Upload } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -11,7 +12,10 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Spinner } from "@/components/ui/spinner";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +34,6 @@ import {
 } from "@/hooks/usePersonas";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
 import { MAX_IMAGE_UPLOAD_BYTES, withImageVersion } from "@/lib/image-optimization";
-import { ConfirmDialog } from "../confirm-dialog";
 import { SectionHeader } from "../section-header";
 
 interface SectionProps {
@@ -39,8 +42,8 @@ interface SectionProps {
 }
 
 export function PersonaSection(_props: SectionProps) {
-  const { data: settings } = useUserSettings();
-  const { data: personas } = usePersonas();
+  const { data: settings, error: settingsError, refetch: refetchSettings } = useUserSettings();
+  const { data: personas, error: personasError, refetch: refetchPersonas } = usePersonas();
   const updateUserSettings = useUpdateUserSettings();
   const createPersona = useCreatePersona();
   const updatePersona = useUpdatePersona();
@@ -60,13 +63,23 @@ export function PersonaSection(_props: SectionProps) {
   const [iconError, setIconError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const queryError = settingsError ?? personasError;
+  const reportMutationError = useCallback((action: string) => {
+    return (err: unknown) => {
+      toast.error(`${action}: ${err instanceof Error ? err.message : String(err)}`);
+    };
+  }, []);
+
   const selectedId = settings?.defaultPersonaId ?? "";
 
   const handlePersonaChange = useCallback(
     (id: string) => {
-      updateUserSettings.mutate({ defaultPersonaId: id === "_none" ? null : id });
+      updateUserSettings.mutate(
+        { defaultPersonaId: id === "_none" ? null : id },
+        { onError: reportMutationError("Save failed") },
+      );
     },
-    [updateUserSettings],
+    [updateUserSettings, reportMutationError],
   );
 
   const openCreate = useCallback(() => {
@@ -105,12 +118,13 @@ export function PersonaSection(_props: SectionProps) {
           { id: dialog.id, fileBase64: base64 },
           {
             onSuccess: (result) => setPendingIconPath(result.iconPath),
+            onError: reportMutationError("Upload failed"),
           },
         );
       };
       reader.readAsDataURL(file);
     },
-    [dialog, uploadPersonaIcon],
+    [dialog, uploadPersonaIcon, reportMutationError],
   );
 
   const displayStoredIconPath =
@@ -123,26 +137,44 @@ export function PersonaSection(_props: SectionProps) {
     if (dialog?.kind === "create") {
       createPersona.mutate(
         { name: trimmed, description: description.trim() || undefined },
-        { onSuccess: closeDialog },
+        { onSuccess: closeDialog, onError: reportMutationError("Create failed") },
       );
     } else if (dialog?.kind === "edit") {
       updatePersona.mutate(
         { id: dialog.id, name: trimmed, description: description.trim() || null },
-        { onSuccess: closeDialog },
+        { onSuccess: closeDialog, onError: reportMutationError("Save failed") },
       );
     }
-  }, [dialog, name, description, createPersona, updatePersona, closeDialog]);
+  }, [dialog, name, description, createPersona, updatePersona, closeDialog, reportMutationError]);
 
   const handleDelete = useCallback(() => {
     if (!deleteId) return;
-    deletePersona.mutate({ id: deleteId }, { onSuccess: () => setDeleteId(null) });
-  }, [deleteId, deletePersona]);
+    deletePersona.mutate(
+      { id: deleteId },
+      {
+        onSuccess: () => {
+          toast.success("Persona deleted");
+          setDeleteId(null);
+        },
+        onError: reportMutationError("Delete failed"),
+      },
+    );
+  }, [deleteId, deletePersona, reportMutationError]);
 
   const selectedPersona = personas?.find((p) => p.id === selectedId);
 
   return (
     <div className="flex flex-col gap-5">
       <SectionHeader title="Persona" />
+
+      {queryError ? (
+        <ErrorBanner
+          message={queryError instanceof Error ? queryError.message : "Failed to load personas"}
+          onRetry={() => {
+            void Promise.all([refetchSettings(), refetchPersonas()]);
+          }}
+        />
+      ) : null}
 
       <Field className="space-y-1.5">
         <FieldLabel htmlFor="ps-persona">Active persona</FieldLabel>
@@ -264,11 +296,17 @@ export function PersonaSection(_props: SectionProps) {
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadPersonaIcon.isPending}
                     className="flex items-center gap-1.5"
-                    aria-live="polite"
                   >
-                    <Upload className="size-3.5" data-icon="inline-start" />
-                    {uploadPersonaIcon.isPending ? "Uploading..." : "Upload"}
+                    {uploadPersonaIcon.isPending ? (
+                      <Spinner className="size-3.5" />
+                    ) : (
+                      <Upload className="size-3.5" data-icon="inline-start" />
+                    )}
+                    Upload
                   </Button>
+                  <span role="status" className="sr-only">
+                    {uploadPersonaIcon.isPending ? "Uploading persona icon" : ""}
+                  </span>
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -290,7 +328,10 @@ export function PersonaSection(_props: SectionProps) {
             <Button variant="outline" onClick={closeDialog}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={!name.trim()}>
+            <Button
+              onClick={handleSave}
+              disabled={!name.trim() || createPersona.isPending || updatePersona.isPending}
+            >
               {dialog?.kind === "edit" ? "Save" : "Create"}
             </Button>
           </DialogFooter>
@@ -304,6 +345,8 @@ export function PersonaSection(_props: SectionProps) {
         }}
         title="Delete persona?"
         description="This cannot be undone."
+        destructive
+        loading={deletePersona.isPending}
         onConfirm={handleDelete}
       />
     </div>

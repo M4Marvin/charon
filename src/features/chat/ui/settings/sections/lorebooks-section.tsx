@@ -15,7 +15,9 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { SectionHeader } from "../section-header";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
+import { SkeletonText } from "@/components/common/Skeletons";
 import {
   useLorebooks,
   useToggleLorebook,
@@ -40,7 +42,12 @@ type EntryDialog =
   | { kind: "edit"; entry: LoreEntryListItem };
 
 export function LorebooksSection(_props: SectionProps) {
-  const { data: lorebooks } = useLorebooks();
+  const {
+    data: lorebooks,
+    isLoading: lorebooksLoading,
+    error: lorebooksError,
+    refetch: refetchLorebooks,
+  } = useLorebooks();
   const toggleLorebook = useToggleLorebook();
   const createLorebook = useCreateLorebook();
   const deleteLorebook = useDeleteLorebook();
@@ -56,7 +63,13 @@ export function LorebooksSection(_props: SectionProps) {
 
   const handleToggle = useCallback(
     (lorebookId: string, enabled: boolean) => {
-      toggleLorebook.mutate({ lorebookId, enabled });
+      toggleLorebook.mutate(
+        { lorebookId, enabled },
+        {
+          onError: (err) =>
+            toast.error(`Update failed: ${err instanceof Error ? err.message : String(err)}`),
+        },
+      );
     },
     [toggleLorebook],
   );
@@ -111,7 +124,7 @@ export function LorebooksSection(_props: SectionProps) {
             <Button
               variant="link"
               size="sm"
-              className="h-auto gap-1 p-0 text-[11px] text-(--lagoon)"
+              className="h-auto gap-1 p-0 text-xs text-(--lagoon)"
               onClick={() => {
                 setNewOpen(true);
                 setImportOpen(false);
@@ -123,7 +136,7 @@ export function LorebooksSection(_props: SectionProps) {
             <Button
               variant="link"
               size="sm"
-              className="h-auto gap-1 p-0 text-[11px] text-(--lagoon)"
+              className="h-auto gap-1 p-0 text-xs text-(--lagoon)"
               onClick={() => {
                 setImportOpen(true);
                 setNewOpen(false);
@@ -136,52 +149,66 @@ export function LorebooksSection(_props: SectionProps) {
         }
       />
 
-      {enabled.length > 0 && (
-        <div className="flex flex-col gap-1">
-          {enabled.map((lb) => (
-            <div key={lb.id}>
-              <div className="flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-white/5">
-                <button
-                  type="button"
-                  onClick={() => setExpandedId(expandedId === lb.id ? null : lb.id)}
-                  className="flex items-center gap-1.5 text-xs text-(--sea-ink-soft) hover:text-(--sea-ink) min-w-0"
-                >
-                  {expandedId === lb.id ? (
-                    <ChevronDown className="size-3.5 shrink-0" />
-                  ) : (
-                    <ChevronRight className="size-3.5 shrink-0" />
-                  )}
-                  <span className="truncate">{lb.name}</span>
-                </button>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-[10px] tabular-nums text-(--sea-ink-soft)/50">
-                    {lb.entryCount}
-                  </span>
-                  <Switch
-                    checked
-                    onCheckedChange={() => handleToggle(lb.id, false)}
-                    aria-label={`Disable ${lb.name}`}
-                  />
-                  <RowActionsMenu
-                    label={`Actions for ${lb.name}`}
-                    items={[
-                      {
-                        label: "Delete lorebook",
-                        destructive: true,
-                        onSelect: () => setDelBookId(lb.id),
-                      },
-                    ]}
-                  />
-                </div>
-              </div>
-              {expandedId === lb.id && <ExpandedEntries lorebookId={lb.id} />}
-            </div>
-          ))}
-        </div>
-      )}
+      {lorebooksError ? (
+        <ErrorBanner
+          message={
+            lorebooksError instanceof Error ? lorebooksError.message : "Failed to load lorebooks"
+          }
+          onRetry={() => void refetchLorebooks()}
+        />
+      ) : null}
 
-      {enabled.length === 0 && (
-        <p className="text-xs text-(--sea-ink-soft)">No lorebooks enabled.</p>
+      {lorebooksLoading ? (
+        <SkeletonText lines={2} />
+      ) : (
+        <>
+          {enabled.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {enabled.map((lb) => (
+                <div key={lb.id}>
+                  <div className="flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-raised">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedId(expandedId === lb.id ? null : lb.id)}
+                      aria-expanded={expandedId === lb.id}
+                      className="flex items-center gap-1.5 rounded text-xs text-2 hover:text-1 min-w-0 focus-ring"
+                    >
+                      {expandedId === lb.id ? (
+                        <ChevronDown className="size-3.5 shrink-0" />
+                      ) : (
+                        <ChevronRight className="size-3.5 shrink-0" />
+                      )}
+                      <span className="truncate">{lb.name}</span>
+                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-xs tabular-nums text-2">{lb.entryCount}</span>
+                      <Switch
+                        checked
+                        onCheckedChange={() => handleToggle(lb.id, false)}
+                        aria-label={`Disable ${lb.name}`}
+                      />
+                      <RowActionsMenu
+                        label={`Actions for ${lb.name}`}
+                        items={[
+                          {
+                            label: "Delete lorebook",
+                            destructive: true,
+                            onSelect: () => setDelBookId(lb.id),
+                          },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                  {expandedId === lb.id && <ExpandedEntries lorebookId={lb.id} />}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {enabled.length === 0 && !lorebooksError && (
+            <p className="text-xs text-2">No lorebooks enabled.</p>
+          )}
+        </>
       )}
 
       <div className="flex items-end gap-2">
@@ -214,7 +241,7 @@ export function LorebooksSection(_props: SectionProps) {
       </div>
 
       {newOpen && (
-        <div className="flex flex-col gap-2 rounded-lg border border-white/10 bg-black/20 p-3">
+        <div className="flex flex-col gap-2 rounded-lg border border-subtle bg-raised p-3">
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -228,7 +255,11 @@ export function LorebooksSection(_props: SectionProps) {
             placeholder="Description (optional)"
             aria-label="Description"
           />
-          {newError ? <p className="text-xs text-red-400">{newError}</p> : null}
+          {newError ? (
+            <p className="text-xs text-danger" role="alert">
+              {newError}
+            </p>
+          ) : null}
           <div className="flex justify-end gap-2">
             <Button variant="ghost" size="sm" onClick={() => setNewOpen(false)}>
               Cancel
@@ -256,7 +287,7 @@ export function LorebooksSection(_props: SectionProps) {
 }
 
 function ExpandedEntries({ lorebookId }: { lorebookId: string }) {
-  const { data: entries } = useLorebookEntries(lorebookId);
+  const { data: entries, isLoading, error, refetch } = useLorebookEntries(lorebookId);
   const toggleEntry = useToggleLoreEntry(lorebookId);
   const deleteEntry = useDeleteLorebookEntry(lorebookId);
 
@@ -264,14 +295,21 @@ function ExpandedEntries({ lorebookId }: { lorebookId: string }) {
   const [delEntryId, setDelEntryId] = useState<string | null>(null);
 
   return (
-    <div className="ml-5 flex flex-col gap-1 border-l border-white/5 pl-2">
-      {entries?.length ? (
+    <div className="ml-5 flex flex-col gap-1 border-l border-subtle pl-2">
+      {isLoading ? (
+        <SkeletonText lines={2} className="py-1" />
+      ) : error ? (
+        <ErrorBanner
+          message={error instanceof Error ? error.message : "Failed to load entries"}
+          onRetry={() => void refetch()}
+        />
+      ) : entries?.length ? (
         entries.map((entry) => (
           <div
             key={entry.id}
-            className="flex items-center justify-between gap-1 rounded px-2 py-1 hover:bg-white/5"
+            className="flex items-center justify-between gap-1 rounded px-2 py-1 hover:bg-raised"
           >
-            <span className="text-[11px] text-(--sea-ink-soft) truncate max-w-[45%]">
+            <span className="text-xs text-2 truncate max-w-[45%]">
               {entry.data.comment || `Entry #${entry.data.uid}`}
             </span>
             <div className="flex items-center gap-0.5 shrink-0">
@@ -279,14 +317,22 @@ function ExpandedEntries({ lorebookId }: { lorebookId: string }) {
                 checked={!entry.userDisabled && !entry.data.disable}
                 disabled={entry.data.disable}
                 onCheckedChange={(checked) =>
-                  toggleEntry.mutate({ entryId: entry.id, disabled: !checked })
+                  toggleEntry.mutate(
+                    { entryId: entry.id, disabled: !checked },
+                    {
+                      onError: (err) =>
+                        toast.error(
+                          `Update failed: ${err instanceof Error ? err.message : String(err)}`,
+                        ),
+                    },
+                  )
                 }
                 aria-label={`Toggle ${entry.data.comment || `entry ${entry.data.uid}`}`}
               />
               <button
                 type="button"
                 onClick={() => setDialog({ kind: "edit", entry })}
-                className="size-6 flex items-center justify-center rounded text-(--sea-ink-soft) hover:text-(--sea-ink) hover:bg-white/5"
+                className="size-6 flex items-center justify-center rounded text-2 hover:text-1 hover:bg-raised focus-ring"
                 aria-label={`Edit ${entry.data.comment || `entry ${entry.data.uid}`}`}
               >
                 <Pencil className="size-3" />
@@ -294,7 +340,7 @@ function ExpandedEntries({ lorebookId }: { lorebookId: string }) {
               <button
                 type="button"
                 onClick={() => setDelEntryId(entry.id)}
-                className="size-6 flex items-center justify-center rounded text-(--sea-ink-soft) hover:text-red-400 hover:bg-white/5"
+                className="size-6 flex items-center justify-center rounded text-2 hover:text-danger hover:bg-raised focus-ring"
                 aria-label={`Delete ${entry.data.comment || `entry ${entry.data.uid}`}`}
               >
                 <Trash2 className="size-3" />
@@ -303,7 +349,7 @@ function ExpandedEntries({ lorebookId }: { lorebookId: string }) {
           </div>
         ))
       ) : (
-        <p className="py-1 text-[11px] text-white/20">No entries</p>
+        <p className="py-1 text-xs text-2">No entries</p>
       )}
 
       <Button

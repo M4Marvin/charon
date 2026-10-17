@@ -12,7 +12,16 @@ import { ChatRow } from "./chat-row";
 afterEach(cleanup);
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children?: React.ReactNode }) => <a>{children}</a>,
+  Link: ({
+    children,
+    to: _to,
+    params: _params,
+    ...props
+  }: React.ComponentProps<"a"> & { to?: string; params?: Record<string, string> }) => (
+    <a href="#" {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 vi.mock("@/server/fns/chats", () => ({ getChatMessages: vi.fn(async () => []) }));
@@ -35,14 +44,19 @@ const chat: ChatListItem = {
   updatedAt: new Date(),
 };
 
+function renderRow(overrides: Partial<ChatListItem> = {}) {
+  const queryClient = new QueryClient();
+  const result = render(
+    <QueryClientProvider client={queryClient}>
+      <ChatRow chat={{ ...chat, ...overrides }} onRename={() => {}} onDelete={() => {}} />
+    </QueryClientProvider>,
+  );
+  return { queryClient, ...result };
+}
+
 describe("ChatRow prefetch", () => {
   it("warms the messages and config queries on hover", async () => {
-    const queryClient = new QueryClient();
-    render(
-      <QueryClientProvider client={queryClient}>
-        <ChatRow chat={chat} onRename={() => {}} onDelete={() => {}} />
-      </QueryClientProvider>,
-    );
+    const { queryClient } = renderRow();
 
     fireEvent.mouseEnter(screen.getByText("Test Chat"));
 
@@ -52,5 +66,28 @@ describe("ChatRow prefetch", () => {
       expect(queryClient.getQueryData(chatKeys.messages("chat-1"))).toEqual([]);
       expect(queryClient.getQueryData(chatConfigKeys.detail("chat-1"))).toEqual({});
     });
+  });
+});
+
+describe("ChatRow accessibility", () => {
+  it("marks the avatar decorative because the character name follows as text", () => {
+    const { container } = renderRow({ characterImagePath: "avatar.png" });
+
+    expect(container.querySelector("img")?.getAttribute("alt")).toBe("");
+  });
+
+  it("reveals the actions menu when its trigger receives focus", () => {
+    renderRow();
+
+    const wrapper = screen.getByRole("button", { name: "Actions for Test Chat" }).parentElement;
+    expect(wrapper?.className).toContain("group-focus-within:opacity-100");
+  });
+
+  it("gives the character link a 40px target", () => {
+    renderRow();
+
+    expect(screen.getByRole("link", { name: "View Test Character" }).className).toContain(
+      "size-10",
+    );
   });
 });

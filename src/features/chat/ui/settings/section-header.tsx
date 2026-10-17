@@ -11,7 +11,7 @@ export function SectionHeader({ title, description, actions }: SectionHeaderProp
     <div className="flex items-start justify-between gap-3">
       <div className="flex min-w-0 flex-col gap-0.5">
         <p className="text-sm font-heading text-(--sea-ink)">{title}</p>
-        {description ? <p className="text-[11px] text-(--sea-ink-soft)">{description}</p> : null}
+        {description ? <p className="text-xs text-2">{description}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 items-center gap-1">{actions}</div> : null}
     </div>

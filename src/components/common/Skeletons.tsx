@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export function SkeletonRows({ rows }: { rows: number }) {
   return (
@@ -10,7 +11,15 @@ export function SkeletonRows({ rows }: { rows: number }) {
   );
 }
 
-export function SkeletonCardGrid({ count, lanes = 3 }: { count: number; lanes?: number }) {
+export function SkeletonCardGrid({
+  count,
+  lanes = 3,
+  aspect = "aspect-[3/4]",
+}: {
+  count: number;
+  lanes?: number;
+  aspect?: string;
+}) {
   const colsClass =
     {
       2: "grid-cols-2",
@@ -22,7 +31,17 @@ export function SkeletonCardGrid({ count, lanes = 3 }: { count: number; lanes?: 
   return (
     <div className={`grid gap-3 ${colsClass}`}>
       {Array.from({ length: count }).map((_, i) => (
-        <Skeleton key={i} className="aspect-[3/4] rounded-xl" />
+        <Skeleton key={i} className={`${aspect} rounded-xl`} />
+      ))}
+    </div>
+  );
+}
+
+export function SkeletonText({ lines = 2, className }: { lines?: number; className?: string }) {
+  return (
+    <div className={cn("space-y-2", className)}>
+      {Array.from({ length: lines }).map((_, i) => (
+        <Skeleton key={i} className="h-4 w-full rounded" />
       ))}
     </div>
   );

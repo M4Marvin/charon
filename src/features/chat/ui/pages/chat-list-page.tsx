@@ -9,13 +9,14 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { SkeletonRows } from "@/components/common/Skeletons";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
-import { useDeleteChat, useRenameChat } from "@/hooks/useChats";
+import { useDeleteChat, useRenameChat, useChats } from "@/hooks/useChats";
 import { useChatList, DAY_GROUPS } from "../hooks/use-chat-list";
 import { ChatDayGroup } from "../components/chat-day-group";
 import { RenameChatDialog } from "../components/rename-chat-dialog";
 
 export function ChatListPage() {
   const { chats, filtered, grouped, search, setSearch, isLoading, error } = useChatList();
+  const { refetch } = useChats();
   const deleteChat = useDeleteChat();
   const renameChat = useRenameChat();
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -37,7 +38,10 @@ export function ChatListPage() {
     return (
       <main className="mx-auto max-w-[1200px] px-4 py-8">
         <PageHeader title="Chats" />
-        <ErrorBanner message={(error as Error).message ?? "Failed to load chats"} />
+        <ErrorBanner
+          message={(error as Error).message ?? "Failed to load chats"}
+          onRetry={() => void refetch()}
+        />
       </main>
     );
   }
@@ -49,7 +53,7 @@ export function ChatListPage() {
         actions={
           <Button asChild size="sm" className="gap-1.5">
             <Link to="/characters">
-              <Plus className="size-4" data-icon="inline-start" /> New Chat
+              <Plus className="size-4" data-icon="inline-start" /> Choose a character
             </Link>
           </Button>
         }
@@ -81,7 +85,15 @@ export function ChatListPage() {
           ) : null}
 
           {filtered.length === 0 && search.trim() ? (
-            <p className="py-12 text-center text-2 text-sm">No chats match your search.</p>
+            <EmptyState
+              icon={Search}
+              title="No chats found"
+              description={`No chats match “${search.trim()}”.`}
+            >
+              <Button variant="outline" onClick={() => setSearch("")}>
+                Clear search
+              </Button>
+            </EmptyState>
           ) : (
             <div className="space-y-8">
               {DAY_GROUPS.map((day) => {

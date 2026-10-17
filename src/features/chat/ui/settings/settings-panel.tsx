@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import {
   Zap,
   User,
@@ -20,9 +21,10 @@ import {
 } from "@/components/ui/sheet";
 import { useChatConfig } from "@/hooks/useChatConfig";
 import { useDeleteChat } from "@/hooks/useChats";
+import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { SettingsNav } from "./settings-nav";
 import type { SettingsSection } from "./settings-nav-model";
-import { ConfirmDialog } from "./confirm-dialog";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ConnectionSection } from "./sections/connection-section";
 import { ProviderSection } from "./sections/provider-section";
 import { PresetSection } from "./sections/preset-section";
@@ -65,7 +67,7 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps) {
   const navigate = useNavigate();
-  const { data: config } = useChatConfig(chatId);
+  const { data: config, error: configError, refetch: refetchConfig } = useChatConfig(chatId);
   const deleteChat = useDeleteChat();
 
   const isStreaming = config?.chat.lockState === "generating";
@@ -78,8 +80,11 @@ export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps
       { id: chatId },
       {
         onSuccess: () => {
+          toast.success("Chat deleted");
           navigate({ to: "/chat" });
         },
+        onError: (err) =>
+          toast.error(`Delete failed: ${err instanceof Error ? err.message : String(err)}`),
       },
     );
   }, [chatId, deleteChat, navigate]);
@@ -97,8 +102,8 @@ export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps
           side="right"
           className="w-full data-[side=right]:w-full data-[side=right]:sm:max-w-2xl glass-strong flex flex-col gap-0 p-0"
         >
-          <SheetHeader className="px-5 pt-5 pb-3 border-b border-white/5">
-            <SheetTitle className="font-heading text-(--sea-ink)">Chat Settings</SheetTitle>
+          <SheetHeader className="px-5 pt-5 pb-3 border-b border-subtle">
+            <SheetTitle className="font-heading text-1">Chat Settings</SheetTitle>
             <SheetDescription className="text-xs">
               Configure AI, persona, prompts, and appearance.
             </SheetDescription>
@@ -108,6 +113,18 @@ export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps
             <SettingsNav sections={SECTIONS} activeId={activeId} onChange={handleSectionChange} />
 
             <div className="flex-1 min-w-0 overflow-y-auto px-5 py-5 scrollbar-thin scroll-fade-b">
+              {configError ? (
+                <div className="mb-4">
+                  <ErrorBanner
+                    message={
+                      configError instanceof Error
+                        ? configError.message
+                        : "Failed to load chat config"
+                    }
+                    onRetry={() => void refetchConfig()}
+                  />
+                </div>
+              ) : null}
               <div key={activeId} className="section-switch">
                 {activeId === "connection" && <ConnectionSection {...sectionProps} />}
                 {activeId === "providers" && <ProviderSection {...sectionProps} />}
@@ -122,10 +139,10 @@ export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps
             </div>
           </div>
 
-          <div className="flex items-center justify-center px-5 py-3 border-t border-white/5">
+          <div className="flex items-center justify-center px-5 py-3 border-t border-subtle">
             <button
               type="button"
-              className="rounded px-1 py-0.5 text-xs text-3 transition-colors hover:text-danger focus-ring"
+              className="rounded px-1 py-0.5 text-xs text-2 transition-colors hover:text-danger focus-ring"
               onClick={() => setDeleteOpen(true)}
             >
               Delete this chat
@@ -139,6 +156,8 @@ export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps
         onOpenChange={setDeleteOpen}
         title="Delete chat?"
         description="This permanently deletes the chat and all its messages. This cannot be undone."
+        destructive
+        loading={deleteChat.isPending}
         onConfirm={handleDelete}
       />
     </>
