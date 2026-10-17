@@ -174,10 +174,13 @@ export function MessageList({
   // "following bottom" on every scroll event, yanking the viewport back down
   // mid-stream. Disable it while the reader is away from the bottom.
   const [userScrolledUp, setUserScrolledUp] = useState(false);
+  const hasPendingSend = pendingUserContent !== null;
 
+  // Sending (or recovering a run) is an intent to read the reply: follow it
+  // even if the reader was scrolled up when they hit Send.
   useEffect(() => {
-    setUserScrolledUp(false);
-  }, [chatId]);
+    if (hasPendingSend || activePlaceholderId !== null) setUserScrolledUp(false);
+  }, [hasPendingSend, activePlaceholderId]);
 
   const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
     const el = event.currentTarget;
@@ -198,7 +201,7 @@ export function MessageList({
     >
       <MessageScroller className="size-full">
         <MessageScrollerViewport
-          className="px-3 pb-[calc(var(--composer-h,5rem)+1rem)] md:px-6"
+          className="px-3 pb-[calc(var(--composer-h,5rem)+var(--keyboard-inset,0px)+1rem)] md:px-6"
           style={{ paddingTop: CHAT_HEADER_HEIGHT + 12 }}
           aria-busy={isStreamingPlaceholder || undefined}
           onScroll={handleScroll}

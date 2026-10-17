@@ -49,9 +49,9 @@ function paramSummary(p: PresetListItem): string {
 export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet" } = {}) {
   const isSheet = variant === "sheet";
   const { data: providers = [] } = useAiProviders();
-  const { data: userSettings } = useUserSettings();
+  const { data: userSettings, error: settingsError, refetch: refetchSettings } = useUserSettings();
   const updateDefaults = useUpdateUserSettings();
-  const { data: presets = [], isLoading, error } = usePresets();
+  const { data: presets = [], isLoading, error, refetch: refetchPresets } = usePresets();
   const createPreset = useCreatePreset();
   const updatePreset = useUpdatePreset();
   const deletePreset = useDeletePreset();
@@ -63,14 +63,21 @@ export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet"
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Spinner />
+        <Spinner label="Loading presets" />
       </div>
     );
   }
 
-  if (error) {
+  if (error || settingsError) {
+    const failure = error ?? settingsError;
     return (
-      <ErrorBanner message={error instanceof Error ? error.message : "Failed to load presets"} />
+      <ErrorBanner
+        message={failure instanceof Error ? failure.message : "Failed to load presets"}
+        onRetry={() => {
+          void refetchPresets();
+          void refetchSettings();
+        }}
+      />
     );
   }
 
@@ -91,7 +98,7 @@ export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet"
                   isSheet
                     ? isDefault
                       ? "border-(--lagoon)/30 bg-(--lagoon)/5"
-                      : "bg-white/5"
+                      : "bg-raised"
                     : isDefault
                       ? "border-brand/30 bg-brand/5"
                       : "bg-card"
@@ -150,9 +157,13 @@ export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet"
                             {
                               label: "Set as default",
                               onSelect: () =>
-                                updateDefaults.mutate({
-                                  defaultPresetId: p.id,
-                                }),
+                                updateDefaults.mutate(
+                                  { defaultPresetId: p.id },
+                                  {
+                                    onError: (e) =>
+                                      toast.error(`Update failed: ${(e as Error).message}`),
+                                  },
+                                ),
                             },
                           ]
                         : []),
@@ -179,9 +190,10 @@ export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet"
         <Select
           value={selectedPresetId || "_none"}
           onValueChange={(v) =>
-            updateDefaults.mutate({
-              defaultPresetId: v === "_none" ? null : v,
-            })
+            updateDefaults.mutate(
+              { defaultPresetId: v === "_none" ? null : v },
+              { onError: (e) => toast.error(`Update failed: ${(e as Error).message}`) },
+            )
           }
         >
           <SelectTrigger className="w-full" aria-label="Default preset">

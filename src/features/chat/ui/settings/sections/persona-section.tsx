@@ -34,6 +34,7 @@ import {
 } from "@/hooks/usePersonas";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
 import { MAX_IMAGE_UPLOAD_BYTES, withImageVersion } from "@/lib/image-optimization";
+import { SkeletonText } from "@/components/common/Skeletons";
 import { SectionHeader } from "../section-header";
 
 interface SectionProps {
@@ -42,8 +43,18 @@ interface SectionProps {
 }
 
 export function PersonaSection(_props: SectionProps) {
-  const { data: settings, error: settingsError, refetch: refetchSettings } = useUserSettings();
-  const { data: personas, error: personasError, refetch: refetchPersonas } = usePersonas();
+  const {
+    data: settings,
+    error: settingsError,
+    refetch: refetchSettings,
+    isLoading: settingsLoading,
+  } = useUserSettings();
+  const {
+    data: personas,
+    error: personasError,
+    refetch: refetchPersonas,
+    isLoading: personasLoading,
+  } = usePersonas();
   const updateUserSettings = useUpdateUserSettings();
   const createPersona = useCreatePersona();
   const updatePersona = useUpdatePersona();
@@ -64,6 +75,7 @@ export function PersonaSection(_props: SectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const queryError = settingsError ?? personasError;
+  const queryLoading = settingsLoading || personasLoading;
   const reportMutationError = useCallback((action: string) => {
     return (err: unknown) => {
       toast.error(`${action}: ${err instanceof Error ? err.message : String(err)}`);
@@ -176,10 +188,21 @@ export function PersonaSection(_props: SectionProps) {
         />
       ) : null}
 
+      {!queryError && queryLoading ? (
+        <div role="status" className="space-y-2">
+          <SkeletonText lines={2} />
+          <span className="sr-only">Loading personas</span>
+        </div>
+      ) : null}
+
       <Field className="space-y-1.5">
         <FieldLabel htmlFor="ps-persona">Active persona</FieldLabel>
         <div className="flex gap-2">
-          <Select value={selectedId || "_none"} onValueChange={handlePersonaChange}>
+          <Select
+            value={selectedId || "_none"}
+            onValueChange={handlePersonaChange}
+            disabled={queryLoading}
+          >
             <SelectTrigger id="ps-persona" className="flex-1">
               <SelectValue placeholder="None (account name)" />
             </SelectTrigger>

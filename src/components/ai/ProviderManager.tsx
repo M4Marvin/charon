@@ -29,9 +29,19 @@ import type { ProbeResult } from "@/server/fns/models";
  */
 export function ProviderManager({ variant = "page" }: { variant?: "page" | "sheet" } = {}) {
   const isSheet = variant === "sheet";
-  const { data: userSettings, isLoading: settingsLoading } = useUserSettings();
+  const {
+    data: userSettings,
+    isLoading: settingsLoading,
+    error: settingsError,
+    refetch: refetchSettings,
+  } = useUserSettings();
   const updateDefaults = useUpdateUserSettings();
-  const { data: providers = [], isLoading: providersLoading, error } = useAiProviders();
+  const {
+    data: providers = [],
+    isLoading: providersLoading,
+    error: providersError,
+    refetch: refetchProviders,
+  } = useAiProviders();
   const createProvider = useCreateAiProvider();
   const updateProvider = useUpdateAiProvider();
   const deleteProvider = useDeleteAiProvider();
@@ -62,14 +72,21 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Spinner />
+        <Spinner label="Loading providers" />
       </div>
     );
   }
 
-  if (error) {
+  if (providersError || settingsError) {
+    const failure = providersError ?? settingsError;
     return (
-      <ErrorBanner message={error instanceof Error ? error.message : "Failed to load providers"} />
+      <ErrorBanner
+        message={failure instanceof Error ? failure.message : "Failed to load providers"}
+        onRetry={() => {
+          void refetchProviders();
+          void refetchSettings();
+        }}
+      />
     );
   }
 
@@ -91,7 +108,7 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
                   isSheet
                     ? isDefault
                       ? "border-(--lagoon)/30 bg-(--lagoon)/5"
-                      : "bg-white/5"
+                      : "bg-raised"
                     : isDefault
                       ? "border-brand/30 bg-brand/5"
                       : "bg-card"
@@ -163,11 +180,17 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
                             {
                               label: "Set as default",
                               onSelect: () =>
-                                updateDefaults.mutate({
-                                  defaultProviderId: p.id,
-                                  defaultSelectedModel: null,
-                                  defaultPresetId: null,
-                                }),
+                                updateDefaults.mutate(
+                                  {
+                                    defaultProviderId: p.id,
+                                    defaultSelectedModel: null,
+                                    defaultPresetId: null,
+                                  },
+                                  {
+                                    onError: (e) =>
+                                      toast.error(`Update failed: ${(e as Error).message}`),
+                                  },
+                                ),
                             },
                           ]
                         : []),
@@ -195,7 +218,12 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
           <ModelCombobox
             providerId={defaultProviderId}
             value={userSettings?.defaultSelectedModel ?? ""}
-            onChange={(model) => updateDefaults.mutate({ defaultSelectedModel: model || null })}
+            onChange={(model) =>
+              updateDefaults.mutate(
+                { defaultSelectedModel: model || null },
+                { onError: (e) => toast.error(`Update failed: ${(e as Error).message}`) },
+              )
+            }
             aria-label="Default model"
           />
         </div>
@@ -210,11 +238,14 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
             onSuccess: ({ id }) => {
               toast.success("Provider created");
               setEditingProvider(null);
-              updateDefaults.mutate({
-                defaultProviderId: id,
-                defaultSelectedModel: null,
-                defaultPresetId: null,
-              });
+              updateDefaults.mutate(
+                {
+                  defaultProviderId: id,
+                  defaultSelectedModel: null,
+                  defaultPresetId: null,
+                },
+                { onError: (e) => toast.error(`Default update failed: ${(e as Error).message}`) },
+              );
             },
             onError: (e) => toast.error(`Create failed: ${(e as Error).message}`),
           })

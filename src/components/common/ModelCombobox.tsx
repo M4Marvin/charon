@@ -83,6 +83,13 @@ export function ModelCombobox({
           aria-live="polite"
           className="absolute inset-x-0 top-full z-50 mt-1 max-h-48 overflow-auto rounded-lg border bg-popover shadow-lg"
         >
+          <span className="sr-only">
+            {isLoading && filtered.length === 0
+              ? "Loading models"
+              : error
+                ? "Failed to load models"
+                : `${filtered.length} models available`}
+          </span>
           {isLoading && filtered.length === 0 ? (
             <SkeletonText lines={1} className="px-3 py-2" />
           ) : error ? (

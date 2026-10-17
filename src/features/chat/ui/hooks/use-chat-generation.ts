@@ -135,6 +135,9 @@ export function useChatGeneration(
     connection,
     onFinish: (message) => {
       const ph = placeholderRef.current;
+      // Clear the transport flag even when this callback has no owner: a
+      // stale duplicate must not leave the watchdog armed.
+      transportActiveRef.current = false;
       if (ph === null) return;
       // The callback argument is newer than the render-time `messages`
       // snapshot, which can lag the last chunk.
@@ -142,7 +145,6 @@ export function useChatGeneration(
         ? extractMessageText(message)
         : extractAssistantText(aiChatRef.current.messages);
       const cid = runChatIdRef.current;
-      transportActiveRef.current = false;
 
       if (!text) {
         resetRun(true);

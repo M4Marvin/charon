@@ -81,7 +81,7 @@ export function Composer({
     const update = () => root.style.setProperty("--composer-h", `${el.offsetHeight}px`);
     update();
     const observer = new ResizeObserver(update);
-    observer.observe(el);
+    observer.observe(el, { box: "border-box" });
     return () => {
       observer.disconnect();
       root.style.removeProperty("--composer-h");
@@ -95,9 +95,23 @@ export function Composer({
     const el = wrapperRef.current;
     const viewport = window.visualViewport;
     if (!el || !viewport) return;
+    const root = document.documentElement;
     const updateBottom = () => {
-      const inset = window.innerHeight - viewport.height - viewport.offsetTop;
-      el.style.bottom = `${Math.max(0, Math.min(inset, window.innerHeight / 2))}px`;
+      // Pinch-zoom shrinks the visual viewport without a keyboard; ignore it.
+      if (viewport.scale !== 1) {
+        el.style.bottom = "0px";
+        root.style.setProperty("--keyboard-inset", "0px");
+        return;
+      }
+      const inset = Math.max(
+        0,
+        Math.min(
+          window.innerHeight - viewport.height - viewport.offsetTop,
+          window.innerHeight * 0.75,
+        ),
+      );
+      el.style.bottom = `${inset}px`;
+      root.style.setProperty("--keyboard-inset", `${inset}px`);
     };
     updateBottom();
     viewport.addEventListener("resize", updateBottom);
@@ -106,6 +120,7 @@ export function Composer({
       viewport.removeEventListener("resize", updateBottom);
       viewport.removeEventListener("scroll", updateBottom);
       el.style.removeProperty("bottom");
+      root.style.removeProperty("--keyboard-inset");
     };
   }, []);
 
@@ -148,12 +163,13 @@ export function Composer({
       if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
       // Enter belongs to the IME while a composition is active.
       if (e.nativeEvent.isComposing || e.keyCode === 229 || e.repeat) return;
+      // No action available: leave Enter to the textarea instead of swallowing it.
+      if (isFinalizing || (!isStreaming && (disabled || !canSend))) return;
 
       e.preventDefault();
-      if (isFinalizing) return;
       if (isStreaming) {
         onStop();
-      } else if (canSend) {
+      } else {
         onSend();
       }
     },
@@ -164,9 +180,11 @@ export function Composer({
     ? "Finishing generation…"
     : isStreaming
       ? "Press Enter to stop generating…  (Shift+Enter for a line break)"
-      : characterName
-        ? `Message ${characterName}…  (Enter to send, Shift+Enter for a line break)`
-        : "Enter to send, Shift+Enter for a line break";
+      : disabled
+        ? "Another generation is running — you can draft, but sending is locked"
+        : characterName
+          ? `Message ${characterName}…  (Enter to send, Shift+Enter for a line break)`
+          : "Enter to send, Shift+Enter for a line break";
 
   return (
     <div

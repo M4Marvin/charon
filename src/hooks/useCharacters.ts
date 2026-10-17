@@ -124,6 +124,8 @@ export function useDeleteCharacter() {
       void queryClient.invalidateQueries({ queryKey: characterKeys.all });
       // Deleting a character cascades its chats: refresh the chat list and the
       // per-chat config (lock/character) so an open chat stops rendering it.
+      // Cascade means the chat list and per-chat config must refetch; an
+      // already-mounted chat keeps its cached config until it reloads.
       void queryClient.invalidateQueries({ queryKey: chatKeys.list() });
       void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },

@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Zap, RotateCw, ArrowRight, CircleAlert, CircleCheck, CircleX } from "lucide-react";
+import { Zap, RotateCw, ArrowRight, CircleCheck, CircleX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,9 +28,24 @@ interface SectionProps {
 }
 
 export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
-  const { data: settings, error: settingsError, refetch: refetchSettings } = useUserSettings();
-  const { data: providers, error: providersError, refetch: refetchProviders } = useAiProviders();
-  const { data: presets, error: presetsError, refetch: refetchPresets } = usePresets();
+  const {
+    data: settings,
+    error: settingsError,
+    refetch: refetchSettings,
+    isLoading: settingsLoading,
+  } = useUserSettings();
+  const {
+    data: providers,
+    error: providersError,
+    refetch: refetchProviders,
+    isLoading: providersLoading,
+  } = useAiProviders();
+  const {
+    data: presets,
+    error: presetsError,
+    refetch: refetchPresets,
+    isLoading: presetsLoading,
+  } = usePresets();
   const updateUserSettings = useUpdateUserSettings();
   const {
     data: models,
@@ -41,6 +56,7 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
   const testConnection = useTestProviderConnection();
 
   const queryError = settingsError ?? providersError ?? presetsError;
+  const settingsQueryLoading = settingsLoading || providersLoading || presetsLoading;
 
   const reportSaveError = useCallback((err: unknown) => {
     toast.error(`Save failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -142,13 +158,20 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
         />
       ) : null}
 
+      {!queryError && settingsQueryLoading ? (
+        <div role="status" className="space-y-2">
+          <SkeletonText lines={3} />
+          <span className="sr-only">Loading connection settings</span>
+        </div>
+      ) : null}
+
       <Field className="space-y-1.5">
         <FieldLabel htmlFor="cs-provider">Provider</FieldLabel>
         <div className="flex gap-2">
           <Select
             value={selectedProviderId}
             onValueChange={handleProviderChange}
-            disabled={isStreaming}
+            disabled={isStreaming || settingsQueryLoading}
           >
             <SelectTrigger id="cs-provider" className="flex-1">
               <SelectValue placeholder="Select provider" />
@@ -207,18 +230,11 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
             onValueChange={handleModelChange}
             disabled={isStreaming || !selectedProviderId}
           >
-            <SelectTrigger id="cs-model" className="flex-1">
-              <SelectValue placeholder="Select model" />
+            <SelectTrigger id="cs-model" className="flex-1" aria-busy={modelsLoading || undefined}>
+              <SelectValue placeholder={modelsLoading ? "Loading models…" : "Select model"} />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {modelsLoading && <SkeletonText lines={1} className="mx-2 my-1.5" />}
-                {modelsError && (
-                  <div className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-danger">
-                    <CircleAlert className="size-3" aria-hidden />
-                    Failed to load models
-                  </div>
-                )}
                 {models?.map((m) => (
                   <SelectItem key={m.id} value={m.id}>
                     {m.id}
@@ -227,6 +243,15 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
               </SelectGroup>
             </SelectContent>
           </Select>
+          {modelsLoading ? (
+            <span role="status" className="sr-only">
+              Loading models
+            </span>
+          ) : modelsError ? (
+            <span role="status" className="sr-only">
+              Failed to load models
+            </span>
+          ) : null}
           <Button
             variant="outline"
             size="icon"

@@ -70,8 +70,10 @@ export function RichText({ content, className }: { content: string; className?: 
     });
   }, [html, onNodeAdded]);
 
+  const hasHtml = html.length > 0;
+
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || !hasHtml) return;
     const el = ref.current;
     if (!el) return;
     const handler = (e: MouseEvent) => {
@@ -87,7 +89,7 @@ export function RichText({ content, className }: { content: string; className?: 
     };
     el.addEventListener("click", handler);
     return () => el.removeEventListener("click", handler);
-  }, [mounted]);
+  }, [mounted, hasHtml]);
 
   if (!mounted || !html) {
     if (!content) return null;

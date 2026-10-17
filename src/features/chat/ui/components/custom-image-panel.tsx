@@ -111,7 +111,7 @@ export function CustomImagePanel({
     >
       <div
         className={cn(
-          "glass-strong rounded-2xl overflow-hidden shadow-xl w-[min(24rem,max(12rem,calc((100vw_-_48rem)/2_-_2rem)))]",
+          "glass-strong rounded-2xl overflow-hidden shadow-xl ring-1 ring-(--border-subtle) w-[min(24rem,max(12rem,calc((100vw_-_48rem)/2_-_2rem)))]",
           canOpen && "cursor-pointer group focus-ring",
         )}
         onClick={canOpen ? onImageClick : undefined}

@@ -342,34 +342,63 @@ function fixMarkdown(text: string): string {
   return out.join("\n");
 }
 
+const EMPHASIS_EDGE_SPACE =
+  /^[\t \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]+|[\t \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]+$/g;
+
+/** Split a quote/list marker prefix so its `*` is never read as emphasis. */
+function splitBlockPrefix(line: string): { prefix: string; body: string } {
+  let prefix = "";
+  let rest = line;
+
+  for (;;) {
+    const quote = /^ {0,3}>[ \t]?/.exec(rest);
+    if (!quote) break;
+    prefix += quote[0];
+    rest = rest.slice(quote[0].length);
+  }
+
+  // Four leading spaces (or a tab) make an indented code block, not a list.
+  if (/^(?: {4,}|\t)/.test(rest)) return { prefix: line, body: "" };
+
+  const list = /^ {0,3}(?:[*+-]|\d{1,9}[.)])[ \t]+/.exec(rest);
+  if (list) {
+    prefix += list[0];
+    rest = rest.slice(list[0].length);
+  }
+
+  return { prefix, body: rest };
+}
+
 /**
  * Drop whitespace that sits directly inside emphasis runs (`** bold **`).
- * Matching is line-scoped and runs against the masked line, so list bullets,
- * fenced blocks, backslash escapes and inline code are left untouched.
+ * Only the inner edges of a matched pair are trimmed, so list bullets, fenced
+ * blocks, escapes and inline code cannot be rewritten.
  */
 function normalizeEmphasisSpacing(line: string): string {
-  const masked = maskInlineCode(line);
+  const { prefix, body } = splitBlockPrefix(line);
+  if (!body) return line;
+
+  const masked = maskInlineCode(body);
   const format = /([*_]{1,2})([\s\S]*?)\1/g;
-  const matches: RegExpExecArray[] = [];
+  const edits: Array<{ start: number; end: number; text: string }> = [];
   let match: RegExpExecArray | null;
 
   while ((match = format.exec(masked)) !== null) {
-    matches.push(match);
+    const delimiter = match[1];
+    const start = match.index + delimiter.length;
+    const end = match.index + match[0].length - delimiter.length;
+    const inner = body.slice(start, end);
+    const trimmed = inner.replace(EMPHASIS_EDGE_SPACE, "");
+    if (trimmed !== inner) edits.push({ start, end, text: trimmed });
   }
 
-  let result = line;
-  for (let i = matches.length - 1; i >= 0; i--) {
-    const { index, 0: matched } = matches[i];
-    const replacement = line
-      .slice(index, index + matched.length)
-      .replace(
-        /(\*|_)([\t \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]+)|([\t \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]+)(\*|_)/g,
-        "$1$4",
-      );
-    result = result.slice(0, index) + replacement + result.slice(index + matched.length);
+  let result = body;
+  for (let i = edits.length - 1; i >= 0; i--) {
+    const edit = edits[i];
+    result = result.slice(0, edit.start) + edit.text + result.slice(edit.end);
   }
 
-  return result;
+  return prefix + result;
 }
 
 function addCopyToCodeBlocks(html: string): string {

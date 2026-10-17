@@ -32,6 +32,37 @@ describe("renderMarkdown with autoFixMarkdown", () => {
     const html = renderMarkdown("** bold **", { autoFixMarkdown: true });
     expect(html).toContain("<strong>bold</strong>");
   });
+
+  it("keeps emphasis inside list items", () => {
+    const italic = renderMarkdown("* *italic* rest", { autoFixMarkdown: true });
+    expect(italic).toContain("<li><em>italic</em> rest</li>");
+
+    const bold = renderMarkdown("* **bold** item", { autoFixMarkdown: true });
+    expect(bold).toContain("<li><strong>bold</strong> item</li>");
+  });
+
+  it("does not rewrite inline code inside emphasis", () => {
+    const html = renderMarkdown("**a `x * y` c**", { autoFixMarkdown: true });
+    expect(html).toContain("<code>x * y</code>");
+    expect(html).toContain("<strong>");
+  });
+
+  it("leaves an asterisk in list text alone", () => {
+    const html = renderMarkdown("* a * b", { autoFixMarkdown: true });
+    expect(html).toContain("<li>a * b</li>");
+  });
+
+  it("leaves indented code blocks alone", () => {
+    const html = renderMarkdown("    * literal *", { autoFixMarkdown: true });
+    expect(html).toContain("<pre><code>* literal *");
+    expect(html).not.toContain("<em>");
+  });
+
+  it("leaves list text inside blockquotes alone", () => {
+    const html = renderMarkdown("> * a * b", { autoFixMarkdown: true });
+    expect(html).toContain("a * b");
+    expect(html).not.toContain("<em>");
+  });
 });
 
 describe("renderMarkdown sanitizer", () => {

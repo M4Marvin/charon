@@ -35,12 +35,13 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
       >
         <DialogTitle className="sr-only">Image viewer</DialogTitle>
         {src && !imageFailed && (
-          <div
-            className="absolute inset-0 overflow-auto overscroll-contain bg-(--bg-base)/90 backdrop-blur-md"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <div className="flex min-h-full w-max min-w-full p-4">
+          <div className="absolute inset-0 overflow-auto overscroll-contain bg-(--bg-base)/90 backdrop-blur-md">
+            <div
+              className="flex min-h-full w-max min-w-full p-4"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) onOpenChange(false);
+              }}
+            >
               <OptimizedImage
                 key={src}
                 src={src}
@@ -57,6 +58,8 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
                     : "max-h-[calc(100dvh_-_2rem)] max-w-[calc(100vw_-_2rem)] object-contain",
                 )}
                 onError={() => setFailedSrc(src)}
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
               />
             </div>
           </div>

@@ -102,6 +102,7 @@ export function ChatPage() {
   // live run may read it, otherwise a navigation would render another chat's
   // streamed text.
   const ownsGeneration = generation.ownerChatId === chatId;
+  const localStreaming = ownsGeneration && generation.isStreaming;
   const scopedPlaceholderId = ownsGeneration ? activePlaceholderId : null;
   const scopedStreamingText = ownsGeneration ? generation.streamingText : "";
   const pendingVisible = pendingSend
@@ -139,8 +140,12 @@ export function ChatPage() {
   }, [config]);
 
   const refuseBusy = useCallback(() => {
-    toast.error("Wait for the current reply to finish");
-  }, []);
+    if (generation.isStreaming && generation.ownerChatId !== chatId) {
+      toast.error("A reply is still generating in another chat");
+    } else {
+      toast.error("Wait for the current reply to finish");
+    }
+  }, [chatId, generation.isStreaming, generation.ownerChatId]);
 
   // Wand and impersonation output must never overwrite text the user typed.
   const applyGeneratedText = useCallback(
@@ -164,7 +169,10 @@ export function ChatPage() {
       refuseBusy();
       return;
     }
-    if (generation.isStreaming) return;
+    if (generation.isStreaming) {
+      refuseBusy();
+      return;
+    }
     if (!ensureModelConfigured()) return;
     const trimmed = (useChatUiStore.getState().inputDrafts[chatId] ?? "").trim();
 
@@ -392,7 +400,7 @@ export function ChatPage() {
       <ChatHeader
         characterName={config.character.name}
         avatarSrc={characterAvatarUrl}
-        isGenerating={generation.isStreaming}
+        isGenerating={localStreaming}
         onBack={() => navigate({ to: "/chat" })}
         portraitOpen={portraitOpen}
         sceneOpen={sceneOpen}
@@ -402,6 +410,7 @@ export function ChatPage() {
       />
 
       <MessageList
+        key={chatId}
         chatId={chatId}
         entries={activePath}
         activePlaceholderId={scopedPlaceholderId}
@@ -423,7 +432,7 @@ export function ChatPage() {
         open={portraitOpen}
         name={config.character.name}
         imageSrc={characterAvatarUrl}
-        isStreaming={generation.isStreaming}
+        isStreaming={localStreaming}
         onClose={() => {
           setPortraitOpen(false);
           focusComposer();
@@ -473,8 +482,8 @@ export function ChatPage() {
         onStop={generation.stop}
         onImpersonate={handleImpersonate}
         onImagePrompt={handleImagePrompt}
-        isStreaming={generation.isStreaming}
-        isFinalizing={generation.status === "finalizing"}
+        isStreaming={localStreaming}
+        isFinalizing={ownsGeneration && generation.status === "finalizing"}
         impersonatePending={impersonateMutation.isPending}
         imagePromptPending={imagePromptMutation.isPending}
         disabled={composerDisabled}

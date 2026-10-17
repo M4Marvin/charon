@@ -332,7 +332,7 @@ function ExpandedEntries({ lorebookId }: { lorebookId: string }) {
               <button
                 type="button"
                 onClick={() => setDialog({ kind: "edit", entry })}
-                className="size-6 flex items-center justify-center rounded text-2 hover:text-1 hover:bg-raised focus-ring"
+                className="relative size-8 flex items-center justify-center rounded text-2 after:absolute after:-inset-1 hover:text-1 hover:bg-raised focus-ring"
                 aria-label={`Edit ${entry.data.comment || `entry ${entry.data.uid}`}`}
               >
                 <Pencil className="size-3" />
@@ -340,7 +340,7 @@ function ExpandedEntries({ lorebookId }: { lorebookId: string }) {
               <button
                 type="button"
                 onClick={() => setDelEntryId(entry.id)}
-                className="size-6 flex items-center justify-center rounded text-2 hover:text-danger hover:bg-raised focus-ring"
+                className="relative size-8 flex items-center justify-center rounded text-2 after:absolute after:-inset-1 hover:text-danger hover:bg-raised focus-ring"
                 aria-label={`Delete ${entry.data.comment || `entry ${entry.data.uid}`}`}
               >
                 <Trash2 className="size-3" />

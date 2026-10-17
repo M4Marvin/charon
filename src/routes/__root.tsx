@@ -96,8 +96,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         name: "viewport",
-        content:
-          "width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content",
+        content: "width=device-width, initial-scale=1, interactive-widget=resizes-content",
       },
       {
         title: "Charon",
@@ -209,7 +208,13 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <TooltipProvider>
             <ErrorBoundary>
               {!hideGlobalHeader && <Header />}
-              <div className={isAuthed && !hideGlobalHeader ? "pb-20 md:pb-0" : undefined}>
+              <div
+                className={
+                  isAuthed && !hideGlobalHeader
+                    ? "pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0"
+                    : undefined
+                }
+              >
                 <RichTextSettingsProvider>
                   <TanstackQueryProvider queryClient={queryClient}>
                     {children}

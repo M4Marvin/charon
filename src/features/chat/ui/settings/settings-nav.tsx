@@ -30,7 +30,7 @@ export function SettingsNav({ sections, activeId, onChange }: SettingsNavProps) 
                   type="button"
                   onClick={() => onChange(s.id)}
                   className={cn(
-                    "flex items-center justify-center gap-2.5 rounded-lg px-2 py-1.5 text-xs transition-colors focus-ring sm:mr-1 sm:justify-start",
+                    "flex min-h-9 items-center justify-center gap-2.5 rounded-lg px-2 py-2 text-xs transition-colors focus-ring sm:mr-1 sm:justify-start",
                     s.secondary ? "sm:ml-5" : "sm:ml-1",
                     activeId === s.id
                       ? "bg-(--lagoon)/15 text-(--lagoon)"

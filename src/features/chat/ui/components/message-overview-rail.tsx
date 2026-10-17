@@ -29,19 +29,26 @@ function prefersReducedMotion(): boolean {
 
 /** Strip inline markdown so the hover preview reads as plain prose. */
 function toPlainText(text: string): string {
-  return text
-    .replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, " ")
-    .replace(/`([^`]*)`/g, "$1")
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/^[\s|:-]+$/gm, " ")
-    .replace(/\|/g, " ")
-    .replace(/(?:^|\s)-{3,}(?=\s|$)/g, " ")
-    .replace(/\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~/g, (_m, a, b, c) => a ?? b ?? c)
-    .replace(/\*(.+?)\*/g, "$1")
-    .replace(/(^|\s)_(.+?)_(?=\s|$)/g, "$1$2")
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    text
+      // Fences, closed or still streaming: keep the code, drop the markers.
+      .replace(/(?:```|~~~)[^\n]*\n([\s\S]*?)(?:(?:```|~~~)|$)/g, " $1 ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/`([^`]*)`/g, "$1")
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+      .replace(/^\s{0,3}>\s?/gm, "")
+      .replace(/^\s{0,3}(?:[*+-]|\d{1,9}[.)])\s+/gm, "")
+      .replace(/^[\s|:-]+$/gm, " ")
+      .replace(/\|/g, " ")
+      .replace(/(?:^|\s)-{3,}(?=\s|$)/g, " ")
+      .replace(/\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~/g, (_m, a, b, c) => a ?? b ?? c)
+      .replace(/\*(.+?)\*/g, "$1")
+      .replace(/(^|\s)_(.+?)_(?=\s|$)/g, "$1$2")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 }
 
 interface MessageOverviewRailProps {
