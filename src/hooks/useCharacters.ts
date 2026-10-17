@@ -17,6 +17,7 @@ import {
   updateCharacterData,
   type ImportResult,
 } from "@/server/fns/characters";
+import { chatKeys } from "@/hooks/useChats";
 
 export const characterKeys = {
   all: ["characters"] as const,
@@ -121,6 +122,10 @@ export function useDeleteCharacter() {
       deleteCharacter({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: characterKeys.all });
+      // Deleting a character cascades its chats: refresh the chat list and the
+      // per-chat config (lock/character) so an open chat stops rendering it.
+      void queryClient.invalidateQueries({ queryKey: chatKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }

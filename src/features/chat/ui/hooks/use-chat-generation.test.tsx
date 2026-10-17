@@ -11,10 +11,17 @@ const mocks = vi.hoisted(() => ({
   cancelStream: { mutateAsync: vi.fn(async () => ({ deletedIds: [] })), mutate: vi.fn() },
   aiChat: {
     messages: [] as unknown[],
+    isLoading: false,
+    setIsLoading: (_loading: boolean) => {},
     setMessages: vi.fn(async () => {}),
-    sendMessage: vi.fn(async () => {}),
+    sendMessage: vi.fn(async () => {
+      mocks.aiChat.setIsLoading(true);
+    }),
     stop: vi.fn(),
-    options: {} as { onFinish: () => void; onError: (err: unknown) => void },
+    options: {} as {
+      onFinish: (message?: unknown) => void;
+      onError: (err: unknown) => void;
+    },
   },
 }));
 
@@ -24,13 +31,19 @@ vi.mock("@/hooks/useChats", () => ({
   useCancelStream: () => mocks.cancelStream,
 }));
 
-vi.mock("@tanstack/ai-react", () => ({
-  useChat: (opts: { onFinish: () => void; onError: (err: unknown) => void }) => {
-    mocks.aiChat.options = opts;
-    return mocks.aiChat;
-  },
-  fetchServerSentEvents: () => ({}),
-}));
+vi.mock("@tanstack/ai-react", async () => {
+  const { useState } = await import("react");
+  return {
+    useChat: (opts: { onFinish: (message?: unknown) => void; onError: (err: unknown) => void }) => {
+      mocks.aiChat.options = opts;
+      const [isLoading, setIsLoading] = useState(false);
+      mocks.aiChat.isLoading = isLoading;
+      mocks.aiChat.setIsLoading = setIsLoading;
+      return mocks.aiChat;
+    },
+    fetchServerSentEvents: () => ({}),
+  };
+});
 
 vi.mock("sonner", () => ({ toast: { info: vi.fn(), error: vi.fn() } }));
 
@@ -49,10 +62,70 @@ describe("useChatGeneration", () => {
     });
     const { result } = renderHook(() => useChatGeneration("c1", null));
 
-    await result.current.start("send", { content: "hi" });
+    await act(async () => {
+      await result.current.start("send", { content: "hi" });
+    });
 
+    expect(result.current.ownerChatId).toBe("c1");
     expect(mocks.aiChat.sendMessage).toHaveBeenCalledWith("hi");
     expect(mocks.cancelStream.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("returns to idle and cancels when the transport ends without onFinish", async () => {
+    mocks.prepareStream.mutateAsync.mockResolvedValueOnce({
+      mode: "stream",
+      assistantMessageLocalId: 7,
+    });
+    const { result } = renderHook(() => useChatGeneration("c1", null));
+
+    await act(async () => {
+      await result.current.start("send", { content: "hi" });
+    });
+
+    // A whitespace-only reply is dropped by the processor, so onStreamEnd
+    // (and therefore onFinish) never fires; only the transport goes idle.
+    act(() => {
+      mocks.aiChat.setIsLoading(false);
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("idle"));
+    expect(result.current.ownerChatId).toBeNull();
+    expect(useChatUiStore.getState().activePlaceholderId).toBeNull();
+    expect(mocks.cancelStream.mutateAsync).toHaveBeenCalledWith({
+      chatId: "c1",
+      messageLocalId: 7,
+    });
+  });
+
+  it("finalizes the onFinish message instead of the stale ref snapshot", async () => {
+    mocks.prepareStream.mutateAsync.mockResolvedValueOnce({
+      mode: "stream",
+      assistantMessageLocalId: 7,
+    });
+    mocks.finalizeStream.mutateAsync.mockResolvedValueOnce({ messageLocalId: 7, content: "fresh" });
+    const { result } = renderHook(() => useChatGeneration("c1", null));
+    await result.current.start("send", { content: "hi" });
+
+    mocks.aiChat.messages = [{ role: "assistant", parts: [{ type: "text", content: "stale" }] }];
+    act(() => {
+      mocks.aiChat.options.onFinish({
+        role: "assistant",
+        parts: [{ type: "text", content: "fresh full reply" }],
+      });
+    });
+
+    await waitFor(() =>
+      expect(mocks.finalizeStream.mutateAsync).toHaveBeenCalledWith({
+        chatId: "c1",
+        messageLocalId: 7,
+        content: "fresh full reply",
+      }),
+    );
+  });
+
+  it.each([0, Number.NaN, "7"])("skips recovery for unusable lock id %s", (lockId) => {
+    renderHook(() => useChatGeneration("c1", lockId as unknown as number));
+    expect(mocks.aiChat.sendMessage).not.toHaveBeenCalled();
   });
 
   it("cancels a prepare that resolves after stop() and never streams", async () => {
@@ -92,6 +165,8 @@ describe("useChatGeneration", () => {
     const { result } = renderHook(() => useChatGeneration("c1", null));
     result.current.stop();
     expect(mocks.aiChat.stop).toHaveBeenCalledTimes(1);
+    expect(mocks.cancelStream.mutate).not.toHaveBeenCalled();
+    expect(mocks.cancelStream.mutateAsync).not.toHaveBeenCalled();
   });
 
   it("unmount clears placeholder and pending overlay", async () => {

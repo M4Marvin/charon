@@ -18,17 +18,34 @@ function readLock(chatId: string, db: DB): ChatLockState | null {
   return root.extra as unknown as ChatLockState;
 }
 
-export function ensureChatIdle(chatId: string, db: DB = defaultDb): void {
+/**
+ * The usable lock on a chat, or null when there is none or the stored one is
+ * stale/malformed. Unusable locks are cleared here so reads self-heal instead
+ * of reporting a generating chat that no mutation can touch.
+ */
+export function getGenerationLock(chatId: string, db: DB = defaultDb): ChatLockState | null {
   const lock = readLock(chatId, db);
-  if (!lock) return;
+  if (!lock) return null;
 
   const age = Date.now() - lock.lockedAt;
-  if (age <= STALE_LOCK_MS) {
+  const usable =
+    Number.isFinite(lock.lockedAt) && Number.isInteger(lock.messageId) && lock.messageId > 0;
+  if (usable && age <= STALE_LOCK_MS) return lock;
+
+  log.warn("Stale or malformed lock cleared", {
+    chatId,
+    lockedAt: lock.lockedAt,
+    ageMs: age,
+    messageId: lock.messageId,
+  });
+  repoUpdateMessage(chatId, 0, { extra: null }, db);
+  return null;
+}
+
+export function ensureChatIdle(chatId: string, db: DB = defaultDb): void {
+  if (getGenerationLock(chatId, db)) {
     throw new Error("Chat is busy: generation in progress");
   }
-
-  log.warn("Stale lock cleared", { chatId, lockedAt: lock.lockedAt, ageMs: age });
-  repoUpdateMessage(chatId, 0, { extra: null }, db);
 }
 
 export function acquireGenerationLock(

@@ -12,14 +12,13 @@ import {
   updateMessage as repoUpdateMessage,
   deleteMessages as repoDeleteMessages,
   deleteChat as repoDeleteChat,
-  getMessage as repoGetMessage,
 } from "@/db/repositories/chats";
 import type { ChatWithCharacter } from "@/db/repositories/chats";
 import type { DB } from "@/db";
 import { db as defaultDb } from "@/db";
 import { createLogger } from "@/features/logging";
 import { computeActivePathFromMessages, getPathToNode } from "./active-path";
-import { ensureChatIdle } from "./lock";
+import { ensureChatIdle, getGenerationLock } from "./lock";
 import { appendChild, selectSibling, createSiblingAndSelect, removeBranch } from "./operations";
 import type {
   ChatDetail,
@@ -87,9 +86,10 @@ export function listChats(db: DB = defaultDb): ChatWithCharacter[] {
 
 export function getChat(chatId: string, db: DB = defaultDb): ChatDetail {
   const chat = repoGetChat(chatId, db);
-  const root = repoGetMessage(chatId, 0, db);
-  const lockExtra = root?.extra;
-  const isGenerating = lockExtra?.lock === "generating";
+  // Read the lock through the same staleness gate as the write path: an
+  // orphaned lock must not make the chat look generating forever.
+  const lock = getGenerationLock(chatId, db);
+  const isGenerating = lock !== null;
 
   return {
     id: chat.id,
@@ -103,7 +103,7 @@ export function getChat(chatId: string, db: DB = defaultDb): ChatDetail {
     createdAt: chat.createdAt,
     updatedAt: chat.updatedAt,
     lockState: isGenerating ? "generating" : "idle",
-    lockMessageLocalId: isGenerating ? (lockExtra!.messageId as number) : null,
+    lockMessageLocalId: lock ? lock.messageId : null,
   };
 }
 

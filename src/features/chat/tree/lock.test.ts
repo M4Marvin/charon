@@ -82,6 +82,32 @@ describe("lock", () => {
       expect(detail.lockState).toBe("generating");
       expect(detail.lockMessageLocalId).toBe(1);
     });
+
+    it("treats a stale lock as idle and clears it on read", () => {
+      const chat = createTestChat();
+      forceStaleLock(chat.id, 1);
+      expect(readRootExtra(chat.id)).not.toBeNull();
+
+      const detail = getChat(chat.id, db);
+      expect(detail.lockState).toBe("idle");
+      expect(detail.lockMessageLocalId).toBeNull();
+      expect(readRootExtra(chat.id)).toBeNull();
+    });
+
+    it("treats a non-integer lock message id as idle", () => {
+      const chat = createTestChat();
+      db.update(chatMessages)
+        .set({
+          extra: { lock: "generating", messageId: "1", lockedAt: Date.now() },
+        })
+        .where(and(eq(chatMessages.chatId, chat.id), eq(chatMessages.localId, 0)))
+        .run();
+
+      const detail = getChat(chat.id, db);
+      expect(detail.lockState).toBe("idle");
+      expect(detail.lockMessageLocalId).toBeNull();
+      expect(readRootExtra(chat.id)).toBeNull();
+    });
   });
 
   describe("ensureChatIdle", () => {
