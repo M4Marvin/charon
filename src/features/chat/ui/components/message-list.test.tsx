@@ -1,23 +1,31 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import type { ActivePathEntry } from "@/features/chat/tree/types";
 import { MessageList } from "./message-list";
 
 afterEach(cleanup);
 
-function entry(localId: number, content: string): ActivePathEntry {
+function entry(
+  localId: number,
+  content: string,
+  overrides: Partial<Pick<ActivePathEntry, "siblingIndex" | "siblingTotal">> & {
+    role?: "user" | "assistant";
+  } = {},
+): ActivePathEntry {
+  const { role = "assistant", ...siblings } = overrides;
   return {
     message: {
       localId,
       parentLocalId: 0,
       children: [],
       selectedChildLocalId: null,
-      role: "assistant",
+      role,
       content,
     },
     siblingIndex: 0,
     siblingTotal: 1,
+    ...siblings,
   };
 }
 
@@ -105,5 +113,51 @@ describe("MessageList pending overlay", () => {
     expect(screen.queryByText("hello")).not.toBeNull();
     // Typing dots only come from the pending/streaming placeholder.
     expect(container.querySelector(".animate-bounce")).toBeNull();
+  });
+});
+
+describe("assistant message actions", () => {
+  it("shows regenerate only on the newest assistant message", () => {
+    render(
+      <MessageList
+        {...baseProps}
+        entries={[
+          entry(1, "first reply"),
+          entry(2, "a user message", { role: "user" }),
+          entry(3, "second reply"),
+        ]}
+      />,
+    );
+    expect(screen.getAllByLabelText("Regenerate response")).toHaveLength(1);
+  });
+
+  it("shows next and regenerate together on the newest assistant with forward siblings", () => {
+    render(
+      <MessageList
+        {...baseProps}
+        entries={[entry(1, "a branched reply", { siblingIndex: 0, siblingTotal: 3 })]}
+      />,
+    );
+    expect(screen.queryByLabelText("Next response")).not.toBeNull();
+    expect(screen.queryByLabelText("Regenerate response")).not.toBeNull();
+  });
+
+  it("keeps swiping but drops regenerate on a mid-history assistant", () => {
+    render(
+      <MessageList
+        {...baseProps}
+        entries={[
+          entry(1, "an older reply", { siblingIndex: 0, siblingTotal: 2 }),
+          entry(2, "a user message", { role: "user" }),
+          entry(3, "the newest reply"),
+        ]}
+      />,
+    );
+    const item = screen
+      .getByText("an older reply")
+      .closest('[data-slot="message-scroller-item"]') as HTMLElement | null;
+    expect(item).not.toBeNull();
+    expect(within(item as HTMLElement).queryByLabelText("Next response")).not.toBeNull();
+    expect(within(item as HTMLElement).queryByLabelText("Regenerate response")).toBeNull();
   });
 });

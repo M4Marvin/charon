@@ -97,7 +97,10 @@ export const ChatMessage = memo(function ChatMessage({
   );
 
   const canSwipe = siblingTotal > 1;
-  const isLastAssistant = isAssistant && !(siblingIndex < siblingTotal - 1);
+  const canNext = siblingIndex < siblingTotal - 1;
+  // Only the newest message may regenerate: an older assistant message would
+  // branch and hide the rest of the conversation.
+  const isNewestAssistant = isAssistant && isNewest;
 
   const name = isAssistant ? characterName : isUser ? userName : "";
   const displayContent = isStreaming ? streamingText || message.content : message.content;
@@ -259,7 +262,7 @@ export const ChatMessage = memo(function ChatMessage({
           </div>
         </div>
 
-        {!synthetic && (canSwipe || isLastAssistant) ? (
+        {!synthetic && (canSwipe || isNewestAssistant) ? (
           <div
             className={cn(
               "mt-2 flex items-center justify-end gap-1",
@@ -283,7 +286,19 @@ export const ChatMessage = memo(function ChatMessage({
               </span>
             )}
 
-            {isLastAssistant ? (
+            {canNext && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6 text-white/30 hover:text-white disabled:opacity-20"
+                onClick={() => onSwipe(message.localId, "next")}
+                aria-label="Next response"
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            )}
+
+            {isNewestAssistant && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -292,17 +307,6 @@ export const ChatMessage = memo(function ChatMessage({
                 aria-label="Regenerate response"
               >
                 <RotateCw className="size-4" />
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6 text-white/30 hover:text-white disabled:opacity-20"
-                disabled={siblingIndex >= siblingTotal - 1}
-                onClick={() => onSwipe(message.localId, "next")}
-                aria-label="Next response"
-              >
-                <ChevronRight className="size-4" />
               </Button>
             )}
           </div>
