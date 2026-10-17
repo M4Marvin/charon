@@ -52,6 +52,8 @@ export function useChatGeneration(
   const [streamingText, setStreamingText] = useState("");
 
   const chatIdRef = useRef(chatId);
+  /** The chat a live run belongs to — not the route param, which can change mid-run. */
+  const runChatIdRef = useRef(chatId);
   const placeholderRef = useRef<number | null>(null);
   const recoveredForRef = useRef<string | null>(null);
   /** Bumped by stop(); a start() whose id no longer matches was superseded. */
@@ -86,7 +88,7 @@ export function useChatGeneration(
     () =>
       fetchServerSentEvents("/api/chat-generate", () => ({
         body: {
-          chatId: chatIdRef.current,
+          chatId: runChatIdRef.current,
           assistantMessageLocalId: placeholderRef.current ?? 0,
         },
       })),
@@ -98,7 +100,7 @@ export function useChatGeneration(
     onFinish: () => {
       const text = extractAssistantText(aiChatRef.current.messages);
       const ph = placeholderRef.current;
-      const cid = chatIdRef.current;
+      const cid = runChatIdRef.current;
 
       if (!text || !ph) {
         if (ph) {
@@ -134,7 +136,7 @@ export function useChatGeneration(
       console.error("[chat] stream error:", e?.message ?? err);
       toast.error("Generation failed");
       const ph = placeholderRef.current;
-      const cid = chatIdRef.current;
+      const cid = runChatIdRef.current;
       if (ph) {
         cancelRef.current.mutateAsync({ chatId: cid, messageLocalId: ph }).catch(() => {});
       }
@@ -165,6 +167,7 @@ export function useChatGeneration(
 
     recoveredForRef.current = chatId;
     placeholderRef.current = lockMessageLocalId;
+    runChatIdRef.current = chatId;
     useChatUiStore.getState().setPlaceholder(lockMessageLocalId);
     setStatus("streaming");
     setStreamingText("");
@@ -185,12 +188,12 @@ export function useChatGeneration(
       const owned = placeholderRef.current;
       if (owned) {
         cancelRef.current.mutate(
-          { chatId: chatIdRef.current, messageLocalId: owned },
+          { chatId: runChatIdRef.current, messageLocalId: owned },
           { onError: () => {} },
         );
         placeholderRef.current = null;
       }
-      clearGenerationOverlay(chatIdRef.current, owned);
+      clearGenerationOverlay(runChatIdRef.current, owned);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -202,6 +205,7 @@ export function useChatGeneration(
       // prepare is in flight (route param reuse), and cancelling/restoring
       // against the wrong chat would corrupt unrelated data.
       const activeChatId = chatIdRef.current;
+      runChatIdRef.current = activeChatId;
       setStatus("streaming");
       setStreamingText("");
       useChatUiStore.getState().setPendingSend({
@@ -284,7 +288,7 @@ export function useChatGeneration(
     // superseded branch above instead of starting an orphaned stream.
     generationRef.current++;
     const ph = placeholderRef.current;
-    const cid = chatIdRef.current;
+    const cid = runChatIdRef.current;
     placeholderRef.current = null;
     // Abort the transport, not just the local buffer. `setMessages([])` maps
     // to setMessagesManually and leaves the client `isLoading`; without this,

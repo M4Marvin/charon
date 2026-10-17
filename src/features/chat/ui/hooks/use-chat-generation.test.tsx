@@ -190,6 +190,36 @@ describe("useChatGeneration", () => {
     expect(useChatUiStore.getState().pendingSend).toEqual({ chatId: "c2", content: "other" });
   });
 
+  it("finalizes on the chat the run started for after the route param changes", async () => {
+    mocks.prepareStream.mutateAsync.mockResolvedValueOnce({
+      mode: "stream",
+      assistantMessageLocalId: 7,
+    });
+    mocks.finalizeStream.mutateAsync.mockResolvedValueOnce({ messageLocalId: 7, content: "done" });
+    const { result, rerender } = renderHook(({ id }) => useChatGeneration(id, null), {
+      initialProps: { id: "c1" },
+    });
+
+    await result.current.start("send", { content: "hi" });
+    expect(useChatUiStore.getState().activePlaceholderId).toBe(7);
+
+    // The route param moves on while the run is still live.
+    rerender({ id: "c2" });
+
+    mocks.aiChat.messages = [{ role: "assistant", parts: [{ type: "text", content: "done" }] }];
+    act(() => {
+      mocks.aiChat.options.onFinish();
+    });
+
+    await waitFor(() =>
+      expect(mocks.finalizeStream.mutateAsync).toHaveBeenCalledWith({
+        chatId: "c1",
+        messageLocalId: 7,
+        content: "done",
+      }),
+    );
+  });
+
   it("a prepare that resolves after unmount is cancelled, not streamed", async () => {
     let resolvePrepare!: (value: unknown) => void;
     mocks.prepareStream.mutateAsync.mockReturnValueOnce(
