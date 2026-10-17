@@ -25,6 +25,7 @@ import {
 import type { PrepareStreamResult } from "@/features/chat/generation/types";
 import type { ChatConfigClient } from "@/features/chat/config/types";
 import { applyDeleteOptimistic, applySwipeOptimistic } from "@/features/chat/tree/optimistic";
+import { useChatUiStore } from "@/features/chat/ui/chat-store";
 import type { ChatMessageRow } from "@/db/schema";
 
 export const chatKeys = {
@@ -270,7 +271,12 @@ export function useDeleteChat() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { id: string }): Promise<{ id: string }> => deleteChat({ data: input }),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
+      // Drop per-chat client state: drafts are persisted in localStorage and
+      // custom images in IndexedDB, which the server-side delete cannot reach.
+      const store = useChatUiStore.getState();
+      store.clearCustomImage(variables.id);
+      store.clearInputDraft(variables.id);
       void queryClient.invalidateQueries({ queryKey: chatKeys.all });
     },
   });

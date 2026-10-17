@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { ChatMessageRow } from "@/db/schema";
 import { deleteBranchFn, editMessageFn, swipeFn } from "@/features/chat/tree/fns";
 import { finalizeStreamFn } from "@/features/chat/generation/fns";
+import { useChatUiStore } from "@/features/chat/ui/chat-store";
+import { deleteChat } from "@/server/fns/chats";
 import {
   chatKeys,
+  useDeleteChat,
   useDeleteMessage,
   useEditMessage,
   useFinalizeStream,
@@ -39,9 +42,14 @@ vi.mock("@/features/chat/tree/fns", () => ({
   swipeFn: vi.fn(),
 }));
 
+beforeEach(() => {
+  useChatUiStore.setState({ customImages: {}, inputDrafts: {} });
+});
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  useChatUiStore.setState({ customImages: {}, inputDrafts: {} });
 });
 
 function row(partial: Partial<ChatMessageRow> & { localId: number }): ChatMessageRow {
@@ -232,5 +240,21 @@ describe("useFinalizeStream", () => {
     invalidation.resolve(undefined);
     await mutation;
     expect(settled).toBe(true);
+  });
+});
+
+describe("useDeleteChat", () => {
+  it("clears the deleted chat's draft and custom image", async () => {
+    const { wrapper } = setup();
+    vi.mocked(deleteChat).mockResolvedValueOnce({ id: "c1" });
+    useChatUiStore.getState().setCustomImage("c1", "data:image/png;base64,x");
+    useChatUiStore.getState().setInputDraft("c1", "draft");
+
+    const { result } = renderHook(() => useDeleteChat(), { wrapper });
+    await result.current.mutateAsync({ id: "c1" });
+
+    const state = useChatUiStore.getState();
+    expect(state.customImages.c1).toBeUndefined();
+    expect(state.inputDrafts.c1).toBeUndefined();
   });
 });

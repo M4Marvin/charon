@@ -157,7 +157,10 @@ export function ChatPage() {
   const handleSwipe = useCallback(
     (messageLocalId: number, direction: "next" | "prev") => {
       if (isBusy || generation.isStreaming) return;
-      swipeMutation.mutate({ chatId, messageLocalId, direction });
+      swipeMutation.mutate(
+        { chatId, messageLocalId, direction },
+        { onError: () => toast.error("Swipe failed") },
+      );
     },
     [chatId, isBusy, generation.isStreaming, swipeMutation.mutate],
   );
@@ -193,6 +196,7 @@ export function ChatPage() {
             toast.success("Message deleted");
             focusComposer();
           },
+          onError: () => toast.error("Delete failed"),
         },
       );
     },
