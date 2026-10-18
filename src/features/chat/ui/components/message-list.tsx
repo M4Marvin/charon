@@ -16,21 +16,7 @@ import { ChatMessage } from "./chat-message";
 import { MessageOverviewRail } from "./message-overview-rail";
 import type { ActivePathEntry } from "@/features/chat/tree/types";
 
-/** Matches chat-header's fixed `h-12`. */
-const CHAT_HEADER_HEIGHT = 48;
-const COMPOSER_FALLBACK_HEIGHT = 80;
 const SCROLL_EDGE_THRESHOLD = 80;
-
-/**
- * Offset that leaves a message above the composer. The primitive subtracts
- * `scrollMargin` from an `align: "end"` jump, so this is the bottom gap.
- */
-function composerScrollMargin(): number {
-  if (typeof window === "undefined") return CHAT_HEADER_HEIGHT;
-  const raw = window.getComputedStyle(document.documentElement).getPropertyValue("--composer-h");
-  const height = Number.parseFloat(raw);
-  return Number.isFinite(height) && height > 0 ? height + 16 : COMPOSER_FALLBACK_HEIGHT;
-}
 
 interface MessageListProps {
   chatId: string;
@@ -64,7 +50,7 @@ function MessageNavButtons({ ids }: { ids: string[] }) {
   if (ids.length < 2) return null;
 
   return (
-    <div className="absolute right-4 bottom-[calc(var(--composer-h,5rem)+1rem)] z-10 flex flex-col gap-1.5 md:hidden">
+    <div className="absolute right-4 bottom-[calc(var(--composer-h,5rem)+var(--keyboard-inset,0px)+1rem)] z-10 flex flex-col gap-1.5 md:hidden">
       <Button
         variant="ghost"
         size="icon"
@@ -74,7 +60,6 @@ function MessageNavButtons({ ids }: { ids: string[] }) {
           scrollToMessage(ids[currentIdx - 1], {
             align: "end",
             behavior: "smooth",
-            scrollMargin: composerScrollMargin(),
           })
         }
         aria-label="Previous message"
@@ -197,12 +182,14 @@ export function MessageList({
       autoScroll={!userScrolledUp}
       defaultScrollPosition="last-anchor"
       scrollEdgeThreshold={SCROLL_EDGE_THRESHOLD}
-      scrollMargin={CHAT_HEADER_HEIGHT}
+      scrollMargin={12}
     >
-      <MessageScroller className="size-full">
+      {/* The scrollport itself is clipped between the fixed header and the
+          composer: the padding reserves those bands, so no message can render
+          or scroll underneath either one. */}
+      <MessageScroller className="size-full pt-12 pb-[calc(var(--composer-h,5rem)+var(--keyboard-inset,0px))]">
         <MessageScrollerViewport
-          className="px-3 pb-[calc(var(--composer-h,5rem)+var(--keyboard-inset,0px)+1rem)] md:px-6"
-          style={{ paddingTop: CHAT_HEADER_HEIGHT + 12 }}
+          className="px-3 pt-3 md:px-6"
           aria-busy={isStreamingPlaceholder || undefined}
           onScroll={handleScroll}
         >
