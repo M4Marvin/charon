@@ -79,7 +79,7 @@ export function ChatListPage() {
                 <Input
                   ref={searchRef}
                   className="pl-9 pr-10"
-                  placeholder="Search chats..."
+                  placeholder="Search title or character..."
                   aria-label="Search chats"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -102,12 +102,8 @@ export function ChatListPage() {
             <EmptyState
               icon={MessageCircle}
               title="No chats yet"
-              description="Start a conversation to see it here."
-            >
-              <Button asChild>
-                <Link to="/characters">Start your first chat</Link>
-              </Button>
-            </EmptyState>
+              description="Choose a character to start a conversation."
+            />
           ) : filtered.length === 0 ? (
             <EmptyState
               icon={Search}

@@ -6,7 +6,7 @@ Charon is a self-hosted AI character chat platform. Import character cards, buil
 
 ### Chat list
 
-All your conversations in one place, grouped by recency: **Today / Yesterday / Previous 7 days / Older**. Each card shows the character avatar, chat title, character name, and a link to the character page. Search by title or character name, rename or delete chats, or start a new one from the library.
+All your conversations in one place, grouped by recency: **Today / Yesterday / Previous 7 days / Older**. Each card shows the character avatar, chat title, last-message preview, character name when it differs from the title, and a link to the character page. Search by title or character name, rename or delete chats, or start a new one from the library.
 
 ### Chat screen
 
