@@ -110,7 +110,7 @@ describe("ChatRow accessibility", () => {
     renderRow();
 
     expect(screen.getByRole("link", { name: "View Test Character" }).className).toContain(
-      "size-10",
+      "min-h-10",
     );
   });
 });

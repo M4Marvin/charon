@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -33,9 +33,12 @@ export function ChatRow({ chat, now, onRename, onDelete }: ChatRowProps) {
       queryFn: () => getChatConfigFn({ data: { chatId: chat.id } }),
     });
   };
+
+  const sameName = chat.characterName === chat.title;
+
   return (
     <li
-      className="group relative flex items-center gap-4 rounded-xl border border-subtle bg-surface px-4 py-3 transition-colors hover:border-brand/40"
+      className="group relative rounded-xl border border-subtle bg-surface p-4 transition-colors hover:border-brand/40"
       onMouseEnter={prefetchChat}
       onFocus={prefetchChat}
     >
@@ -45,72 +48,84 @@ export function ChatRow({ chat, now, onRename, onDelete }: ChatRowProps) {
         aria-label={`Open chat ${chat.title}`}
         className="absolute inset-0 rounded-xl focus-ring z-0"
       />
-      <Avatar className="size-11 shrink-0 rounded-full">
-        <AvatarImage
-          src={
-            chat.characterImagePath
-              ? withImageVersion(
-                  `/api/characters/${chat.characterId}/avatar`,
-                  chat.characterImagePath,
-                )
-              : undefined
-          }
-          alt=""
-          className="object-cover"
-        />
-        <AvatarFallback className="rounded-full bg-brand/20 text-brand text-lg">
-          {Array.from(chat.characterName)[0]?.toUpperCase() ?? "?"}
-        </AvatarFallback>
-      </Avatar>
-      <div className="flex-1 min-w-0">
-        <p className="text-headline truncate" title={chat.title}>
-          {chat.title}
-        </p>
-        {chat.lastMessagePreview ? (
-          <p className="text-2 text-sm line-clamp-1" title={chat.lastMessagePreview}>
-            {chat.lastMessagePreview}
+
+      <div className="flex gap-3.5">
+        <Avatar className="size-12 shrink-0 rounded-full">
+          <AvatarImage
+            src={
+              chat.characterImagePath
+                ? withImageVersion(
+                    `/api/characters/${chat.characterId}/avatar`,
+                    chat.characterImagePath,
+                  )
+                : undefined
+            }
+            alt=""
+            className="object-cover"
+          />
+          <AvatarFallback className="rounded-full bg-brand/20 text-brand text-lg">
+            {Array.from(chat.characterName)[0]?.toUpperCase() ?? "?"}
+          </AvatarFallback>
+        </Avatar>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-center gap-2">
+            <h3 className="min-w-0 flex-1 truncate text-headline" title={chat.title}>
+              {chat.title}
+            </h3>
+            <span
+              className="shrink-0 text-xs text-2 tabular-nums"
+              title={chat.updatedAt.toLocaleString()}
+            >
+              <RelativeTime date={chat.updatedAt} now={now} compact />
+            </span>
+            <div className="relative z-10 -my-2 -mr-1 shrink-0 opacity-60 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100 has-aria-expanded:opacity-100">
+              <RowActionsMenu
+                label={`Actions for ${chat.title}`}
+                items={[
+                  {
+                    label: "Rename",
+                    onSelect: () => onRename(chat.id, chat.title),
+                  },
+                  {
+                    label: "Delete",
+                    destructive: true,
+                    onSelect: () => onDelete(chat.id),
+                  },
+                ]}
+              />
+            </div>
+          </div>
+
+          <p
+            className="mt-1 min-h-10 text-sm leading-5 text-2 line-clamp-2"
+            title={chat.lastMessagePreview ?? undefined}
+          >
+            {chat.lastMessagePreview ?? <span className="italic">No messages yet</span>}
           </p>
-        ) : null}
-        {chat.characterName !== chat.title || chat.userMessageCount > 0 ? (
-          <p className="text-2 text-xs truncate">
-            {chat.characterName !== chat.title ? chat.characterName : null}
-            {chat.characterName !== chat.title && chat.userMessageCount > 0 ? " · " : null}
-            {chat.userMessageCount > 0 ? (
-              <span className="tabular-nums">
-                {chat.userMessageCount} {chat.userMessageCount === 1 ? "turn" : "turns"}
-              </span>
-            ) : null}
-          </p>
-        ) : null}
-      </div>
-      <div className="flex flex-col items-end gap-1.5 shrink-0 relative">
-        <span className="text-2 text-xs tabular-nums" title={chat.updatedAt.toLocaleString()}>
-          <RelativeTime date={chat.updatedAt} now={now} compact />
-        </span>
-        <Link
-          to="/characters/$id"
-          params={{ id: chat.characterId }}
-          aria-label={`View ${chat.characterName}`}
-          className="inline-flex size-10 items-center justify-center rounded-lg text-2 transition-colors hover:text-brand focus-ring"
-        >
-          <ExternalLink className="size-4" />
-        </Link>
-      </div>
-      <div className="relative opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100 has-aria-expanded:opacity-100">
-        <RowActionsMenu
-          label={`Actions for ${chat.title}`}
-          items={[
-            {
-              label: "Rename",
-              onSelect: () => onRename(chat.id, chat.title),
-            },
-            {
-              label: "Delete",
-              destructive: true,
-              onSelect: () => onDelete(chat.id),
-            },
-          ]}
-        />
+
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="min-w-0 truncate text-xs text-2">
+              {!sameName ? chat.characterName : null}
+              {!sameName && chat.userMessageCount > 0 ? " · " : null}
+              {chat.userMessageCount > 0 ? (
+                <span className="tabular-nums">
+                  {chat.userMessageCount} {chat.userMessageCount === 1 ? "turn" : "turns"}
+                </span>
+              ) : null}
+            </p>
+
+            <Link
+              to="/characters/$id"
+              params={{ id: chat.characterId }}
+              aria-label={`View ${chat.characterName}`}
+              className="focus-ring relative z-10 -my-2 inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg px-2 -mr-2 text-xs text-2 transition-colors hover:text-brand"
+            >
+              View character
+              <ArrowUpRight className="size-3.5" />
+            </Link>
+          </div>
+        </div>
       </div>
     </li>
   );
