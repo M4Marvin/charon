@@ -69,8 +69,29 @@ describe("ChatRow prefetch", () => {
   });
 });
 
+describe("ChatRow content", () => {
+  it("shows the last message preview when present", () => {
+    renderRow({ lastMessagePreview: "The tavern is on fire." });
+
+    expect(screen.getByText("The tavern is on fire.")).toBeTruthy();
+  });
+
+  it("does not repeat the character name when the title is the character name", () => {
+    renderRow({ title: "Test Character", characterName: "Test Character" });
+
+    expect(screen.queryByText(/Test Character ·/)).toBeNull();
+    expect(screen.getByText(/2 turns/)).toBeTruthy();
+  });
+
+  it("singularizes a single turn", () => {
+    renderRow({ userMessageCount: 1 });
+
+    expect(screen.getByText("1 turn")).toBeTruthy();
+  });
+});
+
 describe("ChatRow accessibility", () => {
-  it("marks the avatar decorative because the character name follows as text", () => {
+  it("marks the avatar decorative because the row text names the chat", () => {
     const { container } = renderRow({ characterImagePath: "avatar.png" });
 
     expect(container.querySelector("img")?.getAttribute("alt")).toBe("");

@@ -14,7 +14,7 @@ export function ChatDayGroup({ label, chats, onRename, onDelete }: ChatDayGroupP
       <h2 className="text-2 text-sm font-medium mb-3 sticky top-14 z-10 bg-(--bg-base)/80 backdrop-blur-sm py-1">
         {label}
       </h2>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {chats.map((chat) => (
           <ChatRow key={chat.id} chat={chat} onRename={onRename} onDelete={onDelete} />
         ))}

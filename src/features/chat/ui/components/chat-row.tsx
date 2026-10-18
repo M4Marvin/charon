@@ -58,21 +58,33 @@ export function ChatRow({ chat, onRename, onDelete }: ChatRowProps) {
           className="object-cover"
         />
         <AvatarFallback className="rounded-full bg-brand/20 text-brand text-lg">
-          {chat.characterName.charAt(0).toUpperCase()}
+          {Array.from(chat.characterName)[0]?.toUpperCase() ?? "?"}
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
-        <p className="text-headline truncate">{chat.title}</p>
-        <p className="text-2 text-sm truncate">
-          {chat.characterName}
-          {chat.userMessageCount > 0 && (
-            <span className="text-3 text-xs tabular-nums"> · {chat.userMessageCount} turns</span>
-          )}
+        <p className="text-headline truncate" title={chat.title}>
+          {chat.title}
         </p>
+        {chat.lastMessagePreview ? (
+          <p className="text-2 text-sm line-clamp-1" title={chat.lastMessagePreview}>
+            {chat.lastMessagePreview}
+          </p>
+        ) : null}
+        {chat.characterName !== chat.title || chat.userMessageCount > 0 ? (
+          <p className="text-2 text-xs truncate">
+            {chat.characterName !== chat.title ? chat.characterName : null}
+            {chat.characterName !== chat.title && chat.userMessageCount > 0 ? " · " : null}
+            {chat.userMessageCount > 0 ? (
+              <span className="tabular-nums">
+                {chat.userMessageCount} {chat.userMessageCount === 1 ? "turn" : "turns"}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
       </div>
       <div className="flex flex-col items-end gap-1.5 shrink-0 relative">
-        <span className="text-3 text-xs tabular-nums">
-          <RelativeTime date={chat.updatedAt} />
+        <span className="text-2 text-xs tabular-nums" title={chat.updatedAt.toLocaleString()}>
+          <RelativeTime date={chat.updatedAt} compact />
         </span>
         <Link
           to="/characters/$id"
