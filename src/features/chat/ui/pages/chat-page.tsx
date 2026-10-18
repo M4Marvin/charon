@@ -394,7 +394,7 @@ export function ChatPage() {
   }
 
   return (
-    <main className="flex h-dvh w-full flex-col overflow-hidden bg-base pb-[var(--keyboard-inset,0px)]">
+    <main className="grid h-dvh w-full grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-base pb-[var(--keyboard-inset,0px)]">
       <ChatBackground src={backgroundUrl} fallbackSrc={characterAvatarUrl} />
 
       <ChatHeader

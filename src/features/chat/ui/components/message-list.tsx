@@ -184,7 +184,7 @@ export function MessageList({
       scrollEdgeThreshold={SCROLL_EDGE_THRESHOLD}
       scrollMargin={12}
     >
-      <MessageScroller className="h-auto min-h-0 flex-1">
+      <MessageScroller className="min-h-0">
         <MessageScrollerViewport
           className="px-3 pt-3 md:px-6"
           aria-busy={isStreamingPlaceholder || undefined}
