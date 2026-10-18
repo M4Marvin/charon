@@ -24,7 +24,9 @@ export function ChatListPage() {
     id: string;
     title: string;
   } | null>(null);
+  const [renameError, setRenameError] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const deletingChat = chats?.find((chat) => chat.id === deletingId);
 
   const clearSearch = () => {
     setSearch("");
@@ -135,7 +137,15 @@ export function ChatListPage() {
         open={deletingId !== null}
         onOpenChange={(o) => !o && setDeletingId(null)}
         title="Delete chat"
-        description="This will permanently delete the chat and all its messages. This action cannot be undone."
+        description={
+          deletingChat
+            ? `This will permanently delete “${deletingChat.title}”${
+                deletingChat.characterName !== deletingChat.title
+                  ? ` with ${deletingChat.characterName}`
+                  : ""
+              } and all its messages. This action cannot be undone.`
+            : "This will permanently delete the chat and all its messages. This action cannot be undone."
+        }
         destructive
         loading={deleteChat.isPending}
         onConfirm={() => {
@@ -146,6 +156,7 @@ export function ChatListPage() {
               onSuccess: () => {
                 toast.success("Chat deleted");
                 setDeletingId(null);
+                searchRef.current?.focus();
               },
               onError: (err) =>
                 toast.error(`Delete failed: ${err instanceof Error ? err.message : String(err)}`),
@@ -157,8 +168,14 @@ export function ChatListPage() {
       <RenameChatDialog
         chat={renamingChat}
         loading={renameChat.isPending}
-        onClose={() => setRenamingChat(null)}
+        serverError={renameError}
+        onDismissError={() => setRenameError(null)}
+        onClose={() => {
+          setRenamingChat(null);
+          setRenameError(null);
+        }}
         onRename={(id, title) => {
+          setRenameError(null);
           renameChat.mutate(
             { id, title },
             {
@@ -166,8 +183,11 @@ export function ChatListPage() {
                 toast.success("Chat renamed");
                 setRenamingChat(null);
               },
-              onError: (err) =>
-                toast.error(`Rename failed: ${err instanceof Error ? err.message : String(err)}`),
+              onError: (err) => {
+                const message = err instanceof Error ? err.message : String(err);
+                setRenameError(message);
+                toast.error(`Rename failed: ${message}`);
+              },
             },
           );
         }}

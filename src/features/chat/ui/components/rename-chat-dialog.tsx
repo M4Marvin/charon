@@ -14,6 +14,8 @@ import {
 interface RenameChatDialogProps {
   chat: { id: string; title: string } | null;
   loading: boolean;
+  serverError?: string | null;
+  onDismissError?: () => void;
   onClose: () => void;
   onRename: (id: string, title: string) => void;
 }
@@ -30,22 +32,31 @@ type RenameChatFormProps = RenameChatDialogProps & {
   chat: { id: string; title: string };
 };
 
-function RenameChatForm({ chat, loading, onClose, onRename }: RenameChatFormProps) {
+function RenameChatForm({
+  chat,
+  loading,
+  serverError,
+  onDismissError,
+  onClose,
+  onRename,
+}: RenameChatFormProps) {
   const [title, setTitle] = useState(chat.title);
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const error = localError ?? serverError ?? null;
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) {
-      setError("Title cannot be empty.");
+      setLocalError("Title cannot be empty.");
       return;
     }
     if (trimmed === chat.title) {
       onClose();
       return;
     }
-    setError(null);
+    setLocalError(null);
+    onDismissError?.();
     onRename(chat.id, trimmed);
   };
 
@@ -76,7 +87,8 @@ function RenameChatForm({ chat, loading, onClose, onRename }: RenameChatFormProp
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
-                setError(null);
+                setLocalError(null);
+                onDismissError?.();
               }}
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? "rename-title-error" : undefined}

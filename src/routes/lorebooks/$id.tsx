@@ -173,7 +173,10 @@ function LorebookDetailPage() {
           deleteLb.mutate(
             { id: lorebook.id },
             {
-              onSuccess: () => toast.success("Lorebook deleted"),
+              onSuccess: () => {
+                toast.success("Lorebook deleted");
+                setDelOpen(false);
+              },
               onError: (err) =>
                 toast.error(`Delete failed: ${err instanceof Error ? err.message : String(err)}`),
             },

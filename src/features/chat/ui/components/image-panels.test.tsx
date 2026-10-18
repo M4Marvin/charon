@@ -267,4 +267,18 @@ describe("RenameChatDialog", () => {
     expect(alert.textContent).toBe("Title cannot be empty.");
     expect(input.getAttribute("aria-describedby")).toBe(alert.id);
   });
+
+  it("shows a server error inside the dialog", () => {
+    render(
+      <RenameChatDialog
+        chat={{ id: "c1", title: "Old title" }}
+        loading={false}
+        serverError="Could not rename chat."
+        onClose={vi.fn()}
+        onRename={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("alert").textContent).toBe("Could not rename chat.");
+  });
 });
