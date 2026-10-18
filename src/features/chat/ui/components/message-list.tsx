@@ -159,6 +159,7 @@ export function MessageList({
   // "following bottom" on every scroll event, yanking the viewport back down
   // mid-stream. Disable it while the reader is away from the bottom.
   const [userScrolledUp, setUserScrolledUp] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const hasPendingSend = pendingUserContent !== null;
 
   // Sending (or recovering a run) is an intent to read the reply: follow it
@@ -172,6 +173,8 @@ export function MessageList({
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     const next = distanceFromBottom > SCROLL_EDGE_THRESHOLD;
     setUserScrolledUp((prev) => (prev === next ? prev : next));
+    const nextScrolled = el.scrollTop > 8;
+    setScrolled((prev) => (prev === nextScrolled ? prev : nextScrolled));
   }, []);
 
   const ids = entries.map((e) => String(e.message.localId));
@@ -288,6 +291,15 @@ export function MessageList({
             Assistant is responding.
           </span>
         )}
+        {/* Content dissolves into the header as it leaves the scrollport. A
+            scroll-aware overlay is used instead of a mask so the fade reads
+            against the scene background, not just the translucent bubble. */}
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-x-0 top-0 z-[1] h-10 bg-gradient-to-b from-(--header-bg) via-(--header-bg)/40 to-transparent backdrop-blur-[2px] transition-opacity duration-200 motion-reduce:transition-none ${
+            scrolled ? "opacity-100" : "opacity-0"
+          }`}
+        />
         <AutoScrollGate scrolledUp={userScrolledUp} />
         <MessageScrollerButton
           direction="end"

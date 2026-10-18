@@ -172,7 +172,7 @@ export function Composer({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      <div className="mx-auto max-w-3xl pb-4 md:pb-5">
+      <div className="mx-auto max-w-3xl">
         <div className="glass rounded-2xl flex items-end gap-2 px-3 py-2 md:px-4">
           <Textarea
             ref={textareaRef}
