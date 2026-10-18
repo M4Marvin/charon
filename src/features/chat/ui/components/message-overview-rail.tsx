@@ -176,7 +176,7 @@ export function MessageOverviewRail({
 
   return (
     <div
-      className="pointer-events-none absolute top-12 right-4 bottom-[calc(var(--composer-h,5rem)+var(--keyboard-inset,0px))] z-10 hidden w-6 items-center lg:flex"
+      className="pointer-events-none absolute top-1/2 right-4 z-10 hidden w-6 -translate-y-1/2 items-center lg:flex"
       style={{ height: `${MAX_HEIGHT_FRACTION * 100}%` }}
     >
       <div
