@@ -43,7 +43,6 @@ export function Composer({
   const canSend =
     !disabled && !isStreaming && !isFinalizing && (value.trim().length > 0 || hasMessages);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const focusNonce = useChatUiStore(selectComposerFocusNonce);
 
   const focusTextarea = useCallback(() => {
@@ -73,33 +72,16 @@ export function Composer({
     el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
   }, [value]);
 
-  // Publish the composer height so the message list can reserve space for it.
-  useLayoutEffect(() => {
-    const el = wrapperRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const root = document.documentElement;
-    const update = () => root.style.setProperty("--composer-h", `${el.offsetHeight}px`);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el, { box: "border-box" });
-    return () => {
-      observer.disconnect();
-      root.style.removeProperty("--composer-h");
-    };
-  }, []);
-
-  // Keep the fixed composer above the on-screen keyboard. The layout viewport
-  // does not shrink when the keyboard opens, so offset by the visual-viewport
-  // inset and clamp it against bogus values during scroll/rubber-banding.
+  // Platforms whose layout viewport does not shrink with the keyboard (iOS
+  // Safari) still need the shell to reserve the covered band. Android's
+  // `interactive-widget=resizes-content` already shrinks it, so the inset is 0.
   useEffect(() => {
-    const el = wrapperRef.current;
     const viewport = window.visualViewport;
-    if (!el || !viewport) return;
+    if (!viewport) return;
     const root = document.documentElement;
-    const updateBottom = () => {
+    const updateInset = () => {
       // Pinch-zoom shrinks the visual viewport without a keyboard; ignore it.
       if (viewport.scale !== 1) {
-        el.style.bottom = "0px";
         root.style.setProperty("--keyboard-inset", "0px");
         return;
       }
@@ -110,16 +92,14 @@ export function Composer({
           window.innerHeight * 0.75,
         ),
       );
-      el.style.bottom = `${inset}px`;
       root.style.setProperty("--keyboard-inset", `${inset}px`);
     };
-    updateBottom();
-    viewport.addEventListener("resize", updateBottom);
-    viewport.addEventListener("scroll", updateBottom);
+    updateInset();
+    viewport.addEventListener("resize", updateInset);
+    viewport.addEventListener("scroll", updateInset);
     return () => {
-      viewport.removeEventListener("resize", updateBottom);
-      viewport.removeEventListener("scroll", updateBottom);
-      el.style.removeProperty("bottom");
+      viewport.removeEventListener("resize", updateInset);
+      viewport.removeEventListener("scroll", updateInset);
       root.style.removeProperty("--keyboard-inset");
     };
   }, []);
@@ -188,8 +168,7 @@ export function Composer({
 
   return (
     <div
-      ref={wrapperRef}
-      className="fixed inset-x-0 bottom-0 z-30 px-3 pb-[env(safe-area-inset-bottom)]"
+      className="relative z-30 w-full shrink-0 px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >

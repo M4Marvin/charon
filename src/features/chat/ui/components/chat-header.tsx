@@ -27,7 +27,7 @@ export function ChatHeader({
   onOpenSettings,
 }: ChatHeaderProps) {
   return (
-    <header className="fixed inset-x-0 top-0 z-30 flex h-12 items-center justify-between border-b border-subtle bg-(--header-bg) px-3 backdrop-blur-xl md:px-5">
+    <header className="relative z-30 flex h-12 shrink-0 items-center justify-between border-b border-subtle bg-(--header-bg) px-3 backdrop-blur-xl md:px-5">
       <Button
         variant="ghost"
         size="icon"
