@@ -33,7 +33,7 @@ export function ChatRow({ chat, onRename, onDelete }: ChatRowProps) {
     });
   };
   return (
-    <div
+    <li
       className="group relative flex items-center gap-4 rounded-xl border border-subtle bg-surface px-4 py-3 transition-colors hover:border-brand/40"
       onMouseEnter={prefetchChat}
       onFocus={prefetchChat}
@@ -111,6 +111,6 @@ export function ChatRow({ chat, onRename, onDelete }: ChatRowProps) {
           ]}
         />
       </div>
-    </div>
+    </li>
   );
 }
