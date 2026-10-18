@@ -208,7 +208,7 @@ function ChatGridSkeleton() {
         {[0, 1].map((section) => (
           <section key={section}>
             <Skeleton className="mb-3 h-4 w-20 rounded" />
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-[92px] rounded-xl" />
               ))}

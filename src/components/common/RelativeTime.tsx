@@ -28,8 +28,9 @@ export function RelativeTime({ date, now, compact = false }: RelativeTimeProps) 
     return <time dateTime={date.toISOString()}>{date.toLocaleDateString()}</time>;
   }
 
-  const full = formatDistance(date, now ?? new Date(), { addSuffix: true });
-  const distance = formatDistance(date, now ?? new Date(), { addSuffix: false });
+  const reference = now ?? new Date();
+  const full = formatDistance(date, reference, { addSuffix: true });
+  const distance = formatDistance(date, reference, { addSuffix: false });
   return (
     <time dateTime={date.toISOString()} title={compact ? full : undefined}>
       {compact ? compactDistance(distance) : full}
