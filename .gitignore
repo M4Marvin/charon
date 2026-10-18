@@ -12,12 +12,14 @@ dist-ssr
 __unconfig*
 todos.json
 public/data/
-dev.db
-dev.db-journal
-dev.db-shm
-dev.db-wal
-dev.db.bak-*
-charon-local-db-*.db
+# Local databases and snapshots
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.db.bak-*
+*.sqlite
+*.sqlite3
 data/
 logs/
 .omo/
