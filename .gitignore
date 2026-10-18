@@ -17,6 +17,7 @@ dev.db-journal
 dev.db-shm
 dev.db-wal
 dev.db.bak-*
+charon-local-db-*.db
 data/
 logs/
 .omo/
