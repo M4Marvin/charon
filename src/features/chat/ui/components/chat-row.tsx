@@ -83,7 +83,7 @@ export function ChatRow({ chat, onRename, onDelete }: ChatRowProps) {
           <ExternalLink className="size-4" />
         </Link>
       </div>
-      <div className="relative opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+      <div className="relative opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100 has-aria-expanded:opacity-100">
         <RowActionsMenu
           label={`Actions for ${chat.title}`}
           items={[

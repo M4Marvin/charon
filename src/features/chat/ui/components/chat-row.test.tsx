@@ -76,11 +76,13 @@ describe("ChatRow accessibility", () => {
     expect(container.querySelector("img")?.getAttribute("alt")).toBe("");
   });
 
-  it("reveals the actions menu when its trigger receives focus", () => {
+  it("keeps the actions menu reachable without hover", () => {
     renderRow();
 
     const wrapper = screen.getByRole("button", { name: "Actions for Test Chat" }).parentElement;
     expect(wrapper?.className).toContain("group-focus-within:opacity-100");
+    expect(wrapper?.className).toContain("pointer-coarse:opacity-100");
+    expect(wrapper?.className).toContain("has-aria-expanded:opacity-100");
   });
 
   it("gives the character link a 40px target", () => {
