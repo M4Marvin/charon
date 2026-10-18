@@ -1187,6 +1187,10 @@
   font-weight: 600;
 }
 
+html {
+  scroll-padding-top: 6rem;
+}
+
 html,
 body,
 #app {

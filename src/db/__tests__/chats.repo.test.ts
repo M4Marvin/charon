@@ -13,6 +13,7 @@ import {
   getMessage as repoGetMessage,
   updateMessage as repoUpdateMessage,
   deleteMessages as repoDeleteMessages,
+  updateChat as repoUpdateChat,
 } from "@/db/repositories/chats";
 
 describe("chats repo", () => {
@@ -454,6 +455,14 @@ describe("chats repo", () => {
       );
       const after = repoGetChat("chat-1", db).updatedAt;
       expect(after.getTime()).toBeGreaterThan(before.getTime());
+    });
+
+    it("does not bump updatedAt when chat metadata changes", () => {
+      const chat = repoCreateChat({ id: "chat-1", characterId: charId, title: "Chat" }, db);
+      const updated = repoUpdateChat("chat-1", { title: "Renamed" }, db);
+
+      expect(updated.title).toBe("Renamed");
+      expect(updated.updatedAt.getTime()).toBe(chat.updatedAt.getTime());
     });
   });
 });

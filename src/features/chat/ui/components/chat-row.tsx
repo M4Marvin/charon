@@ -13,11 +13,12 @@ import { withImageVersion } from "@/lib/image-optimization";
 
 interface ChatRowProps {
   chat: ChatListItem;
+  now?: Date;
   onRename: (id: string, title: string) => void;
   onDelete: (id: string) => void;
 }
 
-export function ChatRow({ chat, onRename, onDelete }: ChatRowProps) {
+export function ChatRow({ chat, now, onRename, onDelete }: ChatRowProps) {
   const queryClient = useQueryClient();
   // Warm the chat page queries so opening the chat paints from cache. The
   // messages read is cheap; config resolution does several local reads and
@@ -84,7 +85,7 @@ export function ChatRow({ chat, onRename, onDelete }: ChatRowProps) {
       </div>
       <div className="flex flex-col items-end gap-1.5 shrink-0 relative">
         <span className="text-2 text-xs tabular-nums" title={chat.updatedAt.toLocaleString()}>
-          <RelativeTime date={chat.updatedAt} compact />
+          <RelativeTime date={chat.updatedAt} now={now} compact />
         </span>
         <Link
           to="/characters/$id"

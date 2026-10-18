@@ -208,7 +208,7 @@ export function updateChat(
   db: DB = defaultDb,
 ): Chat {
   const existing = getChat(id, db);
-  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  const updates: Record<string, unknown> = {};
   if (patch.characterDescription !== undefined)
     updates.characterDescription = patch.characterDescription;
   if (patch.characterPersonality !== undefined)
@@ -218,6 +218,7 @@ export function updateChat(
     updates.characterSystemPrompt = patch.characterSystemPrompt;
   if (patch.title !== undefined) updates.title = patch.title;
   if (patch.backgroundId !== undefined) updates.backgroundId = patch.backgroundId;
+  if (Object.keys(updates).length === 0) return existing;
   const row = db.update(chats).set(updates).where(eq(chats.id, existing.id)).returning().get();
   if (!row) throw new Error("Chat not found");
   return row;

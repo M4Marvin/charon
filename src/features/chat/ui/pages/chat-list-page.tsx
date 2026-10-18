@@ -15,7 +15,7 @@ import { ChatDayGroup } from "../components/chat-day-group";
 import { RenameChatDialog } from "../components/rename-chat-dialog";
 
 export function ChatListPage() {
-  const { chats, filtered, grouped, search, setSearch, isLoading, error } = useChatList();
+  const { chats, filtered, grouped, search, setSearch, isLoading, error, now } = useChatList();
   const { refetch } = useChats();
   const deleteChat = useDeleteChat();
   const renameChat = useRenameChat();
@@ -128,6 +128,7 @@ export function ChatListPage() {
                     key={day}
                     label={day}
                     chats={items}
+                    now={now}
                     onRename={(id, title) => setRenamingChat({ id, title })}
                     onDelete={(id) => setDeletingId(id)}
                   />

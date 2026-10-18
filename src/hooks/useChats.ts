@@ -100,6 +100,7 @@ function useOptimisticMessagesMutation<TVariables extends { chatId: string }>(
     },
     onSettled: (_data: unknown, _error: unknown, variables: TVariables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
+      void queryClient.invalidateQueries({ queryKey: chatKeys.list() });
     },
   });
 }
@@ -146,6 +147,7 @@ export function usePrepareStream() {
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
       void queryClient.invalidateQueries({ queryKey: ["chatConfig", variables.chatId] });
+      void queryClient.invalidateQueries({ queryKey: chatKeys.list() });
     },
   });
 }
@@ -179,6 +181,7 @@ export function useFinalizeStream() {
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) }),
         queryClient.invalidateQueries({ queryKey: ["chatConfig", variables.chatId] }),
+        queryClient.invalidateQueries({ queryKey: chatKeys.list() }),
       ]);
     },
   });
