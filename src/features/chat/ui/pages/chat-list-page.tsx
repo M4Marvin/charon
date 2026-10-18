@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Plus, Search, MessageCircle } from "lucide-react";
+import { Plus, Search, MessageCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,12 @@ export function ChatListPage() {
     id: string;
     title: string;
   } | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const clearSearch = () => {
+    setSearch("");
+    searchRef.current?.focus();
+  };
 
   if (isLoading) {
     return (
@@ -71,16 +77,27 @@ export function ChatListPage() {
         </EmptyState>
       ) : (
         <>
-          {chats && chats.length > 10 ? (
+          {chats && chats.length > 0 ? (
             <div className="relative mb-6">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                className="pl-9"
+                ref={searchRef}
+                className="pl-9 pr-10"
                 placeholder="Search chats..."
                 aria-label="Search chats"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              {search ? (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={clearSearch}
+                  className="focus-ring absolute right-1.5 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-2 transition-colors hover:text-1"
+                >
+                  <X className="size-4" />
+                </button>
+              ) : null}
             </div>
           ) : null}
 
@@ -90,7 +107,7 @@ export function ChatListPage() {
               title="No chats found"
               description={`No chats match “${search.trim()}”.`}
             >
-              <Button variant="outline" onClick={() => setSearch("")}>
+              <Button variant="outline" onClick={clearSearch}>
                 Clear search
               </Button>
             </EmptyState>

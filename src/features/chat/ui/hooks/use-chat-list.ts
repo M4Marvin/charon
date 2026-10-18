@@ -23,8 +23,8 @@ export function useChatList() {
 
   const filtered = useMemo(() => {
     if (!chats) return [];
-    if (!search.trim()) return chats;
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
+    if (!q) return chats;
     return chats.filter(
       (c) => c.title.toLowerCase().includes(q) || c.characterName.toLowerCase().includes(q),
     );
