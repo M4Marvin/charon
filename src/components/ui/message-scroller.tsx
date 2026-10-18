@@ -72,7 +72,7 @@ function MessageScrollerItem({
     <MessageScrollerPrimitive.Item
       data-slot="message-scroller-item"
       scrollAnchor={scrollAnchor}
-      className={cn("min-w-0 shrink-0", className)}
+      className={cn("min-w-0 shrink-0 [contain:layout_paint_style]", className)}
       {...props}
     />
   );

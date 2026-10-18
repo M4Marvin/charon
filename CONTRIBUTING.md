@@ -262,6 +262,8 @@ All UI uses a dark-first "deep ocean" palette defined in `src/styles.css`.
 
 Use Tailwind `@utility` classes: `text-1`, `text-2`, `text-3`, `bg-base`, `bg-surface`, `bg-raised`, `text-brand`, `text-brand-strong`, `focus-ring`.
 
+Glass surfaces: `glass` / `glass-strong` use `backdrop-filter` and belong on static chrome only. Rows that scroll in bulk (chat messages) use `message-glass` / `message-glass-strong`, which keep the same fill and border without a per-row backdrop sample.
+
 Type scale: `text-display` (Fraunces, page titles), `text-title` (section headers), `text-headline` (card/dialog titles). Body/small/caption use stock `text-sm`/`text-xs`.
 
 ### Five canonical feedback states (all pages must use)

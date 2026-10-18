@@ -939,15 +939,32 @@
   }
 }
 
+:root {
+  --glass-bg: oklch(0.145 0 0 / 0.6);
+  --glass-bg-strong: oklch(0.145 0 0 / 0.8);
+}
+
 @utility glass {
   backdrop-filter: blur(24px);
-  background-color: oklch(0.145 0 0 / 0.6);
+  background-color: var(--glass-bg);
   border: 1px solid var(--border-subtle);
 }
 
 @utility glass-strong {
   backdrop-filter: blur(48px);
-  background-color: oklch(0.145 0 0 / 0.8);
+  background-color: var(--glass-bg-strong);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+/* Message surfaces scroll in bulk. Backdrop blur must stay on static chrome:
+   one filter layer per bubble costs a full backdrop sample on every frame. */
+@utility message-glass {
+  background-color: var(--glass-bg);
+  border: 1px solid var(--border-subtle);
+}
+
+@utility message-glass-strong {
+  background-color: var(--glass-bg-strong);
   box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
 

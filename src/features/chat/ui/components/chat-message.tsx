@@ -130,7 +130,7 @@ export const ChatMessage = memo(function ChatMessage({
       <div
         className={cn(
           "group relative rounded-2xl px-4 py-3.5 md:px-5 md:py-4",
-          isAssistant ? "glass-strong border-l-2 border-brand/40" : "glass",
+          isAssistant ? "message-glass-strong border-l-2 border-brand/40" : "message-glass",
           isNewest && "motion-safe:animate-msg-in",
         )}
         inert={synthetic || undefined}
