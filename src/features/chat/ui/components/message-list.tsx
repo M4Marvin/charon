@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import {
   MessageScrollerProvider,
   MessageScroller,
@@ -159,7 +160,8 @@ export function MessageList({
   // "following bottom" on every scroll event, yanking the viewport back down
   // mid-stream. Disable it while the reader is away from the bottom.
   const [userScrolledUp, setUserScrolledUp] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const fadeRef = useRef<HTMLDivElement>(null);
   const hasPendingSend = pendingUserContent !== null;
 
   // Sending (or recovering a run) is an intent to read the reply: follow it
@@ -168,14 +170,27 @@ export function MessageList({
     if (hasPendingSend || activePlaceholderId !== null) setUserScrolledUp(false);
   }, [hasPendingSend, activePlaceholderId]);
 
-  const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    const el = event.currentTarget;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    const next = distanceFromBottom > SCROLL_EDGE_THRESHOLD;
-    setUserScrolledUp((prev) => (prev === next ? prev : next));
-    const nextScrolled = el.scrollTop > 8;
-    setScrolled((prev) => (prev === nextScrolled ? prev : nextScrolled));
+  // The top fade ramps with scroll distance instead of toggling, so it never
+  // pops in at the first pixel of scroll.
+  const syncTopFade = useCallback((el: HTMLElement) => {
+    if (!fadeRef.current) return;
+    fadeRef.current.style.opacity = String(Math.min(1, Math.max(0, el.scrollTop / 64)));
   }, []);
+
+  useEffect(() => {
+    if (viewportRef.current) syncTopFade(viewportRef.current);
+  }, [syncTopFade]);
+
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const el = event.currentTarget;
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      const next = distanceFromBottom > SCROLL_EDGE_THRESHOLD;
+      setUserScrolledUp((prev) => (prev === next ? prev : next));
+      syncTopFade(el);
+    },
+    [syncTopFade],
+  );
 
   const ids = entries.map((e) => String(e.message.localId));
 
@@ -189,6 +204,7 @@ export function MessageList({
     >
       <MessageScroller className="min-h-0">
         <MessageScrollerViewport
+          ref={viewportRef}
           className="px-3 pt-3 md:px-6"
           aria-busy={isStreamingPlaceholder || undefined}
           onScroll={handleScroll}
@@ -291,14 +307,13 @@ export function MessageList({
             Assistant is responding.
           </span>
         )}
-        {/* Content dissolves into the header as it leaves the scrollport. A
-            scroll-aware overlay is used instead of a mask so the fade reads
-            against the scene background, not just the translucent bubble. */}
+        {/* Content eases into the header as it leaves the scrollport. The
+            gradient is eased over 64px and its opacity follows scrollTop, so
+            neither the colour nor the reveal has a visible edge. */}
         <div
+          ref={fadeRef}
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-x-0 top-0 z-[1] h-10 bg-gradient-to-b from-(--header-bg) via-(--header-bg)/40 to-transparent backdrop-blur-[2px] transition-opacity duration-200 motion-reduce:transition-none ${
-            scrolled ? "opacity-100" : "opacity-0"
-          }`}
+          className="chat-top-fade pointer-events-none absolute inset-x-0 top-0 z-[1] h-16 opacity-0"
         />
         <AutoScrollGate scrolledUp={userScrolledUp} />
         <MessageScrollerButton

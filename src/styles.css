@@ -239,6 +239,17 @@
   background-color: var(--bg-raised);
 }
 
+/* Chat transcript top fade: content eases into the header over 64px. */
+.chat-top-fade {
+  background: linear-gradient(
+    to bottom,
+    var(--header-bg) 0%,
+    color-mix(in oklab, var(--header-bg) 70%, transparent) 30%,
+    color-mix(in oklab, var(--header-bg) 35%, transparent) 65%,
+    transparent 100%
+  );
+}
+
 /* Streaming caret, rendered inside the last block so it sits at the text edge. */
 @keyframes rt-caret-blink {
   0%,
