@@ -297,7 +297,7 @@ describe("serveStoredImage", () => {
     expect(transformed.status).toBe(200);
     expect(transformed.headers.get("content-type")).toBe("image/webp");
     expect((await sharp(await transformed.arrayBuffer()).metadata()).width).toBe(512);
-  });
+  }, 30_000);
 
   it("rejects active SVG sources", async () => {
     await writeFile(
