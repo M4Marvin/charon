@@ -136,9 +136,10 @@ export function beginJob(input: LeaseInput, db: DB = defaultDb): GenerationJob {
   return row;
 }
 
-export function heartbeatJob(input: LeaseInput, db: DB = defaultDb): void {
+export function heartbeatJob(input: LeaseInput, db: DB = defaultDb): boolean {
   const expires = new Date(Date.now() + (input.ttlMs ?? 120_000));
-  db.update(generationJobs)
+  const result = db
+    .update(generationJobs)
     .set({ leaseExpiresAt: expires })
     .where(
       and(
@@ -148,13 +149,13 @@ export function heartbeatJob(input: LeaseInput, db: DB = defaultDb): void {
       ),
     )
     .run();
+  return result.changes > 0;
 }
 
 export interface FinalizeJobInput {
   jobId: string;
   owner: string;
   epoch: number;
-  result: Record<string, unknown>;
   usage?: Record<string, unknown> | null;
   finishReason?: string | null;
 }
@@ -164,7 +165,6 @@ export function finalizeJob(input: FinalizeJobInput, db: DB = defaultDb): boolea
     .update(generationJobs)
     .set({
       status: "succeeded",
-      result: input.result,
       usage: input.usage ?? null,
       finishReason: input.finishReason ?? null,
       finishedAt: new Date(),

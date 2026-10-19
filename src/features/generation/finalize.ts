@@ -55,10 +55,6 @@ export function finalizeChat(input: FinalizeChatInput, db: DB = defaultDb): void
         jobId: input.jobId,
         owner: input.owner,
         epoch: input.epoch,
-        result: {
-          kind: "message",
-          localIds: job.placeholderLocalId ? [job.placeholderLocalId] : [],
-        },
         usage: input.usage as unknown as Record<string, unknown> | undefined,
         finishReason: input.finishReason ?? null,
       },

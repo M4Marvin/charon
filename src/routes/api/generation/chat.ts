@@ -13,7 +13,12 @@ import { compilePrompt } from "@/features/generation/prompt";
 import { makeAdapter } from "@/features/generation/provider";
 import { readTools } from "@/features/generation/tools";
 import { finalizeChat } from "@/features/generation/finalize";
-import { httpStatusFor, isGenerationError, toErrorBody } from "@/features/generation/errors";
+import {
+  httpStatusFor,
+  isGenerationError,
+  LeaseLostError,
+  toErrorBody,
+} from "@/features/generation/errors";
 import type { ToolContext } from "@/features/generation/contract";
 import { createLogger } from "@/features/logging";
 
@@ -39,17 +44,23 @@ async function* finalizeOnTerminal(
   let terminal = false;
   let usage: TokenUsage | undefined;
   let finishReason: string | null = null;
+  let leaseLost = false;
   const heartbeat = setInterval(() => {
     try {
-      heartbeatJob({ jobId, owner, ttlMs: 120_000 });
+      if (!heartbeatJob({ jobId, owner, ttlMs: 120_000 })) leaseLost = true;
     } catch {
-      // The lease may already be finalized or reclaimed; the terminal path
-      // below reports the real outcome.
+      leaseLost = true;
     }
   }, 30_000);
 
   try {
     for await (const chunk of stream) {
+      if (leaseLost) {
+        throw new LeaseLostError({
+          message: "The generation lease was lost while streaming.",
+          jobId,
+        });
+      }
       if (chunk.type === "TEXT_MESSAGE_CONTENT") text += chunk.delta ?? "";
 
       if (chunk.type === "RUN_FINISHED") {
@@ -83,6 +94,13 @@ async function* finalizeOnTerminal(
       }
 
       yield chunk;
+    }
+
+    if (leaseLost) {
+      throw new LeaseLostError({
+        message: "The generation lease was lost while streaming.",
+        jobId,
+      });
     }
 
     if (!terminal) {

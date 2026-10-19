@@ -15,7 +15,7 @@ import { compilePrompt } from "./prompt";
 import { makeAdapter } from "./provider";
 import { readTools } from "./tools";
 import { prepareGeneration } from "./prepare";
-import { EmptyResponseError, type GenerationError } from "./errors";
+import { EmptyResponseError, LeaseLostError, type GenerationError } from "./errors";
 import { assembleImagePrompt, sanitizeImpersonation } from "./image";
 import type { ToolContext, Trigger } from "./contract";
 
@@ -52,6 +52,7 @@ export async function runProposal(
   let job: ReturnType<typeof getJob> | undefined;
   let owner: string | undefined;
   let leaseAcquired = false;
+  let leaseLost = false;
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   let text = "";
   let usage: TokenUsage | undefined;
@@ -81,9 +82,11 @@ export async function runProposal(
     leaseAcquired = true;
     heartbeat = setInterval(() => {
       try {
-        heartbeatJob({ jobId: job!.id, owner: leaseOwner, ttlMs: 120_000 }, db);
+        if (!heartbeatJob({ jobId: job!.id, owner: leaseOwner, ttlMs: 120_000 }, db)) {
+          leaseLost = true;
+        }
       } catch {
-        // Terminal handling below reports the real outcome.
+        leaseLost = true;
       }
     }, 30_000);
     const toolContext: ToolContext = {
@@ -106,6 +109,12 @@ export async function runProposal(
     });
 
     for await (const chunk of stream) {
+      if (leaseLost) {
+        throw new LeaseLostError({
+          message: "The generation lease was lost while streaming.",
+          jobId: job.id,
+        });
+      }
       if (chunk.type === "TEXT_MESSAGE_CONTENT") text += chunk.delta ?? "";
       if (chunk.type === "RUN_FINISHED") {
         const reason = finishReasonOf(chunk);
@@ -118,6 +127,13 @@ export async function runProposal(
       if (chunk.type === "RUN_ERROR") {
         throw new Error(chunk.message);
       }
+    }
+
+    if (leaseLost) {
+      throw new LeaseLostError({
+        message: "The generation lease was lost while streaming.",
+        jobId: job.id,
+      });
     }
 
     if (!text.trim()) {
@@ -181,7 +197,6 @@ export async function runProposal(
         jobId: job.id,
         owner: leaseOwner,
         epoch: lease.leaseEpoch,
-        result: { kind: "proposal", proposalId: proposal.id },
         usage: usage as unknown as Record<string, unknown> | undefined,
         finishReason,
       },

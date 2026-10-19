@@ -343,7 +343,6 @@ export const generationJobs = sqliteTable(
     leaseOwner: text("lease_owner"),
     leaseEpoch: integer("lease_epoch").notNull().default(0),
     leaseExpiresAt: integer("lease_expires_at", { mode: "timestamp_ms" }),
-    result: text("result", { mode: "json" }).$type<Record<string, unknown>>(),
     error: text("error", { mode: "json" }).$type<Record<string, unknown>>(),
     usage: text("usage", { mode: "json" }).$type<Record<string, unknown>>(),
     finishReason: text("finish_reason"),
