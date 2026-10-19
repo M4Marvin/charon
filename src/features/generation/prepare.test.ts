@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { makeTestDb, seedTestUser, type TestDb } from "@/db/__tests__/helpers";
 import { makeCharacterData } from "@/db/__tests__/character-data";
-import { characters, chatMessages, aiProviders, userSettings } from "@/db/schema";
+import { characters, chatMessages, aiProviders, userSettings, generationJobs } from "@/db/schema";
 import { createChat, appendUserAndReply, getMessages } from "@/features/chat/tree/service";
 import { prepareGeneration } from "./prepare";
 import { createProposal, getJob, getProposal } from "@/db/repositories/generation";
@@ -67,6 +67,18 @@ describe("generation prepare and proposals", () => {
     await expect(
       prepareGeneration(userId, { chatId, trigger: "send", content: "Again" }, "User", db),
     ).rejects.toBeInstanceOf(ChatBusyError);
+  });
+
+  it("reclaims an expired lease instead of wedging the chat", async () => {
+    const first = await prepareGeneration(userId, { chatId, trigger: "send", content: "Hi" }, "User", db);
+    db.update(generationJobs)
+      .set({ status: "running", leaseOwner: "dead", leaseExpiresAt: new Date(Date.now() - 1000) })
+      .where(eq(generationJobs.id, first.jobId))
+      .run();
+
+    const second = await prepareGeneration(userId, { chatId, trigger: "send", content: "Again" }, "User", db);
+    expect(second.jobId).not.toBe(first.jobId);
+    expect(getJob(first.jobId, db)?.status).toBe("expired");
   });
 
   it("accepts a rewrite with a revision and rejects a stale base revision", async () => {

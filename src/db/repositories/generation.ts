@@ -75,7 +75,7 @@ export function createJob(
       .get();
     if (existing) return existing;
 
-    const active = tx
+    let active = tx
       .select()
       .from(generationJobs)
       .where(
@@ -85,6 +85,19 @@ export function createJob(
         ),
       )
       .get();
+    if (active?.leaseExpiresAt && active.leaseExpiresAt.getTime() < Date.now()) {
+      tx.update(generationJobs)
+        .set({
+          status: "expired",
+          error: { code: "lease_expired", message: "The generation lease expired." },
+          finishedAt: new Date(),
+          leaseOwner: null,
+          leaseExpiresAt: null,
+        })
+        .where(eq(generationJobs.id, active.id))
+        .run();
+      active = undefined;
+    }
     if (active) {
       throw new ChatBusyError({
         message: "A generation is already running in this chat.",

@@ -8,7 +8,7 @@ import {
 } from "@tanstack/ai";
 import { reconstructChat, withPersistence } from "@tanstack/ai-persistence";
 import { tryGetSession } from "@/server/session";
-import { getJob, getJobByRequestId } from "@/db/repositories/generation";
+import { getJob, getJobByRequestId, heartbeatJob } from "@/db/repositories/generation";
 import { aiPersistence } from "@/features/generation/persistence-singleton";
 import { loadGenerationSnapshot } from "@/features/generation/context";
 import { compilePrompt } from "@/features/generation/prompt";
@@ -39,6 +39,14 @@ async function* finalizeOnTerminal(
   let terminal = false;
   let usage: TokenUsage | undefined;
   let finishReason: string | null = null;
+  const heartbeat = setInterval(() => {
+    try {
+      heartbeatJob({ jobId, owner, ttlMs: 120_000 });
+    } catch {
+      // The lease may already be finalized or reclaimed; the terminal path
+      // below reports the real outcome.
+    }
+  }, 30_000);
 
   try {
     for await (const chunk of stream) {
@@ -111,6 +119,8 @@ async function* finalizeOnTerminal(
       ),
     ).catch(() => {});
     throw error;
+  } finally {
+    clearInterval(heartbeat);
   }
 }
 
