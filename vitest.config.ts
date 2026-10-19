@@ -1,8 +1,8 @@
-import { defineConfig } from 'vitest/config'
-import viteConfig from './vite.config'
-import viteReact from '@vitejs/plugin-react'
+import { defineConfig } from "vitest/config";
+import viteConfig from "./vite.config.ts";
+import viteReact from "@vitejs/plugin-react";
 
-const { plugins: _, ...rest } = viteConfig
+const { plugins: _, ...rest } = viteConfig;
 
 export default defineConfig({
   ...rest,
@@ -10,8 +10,8 @@ export default defineConfig({
   test: {
     server: {
       deps: {
-        inline: ['react', 'react-dom'],
+        inline: ["react", "react-dom"],
       },
     },
   },
-})
+});
