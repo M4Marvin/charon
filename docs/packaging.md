@@ -131,6 +131,64 @@ assembles the four tarballs plus the Windows zip, writes checksums, and
 publishes with `gh release create`. The Docker image is built from the same
 commit and pushed to GHCR manually.
 
+### Building and publishing the image locally
+
+The container image is built from the same tag as the release archives and pushed to GHCR by hand. `scripts/release-local.sh` does not touch Docker.
+
+```bash
+export VERSION=v0.1.2
+export IMAGE=ghcr.io/m4marvin/charon
+
+gh auth token | docker login ghcr.io -u M4Marvin --password-stdin
+
+docker build --pull -t "$IMAGE:$VERSION" -t "$IMAGE:latest" .
+docker push "$IMAGE:$VERSION"
+docker push "$IMAGE:latest"
+```
+
+The container can be checked before pushing:
+
+```bash
+docker run --rm -d --name charon-test \
+  -p 127.0.0.1:3001:3000 \
+  -e APP_URL=http://localhost:3001 \
+  -v charon-test-data:/app/data \
+  "$IMAGE:$VERSION"
+curl -fsS http://127.0.0.1:3001/up   # {"status":"ok"}
+docker rm -f charon-test
+```
+
+The package must be public for `docker compose pull` to work without a login:
+
+```bash
+gh api -X PATCH /user/packages/container/charon -f visibility=public
+```
+
+`gh auth token` needs the `write:packages` scope. If `~/.docker` is not writable (immutable home, sandboxed shell), use a temporary Docker config for login, build, and push:
+
+```bash
+export DOCKER_CONFIG=/tmp/charon-docker
+mkdir -p "$DOCKER_CONFIG"
+```
+
+The v0.1.2 release image is `linux/amd64`. To publish a multi-arch image as well:
+
+```bash
+docker run --privileged --rm tonistiigi/binfmt --install arm64
+docker buildx create --name charon-builder --use --bootstrap 2>/dev/null || docker buildx use charon-builder
+
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  --pull \
+  -t "$IMAGE:$VERSION" \
+  -t "$IMAGE:latest" \
+  --push .
+```
+
+`--push` is required for a multi-arch build; buildx cannot load a multi-platform image into the local engine.
+
+
+
 ### Tier 3 — desktop (defer)
 
 Electron, not Tauri, for v1: the app is already Node; Electron supplies Node +

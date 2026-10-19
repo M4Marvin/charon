@@ -128,6 +128,7 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 | DB studio | `pnpm run db:studio` |
 | Single-user migration (operator) | `pnpm run migrate:single-user` |
 | Package and publish a release | `scripts/release-local.sh v0.1.0` (no Actions) |
+| Build/publish the container image | See [packaging.md](docs/packaging.md#building-and-publishing-the-image-locally) |
 | Run the packaged server | `node bin/charon.mjs serve` (zero-config) |
 | Installer smoke test | `CHARON_SOURCE=... CHARON_ALLOW_UNVERIFIED=1 sh scripts/install.sh --no-open` |
 

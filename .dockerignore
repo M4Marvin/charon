@@ -8,6 +8,12 @@ node_modules/
 .vscode/
 .vercel/
 .output/
+.release-cache/
+.review/
+logs/
+dist/
+.playwright-mcp/
+charon-local-db-*.db
 .github/
 scripts/migrate-data.ts
 scripts/migrate-image-paths.ts

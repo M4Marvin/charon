@@ -1,6 +1,7 @@
 services:
   charon:
-    # Prebuilt, multi-arch image. No clone and no local build required.
+    # Prebuilt linux/amd64 image. No clone and no local build required.
+    # For ARM or multi-arch, build and push locally with docs/packaging.md.
     image: ghcr.io/m4marvin/charon:latest
     container_name: charon
     init: true
