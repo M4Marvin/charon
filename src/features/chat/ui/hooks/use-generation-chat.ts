@@ -86,18 +86,6 @@ export function useGenerationChat(chatId: string): GenerationChat {
     aiChatRef.current = aiChat;
   });
 
-  useEffect(() => {
-    if (status !== "streaming") return;
-    if (aiChat.isLoading) return;
-    setStatus("idle");
-    setStreamingText("");
-    setOwnerChatId(null);
-    useChatUiStore.getState().clearPlaceholder();
-    void queryClient.invalidateQueries({ queryKey: chatKeys.messages(runChatIdRef.current) });
-    jobIdRef.current = null;
-    placeholderRef.current = null;
-  }, [aiChat.isLoading, status, queryClient]);
-
   const start = useCallback(
     async (mode: "send" | "regenerate" | "continue", opts?: StartOpts) => {
       const activeChatId = chatIdRef.current;
