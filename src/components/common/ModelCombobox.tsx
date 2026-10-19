@@ -11,6 +11,7 @@ interface ModelComboboxProps {
   onChange: (v: string) => void;
   disabled?: boolean;
   ariaLabel?: string;
+  id?: string;
 }
 
 export function ModelCombobox({
@@ -19,6 +20,7 @@ export function ModelCombobox({
   onChange,
   disabled,
   ariaLabel,
+  id,
 }: ModelComboboxProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
@@ -46,6 +48,7 @@ export function ModelCombobox({
     <div ref={ref} className="relative">
       <div className="flex gap-1.5">
         <Input
+          id={id}
           aria-label={ariaLabel}
           value={query}
           onChange={(e) => {
@@ -53,11 +56,27 @@ export function ModelCombobox({
             setOpen(true);
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && query) {
+            const trimmed = query.trim();
+            if (e.key === "Enter" && trimmed) {
               e.preventDefault();
-              onChange(query);
+              onChange(trimmed);
+              setQuery(trimmed);
               setOpen(false);
             }
+          }}
+          onBlur={(e) => {
+            if (ref.current?.contains(e.relatedTarget as Node | null)) return;
+            const trimmed = query.trim();
+            if (!trimmed) {
+              setQuery(value);
+              setOpen(false);
+              return;
+            }
+            if (trimmed !== value) {
+              onChange(trimmed);
+              setQuery(trimmed);
+            }
+            setOpen(false);
           }}
           onFocus={() => providerId !== "" && setOpen(true)}
           placeholder={!providerId ? "Select a provider first" : "Enter or pick a model"}

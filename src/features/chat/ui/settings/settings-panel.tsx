@@ -8,6 +8,7 @@ import {
   Image,
   Monitor,
   MessageSquare,
+  Info,
 } from "lucide-react";
 import {
   Sheet,
@@ -76,6 +77,15 @@ export function SettingsPanel({ chatId, open, isStreaming, onOpenChange }: Setti
           <SettingsNav sections={SECTIONS} activeId={activeId} onChange={handleSectionChange} />
 
           <div className="flex-1 min-w-0 overflow-y-auto px-5 py-5 scrollbar-thin scroll-fade-b">
+            {isStreaming ? (
+              <div
+                role="status"
+                className="mb-4 flex items-start gap-2 rounded-lg border border-subtle bg-surface px-3 py-2 text-xs text-2"
+              >
+                <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                A reply is generating. Changes apply to your next reply.
+              </div>
+            ) : null}
             {configError ? (
               <div className="mb-4">
                 <ErrorBanner

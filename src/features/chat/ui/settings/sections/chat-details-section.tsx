@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -70,6 +70,7 @@ function ChatDetailsForm({
   const [draft, setDraft] = useState(title);
   const [error, setError] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const deleteButtonRef = useRef<HTMLButtonElement>(null);
 
   const trimmed = draft.trim();
   const dirty = trimmed !== title;
@@ -154,6 +155,7 @@ function ChatDetailsForm({
           Deleting this chat removes its messages and cannot be undone.
         </p>
         <Button
+          ref={deleteButtonRef}
           type="button"
           variant="outline"
           className="mt-3 gap-2 text-danger"
@@ -175,6 +177,7 @@ function ChatDetailsForm({
         description="This permanently deletes the chat and all its messages. This cannot be undone."
         destructive
         loading={deleteChat.isPending}
+        returnFocusTo={deleteButtonRef}
         onConfirm={handleDelete}
       />
     </div>

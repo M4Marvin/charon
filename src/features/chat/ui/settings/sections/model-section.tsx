@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Zap, RotateCw, ArrowUpRight, CircleCheck, CircleX } from "lucide-react";
+import { Zap, ArrowUpRight, CircleCheck, CircleX } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,24 +11,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { ModelCombobox } from "@/components/common/ModelCombobox";
 import { SkeletonText } from "@/components/common/Skeletons";
 import { SectionHeader } from "../section-header";
 import { useAiProviders, useTestProviderConnection } from "@/hooks/useAiProviders";
 import { usePresets } from "@/hooks/usePresets";
-import { useProviderModels } from "@/hooks/useProviderModels";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
 
 interface SectionProps {
   chatId: string;
-  isStreaming: boolean;
   onClose: () => void;
 }
 
-export function ModelSection({ isStreaming, onClose }: SectionProps) {
+export function ModelSection({ onClose }: SectionProps) {
   const {
     data: settings,
     error: settingsError,
@@ -48,12 +47,6 @@ export function ModelSection({ isStreaming, onClose }: SectionProps) {
     isLoading: presetsLoading,
   } = usePresets();
   const updateUserSettings = useUpdateUserSettings();
-  const {
-    data: models,
-    isLoading: modelsLoading,
-    isError: modelsError,
-    refetch: refetchModels,
-  } = useProviderModels(settings?.defaultProviderId ?? "");
   const testConnection = useTestProviderConnection();
 
   const queryError = settingsError ?? providersError ?? presetsError;
@@ -69,13 +62,13 @@ export function ModelSection({ isStreaming, onClose }: SectionProps) {
     modelCount: number;
     error?: string;
   } | null>(null);
-  const [modelInput, setModelInput] = useState(settings?.defaultSelectedModel ?? "");
+  const [pendingProviderId, setPendingProviderId] = useState<string | null>(null);
 
   const selectedProviderId = settings?.defaultProviderId ?? "";
   const selectedModel = settings?.defaultSelectedModel ?? "";
   const selectedPresetId = settings?.defaultPresetId ?? "";
 
-  const handleProviderChange = useCallback(
+  const applyProviderChange = useCallback(
     (providerId: string) => {
       updateUserSettings.mutate(
         {
@@ -86,19 +79,34 @@ export function ModelSection({ isStreaming, onClose }: SectionProps) {
         { onError: reportSaveError },
       );
       setTestResult(null);
-      setModelInput("");
     },
     [updateUserSettings, reportSaveError],
   );
 
+  const handleProviderChange = useCallback(
+    (providerId: string) => {
+      if (providerId === selectedProviderId) return;
+      if (selectedModel || selectedPresetId) {
+        setPendingProviderId(providerId);
+        return;
+      }
+      applyProviderChange(providerId);
+    },
+    [selectedProviderId, selectedModel, selectedPresetId, applyProviderChange],
+  );
+
   const handleModelChange = useCallback(
     (model: string) => {
-      const v = model.trim() || null;
-      updateUserSettings.mutate({ defaultSelectedModel: v ?? null }, { onError: reportSaveError });
-      setModelInput(v ?? "");
+      const value = model.trim();
+      if (!value || value === selectedModel) return;
+      updateUserSettings.mutate({ defaultSelectedModel: value }, { onError: reportSaveError });
     },
-    [updateUserSettings, reportSaveError],
+    [selectedModel, updateUserSettings, reportSaveError],
   );
+
+  const handleClearModel = useCallback(() => {
+    updateUserSettings.mutate({ defaultSelectedModel: null }, { onError: reportSaveError });
+  }, [updateUserSettings, reportSaveError]);
 
   const handlePresetChange = useCallback(
     (presetId: string) => {
@@ -152,7 +160,7 @@ export function ModelSection({ isStreaming, onClose }: SectionProps) {
           <Select
             value={selectedProviderId}
             onValueChange={handleProviderChange}
-            disabled={isStreaming || settingsQueryLoading}
+            disabled={settingsQueryLoading}
           >
             <SelectTrigger id="cs-provider" className="flex-1">
               <SelectValue placeholder="Select provider" />
@@ -171,7 +179,7 @@ export function ModelSection({ isStreaming, onClose }: SectionProps) {
             variant="outline"
             size="icon"
             className="size-9 shrink-0"
-            disabled={isStreaming || !selectedProviderId || testConnection.isPending}
+            disabled={!selectedProviderId || testConnection.isPending}
             onClick={handleTest}
             aria-label="Test provider connection"
           >
@@ -205,66 +213,30 @@ export function ModelSection({ isStreaming, onClose }: SectionProps) {
 
       <Field className="space-y-1.5">
         <FieldLabel htmlFor="cs-model">Model</FieldLabel>
-        <div className="flex gap-2">
-          <Select
-            value={selectedModel}
-            onValueChange={handleModelChange}
-            disabled={isStreaming || !selectedProviderId}
-          >
-            <SelectTrigger id="cs-model" className="flex-1" aria-busy={modelsLoading || undefined}>
-              <SelectValue placeholder={modelsLoading ? "Loading models…" : "Select model"} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {models?.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.id}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          {modelsLoading ? (
-            <span role="status" className="sr-only">
-              Loading models
-            </span>
-          ) : modelsError ? (
-            <span role="status" className="sr-only">
-              Failed to load models
-            </span>
-          ) : null}
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-9 shrink-0"
-            disabled={isStreaming || !selectedProviderId}
-            onClick={() => refetchModels()}
-            aria-label="Refresh models"
-          >
-            <RotateCw className="size-4" />
-          </Button>
-        </div>
-      </Field>
-
-      <Field className="space-y-1.5">
-        <FieldLabel htmlFor="cs-model-input">Custom model ID</FieldLabel>
-        <Input
-          id="cs-model-input"
-          value={modelInput}
-          onChange={(e) => setModelInput(e.target.value)}
-          onBlur={() => handleModelChange(modelInput)}
-          placeholder="Or type model ID directly"
-          disabled={isStreaming}
+        <ModelCombobox
+          id="cs-model"
+          providerId={selectedProviderId}
+          value={selectedModel}
+          onChange={handleModelChange}
+          disabled={!selectedProviderId}
+          ariaLabel="Default model"
         />
+        {selectedModel ? (
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            className="h-auto self-start p-0 text-xs text-2"
+            onClick={handleClearModel}
+          >
+            Clear model
+          </Button>
+        ) : null}
       </Field>
 
       <Field className="space-y-1.5">
         <FieldLabel htmlFor="cs-preset">Preset</FieldLabel>
-        <Select
-          value={selectedPresetId || "_none"}
-          onValueChange={handlePresetChange}
-          disabled={isStreaming}
-        >
+        <Select value={selectedPresetId || "_none"} onValueChange={handlePresetChange}>
           <SelectTrigger id="cs-preset">
             <SelectValue placeholder="No preset" />
           </SelectTrigger>
@@ -299,6 +271,24 @@ export function ModelSection({ isStreaming, onClose }: SectionProps) {
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={pendingProviderId !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setPendingProviderId(null);
+        }}
+        title="Change provider?"
+        description="This clears the default model and preset for all chats. You can choose a new model after switching."
+        confirmLabel="Change provider"
+        loadingLabel="Changing…"
+        loading={updateUserSettings.isPending}
+        onConfirm={() => {
+          if (pendingProviderId) {
+            applyProviderChange(pendingProviderId);
+            setPendingProviderId(null);
+          }
+        }}
+      />
     </div>
   );
 }

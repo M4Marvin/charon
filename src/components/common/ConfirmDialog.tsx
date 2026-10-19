@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -16,8 +16,10 @@ interface ConfirmDialogProps {
   title: string;
   description: ReactNode;
   confirmLabel?: string;
+  loadingLabel?: string;
   destructive?: boolean;
   loading?: boolean;
+  returnFocusTo?: RefObject<HTMLElement | null>;
   onConfirm: () => void;
 }
 
@@ -27,13 +29,24 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel = "Delete",
+  loadingLabel,
   destructive,
   loading,
+  returnFocusTo,
   onConfirm,
 }: ConfirmDialogProps) {
+  const wasOpen = useRef(false);
+
+  useEffect(() => {
+    if (wasOpen.current && !open) {
+      returnFocusTo?.current?.focus();
+    }
+    wasOpen.current = open;
+  }, [open, returnFocusTo]);
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent onEscapeKeyDown={(event) => event.stopPropagation()}>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
@@ -45,7 +58,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? "Deleting…" : confirmLabel}
+            {loading ? (loadingLabel ?? "Deleting…") : confirmLabel}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -15,10 +15,9 @@ import { SectionHeader } from "../section-header";
 
 interface SectionProps {
   chatId: string;
-  isStreaming: boolean;
 }
 
-export function BackgroundSection({ chatId, isStreaming }: SectionProps) {
+export function BackgroundSection({ chatId }: SectionProps) {
   const { data: config, error: configError, refetch: refetchConfig } = useChatConfig(chatId);
   const {
     data: backgrounds,
@@ -120,7 +119,6 @@ export function BackgroundSection({ chatId, isStreaming }: SectionProps) {
                 <button
                   type="button"
                   onClick={() => handleSelect(bg.id === selectedId ? null : bg.id)}
-                  disabled={isStreaming}
                   className={`group relative aspect-video w-full overflow-hidden rounded-lg bg-raised ring-1 transition focus-ring ${
                     bg.id === selectedId ? "ring-brand ring-2" : "ring-border hover:ring-brand/40"
                   }`}

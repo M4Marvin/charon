@@ -6,10 +6,9 @@ import { SectionHeader } from "../section-header";
 
 interface SectionProps {
   chatId: string;
-  isStreaming: boolean;
 }
 
-export function CharacterSection({ chatId, isStreaming }: SectionProps) {
+export function CharacterSection({ chatId }: SectionProps) {
   const { data: config } = useChatConfig(chatId);
   const updateOverrides = useUpdateChatOverrides();
 
@@ -40,7 +39,6 @@ export function CharacterSection({ chatId, isStreaming }: SectionProps) {
             { onError: onSaveError },
           )
         }
-        disabled={isStreaming}
       />
       <BlurCommitTextarea
         id="cs-personality"
@@ -57,7 +55,6 @@ export function CharacterSection({ chatId, isStreaming }: SectionProps) {
             { onError: onSaveError },
           )
         }
-        disabled={isStreaming}
       />
       <BlurCommitTextarea
         id="cs-scenario"
@@ -74,7 +71,6 @@ export function CharacterSection({ chatId, isStreaming }: SectionProps) {
             { onError: onSaveError },
           )
         }
-        disabled={isStreaming}
       />
       <BlurCommitTextarea
         id="cs-sys-prompt"
@@ -91,7 +87,6 @@ export function CharacterSection({ chatId, isStreaming }: SectionProps) {
             { onError: onSaveError },
           )
         }
-        disabled={isStreaming}
       />
     </div>
   );
