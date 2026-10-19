@@ -13,7 +13,6 @@ const TriggerSchema = Schema.Literals([
 
 const PrepareSchema = Schema.Struct({
   chatId: Schema.String,
-  requestId: Schema.optional(Schema.String),
   trigger: TriggerSchema,
   content: Schema.optional(Schema.String),
   messageLocalId: Schema.optional(Schema.Number),
@@ -25,24 +24,17 @@ const CancelSchema = Schema.Struct({ jobId: Schema.String });
 export const prepareGenerationFn = createServerFn({ method: "POST", strict: { output: false } })
   .validator((data) => Schema.decodeUnknownSync(PrepareSchema)(data))
   .handler(async ({ data }) => {
-    const [{ getSession }, { runGeneration, withGenerationService }] = await Promise.all([
+    const [{ getSession }, { prepareGeneration }] = await Promise.all([
       import("@/server/session"),
-      import("./service"),
+      import("./prepare"),
     ]);
     const { user } = await getSession();
-    const prepared = await runGeneration(
-      withGenerationService((service) =>
-        service.prepare(
-          user.id,
-          { ...data, selection: data.selection ? [...data.selection] : undefined },
-          user.name,
-        ),
-      ),
+    const prepared = await prepareGeneration(
+      user.id,
+      { ...data, selection: data.selection ? [...data.selection] : undefined },
+      user.name,
     );
-    return {
-      ...prepared,
-      streamPath: "/api/generation/chat",
-    };
+    return prepared;
   });
 
 export const cancelGenerationFn = createServerFn({ method: "POST", strict: { output: false } })
@@ -55,12 +47,14 @@ export const cancelGenerationFn = createServerFn({ method: "POST", strict: { out
     ]);
     await getSession();
     const job = getJob(data.jobId);
-    cancelJob(data.jobId);
-    if (job?.placeholderLocalId && job.placeholderLocalId > 0) {
+    const cancelled = cancelJob(data.jobId);
+    // A finalized run is no longer cancellable; deleting its placeholder now
+    // would delete the completed reply.
+    if (cancelled && job?.placeholderLocalId && job.placeholderLocalId > 0) {
       try {
-        deleteBranch(job.chatId, job.placeholderLocalId, undefined, { skipIdleCheck: true });
+        deleteBranch(job.chatId, job.placeholderLocalId);
       } catch {
-        // The run may have finalized first; keep its content.
+        // The branch may already be gone; the job is still cancelled.
       }
     }
     return { ok: true };

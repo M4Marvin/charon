@@ -1,7 +1,8 @@
-import { createHash } from "node:crypto";
 import type { ModelMessage } from "@tanstack/ai";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
-import type { LoreEntry } from "@/lib/st-core/lorebook/types";
+import type { LoreEntry, LoreGlobalData } from "@/lib/st-core/lorebook/types";
+import { LorePosition } from "@/lib/st-core/lorebook/types.js";
+import { scanLoreEntries } from "@/lib/chat/lorebook";
 import { ApproxTokenCounter } from "@/lib/st-core/shared/tokens.js";
 import type { ChatCompletionPreset } from "@/lib/chat/types";
 import type { CompiledPrompt, GenerationSnapshot, PromptMode } from "./contract";
@@ -108,23 +109,38 @@ function parseExampleMessages(mesExample: string, names: MacroNames): ModelMessa
   return messages;
 }
 
-function appendLorePrompts(prompts: string[], loreEntries: LoreEntry[], names: MacroNames): number {
-  let activated = 0;
+function appendLoreEntries(prompts: string[], loreEntries: LoreEntry[], names: MacroNames): void {
   for (const entry of loreEntries) {
-    if (entry.disable) continue;
     const content = expandMacros(entry.content, names).trim();
-    if (!content) continue;
-    prompts.push(content);
-    activated += 1;
+    if (content) prompts.push(content);
   }
-  return activated;
+}
+
+function scanLore(snapshot: GenerationSnapshot): {
+  activated: LoreEntry[];
+} {
+  const globalData: LoreGlobalData = {
+    personaDescription: snapshot.persona.description ?? "",
+    characterDescription: snapshot.character.description,
+    characterPersonality: snapshot.character.personality,
+    characterDepthPrompt: snapshot.character.depthPrompt,
+    scenario: snapshot.character.scenario,
+    creatorNotes: snapshot.character.creatorNotes,
+    trigger: "",
+  };
+  const entries = snapshot.loreEntries.filter(
+    (entry) => !entry.disable && entry.content.trim().length > 0,
+  );
+  return scanLoreEntries(entries, snapshot.path, globalData);
 }
 
 function buildRoleplaySystemPrompts(
   snapshot: GenerationSnapshot,
   names: MacroNames,
   mode: "chat" | "impersonate",
-): { prompts: string[]; activatedLore: number } {
+  beforeLore: LoreEntry[],
+  afterLore: LoreEntry[],
+): string[] {
   const { character, persona, settings, preset } = snapshot;
   const prompts: string[] = [];
 
@@ -133,6 +149,8 @@ function buildRoleplaySystemPrompts(
   for (const utilityPrompt of preset.utilityPrompts ?? []) {
     addPrompt(prompts, expandMacros(utilityPrompt, names));
   }
+
+  appendLoreEntries(prompts, beforeLore, names);
 
   addPrompt(prompts, expandMacros(character.systemPrompt, names));
   addPrompt(prompts, expandMacros(character.description, names));
@@ -148,9 +166,7 @@ function buildRoleplaySystemPrompts(
     addPrompt(prompts, expandMacros(`Scenario: ${character.scenario}`, names));
   }
 
-  addPrompt(prompts, expandMacros(character.depthPrompt, names));
-
-  const activatedLore = appendLorePrompts(prompts, snapshot.loreEntries, names);
+  appendLoreEntries(prompts, afterLore, names);
 
   if (persona.description?.trim()) {
     addPrompt(prompts, expandMacros(`${persona.name}'s persona: ${persona.description}`, names));
@@ -168,13 +184,10 @@ function buildRoleplaySystemPrompts(
     addPrompt(prompts, expandMacros(instruction, names));
   }
 
-  return { prompts, activatedLore };
+  return prompts;
 }
 
-function buildImageSystemPrompts(
-  snapshot: GenerationSnapshot,
-  names: MacroNames,
-): string[] {
+function buildImageSystemPrompts(snapshot: GenerationSnapshot, names: MacroNames): string[] {
   const { character } = snapshot;
   const context: string[] = [];
 
@@ -204,6 +217,7 @@ function buildEditorSystemPrompts(
   snapshot: GenerationSnapshot,
   names: MacroNames,
   mode: "rewrite" | "transform",
+  instruction?: string,
 ): string[] {
   const { character } = snapshot;
   const context: string[] = [];
@@ -220,6 +234,7 @@ function buildEditorSystemPrompts(
   const prompts: string[] = [];
   addPrompt(prompts, expandMacros(context.join("\n"), names));
   prompts.push(mode === "rewrite" ? REWRITE_CONTRACT : TRANSFORM_CONTRACT);
+  if (instruction?.trim()) prompts.push(`Instruction: ${instruction.trim()}`);
   return prompts;
 }
 
@@ -284,33 +299,35 @@ function selectHistoryMessages(snapshot: GenerationSnapshot, mode: PromptMode): 
 /**
  * Compile a generation snapshot into the provider-agnostic prompt shape.
  *
- * Every piece of system/head text lands in `systemPrompts`; `messages`
- * contains only user/assistant turns (examples, history, and an impersonation
- * prefill). Persisted message content is never macro-expanded.
+ * Roleplay system/head text lands in `systemPrompts`. `messages` contains the
+ * conversational turns plus at-depth depth-prompt/lore inserts; persisted
+ * message content is never macro-expanded.
  */
 export function compilePrompt(
   snapshot: GenerationSnapshot,
   mode: PromptMode,
-  options?: { imageExample?: string },
+  options?: { instruction?: string },
 ): CompiledPrompt {
-  // The legacy full-example image prompt is intentionally ignored: identity is
-  // assembled deterministically from character tags, never copied from an
-  // example prompt.
-  void options;
   const names: MacroNames = {
     char: snapshot.character.name,
     user: snapshot.persona.name,
   };
 
   let systemPrompts: string[];
-  let activatedLore = 0;
+  let atDepthLore: LoreEntry[] = [];
 
   switch (mode) {
     case "chat":
     case "impersonate": {
-      const built = buildRoleplaySystemPrompts(snapshot, names, mode);
-      systemPrompts = built.prompts;
-      activatedLore = built.activatedLore;
+      const scan = scanLore(snapshot);
+      atDepthLore = scan.activated.filter((entry) => entry.position === LorePosition.AtDepth);
+      systemPrompts = buildRoleplaySystemPrompts(
+        snapshot,
+        names,
+        mode,
+        scan.activated.filter((entry) => entry.position === LorePosition.Before),
+        scan.activated.filter((entry) => entry.position === LorePosition.After),
+      );
       break;
     }
     case "image":
@@ -318,7 +335,7 @@ export function compilePrompt(
       break;
     case "rewrite":
     case "transform":
-      systemPrompts = buildEditorSystemPrompts(snapshot, names, mode);
+      systemPrompts = buildEditorSystemPrompts(snapshot, names, mode, options?.instruction);
       break;
   }
 
@@ -335,6 +352,32 @@ export function compilePrompt(
           ? "Write the Danbooru-style image prompt delta for the current scene now."
           : "Proceed with the task now.",
     });
+  }
+  if (mode === "chat" || mode === "impersonate") {
+    // TanStack's ModelMessage has no system role. System-role depth entries
+    // keep their content but cannot be placed mid-history; user/assistant
+    // entries do keep their configured depth.
+    if (snapshot.character.depthPrompt.trim()) {
+      const content = expandMacros(snapshot.character.depthPrompt, names).trim();
+      if (content) {
+        if (snapshot.character.depthPromptRole === "system") {
+          systemPrompts.push(content);
+        } else {
+          const index = Math.max(0, history.length - snapshot.character.depthPromptDepth);
+          history.splice(index, 0, { role: snapshot.character.depthPromptRole, content });
+        }
+      }
+    }
+    for (const entry of atDepthLore) {
+      const content = expandMacros(entry.content, names).trim();
+      if (!content) continue;
+      if (entry.role === 1 || entry.role === 2) {
+        const index = Math.max(0, history.length - Math.max(0, entry.depth));
+        history.splice(index, 0, { role: entry.role === 1 ? "user" : "assistant", content });
+      } else {
+        systemPrompts.push(content);
+      }
+    }
   }
   const prefill: ModelMessage | null =
     mode === "impersonate" ? { role: "assistant", content: `${snapshot.persona.name}: ` } : null;
@@ -360,7 +403,6 @@ export function compilePrompt(
   }
 
   const keptHistory = [...history];
-  let droppedMessages = 0;
   let totalTokens =
     systemTokens + exampleTokens + prefillTokens + countMessages(counter, keptHistory);
 
@@ -368,7 +410,6 @@ export function compilePrompt(
     const dropped = keptHistory.shift();
     if (!dropped) break;
     totalTokens -= countMessages(counter, [dropped]);
-    droppedMessages += 1;
   }
 
   if (totalTokens > budget) {
@@ -383,23 +424,11 @@ export function compilePrompt(
   if (prefill) messages.push(prefill);
 
   const modelOptions = buildModelOptions(snapshot.preset, maxTokens, mode);
-  const promptHash = createHash("sha256")
-    .update(JSON.stringify({ systemPrompts, messages, modelOptions }))
-    .digest("hex");
-  const inputTokens = systemTokens + countMessages(counter, messages);
 
   return {
     systemPrompts,
     messages,
     modelOptions,
     stop: buildStopStrings(mode, snapshot.character.name),
-    meta: {
-      mode,
-      promptHash,
-      inputTokens,
-      droppedMessages,
-      activatedLore,
-      hasPrefill: prefill !== null,
-    },
   };
 }

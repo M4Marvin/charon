@@ -6,20 +6,25 @@ import {
   type StreamChunk,
   type TokenUsage,
 } from "@tanstack/ai";
-import { reconstructChat, withPersistence } from "@tanstack/ai-persistence";
 import { tryGetSession } from "@/server/session";
-import { getJob, getJobByRequestId, heartbeatJob } from "@/db/repositories/generation";
-import { aiPersistence } from "@/features/generation/persistence-singleton";
+import { beginJob, failJob, getJob, heartbeatJob } from "@/db/repositories/generation";
 import { loadGenerationSnapshot } from "@/features/generation/context";
 import { compilePrompt } from "@/features/generation/prompt";
 import { makeAdapter } from "@/features/generation/provider";
 import { readTools } from "@/features/generation/tools";
-import { runGeneration, withGenerationService } from "@/features/generation/service";
-import type { GenerationError } from "@/features/generation/errors";
+import { finalizeChat } from "@/features/generation/finalize";
+import {
+  httpStatusFor,
+  isGenerationError,
+  LeaseLostError,
+  toErrorBody,
+} from "@/features/generation/errors";
 import type { ToolContext } from "@/features/generation/contract";
 import { createLogger } from "@/features/logging";
 
 const log = createLogger("api:generation:chat");
+
+async function* noStream(): AsyncGenerator<StreamChunk> {}
 
 function finishReasonOf(chunk: StreamChunk): string | null {
   const value = chunk as unknown as {
@@ -39,17 +44,23 @@ async function* finalizeOnTerminal(
   let terminal = false;
   let usage: TokenUsage | undefined;
   let finishReason: string | null = null;
+  let leaseLost = false;
   const heartbeat = setInterval(() => {
     try {
-      heartbeatJob({ jobId, owner, ttlMs: 120_000 });
+      if (!heartbeatJob({ jobId, owner, ttlMs: 120_000 })) leaseLost = true;
     } catch {
-      // The lease may already be finalized or reclaimed; the terminal path
-      // below reports the real outcome.
+      leaseLost = true;
     }
   }, 30_000);
 
   try {
     for await (const chunk of stream) {
+      if (leaseLost) {
+        throw new LeaseLostError({
+          message: "The generation lease was lost while streaming.",
+          jobId,
+        });
+      }
       if (chunk.type === "TEXT_MESSAGE_CONTENT") text += chunk.delta ?? "";
 
       if (chunk.type === "RUN_FINISHED") {
@@ -59,31 +70,25 @@ async function* finalizeOnTerminal(
           continue;
         }
         terminal = true;
-        usage = (Array.isArray(chunk.usage) ? chunk.usage[0] : chunk.usage) as TokenUsage | undefined;
+        usage = (Array.isArray(chunk.usage) ? chunk.usage[0] : chunk.usage) as
+          | TokenUsage
+          | undefined;
         finishReason = reason;
-        await runGeneration(
-          withGenerationService((service) =>
-            service.finalizeChat({ jobId, owner, epoch, text, usage, finishReason }),
-          ),
-        );
+        finalizeChat({ jobId, owner, epoch, text, usage, finishReason });
         yield chunk;
         continue;
       }
 
       if (chunk.type === "RUN_ERROR") {
         terminal = true;
-        await runGeneration(
-          withGenerationService((service) =>
-            service.fail({
-              jobId,
-              owner,
-              code: "provider_error",
-              message: chunk.message,
-              usage,
-              finishReason,
-            }),
-          ),
-        );
+        failJob({
+          jobId,
+          owner,
+          code: "provider_error",
+          message: chunk.message,
+          usage: usage as unknown as Record<string, unknown> | undefined,
+          finishReason,
+        });
         yield chunk;
         continue;
       }
@@ -91,33 +96,36 @@ async function* finalizeOnTerminal(
       yield chunk;
     }
 
+    if (leaseLost) {
+      throw new LeaseLostError({
+        message: "The generation lease was lost while streaming.",
+        jobId,
+      });
+    }
+
     if (!terminal) {
-      await runGeneration(
-        withGenerationService((service) =>
-          service.fail({
-            jobId,
-            owner,
-            code: "incomplete_stream",
-            message: "The provider stream ended without a terminal event.",
-            usage,
-            finishReason,
-          }),
-        ),
-      );
+      failJob({
+        jobId,
+        owner,
+        code: "incomplete_stream",
+        message: "The provider stream ended without a terminal event.",
+        usage: usage as unknown as Record<string, unknown> | undefined,
+        finishReason,
+      });
     }
   } catch (error) {
-    await runGeneration(
-      withGenerationService((service) =>
-        service.fail({
-          jobId,
-          owner,
-          code: "finalize_failed",
-          message: error instanceof Error ? error.message : String(error),
-          usage,
-          finishReason,
-        }),
-      ),
-    ).catch(() => {});
+    try {
+      failJob({
+        jobId,
+        owner,
+        code: "finalize_failed",
+        message: error instanceof Error ? error.message : String(error),
+        usage: usage as unknown as Record<string, unknown> | undefined,
+        finishReason,
+      });
+    } catch {
+      // Preserve the original stream error.
+    }
     throw error;
   } finally {
     clearInterval(heartbeat);
@@ -127,19 +135,8 @@ async function* finalizeOnTerminal(
 export const Route = createFileRoute("/api/generation/chat")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
-        const session = await tryGetSession();
-        if (!session) {
-          return new Response(JSON.stringify({ code: "unauthorized", message: "Unauthorized" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          });
-        }
-        return reconstructChat(aiPersistence, request, {
-          authorize: async () => true,
-        });
-      },
       POST: async ({ request }) => {
+        let activeJobId: string | null = null;
         try {
           const session = await tryGetSession();
           if (!session) {
@@ -149,50 +146,61 @@ export const Route = createFileRoute("/api/generation/chat")({
             });
           }
           const { user } = session;
+          const durability = memoryStream(request);
+          if (durability.resumeFrom() !== null) {
+            return toServerSentEventsResponse(noStream(), {
+              durability: { adapter: durability },
+            });
+          }
           const body = (await request.json()) as Record<string, unknown>;
           const data = (body.data ?? body.forwardedProps ?? body) as Record<string, unknown>;
           const jobId = String(data.jobId ?? "");
           if (!jobId) {
-            return new Response(JSON.stringify({ code: "invalid_request", message: "jobId is required" }), {
-              status: 400,
-              headers: { "Content-Type": "application/json" },
-            });
+            return new Response(
+              JSON.stringify({ code: "invalid_request", message: "jobId is required" }),
+              {
+                status: 400,
+                headers: { "Content-Type": "application/json" },
+              },
+            );
           }
 
-          const job = getJob(jobId) ?? getJobByRequestId(jobId);
+          const job = getJob(jobId);
           if (!job) {
-            return new Response(JSON.stringify({ code: "not_found", message: "Generation job not found" }), {
-              status: 404,
-              headers: { "Content-Type": "application/json" },
-            });
+            return new Response(
+              JSON.stringify({ code: "not_found", message: "Generation job not found" }),
+              {
+                status: 404,
+                headers: { "Content-Type": "application/json" },
+              },
+            );
           }
+          activeJobId = job.id;
 
-          const selectionIds = Array.isArray(job.input?.selection)
-            ? (job.input?.selection as number[])
-            : job.target?.kind === "replace"
-              ? [Number(job.target.messageLocalId)]
-              : [];
+          const storedSelection = job.input?.selection;
+          const selectionIds =
+            Array.isArray(storedSelection) && storedSelection.length > 0
+              ? (storedSelection as number[])
+              : job.target?.kind === "replace"
+                ? [Number(job.target.messageLocalId)]
+                : [];
           const snapshot = await loadGenerationSnapshot(
             user.id,
             job.chatId,
             job.placeholderLocalId ?? 0,
             selectionIds,
           );
-          const compiled = compilePrompt(snapshot, job.promptMode);
+          const instruction =
+            typeof job.input?.instruction === "string" ? job.input.instruction : undefined;
+          const compiled = compilePrompt(snapshot, job.promptMode, { instruction });
           const adapter = makeAdapter(snapshot.provider);
           const tools = readTools;
           const owner = crypto.randomUUID();
-          const lease = await runGeneration(
-            withGenerationService((service) => service.begin(job.id, owner)),
-          );
+          const lease = beginJob({ jobId: job.id, owner });
 
           const toolContext: ToolContext = {
             userId: user.id,
             chatId: job.chatId,
-            jobId: job.id,
-            mode: job.promptMode,
-            baseLeafId: job.baseLeafId ?? 0,
-            selection: selectionIds,
           };
 
           const stream = aiChat({
@@ -207,30 +215,39 @@ export const Route = createFileRoute("/api/generation/chat")({
             context: toolContext,
             threadId: job.chatId,
             runId: job.id,
-            middleware: [withPersistence(aiPersistence)],
           });
 
-          const finalized = finalizeOnTerminal(job.id, owner, lease.epoch, stream);
+          const finalized = finalizeOnTerminal(job.id, owner, lease.leaseEpoch, stream);
           return toServerSentEventsResponse(finalized, {
-            durability: { adapter: memoryStream(request) },
+            durability: { adapter: durability },
             headers: {
               "Cache-Control": "no-cache, no-transform",
               "X-Accel-Buffering": "no",
             },
           });
         } catch (error) {
-          const err = error as GenerationError & { _tag?: string };
+          const generationError = isGenerationError(error) ? error : null;
+          const message = error instanceof Error ? error.message : "Generation failed";
+          const status = generationError ? httpStatusFor(generationError) : 500;
+          const body = generationError
+            ? toErrorBody(generationError)
+            : { code: "internal", message };
           log.error("generation chat failed", {
-            tag: err?._tag,
-            message: err instanceof Error ? err.message : String(error),
+            tag: generationError?._tag,
+            message,
+            status,
           });
-          return new Response(
-            JSON.stringify({
-              code: err?._tag ?? "internal",
-              message: err instanceof Error ? err.message : "Generation failed",
-            }),
-            { status: 500, headers: { "Content-Type": "application/json" } },
-          );
+          if (activeJobId) {
+            try {
+              failJob({ jobId: activeJobId, code: body.code, message });
+            } catch {
+              // Best effort: the job may already be terminal.
+            }
+          }
+          return new Response(JSON.stringify(body), {
+            status,
+            headers: { "Content-Type": "application/json" },
+          });
         }
       },
     },

@@ -38,7 +38,11 @@ interface MyRouterContext {
 function RootErrorComponent({ error }: ErrorComponentProps) {
   return (
     <div className="flex h-dvh items-center justify-center bg-base">
-      <EmptyState icon={TriangleAlert} title="Something went wrong" description={error instanceof Error ? error.message : String(error)}>
+      <EmptyState
+        icon={TriangleAlert}
+        title="Something went wrong"
+        description={error instanceof Error ? error.message : String(error)}
+      >
         <button
           onClick={() => window.location.reload()}
           className="text-sm text-brand hover:underline cursor-pointer"

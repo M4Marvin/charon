@@ -1,5 +1,14 @@
 import { memo, useState, useLayoutEffect, useRef, useCallback } from "react";
-import { ChevronLeft, ChevronRight, RotateCw, Pencil, Trash2, Check, Copy, ListChecks } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  RotateCw,
+  Pencil,
+  Trash2,
+  Check,
+  Copy,
+  ListChecks,
+} from "lucide-react";
 import { MessageRewriteButton } from "./message-rewrite-button";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -171,7 +180,8 @@ export const ChatMessage = memo(function ChatMessage({
                 <span
                   className={cn(
                     "ml-auto flex shrink-0 items-center gap-0.5 transition-opacity",
-                    "opacity-40 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100",
+                    "group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100",
+                    selected ? "opacity-100" : "opacity-40",
                     "motion-reduce:transition-none",
                     disabled && "pointer-events-none",
                   )}
@@ -194,10 +204,10 @@ export const ChatMessage = memo(function ChatMessage({
                     <Button
                       variant={selected ? "secondary" : "ghost"}
                       size="icon"
-                      className="size-9 text-2 hover:text-brand"
+                      className={cn("size-9", selected ? "text-brand" : "text-2 hover:text-brand")}
                       onClick={() => onToggleSelect(message.localId)}
                       aria-pressed={selected}
-                      aria-label={selected ? "Deselect message" : "Select message for transform"}
+                      aria-label={selected ? "Deselect message" : "Select message for prompt"}
                     >
                       <ListChecks className="size-3.5" />
                     </Button>

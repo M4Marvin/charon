@@ -1,11 +1,9 @@
-import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { ChatCompletionPreset } from "@/lib/chat/types";
 import type { UserSettingsView, PersonaInfo } from "@/features/chat/config/types";
-import { DEFAULT_LORE_ENTRY } from "@/lib/st-core/lorebook/types";
+import { DEFAULT_LORE_ENTRY, LorePosition } from "@/lib/st-core/lorebook/types";
 import type { LoreEntry } from "@/lib/st-core/lorebook/types";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
-import { ApproxTokenCounter } from "@/lib/st-core/shared/tokens.js";
 import type { EffectiveCharacter, GenerationSnapshot } from "./contract";
 import { compilePrompt } from "./prompt";
 import { ContextOverflowError } from "./errors";
@@ -18,7 +16,6 @@ const DEFAULT_SETTINGS: UserSettingsView = {
   systemPrompt: null,
   postHistoryInstructions: null,
   impersonationPrompt: null,
-  imagePromptExample: null,
 };
 
 const DEFAULT_CHARACTER: EffectiveCharacter = {
@@ -30,6 +27,9 @@ const DEFAULT_CHARACTER: EffectiveCharacter = {
   mesExample: "",
   postHistoryInstructions: "",
   depthPrompt: "",
+  depthPromptDepth: 4,
+  depthPromptRole: "system",
+  creatorNotes: "",
   tags: [],
 };
 
@@ -50,7 +50,6 @@ function makeSnapshot(overrides: SnapshotOverrides = {}): GenerationSnapshot {
   } = overrides;
 
   return {
-    chatId: "chat-1",
     character: { ...DEFAULT_CHARACTER, ...characterOverrides },
     persona: { ...DEFAULT_PERSONA, ...personaOverrides },
     path: [],
@@ -62,7 +61,6 @@ function makeSnapshot(overrides: SnapshotOverrides = {}): GenerationSnapshot {
       preset: {},
     },
     settings: { ...DEFAULT_SETTINGS, ...settingsOverrides },
-    config: {} as GenerationSnapshot["config"],
     ...rest,
   };
 }
@@ -100,6 +98,7 @@ describe("compilePrompt", () => {
           personality: "Calm around {{user}}.",
           scenario: "{{char}} and {{user}} meet at a bar.",
           depthPrompt: "Stay close to {{user}}.",
+          depthPromptRole: "user",
           postHistoryInstructions: "Never break character for {{user}}.",
           mesExample: "<START>\n{{user}}: Hello {{char}}.\n{{char}}: Hello {{user}}.",
         },
@@ -110,8 +109,14 @@ describe("compilePrompt", () => {
         preset: preset({
           utilityPrompts: ["Write {{char}}'s next reply to {{user}}."],
         }),
-        loreEntries: [loreEntry({ content: "{{char}} hates {{user}}'s coffee." })],
+        loreEntries: [
+          loreEntry({
+            key: ["coffee"],
+            content: "{{char}} hates {{user}}'s coffee.",
+          }),
+        ],
         persona: { name: "Marv", description: "A tired engineer." },
+        path: [message(1, "user", "I need coffee.")],
       });
 
       const result = compilePrompt(snapshot, "chat");
@@ -123,8 +128,8 @@ describe("compilePrompt", () => {
       expect(systems).toContain("Alice is a pilot.");
       expect(systems).toContain("Calm around Marv.");
       expect(systems).toContain("Alice and Marv meet at a bar.");
-      expect(systems).toContain("Stay close to Marv.");
       expect(systems).toContain("Alice hates Marv's coffee.");
+      expect(systems).not.toContain("Stay close to Marv.");
       expect(systems).toContain("Marv's persona: A tired engineer.");
       expect(systems).toContain("Finish as Alice.");
       expect(systems).not.toMatch(/\{\{char\}\}/i);
@@ -132,6 +137,11 @@ describe("compilePrompt", () => {
 
       expect(result.messages[0]).toEqual({ role: "user", content: "Hello Alice." });
       expect(result.messages[1]).toEqual({ role: "assistant", content: "Hello Marv." });
+      expect(result.messages).toContainEqual({
+        role: "user",
+        content: "Stay close to Marv.",
+      });
+      expect(result.messages).toContainEqual({ role: "user", content: "I need coffee." });
     });
 
     it("expands exactly once and does not cascade replacements", () => {
@@ -160,7 +170,7 @@ describe("compilePrompt", () => {
       expect(systemText(result)).toContain("Alice");
     });
 
-    it("puts every system fragment in systemPrompts and never in messages", () => {
+    it("keeps roleplay prompts in systemPrompts and inserts depth into history", () => {
       const snapshot = makeSnapshot({
         character: {
           systemPrompt: "character system",
@@ -172,7 +182,7 @@ describe("compilePrompt", () => {
         },
         settings: { systemPrompt: "user system", postHistoryInstructions: "user post-history" },
         preset: preset({ utilityPrompts: ["utility one", "utility two"] }),
-        loreEntries: [loreEntry({ content: "lore content" })],
+        loreEntries: [loreEntry({ constant: true, content: "lore content" })],
         persona: { name: "Marv", description: "persona description" },
         path: [message(1, "user", "hello")],
       });
@@ -183,17 +193,16 @@ describe("compilePrompt", () => {
         "user system",
         "utility one",
         "utility two",
+        "lore content",
         "character system",
         "description",
         "Alice's personality: personality",
         "Scenario: scenario",
-        "depth",
-        "lore content",
         "Marv's persona: persona description",
         "user post-history",
+        "depth",
       ]);
       for (const entry of result.messages) {
-        expect(entry.role === "user" || entry.role === "assistant").toBe(true);
         expect("name" in entry).toBe(false);
       }
       expect(result.messages).toEqual([{ role: "user", content: "hello" }]);
@@ -299,7 +308,6 @@ describe("compilePrompt", () => {
         { role: "user", content: "I greet you." },
         { role: "assistant", content: "Marv: " },
       ]);
-      expect(result.meta.hasPrefill).toBe(true);
       expect(result.stop).toEqual(["\nAlice:", "\nAlice :"]);
       expect(result.systemPrompts.at(-1)).toBe("Speak as Marv for one message.");
       expect(result.modelOptions).toHaveProperty("max_tokens");
@@ -309,7 +317,6 @@ describe("compilePrompt", () => {
     it("marks chat prompts as not prefilled", () => {
       const result = compilePrompt(makeSnapshot(), "chat");
 
-      expect(result.meta.hasPrefill).toBe(false);
       expect(result.stop).toBeUndefined();
       expect(result.messages.some((entry) => entry.role === "assistant")).toBe(false);
     });
@@ -325,9 +332,7 @@ describe("compilePrompt", () => {
         ],
       });
 
-      const result = compilePrompt(snapshot, "image", {
-        imageExample: "masterpiece, 1girl, {{char}}, {{user}}",
-      });
+      const result = compilePrompt(snapshot, "image");
 
       expect(result.messages).toEqual([
         {
@@ -340,19 +345,11 @@ describe("compilePrompt", () => {
       expect(systemText(result)).toContain("anime style");
       expect(systemText(result)).not.toContain("masterpiece, 1girl");
       expect(JSON.stringify(result)).not.toContain("history-only");
-      expect(result.meta.activatedLore).toBe(0);
-      expect(result.meta.hasPrefill).toBe(false);
     });
 
-    it("never copies a full example prompt into identity", () => {
-      const snapshot = makeSnapshot({
-        settings: { imagePromptExample: "stored example, {{char}}" },
-      });
+    it("never copies an example prompt into identity", () => {
+      const result = compilePrompt(makeSnapshot(), "image");
 
-      const result = compilePrompt(snapshot, "image", { imageExample: "override, {{char}}" });
-
-      expect(systemText(result)).not.toContain("override");
-      expect(systemText(result)).not.toContain("stored example");
       expect(systemText(result)).toContain("identity is assembled deterministically");
     });
   });
@@ -382,6 +379,18 @@ describe("compilePrompt", () => {
       expect(transform.messages).toEqual([{ role: "assistant", content: "Original paragraph." }]);
     });
 
+    it("puts the user's instruction into the editor system prompt", () => {
+      const snapshot = makeSnapshot({
+        selection: [message(5, "assistant", "Original paragraph.")],
+      });
+
+      const result = compilePrompt(snapshot, "transform", {
+        instruction: "Make it shorter.",
+      });
+
+      expect(systemText(result)).toContain("Instruction: Make it shorter.");
+    });
+
     it("falls back to the active path when no selection is present", () => {
       const snapshot = makeSnapshot({
         path: [message(1, "user", "Path line.")],
@@ -394,20 +403,69 @@ describe("compilePrompt", () => {
   });
 
   describe("lore", () => {
-    it("counts and includes only enabled, non-empty lore entries", () => {
+    it("activates only matching, enabled, non-empty entries", () => {
       const snapshot = makeSnapshot({
+        path: [message(1, "user", "The dragon wakes.")],
         loreEntries: [
-          loreEntry({ uid: 1, content: "Lore about {{char}}." }),
-          loreEntry({ uid: 2, content: "Disabled lore.", disable: true }),
-          loreEntry({ uid: 3, content: "   " }),
+          loreEntry({ uid: 1, key: ["dragon"], content: "Lore about {{char}}." }),
+          loreEntry({ uid: 2, key: ["dragon"], content: "Disabled lore.", disable: true }),
+          loreEntry({ uid: 3, key: ["dragon"], content: "   " }),
+          loreEntry({ uid: 4, key: ["potion"], content: "Unrelated lore." }),
         ],
       });
 
       const result = compilePrompt(snapshot, "chat");
 
-      expect(result.meta.activatedLore).toBe(1);
       expect(systemText(result)).toContain("Lore about Alice.");
       expect(systemText(result)).not.toContain("Disabled lore.");
+      expect(systemText(result)).not.toContain("Unrelated lore.");
+    });
+
+    it("inserts at-depth lore at the configured depth", () => {
+      const snapshot = makeSnapshot({
+        path: [message(1, "user", "I saw a dragon."), message(2, "assistant", "It roared.")],
+        loreEntries: [
+          loreEntry({
+            uid: 1,
+            key: ["dragon"],
+            position: LorePosition.AtDepth,
+            depth: 1,
+            role: 1,
+            content: "At-depth lore.",
+          }),
+        ],
+      });
+
+      const result = compilePrompt(snapshot, "chat");
+
+      expect(result.messages).toEqual([
+        { role: "user", content: "I saw a dragon." },
+        { role: "user", content: "At-depth lore." },
+        { role: "assistant", content: "It roared." },
+      ]);
+      expect(systemText(result)).not.toContain("At-depth lore.");
+    });
+  });
+
+  describe("depth prompt", () => {
+    it("inserts the character depth prompt at its configured depth", () => {
+      const snapshot = makeSnapshot({
+        character: {
+          depthPrompt: "Depth instruction.",
+          depthPromptDepth: 1,
+          depthPromptRole: "user",
+        },
+        path: [message(1, "user", "one"), message(2, "assistant", "two")],
+      });
+
+      const result = compilePrompt(snapshot, "chat");
+
+      expect(result.messages).toEqual([
+        { role: "user", content: "one" },
+        { role: "user", content: "Depth instruction." },
+        { role: "assistant", content: "two" },
+      ]);
+      expect(systemText(result)).not.toContain("Depth instruction.");
     });
   });
 
@@ -467,7 +525,6 @@ describe("compilePrompt", () => {
 
       const result = compilePrompt(snapshot, "chat");
 
-      expect(result.meta.droppedMessages).toBe(5);
       expect(result.messages).toHaveLength(5);
       expect(result.messages[0]).toEqual({ role: "assistant", content: history[5].content });
       expect(result.messages.at(-1)).toEqual({
@@ -496,52 +553,6 @@ describe("compilePrompt", () => {
       expect(overflow.contextWindow).toBe(700);
       expect(overflow.estimatedTokens).toBeGreaterThan(700 - 100 - 512);
       expect(overflow.message).toContain("reserving 100");
-    });
-  });
-
-  describe("metadata", () => {
-    it("hashes system prompts, messages, and model options with sha256", () => {
-      const snapshot = makeSnapshot({
-        character: { description: "Alice is a pilot." },
-        settings: { systemPrompt: "Be brief." },
-        path: [message(1, "user", "hello")],
-      });
-
-      const result = compilePrompt(snapshot, "chat");
-      const expected = createHash("sha256")
-        .update(
-          JSON.stringify({
-            systemPrompts: result.systemPrompts,
-            messages: result.messages,
-            modelOptions: result.modelOptions,
-          }),
-        )
-        .digest("hex");
-
-      expect(result.meta.promptHash).toBe(expected);
-      expect(result.meta.promptHash).toMatch(/^[0-9a-f]{64}$/);
-      expect(result.meta.mode).toBe("chat");
-    });
-
-    it("is deterministic and reports input tokens for the compiled prompt", () => {
-      const snapshot = makeSnapshot({
-        character: { description: "Alice is a pilot." },
-        path: [message(1, "user", "hello")],
-      });
-
-      const first = compilePrompt(snapshot, "chat");
-      const second = compilePrompt(snapshot, "chat");
-      const counter = new ApproxTokenCounter();
-      const expectedTokens =
-        first.systemPrompts.reduce((total, prompt) => total + counter.count(prompt), 0) +
-        first.messages.reduce(
-          (total, entry) =>
-            total + (typeof entry.content === "string" ? counter.count(entry.content) : 0),
-          0,
-        );
-
-      expect(second.meta.promptHash).toBe(first.meta.promptHash);
-      expect(second.meta.inputTokens).toBe(expectedTokens);
     });
   });
 });

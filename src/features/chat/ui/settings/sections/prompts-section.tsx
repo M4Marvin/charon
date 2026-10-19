@@ -57,15 +57,6 @@ export function PromptsSection(_props: SectionProps) {
           updateUserSettings.mutate({ impersonationPrompt: v || null }, { onError: onSaveError })
         }
       />
-      <BlurCommitTextarea
-        id="ps-image-prompt-example"
-        label="Image prompt example"
-        placeholder="Reference format for generated image prompts (danbooru tags)."
-        defaultValue={settings?.imagePromptExample ?? ""}
-        onCommit={(v) =>
-          updateUserSettings.mutate({ imagePromptExample: v || null }, { onError: onSaveError })
-        }
-      />
     </div>
   );
 }

@@ -1,30 +1,25 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, lte, or, sql } from "drizzle-orm";
 import { db as defaultDb, type DB } from "@/db";
 import {
   generationJobs,
   generationProposals,
-  chatMessageRevisions,
   type GenerationJob,
   type GenerationProposal,
 } from "@/db/schema";
-import {
-  ChatBusyError,
-  LeaseLostError,
-  type GenerationError,
-} from "@/features/generation/errors";
+import { ChatBusyError, LeaseLostError } from "@/features/generation/errors";
 import type { InsertionTarget, PromptMode, Trigger } from "@/features/generation/contract";
 
 const ACTIVE_STATUSES = ["queued", "running", "finalizing"] as const;
 
+/** A prepared job that never reached the stream endpoint must not wedge a chat. */
+export const QUEUED_JOB_TTL_MS = 2 * 60_000;
+
 export interface CreateGenerationJobInput {
-  requestId: string;
   chatId: string;
   trigger: Trigger;
   promptMode: PromptMode;
-  baseLeafId: number;
   target?: InsertionTarget;
   input?: Record<string, unknown>;
-  requiresConfirmation?: boolean;
   placeholderLocalId?: number | null;
 }
 
@@ -32,112 +27,75 @@ export function getJob(jobId: string, db: DB = defaultDb): GenerationJob | undef
   return db.select().from(generationJobs).where(eq(generationJobs.id, jobId)).get();
 }
 
-export function getJobByRequestId(requestId: string, db: DB = defaultDb): GenerationJob | undefined {
-  return db.select().from(generationJobs).where(eq(generationJobs.requestId, requestId)).get();
+function isStaleActiveJob(job: GenerationJob, now: number): boolean {
+  const deadline = job.leaseExpiresAt?.getTime() ?? job.createdAt.getTime() + QUEUED_JOB_TTL_MS;
+  return deadline <= now;
 }
 
-export function getActiveJob(chatId: string, db: DB = defaultDb): GenerationJob | undefined {
-  return db
+/**
+ * Job creation plus the one-active-job gate. The caller must own the
+ * transaction so the job and its messages commit or roll back together; the
+ * partial unique index is the final guard.
+ */
+export function createJobInTransaction(input: CreateGenerationJobInput, db: DB): GenerationJob {
+  let active = db
     .select()
     .from(generationJobs)
     .where(
       and(
-        eq(generationJobs.chatId, chatId),
+        eq(generationJobs.chatId, input.chatId),
         inArray(generationJobs.status, [...ACTIVE_STATUSES]),
       ),
     )
     .get();
-}
-
-export function listRecentJobs(chatId: string, db: DB = defaultDb, limit = 20): GenerationJob[] {
-  return db
-    .select()
-    .from(generationJobs)
-    .where(eq(generationJobs.chatId, chatId))
-    .orderBy(desc(generationJobs.createdAt))
-    .limit(limit)
-    .all();
-}
-
-/**
- * Idempotent job creation plus the one-active-job gate. better-sqlite3
- * transactions are synchronous; the partial unique index is the final guard.
- */
-export function createJob(
-  input: CreateGenerationJobInput,
-  db: DB = defaultDb,
-): GenerationJob {
-  return db.transaction((tx) => {
-    const existing = tx
-      .select()
-      .from(generationJobs)
-      .where(eq(generationJobs.requestId, input.requestId))
-      .get();
-    if (existing) return existing;
-
-    let active = tx
-      .select()
-      .from(generationJobs)
-      .where(
-        and(
-          eq(generationJobs.chatId, input.chatId),
-          inArray(generationJobs.status, [...ACTIVE_STATUSES]),
-        ),
-      )
-      .get();
-    if (active?.leaseExpiresAt && active.leaseExpiresAt.getTime() < Date.now()) {
-      tx.update(generationJobs)
-        .set({
-          status: "expired",
-          error: { code: "lease_expired", message: "The generation lease expired." },
-          finishedAt: new Date(),
-          leaseOwner: null,
-          leaseExpiresAt: null,
-        })
-        .where(eq(generationJobs.id, active.id))
-        .run();
-      active = undefined;
-    }
-    if (active) {
-      throw new ChatBusyError({
-        message: "A generation is already running in this chat.",
-        chatId: input.chatId,
-        activeJobId: active.id,
-      });
-    }
-
-    const row = tx
-      .insert(generationJobs)
-      .values({
-        requestId: input.requestId,
-        chatId: input.chatId,
-        trigger: input.trigger,
-        promptMode: input.promptMode,
-        status: "queued",
-        baseLeafId: input.baseLeafId,
-        target: input.target as unknown as Record<string, unknown> | undefined,
-        input: input.input,
-        placeholderLocalId: input.placeholderLocalId ?? null,
-        requiresConfirmation: input.requiresConfirmation ?? false,
-        createdAt: new Date(),
+  if (active && isStaleActiveJob(active, Date.now())) {
+    db.update(generationJobs)
+      .set({
+        status: "expired",
+        error: {
+          code: "job_expired",
+          message: "The generation job expired before it could start.",
+        },
+        finishedAt: new Date(),
+        leaseOwner: null,
+        leaseExpiresAt: null,
       })
-      .returning()
-      .get();
-    if (!row) throw new Error("Failed to create generation job");
-    return row;
-  });
+      .where(eq(generationJobs.id, active.id))
+      .run();
+    active = undefined;
+  }
+  if (active) {
+    throw new ChatBusyError({
+      message: "A generation is already running in this chat.",
+      chatId: input.chatId,
+      activeJobId: active.id,
+    });
+  }
+
+  const row = db
+    .insert(generationJobs)
+    .values({
+      chatId: input.chatId,
+      trigger: input.trigger,
+      promptMode: input.promptMode,
+      status: "queued",
+      target: input.target as unknown as Record<string, unknown> | undefined,
+      input: input.input,
+      placeholderLocalId: input.placeholderLocalId ?? null,
+      createdAt: new Date(),
+    })
+    .returning()
+    .get();
+  if (!row) throw new Error("Failed to create generation job");
+  return row;
 }
 
 export function setJobPlaceholder(
   jobId: string,
   placeholderLocalId: number,
-  baseLeafId: number,
   db: DB = defaultDb,
 ): void {
-  db.update(generationJobs)
-    .set({ placeholderLocalId, baseLeafId })
-    .where(eq(generationJobs.id, jobId))
-    .run();
+  db.update(generationJobs).set({ placeholderLocalId }).where(eq(generationJobs.id, jobId)).run();
 }
 
 export interface LeaseInput {
@@ -154,28 +112,34 @@ export function beginJob(input: LeaseInput, db: DB = defaultDb): GenerationJob {
     .set({
       status: "running",
       leaseOwner: input.owner,
-      leaseEpoch: (getJob(input.jobId, db)?.leaseEpoch ?? 0) + 1,
+      leaseEpoch: sql`${generationJobs.leaseEpoch} + 1`,
       leaseExpiresAt: expires,
       startedAt: now,
-      attempt: (getJob(input.jobId, db)?.attempt ?? 0) + 1,
     })
     .where(
       and(
         eq(generationJobs.id, input.jobId),
-        inArray(generationJobs.status, ["queued", "running"]),
+        or(
+          eq(generationJobs.status, "queued"),
+          and(eq(generationJobs.status, "running"), lte(generationJobs.leaseExpiresAt, now)),
+        ),
       ),
     )
     .returning()
     .get();
   if (!row) {
-    throw new LeaseLostError({ message: "Could not acquire generation lease.", jobId: input.jobId });
+    throw new LeaseLostError({
+      message: "Could not acquire generation lease.",
+      jobId: input.jobId,
+    });
   }
   return row;
 }
 
-export function heartbeatJob(input: LeaseInput, db: DB = defaultDb): void {
+export function heartbeatJob(input: LeaseInput, db: DB = defaultDb): boolean {
   const expires = new Date(Date.now() + (input.ttlMs ?? 120_000));
-  db.update(generationJobs)
+  const result = db
+    .update(generationJobs)
     .set({ leaseExpiresAt: expires })
     .where(
       and(
@@ -185,25 +149,13 @@ export function heartbeatJob(input: LeaseInput, db: DB = defaultDb): void {
       ),
     )
     .run();
-}
-
-export function updateDraft(
-  jobId: string,
-  text: string,
-  seq: number,
-  db: DB = defaultDb,
-): void {
-  db.update(generationJobs)
-    .set({ draftText: text.slice(-64_000), chunkSeq: seq })
-    .where(eq(generationJobs.id, jobId))
-    .run();
+  return result.changes > 0;
 }
 
 export interface FinalizeJobInput {
   jobId: string;
   owner: string;
   epoch: number;
-  result: Record<string, unknown>;
   usage?: Record<string, unknown> | null;
   finishReason?: string | null;
 }
@@ -213,7 +165,6 @@ export function finalizeJob(input: FinalizeJobInput, db: DB = defaultDb): boolea
     .update(generationJobs)
     .set({
       status: "succeeded",
-      result: input.result,
       usage: input.usage ?? null,
       finishReason: input.finishReason ?? null,
       finishedAt: new Date(),
@@ -324,20 +275,9 @@ export function getProposal(id: string, db: DB = defaultDb): GenerationProposal 
   return db.select().from(generationProposals).where(eq(generationProposals.id, id)).get();
 }
 
-export function listPendingProposals(chatId: string, db: DB = defaultDb): GenerationProposal[] {
-  return db
-    .select()
-    .from(generationProposals)
-    .where(
-      and(eq(generationProposals.chatId, chatId), eq(generationProposals.status, "pending")),
-    )
-    .orderBy(desc(generationProposals.createdAt))
-    .all();
-}
-
 export function resolveProposal(
   id: string,
-  status: "accepted" | "rejected" | "superseded",
+  status: "accepted" | "rejected",
   db: DB = defaultDb,
 ): GenerationProposal | undefined {
   return db
@@ -346,36 +286,4 @@ export function resolveProposal(
     .where(and(eq(generationProposals.id, id), eq(generationProposals.status, "pending")))
     .returning()
     .get();
-}
-
-export function insertRevision(
-  input: {
-    chatId: string;
-    messageLocalId: number;
-    rev: number;
-    content: string;
-    source: "edit" | "rewrite" | "undo";
-    jobId?: string | null;
-  },
-  db: DB = defaultDb,
-): void {
-  db.insert(chatMessageRevisions).values(input).run();
-}
-
-export function getRevisions(chatId: string, messageLocalId: number, db: DB = defaultDb) {
-  return db
-    .select()
-    .from(chatMessageRevisions)
-    .where(
-      and(
-        eq(chatMessageRevisions.chatId, chatId),
-        eq(chatMessageRevisions.messageLocalId, messageLocalId),
-      ),
-    )
-    .orderBy(desc(chatMessageRevisions.rev))
-    .all();
-}
-
-export function generationErrorToBody(error: GenerationError): { code: string; message: string } {
-  return { code: error._tag, message: error.message };
 }

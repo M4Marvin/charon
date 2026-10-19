@@ -1,23 +1,13 @@
-import { createHash } from "node:crypto";
 import { db as defaultDb, type DB } from "@/db";
-import {
-  getProposal,
-  getJob,
-  listPendingProposals,
-  resolveProposal,
-  insertRevision,
-} from "@/db/repositories/generation";
+import { getProposal, getJob, resolveProposal } from "@/db/repositories/generation";
 import { getMessage, updateMessage } from "@/db/repositories/chats";
-import { appendMessage } from "@/features/chat/tree/service";
 import { StaleTargetError, GenerationValidationError } from "./errors";
+import { contentHash } from "@/lib/chat/content-hash";
 import type { ProposalView } from "./contract";
 
-export function contentHash(content: string): string {
-  return createHash("sha256").update(content).digest("hex");
-}
-
-export function toProposalView(row: ReturnType<typeof getProposal>): ProposalView | null {
-  if (!row) return null;
+export function toProposalView(
+  row: Exclude<ReturnType<typeof getProposal>, undefined>,
+): ProposalView {
   return {
     id: row.id,
     jobId: row.jobId,
@@ -33,12 +23,6 @@ export function toProposalView(row: ReturnType<typeof getProposal>): ProposalVie
     createdAt: row.createdAt.toISOString(),
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
   };
-}
-
-export function listProposals(chatId: string, db: DB = defaultDb): ProposalView[] {
-  return listPendingProposals(chatId, db)
-    .map((row) => toProposalView(row))
-    .filter((row): row is ProposalView => row !== null);
 }
 
 export function acceptProposal(
@@ -57,7 +41,7 @@ export function acceptProposal(
     if (proposal.kind === "impersonate" || proposal.kind === "image") {
       const updated = resolveProposal(proposalId, "accepted", tx);
       if (!updated) throw new GenerationValidationError({ message: "Proposal changed" });
-      return { ok: true, proposal: toProposalView(updated)!, messageLocalId: null };
+      return { ok: true, proposal: toProposalView(updated), messageLocalId: null };
     }
 
     if (proposal.kind === "rewrite") {
@@ -95,48 +79,18 @@ export function acceptProposal(
         },
         tx,
       );
-      insertRevision(
-        {
-          chatId: proposal.chatId,
-          messageLocalId: targetId,
-          rev: actualRev,
-          content: existing.content,
-          source: "rewrite",
-          jobId: job.id,
-        },
-        tx,
-      );
       const updated = resolveProposal(proposalId, "accepted", tx);
       if (!updated) throw new GenerationValidationError({ message: "Proposal changed" });
-      return { ok: true, proposal: toProposalView(updated)!, messageLocalId: targetId };
+      return { ok: true, proposal: toProposalView(updated), messageLocalId: targetId };
     }
 
-    // transform: append the proposed text as a new assistant message at the
-    // active leaf. The source messages are never mutated.
-    const created = appendMessage(
-      proposal.chatId,
-      {
-        role: proposal.proposedRole ?? "assistant",
-        content: proposal.proposedContent,
-        extra: {
-          generationJobId: job.id,
-          proposalId: proposal.id,
-          kind: "transform",
-          source: job.input?.selection ?? [],
-        },
-      },
-      tx,
-    );
-    const updated = resolveProposal(proposalId, "accepted", tx);
-    if (!updated) throw new GenerationValidationError({ message: "Proposal changed" });
-    return { ok: true, proposal: toProposalView(updated)!, messageLocalId: created.localId };
+    // Everything else (transform) is delivered to the composer and resolved
+    // as accepted by the runner; there is nothing to apply here.
+    throw new GenerationValidationError({ message: "Proposal kind cannot be accepted" });
   });
 }
 
-export function denyProposal(
-  proposalId: string,
-  db: DB = defaultDb,
-): { ok: true } {
+export function denyProposal(proposalId: string, db: DB = defaultDb): { ok: true } {
   const updated = resolveProposal(proposalId, "rejected", db);
   if (!updated) {
     const existing = getProposal(proposalId, db);

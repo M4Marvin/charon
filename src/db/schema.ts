@@ -306,7 +306,6 @@ export const userSettings = sqliteTable("user_settings", {
   systemPrompt: text("system_prompt"),
   postHistoryInstructions: text("post_history_instructions"),
   impersonationPrompt: text("impersonation_prompt"),
-  imagePromptExample: text("image_prompt_example"),
   onboardingCompletedAt: integer("onboarding_completed_at", { mode: "timestamp_ms" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
@@ -321,136 +320,77 @@ export const userSettings = sqliteTable("user_settings", {
 export const generationJobs = sqliteTable(
   "generation_jobs",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    requestId: text("request_id").notNull(),
-    chatId: text("chat_id").notNull().references(() => chats.id, { onDelete: "cascade" }),
-    trigger: text("trigger", { enum: ["send", "regenerate", "continue", "impersonate", "image", "rewrite", "transform"] }).notNull(),
-    promptMode: text("prompt_mode", { enum: ["chat", "impersonate", "image", "rewrite", "transform"] }).notNull(),
-    status: text("status", { enum: ["queued", "running", "finalizing", "succeeded", "failed", "cancelled", "expired"] }).notNull().default("queued"),
-    baseLeafId: integer("base_leaf_id"),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    trigger: text("trigger", {
+      enum: ["send", "regenerate", "continue", "impersonate", "image", "rewrite", "transform"],
+    }).notNull(),
+    promptMode: text("prompt_mode", {
+      enum: ["chat", "impersonate", "image", "rewrite", "transform"],
+    }).notNull(),
+    status: text("status", {
+      enum: ["queued", "running", "finalizing", "succeeded", "failed", "cancelled", "expired"],
+    })
+      .notNull()
+      .default("queued"),
     target: text("target", { mode: "json" }).$type<Record<string, unknown>>(),
     input: text("input", { mode: "json" }).$type<Record<string, unknown>>(),
     placeholderLocalId: integer("placeholder_local_id"),
     leaseOwner: text("lease_owner"),
     leaseEpoch: integer("lease_epoch").notNull().default(0),
     leaseExpiresAt: integer("lease_expires_at", { mode: "timestamp_ms" }),
-    attempt: integer("attempt").notNull().default(0),
-    requiresConfirmation: integer("requires_confirmation", { mode: "boolean" }).notNull().default(false),
-    result: text("result", { mode: "json" }).$type<Record<string, unknown>>(),
     error: text("error", { mode: "json" }).$type<Record<string, unknown>>(),
     usage: text("usage", { mode: "json" }).$type<Record<string, unknown>>(),
     finishReason: text("finish_reason"),
-    draftText: text("draft_text"),
-    chunkSeq: integer("chunk_seq").notNull().default(0),
-    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
     startedAt: integer("started_at", { mode: "timestamp_ms" }),
     finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
   },
   (table) => [
-    uniqueIndex("generation_jobs_request_id_uq").on(table.requestId),
     index("generation_jobs_chat_status_idx").on(table.chatId, table.status),
-    index("generation_jobs_created_at_idx").on(table.createdAt),
+    uniqueIndex("generation_jobs_active_chat_uq")
+      .on(table.chatId)
+      .where(sql`status IN ('queued', 'running', 'finalizing')`),
   ],
 );
 
 export const generationProposals = sqliteTable(
   "generation_proposals",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    jobId: text("job_id").notNull().references(() => generationJobs.id, { onDelete: "cascade" }),
-    chatId: text("chat_id").notNull().references(() => chats.id, { onDelete: "cascade" }),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => generationJobs.id, { onDelete: "cascade" }),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
     kind: text("kind", { enum: ["rewrite", "transform", "impersonate", "image"] }).notNull(),
-    status: text("status", { enum: ["pending", "accepted", "rejected", "superseded"] }).notNull().default("pending"),
+    status: text("status", { enum: ["pending", "accepted", "rejected"] })
+      .notNull()
+      .default("pending"),
     targetLocalId: integer("target_local_id"),
     baseRev: integer("base_rev"),
     baseHash: text("base_hash"),
     proposedContent: text("proposed_content").notNull(),
     proposedRole: text("proposed_role", { enum: ["user", "assistant"] }),
     meta: text("meta", { mode: "json" }).$type<Record<string, unknown>>(),
-    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
     resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
   },
   (table) => [
     index("generation_proposals_chat_idx").on(table.chatId, table.status),
     index("generation_proposals_job_idx").on(table.jobId),
   ],
-);
-
-export const chatMessageRevisions = sqliteTable(
-  "chat_message_revisions",
-  {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    chatId: text("chat_id").notNull().references(() => chats.id, { onDelete: "cascade" }),
-    messageLocalId: integer("message_local_id").notNull(),
-    rev: integer("rev").notNull(),
-    content: text("content").notNull(),
-    source: text("source", { enum: ["edit", "rewrite", "undo"] }).notNull(),
-    jobId: text("job_id"),
-    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
-  },
-  (table) => [
-    uniqueIndex("chat_message_revisions_uq").on(table.chatId, table.messageLocalId, table.rev),
-    index("chat_message_revisions_chat_idx").on(table.chatId),
-  ],
-);
-
-// ── TanStack AI persistence (server-authoritative persistence: true) ─────────
-
-export const aiChatThreads = sqliteTable("ai_chat_threads", {
-  threadId: text("thread_id").primaryKey(),
-  messages: text("messages", { mode: "json" }).$type<unknown[]>().notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date()),
-});
-
-export const aiRuns = sqliteTable(
-  "ai_runs",
-  {
-    runId: text("run_id").primaryKey(),
-    threadId: text("thread_id").notNull(),
-    parentRunId: text("parent_run_id"),
-    subagentRunId: text("subagent_run_id"),
-    name: text("name"),
-    status: text("status", { enum: ["running", "interrupted", "completed", "failed", "aborted"] }).notNull().default("running"),
-    startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
-    finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
-    error: text("error", { mode: "json" }).$type<Record<string, unknown>>(),
-    usage: text("usage", { mode: "json" }).$type<Record<string, unknown>>(),
-    detachedSince: integer("detached_since", { mode: "timestamp_ms" }),
-    cancelRequested: integer("cancel_requested", { mode: "boolean" }).notNull().default(false),
-    driverEpoch: integer("driver_epoch"),
-  },
-  (table) => [
-    index("ai_runs_thread_idx").on(table.threadId, table.startedAt),
-  ],
-);
-
-export const aiInterrupts = sqliteTable(
-  "ai_interrupts",
-  {
-    interruptId: text("interrupt_id").primaryKey(),
-    runId: text("run_id").notNull(),
-    threadId: text("thread_id").notNull(),
-    status: text("status", { enum: ["pending", "resolved", "cancelled"] }).notNull().default("pending"),
-    requestedAt: integer("requested_at", { mode: "timestamp_ms" }).notNull(),
-    resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
-    payload: text("payload", { mode: "json" }).$type<Record<string, unknown>>().notNull(),
-    response: text("response", { mode: "json" }).$type<unknown>(),
-  },
-  (table) => [
-    index("ai_interrupts_thread_idx").on(table.threadId, table.requestedAt),
-    index("ai_interrupts_run_idx").on(table.runId, table.requestedAt),
-  ],
-);
-
-export const aiMetadata = sqliteTable(
-  "ai_metadata",
-  {
-    namespace: text("namespace").notNull(),
-    key: text("key").notNull(),
-    value: text("value", { mode: "json" }).$type<unknown>(),
-    revision: integer("revision").notNull().default(1),
-  },
-  (table) => [primaryKey({ columns: [table.namespace, table.key] })],
 );
 
 // ── Relations ────────────────────────────────────────────────────────────────
@@ -556,10 +496,3 @@ export type GenerationJob = typeof generationJobs.$inferSelect;
 export type NewGenerationJob = typeof generationJobs.$inferInsert;
 export type GenerationProposal = typeof generationProposals.$inferSelect;
 export type NewGenerationProposal = typeof generationProposals.$inferInsert;
-export type ChatMessageRevision = typeof chatMessageRevisions.$inferSelect;
-export type NewChatMessageRevision = typeof chatMessageRevisions.$inferInsert;
-export type AiChatThread = typeof aiChatThreads.$inferSelect;
-export type AiRun = typeof aiRuns.$inferSelect;
-export type AiInterrupt = typeof aiInterrupts.$inferSelect;
-export type AiMetadata = typeof aiMetadata.$inferSelect;
-

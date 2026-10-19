@@ -30,12 +30,3 @@ logs/
 /blob-report/
 /playwright/.cache/
 .playwright-mcp/
-
-# Local package-manager caches
-.npm-cache/
-.pnpm-store/
-.tmp/
-.xdg/
-.cache/
-.corepack/
-.pnpm-home/

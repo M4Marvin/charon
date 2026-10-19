@@ -3,9 +3,6 @@ import type { EffectiveCharacter } from "./contract";
 export const DEFAULT_IMAGE_STYLE =
   "anime style, clean lineart, detailed shading, cinematic composition";
 
-export const DEFAULT_IMAGE_PROMPT_EXAMPLE =
-  "masterpiece, best quality, 1girl, silver hair, long hair, blue eyes, school uniform, standing in a sunlit classroom, cherry blossoms outside the window, looking at viewer, soft lighting, detailed background";
-
 function normalizeTag(tag: string): string {
   return tag
     .toLowerCase()

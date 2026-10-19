@@ -13,7 +13,6 @@ const RunProposalSchema = Schema.Struct({
 });
 
 const ProposalIdSchema = Schema.Struct({ proposalId: Schema.String });
-const ChatIdSchema = Schema.Struct({ chatId: Schema.String });
 
 export const runProposalFn = createServerFn({ method: "POST", strict: { output: false } })
   .validator((data) => Schema.decodeUnknownSync(RunProposalSchema)(data))
@@ -49,15 +48,4 @@ export const denyProposalFn = createServerFn({ method: "POST", strict: { output:
     ]);
     await getSession();
     return denyProposal(data.proposalId);
-  });
-
-export const listProposalsFn = createServerFn({ method: "GET", strict: { output: false } })
-  .validator((data) => Schema.decodeUnknownSync(ChatIdSchema)(data))
-  .handler(async ({ data }) => {
-    const [{ getSession }, { listProposals }] = await Promise.all([
-      import("@/server/session"),
-      import("./proposals"),
-    ]);
-    await getSession();
-    return listProposals(data.chatId);
   });

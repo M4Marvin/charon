@@ -12,7 +12,6 @@ export type UserSettingsPatch = Partial<
     | "systemPrompt"
     | "postHistoryInstructions"
     | "impersonationPrompt"
-    | "imagePromptExample"
     | "onboardingCompletedAt"
   >
 >;
@@ -43,7 +42,6 @@ export function upsertUserSettings(
         systemPrompt: patch.systemPrompt ?? null,
         postHistoryInstructions: patch.postHistoryInstructions ?? null,
         impersonationPrompt: patch.impersonationPrompt ?? null,
-        imagePromptExample: patch.imagePromptExample ?? null,
         onboardingCompletedAt: patch.onboardingCompletedAt ?? null,
       })
       .returning()
@@ -61,7 +59,6 @@ export function upsertUserSettings(
     updates.postHistoryInstructions = patch.postHistoryInstructions;
   if (patch.impersonationPrompt !== undefined)
     updates.impersonationPrompt = patch.impersonationPrompt;
-  if (patch.imagePromptExample !== undefined) updates.imagePromptExample = patch.imagePromptExample;
   if (patch.onboardingCompletedAt !== undefined)
     updates.onboardingCompletedAt = patch.onboardingCompletedAt;
   if (Object.keys(updates).length === 1) return existing;

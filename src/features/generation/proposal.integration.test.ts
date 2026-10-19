@@ -3,16 +3,21 @@ import { createServer, type Server } from "node:http";
 import { eq } from "drizzle-orm";
 import { makeTestDb, seedTestUser, type TestDb } from "@/db/__tests__/helpers";
 import { makeCharacterData } from "@/db/__tests__/character-data";
-import { aiChatThreads, aiProviders, characters, userSettings } from "@/db/schema";
-import { createChat } from "@/features/chat/tree/service";
-import { createSqlitePersistence } from "./persistence";
+import { aiProviders, characters, generationJobs, userSettings } from "@/db/schema";
+import { createChat, getMessages } from "@/features/chat/tree/service";
+import { getProposal } from "@/db/repositories/generation";
 import { runProposal } from "./proposal";
+import { prepareGeneration } from "./prepare";
 
 function sse(chunk: unknown): string {
   return `data: ${JSON.stringify(chunk)}\n\n`;
 }
 
-async function startFakeProvider(): Promise<{ server: Server; baseUrl: string; bodies: unknown[] }> {
+async function startFakeProvider(): Promise<{
+  server: Server;
+  baseUrl: string;
+  bodies: unknown[];
+}> {
   const bodies: unknown[] = [];
   const server = createServer((request, response) => {
     let body = "";
@@ -30,7 +35,9 @@ async function startFakeProvider(): Promise<{ server: Server; baseUrl: string; b
           object: "chat.completion.chunk",
           created: 1,
           model: "test-model",
-          choices: [{ index: 0, delta: { role: "assistant", content: "User: " }, finish_reason: null }],
+          choices: [
+            { index: 0, delta: { role: "assistant", content: "User: " }, finish_reason: null },
+          ],
         }),
       );
       response.write(
@@ -108,35 +115,59 @@ describe("runProposal integration", () => {
     ctx.sqlite.close();
   });
 
-  it("streams, sanitizes impersonation, persists the run, and creates a proposal", async () => {
-    const result = await runProposal(
-      userId,
-      "User",
-      { chatId, trigger: "impersonate" },
-      db,
-      createSqlitePersistence(db),
-    );
+  it("streams, sanitizes impersonation, and creates an accepted proposal", async () => {
+    const result = await runProposal(userId, "User", { chatId, trigger: "impersonate" }, db);
 
     expect(result.text).toBe("Hello from the fake.");
+    expect(getProposal(result.proposalId, db)?.status).toBe("accepted");
     expect(fake.bodies.length).toBeGreaterThan(0);
-    const body = fake.bodies[0] as { max_output_tokens?: unknown; max_tokens?: number; messages: unknown[] };
+    const body = fake.bodies[0] as {
+      max_output_tokens?: unknown;
+      max_tokens?: number;
+      messages: unknown[];
+    };
     expect(body.max_output_tokens).toBeUndefined();
     expect(typeof body.max_tokens).toBe("number");
     expect(Array.isArray(body.messages)).toBe(true);
-
-    const thread = db.select().from(aiChatThreads).where(eq(aiChatThreads.threadId, chatId)).get();
-    expect(thread).toBeTruthy();
-    expect((thread?.messages as unknown[]).length).toBeGreaterThan(0);
   }, 20_000);
 
-  it("assembles image prompts with canonical identity and style", async () => {
+  it("fails the job when streaming setup throws before the lease is taken", async () => {
+    db.update(aiProviders).set({ baseUrl: "not-a-url" }).where(eq(aiProviders.id, "prov-1")).run();
+
+    await expect(
+      runProposal(userId, "User", { chatId, trigger: "impersonate" }, db),
+    ).rejects.toThrow(/base URL/);
+
+    const job = db.select().from(generationJobs).where(eq(generationJobs.chatId, chatId)).get();
+    expect(job?.status).toBe("failed");
+
+    // The failed request must not wedge the chat behind an active job.
+    await expect(
+      prepareGeneration(userId, { chatId, trigger: "send", content: "Hi" }, "User", db),
+    ).resolves.toMatchObject({ jobId: expect.any(String) });
+  }, 20_000);
+
+  it("treats a transform as a composer draft and never appends a message", async () => {
+    const before = getMessages(chatId, db);
     const result = await runProposal(
       userId,
       "User",
-      { chatId, trigger: "image" },
+      {
+        chatId,
+        trigger: "transform",
+        selection: [before[0].localId],
+        instruction: "Summarize this.",
+      },
       db,
-      createSqlitePersistence(db),
     );
+
+    expect(result.text).toBe("User: Hello from the fake.");
+    expect(getProposal(result.proposalId, db)?.status).toBe("accepted");
+    expect(getMessages(chatId, db)).toHaveLength(before.length);
+  }, 20_000);
+
+  it("assembles image prompts with canonical identity and style", async () => {
+    const result = await runProposal(userId, "User", { chatId, trigger: "image" }, db);
 
     expect(result.text.startsWith("1girl, silver hair,")).toBe(true);
     expect(result.text).toContain("anime style");

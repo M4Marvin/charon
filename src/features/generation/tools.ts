@@ -262,20 +262,6 @@ const ReadSceneOutput = Schema.Struct({
   messages: Schema.Array(SceneMessageSchema),
 });
 
-const OkOutput = Schema.Struct({ ok: Schema.Boolean });
-
-const HighlightMessagesInput = Schema.Struct({
-  localIds: Schema.Array(Schema.Int),
-});
-
-const ScrollToMessageInput = Schema.Struct({
-  localId: Schema.Int,
-});
-
-const OpenProposalInput = Schema.Struct({
-  proposalId: Schema.String,
-});
-
 const decodeReadLoreInput = Schema.decodeUnknownSync(ReadLoreInput);
 const decodeReadCharacterInput = Schema.decodeUnknownSync(ReadCharacterInput);
 const decodeReadSceneInput = Schema.decodeUnknownSync(ReadSceneInput);
@@ -306,43 +292,11 @@ export const readSceneDefinition = toolDefinition({
   outputSchema: Schema.toStandardJSONSchemaV1(ReadSceneOutput),
 });
 
-export const highlightMessagesDefinition = toolDefinition({
-  name: "highlight_messages",
-  description:
-    "Highlight one or more messages in the chat UI. Client-side only; does not modify the conversation.",
-  inputSchema: Schema.toStandardJSONSchemaV1(HighlightMessagesInput),
-  outputSchema: Schema.toStandardJSONSchemaV1(OkOutput),
-});
-
-export const scrollToMessageDefinition = toolDefinition({
-  name: "scroll_to_message",
-  description:
-    "Scroll the chat view to a specific message. Client-side only; does not modify the conversation.",
-  inputSchema: Schema.toStandardJSONSchemaV1(ScrollToMessageInput),
-  outputSchema: Schema.toStandardJSONSchemaV1(OkOutput),
-});
-
-export const openProposalDefinition = toolDefinition({
-  name: "open_proposal",
-  description:
-    "Open a pending generation proposal in the UI. Client-side only; accepting or rejecting is left to the user.",
-  inputSchema: Schema.toStandardJSONSchemaV1(OpenProposalInput),
-  outputSchema: Schema.toStandardJSONSchemaV1(OkOutput),
-});
-
-export const clientToolDefinitions = [
-  highlightMessagesDefinition,
-  scrollToMessageDefinition,
-  openProposalDefinition,
-] as const;
-
 // ── Server runtime ──────────────────────────────────────────────────────────
 
 export interface ReadToolDeps {
   /** Database handle. Defaults to the app singleton via a lazy import. */
   readonly db?: DB;
-  /** Persona fallback passed through to loadChatConfig. Unused by the tools. */
-  readonly fallbackUserName?: string;
 }
 
 interface ServerModules {
@@ -460,12 +414,7 @@ export function createReadTools(deps: ReadToolDeps = {}) {
     const input = decodeArgs(decodeReadCharacterInput, args, "read_character");
     const modules = await resolveServerModules(deps);
     requireChat(context.chatId, modules.db, modules.getChat);
-    const config = await modules.loadChatConfig(
-      context.userId,
-      context.chatId,
-      deps.fallbackUserName ?? "User",
-      modules.db,
-    );
+    const config = await modules.loadChatConfig(context.userId, context.chatId, "User", modules.db);
     return buildCharacterView(config, input.fields);
   });
 
@@ -482,8 +431,6 @@ export function createReadTools(deps: ReadToolDeps = {}) {
   return { readLore, readCharacter, readScene } as const;
 }
 
-export type ReadTools = ReturnType<typeof createReadTools>;
-
 /** Default-bound server tools, keyed by name (app database). */
 export const readToolSet = createReadTools();
 
@@ -493,36 +440,3 @@ export const readTools = [
   readToolSet.readCharacter,
   readToolSet.readScene,
 ] as const;
-
-// ── Client tools ────────────────────────────────────────────────────────────
-
-export interface ClientToolHandlers {
-  highlightMessages?: (args: { readonly localIds: readonly number[] }) => void;
-  scrollToMessage?: (args: { readonly localId: number }) => void;
-  openProposal?: (args: { readonly proposalId: string }) => void;
-}
-
-/**
- * Client-side placeholders for the UI tools. They perform no persistence and
- * return `{ ok: true }`; pass handlers from the chat surface to wire them to
- * highlighting/scrolling/proposal UI.
- */
-export function createClientTools(handlers: ClientToolHandlers = {}) {
-  return [
-    highlightMessagesDefinition.client((args) => {
-      handlers.highlightMessages?.(args);
-      return { ok: true };
-    }),
-    scrollToMessageDefinition.client((args) => {
-      handlers.scrollToMessage?.(args);
-      return { ok: true };
-    }),
-    openProposalDefinition.client((args) => {
-      handlers.openProposal?.(args);
-      return { ok: true };
-    }),
-  ] as const;
-}
-
-/** Default no-op client tools for useChat. */
-export const clientTools = createClientTools();

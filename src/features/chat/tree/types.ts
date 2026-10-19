@@ -35,12 +35,6 @@ export interface SwipeResult {
   created: boolean;
 }
 
-export interface ChatLockState {
-  lock: "generating";
-  messageId: number;
-  lockedAt: number;
-}
-
 export interface ChatDetail {
   id: string;
   characterId: string;
@@ -52,6 +46,4 @@ export interface ChatDetail {
   backgroundId: string | null;
   createdAt: Date;
   updatedAt: Date;
-  lockState: "idle" | "generating";
-  lockMessageLocalId: number | null;
 }
