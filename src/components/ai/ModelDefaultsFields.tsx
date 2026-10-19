@@ -210,7 +210,7 @@ export function ModelDefaultsFields() {
               type="button"
               variant="link"
               size="sm"
-              className="h-auto w-fit p-0 text-xs text-2"
+              className="h-11 w-fit p-0 text-xs text-2"
               onClick={handleClearModel}
             >
               Clear model

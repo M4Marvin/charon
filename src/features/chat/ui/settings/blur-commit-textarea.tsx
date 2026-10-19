@@ -117,7 +117,7 @@ export function BlurCommitTextarea({
         {dirty ? (
           <button
             type="button"
-            className="text-xs text-2 underline underline-offset-2 transition-colors hover:text-1 focus-ring"
+            className="inline-flex min-h-11 items-center px-1 text-xs text-2 underline underline-offset-2 transition-colors hover:text-1 focus-ring sm:min-h-8"
             onClick={() => {
               setValue(defaultValue);
               onRevert?.();
@@ -129,7 +129,7 @@ export function BlurCommitTextarea({
         {onReset && defaultValue.trim() ? (
           <button
             type="button"
-            className="text-xs text-2 underline underline-offset-2 transition-colors hover:text-1 focus-ring"
+            className="inline-flex min-h-11 items-center px-1 text-xs text-2 underline underline-offset-2 transition-colors hover:text-1 focus-ring sm:min-h-8"
             onClick={handleReset}
           >
             {resetLabel}
@@ -138,7 +138,7 @@ export function BlurCommitTextarea({
       </div>
       {original ? (
         <details className="text-xs text-2">
-          <summary className="w-fit cursor-pointer select-none rounded focus-ring">
+          <summary className="inline-flex min-h-11 w-fit cursor-pointer select-none items-center rounded focus-ring sm:min-h-8">
             Show character card original
           </summary>
           <p className="mt-1 whitespace-pre-wrap break-words rounded-lg border border-subtle bg-surface p-2">

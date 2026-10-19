@@ -42,6 +42,7 @@ export function ProviderManager() {
   const defaultProviderId = userSettings?.defaultProviderId ?? "";
   const [editingProvider, setEditingProvider] = useState<AiProviderListItem | "new" | null>(null);
   const [delProviderId, setDelProviderId] = useState<string | null>(null);
+  const [pendingDefaultProviderId, setPendingDefaultProviderId] = useState<string | null>(null);
   const [testMsgProvider, setTestMsgProvider] = useState<AiProviderListItem | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, ProbeResult | null>>({});
@@ -99,8 +100,16 @@ export function ProviderManager() {
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-headline">{p.name}</span>
+                      {isDefault ? (
+                        <Badge variant="default" className="shrink-0 text-xs">
+                          Default
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <div className="flex min-w-0 items-center gap-2 text-xs text-2">
                       {testingId === p.id ? (
                         <StatusDot tone="muted" label="Testing…" />
                       ) : testResult ? (
@@ -112,14 +121,8 @@ export function ProviderManager() {
                       ) : (
                         <StatusDot tone="muted" label="Untested" />
                       )}
-                      <span className="text-headline truncate">{p.name}</span>
-                      {isDefault ? (
-                        <Badge variant="default" className="text-xs ml-1">
-                          Default
-                        </Badge>
-                      ) : null}
+                      <span className="truncate font-mono">{p.baseUrl}</span>
                     </div>
-                    <p className="text-2 text-xs font-mono truncate">{p.baseUrl}</p>
                     {testResult && testResult.ok ? (
                       <p className="text-3 text-xs">
                         {testResult.latencyMs}ms · {testResult.modelCount} models
@@ -148,18 +151,7 @@ export function ProviderManager() {
                         ? [
                             {
                               label: "Set as default",
-                              onSelect: () =>
-                                updateDefaults.mutate(
-                                  {
-                                    defaultProviderId: p.id,
-                                    defaultSelectedModel: null,
-                                    defaultPresetId: null,
-                                  },
-                                  {
-                                    onError: (e) =>
-                                      toast.error(`Update failed: ${(e as Error).message}`),
-                                  },
-                                ),
+                              onSelect: () => setPendingDefaultProviderId(p.id),
                             },
                           ]
                         : []),
@@ -214,6 +206,30 @@ export function ProviderManager() {
       />
 
       <TestMessageDialog provider={testMsgProvider} onClose={() => setTestMsgProvider(null)} />
+
+      <ConfirmDialog
+        open={pendingDefaultProviderId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDefaultProviderId(null);
+        }}
+        title="Set default provider?"
+        description="This clears the default model and preset for all chats. Choose a new model in AI defaults after switching."
+        confirmLabel="Set default"
+        loadingLabel="Saving…"
+        loading={updateDefaults.isPending}
+        onConfirm={() => {
+          if (!pendingDefaultProviderId) return;
+          updateDefaults.mutate(
+            {
+              defaultProviderId: pendingDefaultProviderId,
+              defaultSelectedModel: null,
+              defaultPresetId: null,
+            },
+            { onError: (e) => toast.error(`Update failed: ${(e as Error).message}`) },
+          );
+          setPendingDefaultProviderId(null);
+        }}
+      />
 
       <ConfirmDialog
         open={delProviderId !== null}
