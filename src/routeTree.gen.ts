@@ -15,7 +15,6 @@ import { Route as SettingsRouteRouteImport } from './routes/settings/route'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as UpRouteImport } from './routes/up'
-import { Route as ApiChatGenerateRouteImport } from './routes/api/chat-generate'
 import { Route as CharactersIndexRouteImport } from './routes/characters/index'
 import { Route as CharactersIdRouteImport } from './routes/characters/$id'
 import { Route as CharactersNewRouteImport } from './routes/characters/new'
@@ -64,11 +63,6 @@ const SigninRoute = SigninRouteImport.update({
 const UpRoute = UpRouteImport.update({
   id: '/up',
   path: '/up',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiChatGenerateRoute = ApiChatGenerateRouteImport.update({
-  id: '/api/chat-generate',
-  path: '/api/chat-generate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CharactersIndexRoute = CharactersIndexRouteImport.update({
@@ -174,7 +168,6 @@ export interface FileRoutesByFullPath {
   '/setup': typeof SetupRoute
   '/signin': typeof SigninRoute
   '/up': typeof UpRoute
-  '/api/chat-generate': typeof ApiChatGenerateRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
   '/chat/$id': typeof ChatIdRoute
@@ -201,7 +194,6 @@ export interface FileRoutesByTo {
   '/setup': typeof SetupRoute
   '/signin': typeof SigninRoute
   '/up': typeof UpRoute
-  '/api/chat-generate': typeof ApiChatGenerateRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
   '/chat/$id': typeof ChatIdRoute
@@ -230,7 +222,6 @@ export interface FileRoutesById {
   '/setup': typeof SetupRoute
   '/signin': typeof SigninRoute
   '/up': typeof UpRoute
-  '/api/chat-generate': typeof ApiChatGenerateRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
   '/chat/$id': typeof ChatIdRoute
@@ -260,7 +251,6 @@ export interface FileRouteTypes {
     | '/setup'
     | '/signin'
     | '/up'
-    | '/api/chat-generate'
     | '/characters/$id'
     | '/characters/new'
     | '/chat/$id'
@@ -287,7 +277,6 @@ export interface FileRouteTypes {
     | '/setup'
     | '/signin'
     | '/up'
-    | '/api/chat-generate'
     | '/characters/$id'
     | '/characters/new'
     | '/chat/$id'
@@ -315,7 +304,6 @@ export interface FileRouteTypes {
     | '/setup'
     | '/signin'
     | '/up'
-    | '/api/chat-generate'
     | '/characters/$id'
     | '/characters/new'
     | '/chat/$id'
@@ -344,7 +332,6 @@ export interface RootRouteChildren {
   SetupRoute: typeof SetupRoute
   SigninRoute: typeof SigninRoute
   UpRoute: typeof UpRoute
-  ApiChatGenerateRoute: typeof ApiChatGenerateRoute
   CharactersIdRoute: typeof CharactersIdRoute
   CharactersNewRoute: typeof CharactersNewRoute
   ChatIdRoute: typeof ChatIdRoute
@@ -403,13 +390,6 @@ declare module '@tanstack/react-router' {
       path: '/up'
       fullPath: '/up'
       preLoaderRoute: typeof UpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/chat-generate': {
-      id: '/api/chat-generate'
-      path: '/api/chat-generate'
-      fullPath: '/api/chat-generate'
-      preLoaderRoute: typeof ApiChatGenerateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/characters/': {
@@ -575,7 +555,6 @@ const rootRouteChildren: RootRouteChildren = {
   SetupRoute: SetupRoute,
   SigninRoute: SigninRoute,
   UpRoute: UpRoute,
-  ApiChatGenerateRoute: ApiChatGenerateRoute,
   CharactersIdRoute: CharactersIdRoute,
   CharactersNewRoute: CharactersNewRoute,
   ChatIdRoute: ChatIdRoute,

@@ -1,10 +1,20 @@
 import type { CharacterDataV2 } from "@/lib/st-core/character/types";
 import type { LoreEntry } from "@/lib/st-core/lorebook/types";
 import type { ChatCompletionPreset } from "@/lib/chat/types";
-import type { ResolvedProvider } from "../generation/types";
-
-export type { ResolvedProvider };
 import type { ChatDetail } from "../tree/types";
+
+export interface ProviderConfig {
+  baseUrl: string;
+  apiKey: string;
+  defaultHeaders?: Record<string, string>;
+  defaultModel?: string | null;
+}
+
+export interface ResolvedProvider {
+  provider: ProviderConfig;
+  model: string;
+  preset: Partial<ChatCompletionPreset>;
+}
 
 export interface UserSettingsView {
   defaultProviderId: string | null;

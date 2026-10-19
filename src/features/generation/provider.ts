@@ -1,6 +1,6 @@
 import { openaiCompatibleText } from "@tanstack/ai-openai/compatible";
 import type { AnyTextAdapter } from "@tanstack/ai";
-import type { ResolvedProvider } from "@/features/chat/generation/types";
+import type { ResolvedProvider } from "@/features/chat/config/types";
 import type { ChatCompletionPreset } from "@/lib/chat/types";
 
 export function normalizeBaseUrl(baseUrl: string): string {

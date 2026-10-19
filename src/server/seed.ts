@@ -11,7 +11,7 @@ import { upsertUserSettings } from "@/db/repositories/userSettings";
 import { backgrounds } from "@/db/schema";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import { DEFAULT_LORE_CONFIG, DEFAULT_LORE_ENTRY } from "@/lib/st-core/lorebook";
-import { DEFAULT_IMAGE_PROMPT_EXAMPLE } from "@/features/chat/generation/image-prompt";
+import { DEFAULT_IMAGE_PROMPT_EXAMPLE } from "@/features/generation/image";
 import {
   diskPathFromStored,
   ensureUploadsDirs,

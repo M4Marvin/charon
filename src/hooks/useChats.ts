@@ -8,16 +8,7 @@ import {
   listChatsByCharacter,
   updateChatSettings,
 } from "@/server/fns/chats";
-import {
-  cancelStreamFn,
-  finalizeStreamFn,
-  imagePromptFn,
-  impersonateFn,
-  prepareStreamFn,
-} from "@/features/chat/generation/fns";
 import { deleteBranchFn, editMessageFn, swipeFn } from "@/features/chat/tree/fns";
-import type { PrepareStreamResult } from "@/features/chat/generation/types";
-import type { ChatConfigClient } from "@/features/chat/config/types";
 import { applyDeleteOptimistic, applySwipeOptimistic } from "@/features/chat/tree/optimistic";
 import { useChatUiStore } from "@/features/chat/ui/chat-store";
 import type { ChatMessageRow } from "@/db/schema";
@@ -135,87 +126,6 @@ export function useEditMessage() {
   );
 }
 
-export function usePrepareStream() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: {
-      chatId: string;
-      mode: "send" | "regenerate" | "continue";
-      content?: string;
-      messageLocalId?: number;
-    }): Promise<PrepareStreamResult> => prepareStreamFn({ data: input }),
-    onSuccess: (_result, variables) => {
-      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
-      void queryClient.invalidateQueries({ queryKey: ["chatConfig", variables.chatId] });
-      void queryClient.invalidateQueries({ queryKey: chatKeys.list() });
-    },
-  });
-}
-
-export function useFinalizeStream() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: {
-      chatId: string;
-      messageLocalId: number;
-      content: string;
-    }): Promise<{ messageLocalId: number; content: string }> => finalizeStreamFn({ data: input }),
-    onSuccess: (result, variables) => {
-      // Write the server's persisted content and lock release into the cache
-      // first: a failed refetch otherwise leaves an empty bubble and a stuck
-      // "generating" lock in the UI even though the reply is saved.
-      queryClient.setQueryData<ChatMessageRow[]>(chatKeys.messages(variables.chatId), (rows) =>
-        rows?.map((row) =>
-          row.localId === result.messageLocalId
-            ? { ...row, content: result.content, extra: null }
-            : row,
-        ),
-      );
-      queryClient.setQueryData<ChatConfigClient | undefined>(
-        ["chatConfig", variables.chatId],
-        (config) =>
-          config
-            ? { ...config, chat: { ...config.chat, lockState: "idle", lockMessageLocalId: null } }
-            : config,
-      );
-      return Promise.all([
-        queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) }),
-        queryClient.invalidateQueries({ queryKey: ["chatConfig", variables.chatId] }),
-        queryClient.invalidateQueries({ queryKey: chatKeys.list() }),
-      ]);
-    },
-  });
-}
-
-export function useCancelStream() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: {
-      chatId: string;
-      messageLocalId: number;
-    }): Promise<{ deletedIds: number[] }> => cancelStreamFn({ data: input }),
-    onSuccess: (result, variables) => {
-      // Same cache-first cleanup as finalize: on a failed refetch the deleted
-      // placeholder would linger and the stale lock would disable the composer.
-      // The guard matters — a finalized-race cancel keeps the reply.
-      if (result.deletedIds.length > 0) {
-        queryClient.setQueryData<ChatMessageRow[]>(chatKeys.messages(variables.chatId), (rows) =>
-          rows ? (applyDeleteOptimistic(rows, variables.messageLocalId) ?? rows) : rows,
-        );
-      }
-      queryClient.setQueryData<ChatConfigClient | undefined>(
-        ["chatConfig", variables.chatId],
-        (config) =>
-          config
-            ? { ...config, chat: { ...config.chat, lockState: "idle", lockMessageLocalId: null } }
-            : config,
-      );
-      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
-      void queryClient.invalidateQueries({ queryKey: ["chatConfig", variables.chatId] });
-    },
-  });
-}
-
 export function useUpdateChatSettings() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -257,23 +167,5 @@ export function useDeleteChat() {
       store.clearInputDraft(variables.id);
       void queryClient.invalidateQueries({ queryKey: chatKeys.all });
     },
-  });
-}
-
-export function useImpersonateMessage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { chatId: string }): Promise<{ text: string }> =>
-      impersonateFn({ data: input }),
-    onSuccess: (_result, variables) => {
-      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(variables.chatId) });
-    },
-  });
-}
-
-export function useImagePrompt() {
-  return useMutation({
-    mutationFn: (input: { chatId: string }): Promise<{ text: string }> =>
-      imagePromptFn({ data: input }),
   });
 }

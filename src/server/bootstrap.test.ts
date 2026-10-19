@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb, seedTestUser, type TestDb } from "@/db/__tests__/helpers";
-import { DEFAULT_IMAGE_PROMPT_EXAMPLE } from "@/features/chat/generation/image-prompt";
+import { DEFAULT_IMAGE_PROMPT_EXAMPLE } from "@/features/generation/image";
 
 // `seedSampleData` / `seedDefaultBackgrounds` call repository functions that
 // default to the `db` export from "@/db". Point that export at each test's

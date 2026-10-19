@@ -3,9 +3,16 @@ import {
   type StreamChunk,
   type TokenUsage,
 } from "@tanstack/ai";
-import { withPersistence } from "@tanstack/ai-persistence";
+import { withPersistence, type ChatPersistence } from "@tanstack/ai-persistence";
 import { db as defaultDb, type DB } from "@/db";
-import { getJob, resolveProposal } from "@/db/repositories/generation";
+import {
+  beginJob,
+  createProposal,
+  failJob,
+  finalizeJob,
+  getJob,
+  resolveProposal,
+} from "@/db/repositories/generation";
 import { getMessages } from "@/features/chat/tree/service";
 import { aiPersistence } from "./persistence-singleton";
 import { loadGenerationSnapshot } from "./context";
@@ -13,7 +20,6 @@ import { compilePrompt } from "./prompt";
 import { makeAdapter } from "./provider";
 import { readTools } from "./tools";
 import { prepareGeneration } from "./prepare";
-import { runGeneration, withGenerationService } from "./service";
 import { EmptyResponseError, type GenerationError } from "./errors";
 import { assembleImagePrompt, sanitizeImpersonation } from "./image";
 import type { ToolContext, Trigger } from "./contract";
@@ -46,6 +52,7 @@ export async function runProposal(
   userName: string,
   input: RunProposalInput,
   db: DB = defaultDb,
+  persistence: ChatPersistence = aiPersistence,
 ): Promise<RunProposalResult> {
   const prepared = await prepareGeneration(userId, input, userName, db);
   const job = getJob(prepared.jobId, db);
@@ -58,9 +65,7 @@ export async function runProposal(
   const compiled = compilePrompt(snapshot, job.promptMode);
   const adapter = makeAdapter(snapshot.provider);
   const owner = crypto.randomUUID();
-  const lease = await runGeneration(
-    withGenerationService((service) => service.begin(job.id, owner)),
-  );
+  const lease = beginJob({ jobId: job.id, owner }, db);
   const toolContext: ToolContext = {
     userId,
     chatId: input.chatId,
@@ -86,7 +91,7 @@ export async function runProposal(
       context: toolContext,
       threadId: input.chatId,
       runId: job.id,
-      middleware: [withPersistence(aiPersistence)],
+      middleware: [withPersistence(persistence)],
     });
 
     for await (const chunk of stream) {
@@ -121,7 +126,7 @@ export async function runProposal(
       kind === "image"
         ? assembleImagePrompt(snapshot.character, text)
         : kind === "impersonate"
-          ? sanitizeImpersonation(text, snapshot.persona.name)
+          ? sanitizeImpersonation(text, snapshot.persona.name, snapshot.character.name)
           : text.trim();
     const target = (job.target ?? {}) as Record<string, unknown>;
     const targetLocalId =
@@ -133,60 +138,59 @@ export async function runProposal(
         ? getMessages(input.chatId, db).find((message) => message.localId === targetLocalId)?.role
         : undefined;
 
-    const proposalId = await runGeneration(
-      withGenerationService((service) =>
-        service.propose({
-          jobId: job.id,
-          chatId: input.chatId,
-          kind,
-          content: finalText,
-          targetLocalId,
-          baseRev: typeof target.baseRev === "number" ? target.baseRev : null,
-          baseHash: typeof target.baseHash === "string" ? target.baseHash : null,
-          role: targetRole === "user" || targetRole === "assistant" ? targetRole : "assistant",
-          meta: {
-            instruction: input.instruction ?? null,
-            selection,
-            finishReason,
-            usage: usage ?? null,
-          },
-        }),
-      ),
+    const proposal = createProposal(
+      {
+        jobId: job.id,
+        chatId: input.chatId,
+        kind,
+        proposedContent: finalText,
+        targetLocalId,
+        baseRev: typeof target.baseRev === "number" ? target.baseRev : null,
+        baseHash: typeof target.baseHash === "string" ? target.baseHash : null,
+        proposedRole:
+          targetRole === "user" || targetRole === "assistant" ? targetRole : "assistant",
+        meta: {
+          instruction: input.instruction ?? null,
+          selection,
+          finishReason,
+          usage: usage ?? null,
+        },
+      },
+      db,
     );
 
-    await runGeneration(
-      withGenerationService((service) =>
-        service.finalizeProposal({
-          jobId: job.id,
-          owner,
-          epoch: lease.epoch,
-          proposalId,
-          usage,
-          finishReason,
-        }),
-      ),
+    const finalized = finalizeJob(
+      {
+        jobId: job.id,
+        owner,
+        epoch: lease.leaseEpoch,
+        result: { kind: "proposal", proposalId: proposal.id },
+        usage: usage as unknown as Record<string, unknown> | undefined,
+        finishReason,
+      },
+      db,
     );
+    if (!finalized) throw new Error("The generation lease was lost before proposal finalize.");
 
     // Impersonation drafts and image prompts are reviewed directly in the
     // composer/result panel; they do not need a separate accept step.
     if (kind === "impersonate" || kind === "image") {
-      resolveProposal(proposalId, "accepted", db);
+      resolveProposal(proposal.id, "accepted", db);
     }
 
-    return { jobId: job.id, proposalId, text: finalText };
+    return { jobId: job.id, proposalId: proposal.id, text: finalText };
   } catch (error) {
-    await runGeneration(
-      withGenerationService((service) =>
-        service.fail({
-          jobId: job.id,
-          owner,
-          code: "proposal_failed",
-          message: error instanceof Error ? error.message : String(error),
-          usage,
-          finishReason,
-        }),
-      ),
-    ).catch(() => {});
+    failJob(
+      {
+        jobId: job.id,
+        owner,
+        code: "proposal_failed",
+        message: error instanceof Error ? error.message : String(error),
+        usage: usage as unknown as Record<string, unknown> | undefined,
+        finishReason,
+      },
+      db,
+    );
     throw error;
   }
 }

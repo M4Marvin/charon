@@ -6,9 +6,9 @@ import type { ChatCompletionPreset } from "@/lib/chat/types";
 import type {
   ChatConfig,
   PersonaInfo,
+  ResolvedProvider,
   UserSettingsView,
 } from "@/features/chat/config/types";
-import type { ResolvedProvider } from "@/features/chat/generation/types";
 
 export type PromptMode = "chat" | "impersonate" | "image" | "rewrite" | "transform";
 

@@ -3,6 +3,9 @@ import type { EffectiveCharacter } from "./contract";
 export const DEFAULT_IMAGE_STYLE =
   "anime style, clean lineart, detailed shading, cinematic composition";
 
+export const DEFAULT_IMAGE_PROMPT_EXAMPLE =
+  "masterpiece, best quality, 1girl, silver hair, long hair, blue eyes, school uniform, standing in a sunlit classroom, cherry blossoms outside the window, looking at viewer, soft lighting, detailed background";
+
 function normalizeTag(tag: string): string {
   return tag
     .toLowerCase()
@@ -48,11 +51,18 @@ export function assembleImagePrompt(character: EffectiveCharacter, modelDelta: s
   return [...identity, ...scene, DEFAULT_IMAGE_STYLE].filter(Boolean).join(", ");
 }
 
-export function sanitizeImpersonation(text: string, personaName: string): string {
+export function sanitizeImpersonation(
+  text: string,
+  personaName: string,
+  characterName?: string,
+): string {
   let value = text.trim();
   value = value.replace(/^```(?:text)?\s*/i, "").replace(/\s*```$/, "");
-  const prefix = new RegExp("^" + escapeRegExp(personaName) + "\\s*:\\s*", "i");
-  value = value.replace(prefix, "");
+  for (const name of [personaName, characterName]) {
+    if (!name) continue;
+    const prefix = new RegExp("^" + escapeRegExp(name) + "\\s*:\\s*", "i");
+    value = value.replace(prefix, "");
+  }
   return value.trim();
 }
 
