@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { CircleCheck, CircleX, Zap } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { CircleCheck, CircleX, TriangleAlert, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -15,6 +16,7 @@ import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ModelCombobox } from "@/components/common/ModelCombobox";
 import { SkeletonText } from "@/components/common/Skeletons";
+import { friendlyLoadError } from "@/lib/error-copy";
 import { getSaveState, useSettingsSaveStatus } from "@/features/chat/ui/settings/save-status";
 import { useAiProviders, useTestProviderConnection } from "@/hooks/useAiProviders";
 import { usePresets } from "@/hooks/usePresets";
@@ -119,23 +121,64 @@ export function ModelDefaultsFields() {
     });
   }, [selectedProviderId, testConnection]);
 
+  const hasProviders = (providers?.length ?? 0) > 0;
+  const providerMissing =
+    Boolean(selectedProviderId) &&
+    hasProviders &&
+    !providers?.some((provider) => provider.id === selectedProviderId);
+  const noDefaultProvider = hasProviders && !selectedProviderId;
+
+  if (queryError) {
+    return (
+      <ErrorBanner
+        message={friendlyLoadError(queryError, "Couldn't load your AI settings.")}
+        onRetry={() => {
+          void Promise.all([refetchSettings(), refetchProviders(), refetchPresets()]);
+        }}
+      />
+    );
+  }
+
+  if (settingsQueryLoading) {
+    return (
+      <div role="status" className="space-y-2">
+        <SkeletonText lines={3} />
+        <span className="sr-only">Loading model settings</span>
+      </div>
+    );
+  }
+
+  if (!hasProviders) {
+    return (
+      <div className="rounded-2xl border border-subtle bg-surface/60 p-5">
+        <p className="text-sm font-medium text-1">No providers yet</p>
+        <p className="mt-1 max-w-[46ch] text-[13px] leading-5 text-2">
+          Connect an OpenAI-compatible endpoint before choosing a default model.
+        </p>
+        <Button asChild className="mt-4">
+          <Link to="/settings/providers">Add a provider</Link>
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
-      {queryError ? (
-        <ErrorBanner
-          message={
-            queryError instanceof Error ? queryError.message : "Failed to load model settings"
-          }
-          onRetry={() => {
-            void Promise.all([refetchSettings(), refetchProviders(), refetchPresets()]);
-          }}
-        />
-      ) : null}
-
-      {!queryError && settingsQueryLoading ? (
-        <div role="status" className="space-y-2">
-          <SkeletonText lines={3} />
-          <span className="sr-only">Loading model settings</span>
+      {noDefaultProvider || providerMissing ? (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-xs leading-5 text-warning"
+        >
+          <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          <span>
+            {providerMissing
+              ? "The saved default provider no longer exists. "
+              : "No default provider is selected. "}
+            Chats can't run until you choose one.{" "}
+            <Link to="/settings/providers" className="underline underline-offset-2 hover:text-1">
+              Manage providers
+            </Link>
+          </span>
         </div>
       ) : null}
 

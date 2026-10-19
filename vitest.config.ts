@@ -8,6 +8,7 @@ export default defineConfig({
   ...rest,
   plugins: [viteReact()],
   test: {
+    setupFiles: ["./src/test/setup.ts"],
     server: {
       deps: {
         inline: ["react", "react-dom"],

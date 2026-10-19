@@ -17,6 +17,7 @@ import {
 } from "@/hooks/useAiProviders";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
 import { ProviderDialog } from "@/components/ai/ProviderDialog";
+import { shouldAdoptCreatedProvider } from "@/components/ai/provider-create-policy";
 import { TestMessageDialog } from "@/components/ai/TestMessageDialog";
 import type { ProbeResult } from "@/server/fns/models";
 
@@ -82,6 +83,8 @@ export function ProviderManager() {
       />
     );
   }
+
+  const deletingProvider = providers.find((p) => p.id === delProviderId) ?? null;
 
   return (
     <div className="space-y-6">
@@ -180,8 +183,12 @@ export function ProviderManager() {
         onCreate={(input) =>
           createProvider.mutate(input, {
             onSuccess: ({ id }) => {
-              toast.success("Provider created");
               setEditingProvider(null);
+              if (!shouldAdoptCreatedProvider(providers)) {
+                toast.success("Provider created");
+                return;
+              }
+              toast.success("Provider created and set as default");
               updateDefaults.mutate(
                 {
                   defaultProviderId: id,
@@ -234,8 +241,12 @@ export function ProviderManager() {
       <ConfirmDialog
         open={delProviderId !== null}
         onOpenChange={(o) => !o && setDelProviderId(null)}
-        title="Delete provider"
-        description="This provider will be permanently removed. Settings referencing it will need to be updated."
+        title={deletingProvider ? `Delete ${deletingProvider.name}?` : "Delete provider"}
+        description={
+          deletingProvider?.id === defaultProviderId
+            ? "This is your default provider. Your default model will be cleared, and chats will not run until you choose another provider."
+            : "This provider will be permanently removed."
+        }
         destructive
         loading={deleteProvider.isPending}
         onConfirm={() => {
@@ -243,8 +254,12 @@ export function ProviderManager() {
           deleteProvider.mutate(
             { id: delProviderId },
             {
-              onSuccess: () => {
-                toast.success("Provider deleted");
+              onSuccess: (result) => {
+                toast.success(
+                  result.wasDefault
+                    ? "Default provider deleted. Choose a new one in AI defaults."
+                    : "Provider deleted",
+                );
                 setDelProviderId(null);
                 setTestResults((prev) => {
                   const next = { ...prev };

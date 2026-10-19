@@ -71,6 +71,8 @@ export function PresetManager() {
     );
   }
 
+  const deletingPreset = presets.find((p) => p.id === delPresetId) ?? null;
+
   return (
     <div className="space-y-6">
       {presets.length === 0 ? (
@@ -184,8 +186,12 @@ export function PresetManager() {
       <ConfirmDialog
         open={delPresetId !== null}
         onOpenChange={(o) => !o && setDelPresetId(null)}
-        title="Delete preset"
-        description="This preset will be permanently deleted."
+        title={deletingPreset ? `Delete ${deletingPreset.name}?` : "Delete preset"}
+        description={
+          deletingPreset?.id === selectedPresetId
+            ? "This is your default preset. It will be cleared, and chats will use their provider defaults."
+            : "This preset will be permanently deleted."
+        }
         destructive
         loading={deletePreset.isPending}
         onConfirm={() => {
@@ -193,8 +199,12 @@ export function PresetManager() {
           deletePreset.mutate(
             { id: delPresetId },
             {
-              onSuccess: () => {
-                toast.success("Preset deleted");
+              onSuccess: (result) => {
+                toast.success(
+                  result.wasDefault
+                    ? "Default preset deleted. Chats will use their provider defaults."
+                    : "Preset deleted",
+                );
                 setDelPresetId(null);
               },
               onError: (err) =>

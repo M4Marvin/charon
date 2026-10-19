@@ -343,6 +343,7 @@ export function PresetDialog({
             Cancel
           </Button>
           <Button
+            disabled={!name.trim()}
             onClick={() => {
               const data: PresetData = {
                 temperature,
@@ -355,16 +356,16 @@ export function PresetDialog({
               if (editing) {
                 onUpdate({
                   id: editing.id,
-                  name,
+                  name: name.trim(),
                   providerId: providerId || null,
                   model: model || null,
                   data,
                 });
               } else {
                 onCreate({
-                  name,
-                  providerId: providerId || undefined,
-                  model: model || undefined,
+                  name: name.trim(),
+                  ...(providerId ? { providerId } : {}),
+                  ...(model ? { model } : {}),
                   data,
                 });
               }

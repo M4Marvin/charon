@@ -8,6 +8,7 @@ import {
   type PresetListItem,
 } from "@/server/fns/presets";
 import type { PresetData } from "@/db/repositories/presets";
+import { userSettingsKeys } from "@/hooks/useUserSettings";
 
 export const presetKeys = {
   all: ["presets"] as const,
@@ -19,6 +20,7 @@ export function usePresets() {
   return useQuery({
     queryKey: presetKeys.list(),
     queryFn: () => listPresets(),
+    retry: 1,
   });
 }
 
@@ -41,6 +43,8 @@ export function useCreatePreset() {
     }): Promise<{ id: string }> => createPreset({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: presetKeys.all });
+      void queryClient.invalidateQueries({ queryKey: userSettingsKeys.current() });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }
@@ -58,6 +62,8 @@ export function useUpdatePreset() {
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: presetKeys.all });
       void queryClient.invalidateQueries({ queryKey: presetKeys.detail(variables.id) });
+      void queryClient.invalidateQueries({ queryKey: userSettingsKeys.current() });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }
@@ -65,10 +71,13 @@ export function useUpdatePreset() {
 export function useDeletePreset() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string }): Promise<{ id: string }> => deletePreset({ data: input }),
+    mutationFn: (input: { id: string }): Promise<{ id: string; wasDefault: boolean }> =>
+      deletePreset({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: presetKeys.all });
       queryClient.removeQueries({ queryKey: presetKeys.detail(variables.id) });
+      void queryClient.invalidateQueries({ queryKey: userSettingsKeys.current() });
+      void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
 }

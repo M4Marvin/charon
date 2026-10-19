@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import { db as defaultDb, type DB } from "@/db";
-import { aiProviders, type AiProvider, type NewAiProvider } from "@/db/schema";
+import { aiProviders, userSettings, type AiProvider, type NewAiProvider } from "@/db/schema";
 import { encryptApiKey, decryptApiKey } from "@/lib/crypto";
 
 async function decryptProvider(row: AiProvider): Promise<AiProvider> {
@@ -75,4 +75,33 @@ export async function updateAiProvider(
 export async function deleteAiProvider(id: string, db: DB = defaultDb): Promise<void> {
   const existing = await getAiProvider(id, db);
   db.delete(aiProviders).where(eq(aiProviders.id, existing.id)).run();
+}
+
+/**
+ * Delete a provider and repair the account defaults in one transaction.
+ * The FK clears `default_provider_id`; the selected model has no FK and must be
+ * cleared explicitly or Defaults would keep pointing at a model whose provider
+ * is gone.
+ */
+export function deleteAiProviderAndRepair(id: string, db: DB = defaultDb): { wasDefault: boolean } {
+  return db.transaction((tx) => {
+    const existing = tx.select().from(aiProviders).where(eq(aiProviders.id, id)).get();
+    if (!existing) throw new Error("Provider not found");
+
+    const affected = tx
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.defaultProviderId, id))
+      .get();
+
+    if (affected) {
+      tx.update(userSettings)
+        .set({ defaultProviderId: null, defaultSelectedModel: null, updatedAt: new Date() })
+        .where(eq(userSettings.userId, affected.userId))
+        .run();
+    }
+
+    tx.delete(aiProviders).where(eq(aiProviders.id, existing.id)).run();
+    return { wasDefault: Boolean(affected) };
+  });
 }

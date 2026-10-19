@@ -3,10 +3,13 @@ import { makeTestDb, type TestDb, type TestSqlite } from "./helpers";
 import {
   createAiProvider,
   deleteAiProvider,
+  deleteAiProviderAndRepair,
   getAiProvider,
   listAiProviders,
   updateAiProvider,
 } from "@/db/repositories/aiProviders";
+import { getUserSettings, upsertUserSettings } from "@/db/repositories/userSettings";
+import { seedTestUser } from "./helpers";
 
 describe("aiProviders repo", () => {
   let db: TestDb;
@@ -132,5 +135,68 @@ describe("aiProviders repo", () => {
       db,
     );
     await expect(updateAiProvider("prov-2", { name: "Taken" }, db)).rejects.toThrow();
+  });
+
+  describe("deleteAiProviderAndRepair", () => {
+    it("clears the default provider and stale model when the default is deleted", async () => {
+      const userId = seedTestUser(db);
+      await createAiProvider(
+        { id: "prov-1", name: "Main", baseUrl: "https://a.example/v1", apiKey: "k" },
+        db,
+      );
+      await createAiProvider(
+        { id: "prov-2", name: "Other", baseUrl: "https://b.example/v1", apiKey: "k" },
+        db,
+      );
+      upsertUserSettings(
+        userId,
+        {
+          defaultProviderId: "prov-1",
+          defaultSelectedModel: "stale-model",
+        },
+        db,
+      );
+
+      const result = deleteAiProviderAndRepair("prov-1", db);
+
+      expect(result.wasDefault).toBe(true);
+      await expect(getAiProvider("prov-1", db)).rejects.toThrow("Provider not found");
+      const settings = getUserSettings(userId, db)!;
+      expect(settings.defaultProviderId).toBeNull();
+      expect(settings.defaultSelectedModel).toBeNull();
+      await expect(getAiProvider("prov-2", db)).resolves.toMatchObject({ name: "Other" });
+    });
+
+    it("leaves defaults untouched when a non-default provider is deleted", async () => {
+      const userId = seedTestUser(db);
+      await createAiProvider(
+        { id: "prov-1", name: "Main", baseUrl: "https://a.example/v1", apiKey: "k" },
+        db,
+      );
+      await createAiProvider(
+        { id: "prov-2", name: "Other", baseUrl: "https://b.example/v1", apiKey: "k" },
+        db,
+      );
+      upsertUserSettings(
+        userId,
+        { defaultProviderId: "prov-1", defaultSelectedModel: "keep-me" },
+        db,
+      );
+
+      const result = deleteAiProviderAndRepair("prov-2", db);
+
+      expect(result.wasDefault).toBe(false);
+      const settings = getUserSettings(userId, db)!;
+      expect(settings.defaultProviderId).toBe("prov-1");
+      expect(settings.defaultSelectedModel).toBe("keep-me");
+    });
+
+    it("throws for a missing provider without touching defaults", async () => {
+      const userId = seedTestUser(db);
+      upsertUserSettings(userId, { defaultSelectedModel: "keep-me" }, db);
+
+      expect(() => deleteAiProviderAndRepair("missing", db)).toThrow("Provider not found");
+      expect(getUserSettings(userId, db)?.defaultSelectedModel).toBe("keep-me");
+    });
   });
 });

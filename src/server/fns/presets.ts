@@ -1,80 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
-import { type } from "arktype";
 import { getSession } from "@/server/session";
 import { validateId } from "@/server/validators";
 import type { Preset } from "@/db/schema";
 import {
   createPreset as repoCreate,
-  deletePreset as repoDelete,
+  deletePresetAndRepair as repoDeleteAndRepair,
   getPreset as repoGet,
   listPresets as repoList,
   updatePreset as repoUpdate,
   type CreatePresetInput,
-  type PresetData,
   type UpdatePresetInput,
 } from "@/db/repositories/presets";
+import { validateCreatePresetInput, validateUpdatePresetInput } from "@/server/preset-input";
 
 export type PresetListItem = Preset;
-
-// ── Validators ──────────────────────────────────────────────────────────────
-
-const PresetDataInput = type({
-  "systemPrompt?": "string",
-  "temperature?": "number",
-  "maxTokens?": "number",
-  "topP?": "number",
-  "contextSize?": "number",
-  "frequencyPenalty?": "number",
-  "presencePenalty?": "number",
-});
-
-const CreatePresetInput = type({
-  name: "string > 0",
-  "providerId?": "string",
-  "model?": "string",
-  data: "object",
-});
-
-const UpdatePresetInput = type({
-  id: "string > 0",
-  "name?": "string > 0",
-  "providerId?": "string | null",
-  "model?": "string | null",
-  "data?": "object",
-});
-
-function validatePresetData(data: unknown): PresetData {
-  const result = PresetDataInput(data);
-  if (result instanceof type.errors) throw new Error("Invalid preset data");
-  return result as PresetData;
-}
-
-function validateCreateInput(data: unknown): {
-  name: string;
-  providerId?: string;
-  model?: string;
-  data: PresetData;
-} {
-  const result = CreatePresetInput(data);
-  if (result instanceof type.errors) throw new Error("Invalid preset input");
-  return { ...result, data: validatePresetData(result.data) };
-}
-
-function validateUpdateInput(data: unknown): {
-  id: string;
-  name?: string;
-  providerId?: string | null;
-  model?: string | null;
-  data?: PresetData;
-} {
-  const result = UpdatePresetInput(data);
-  if (result instanceof type.errors) throw new Error("Invalid preset update");
-  if (result.data !== undefined) {
-    return { ...result, data: validatePresetData(result.data) };
-  }
-  return result;
-}
 
 // ── Server functions ────────────────────────────────────────────────────────
 
@@ -93,15 +33,15 @@ export const getPreset = createServerFn({ method: "GET", strict: { output: false
   });
 
 export const createPreset = createServerFn({ method: "POST" })
-  .validator(validateCreateInput)
+  .validator(validateCreatePresetInput)
   .handler(async ({ data }): Promise<{ id: string }> => {
     await getSession();
     const id = randomUUID();
     const input: CreatePresetInput = {
       id,
       name: data.name,
-      providerId: data.providerId ?? null,
-      model: data.model ?? null,
+      providerId: data.providerId,
+      model: data.model,
       data: data.data,
     };
     repoCreate(input);
@@ -109,7 +49,7 @@ export const createPreset = createServerFn({ method: "POST" })
   });
 
 export const updatePreset = createServerFn({ method: "POST", strict: { output: false } })
-  .validator(validateUpdateInput)
+  .validator(validateUpdatePresetInput)
   .handler(async ({ data }): Promise<{ id: string }> => {
     await getSession();
     const patch: UpdatePresetInput = {};
@@ -123,8 +63,8 @@ export const updatePreset = createServerFn({ method: "POST", strict: { output: f
 
 export const deletePreset = createServerFn({ method: "POST" })
   .validator(validateId)
-  .handler(async ({ data }): Promise<{ id: string }> => {
+  .handler(async ({ data }): Promise<{ id: string; wasDefault: boolean }> => {
     await getSession();
-    repoDelete(data.id);
-    return { id: data.id };
+    const { wasDefault } = repoDeleteAndRepair(data.id);
+    return { id: data.id, wasDefault };
   });

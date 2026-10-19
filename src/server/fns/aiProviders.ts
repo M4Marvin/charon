@@ -6,7 +6,7 @@ import { validateId } from "@/server/validators";
 import type { AiProvider } from "@/db/schema";
 import {
   createAiProvider as repoCreate,
-  deleteAiProvider as repoDelete,
+  deleteAiProviderAndRepair as repoDeleteAndRepair,
   getAiProvider as repoGet,
   listAiProviders as repoList,
   updateAiProvider as repoUpdate,
@@ -149,8 +149,8 @@ export const updateAiProvider = createServerFn({ method: "POST", strict: { outpu
 
 export const deleteAiProvider = createServerFn({ method: "POST" })
   .validator(validateId)
-  .handler(async ({ data }): Promise<{ id: string }> => {
+  .handler(async ({ data }): Promise<{ id: string; wasDefault: boolean }> => {
     await getSession();
-    await repoDelete(data.id);
-    return { id: data.id };
+    const { wasDefault } = repoDeleteAndRepair(data.id);
+    return { id: data.id, wasDefault };
   });

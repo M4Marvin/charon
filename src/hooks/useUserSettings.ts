@@ -14,6 +14,7 @@ export function useUserSettings() {
   return useQuery({
     queryKey: userSettingsKeys.current(),
     queryFn: () => getUserSettings(),
+    retry: 1,
   });
 }
 

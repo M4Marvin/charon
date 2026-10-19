@@ -13,6 +13,7 @@ import {
   type ProbeResult,
   type ChatTestResult,
 } from "@/server/fns/models";
+import { userSettingsKeys } from "@/hooks/useUserSettings";
 
 export const aiProviderKeys = {
   all: ["aiProviders"] as const,
@@ -24,6 +25,7 @@ export function useAiProviders() {
   return useQuery({
     queryKey: aiProviderKeys.list(),
     queryFn: () => listAiProviders(),
+    retry: 1,
   });
 }
 
@@ -47,6 +49,7 @@ export function useCreateAiProvider() {
     }): Promise<{ id: string }> => createAiProvider({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: aiProviderKeys.all });
+      void queryClient.invalidateQueries({ queryKey: userSettingsKeys.current() });
       void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
@@ -66,6 +69,7 @@ export function useUpdateAiProvider() {
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: aiProviderKeys.all });
       void queryClient.invalidateQueries({ queryKey: aiProviderKeys.detail(variables.id) });
+      void queryClient.invalidateQueries({ queryKey: userSettingsKeys.current() });
       void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
@@ -74,11 +78,12 @@ export function useUpdateAiProvider() {
 export function useDeleteAiProvider() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { id: string }): Promise<{ id: string }> =>
+    mutationFn: (input: { id: string }): Promise<{ id: string; wasDefault: boolean }> =>
       deleteAiProvider({ data: input }),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: aiProviderKeys.all });
       queryClient.removeQueries({ queryKey: aiProviderKeys.detail(variables.id) });
+      void queryClient.invalidateQueries({ queryKey: userSettingsKeys.current() });
       void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
     },
   });
