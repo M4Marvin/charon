@@ -34,7 +34,7 @@ describe("createSqlitePersistence", () => {
       expect(await messages.loadThread("missing-thread")).toEqual([]);
 
       const transcript: Array<ModelMessage> = [
-        { role: "user", content: "hello" },
+        { role: "user", content: "hello", createdAt: new Date(1_700_000_000_000) },
         {
           role: "assistant",
           content: "",
@@ -50,7 +50,9 @@ describe("createSqlitePersistence", () => {
       ];
 
       await messages.saveThread("thread-1", transcript);
-      expect(await messages.loadThread("thread-1")).toEqual(transcript);
+      const loaded = await messages.loadThread("thread-1");
+      expect(loaded).toEqual(transcript);
+      expect(Array.isArray(loaded) ? loaded[0]?.createdAt : undefined).toBeInstanceOf(Date);
 
       // saveThread is an overwrite, never an append.
       const replacement: Array<ModelMessage> = [{ role: "user", content: "redo" }];

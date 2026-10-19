@@ -5,7 +5,7 @@ import type { ToolContext } from "./contract";
 import type { DB } from "@/db";
 import type { LoreEntry } from "@/lib/st-core/lorebook/types";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
-import type { ChatConfig } from "@/features/chat/config/types";
+import type { CharacterDataV2 } from "@/lib/st-core/character/types";
 import type { ChatDetail } from "@/features/chat/tree/types";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import { getActiveLeafId } from "@/lib/st-core/chat-tree/tree";
@@ -57,6 +57,15 @@ export interface CharacterView {
   scenario?: string;
   systemPrompt?: string;
   tags?: string[];
+}
+
+/** Minimal config shape needed to project a character view. */
+export interface CharacterConfigView {
+  chat: Pick<
+    ChatDetail,
+    "characterDescription" | "characterPersonality" | "characterScenario" | "characterSystemPrompt"
+  >;
+  character: CharacterDataV2;
 }
 
 export interface LoreResultEntry {
@@ -135,8 +144,7 @@ export function filterLoreEntries(
   }
 
   scored.sort(
-    (a, b) =>
-      b.score - a.score || a.entry.order - b.entry.order || a.entry.uid - b.entry.uid,
+    (a, b) => b.score - a.score || a.entry.order - b.entry.order || a.entry.uid - b.entry.uid,
   );
 
   const capped = clampLimit(limit, LORE_RESULT_DEFAULT, LORE_RESULT_MAX);
@@ -154,20 +162,14 @@ export function filterLoreEntries(
  * rows carry per-chat overrides; an empty override falls back to the card.
  */
 export function buildCharacterView(
-  config: Pick<ChatConfig, "chat" | "character">,
+  config: CharacterConfigView,
   fields?: readonly CharacterField[],
 ): CharacterView {
   const { chat, character } = config;
   const view: Required<CharacterView> = {
     name: capText(character.name, CHARACTER_NAME_CAP),
-    description: capText(
-      chat.characterDescription || character.description,
-      CHARACTER_TEXT_CAP,
-    ),
-    personality: capText(
-      chat.characterPersonality || character.personality,
-      CHARACTER_TEXT_CAP,
-    ),
+    description: capText(chat.characterDescription || character.description, CHARACTER_TEXT_CAP),
+    personality: capText(chat.characterPersonality || character.personality, CHARACTER_TEXT_CAP),
     scenario: capText(chat.characterScenario || character.scenario, CHARACTER_TEXT_CAP),
     systemPrompt: capText(
       chat.characterSystemPrompt || character.system_prompt,
@@ -197,10 +199,7 @@ export function buildCharacterView(
  * (localId 0) and empty system placeholders are omitted, matching the prompt
  * assembly path. Message content is capped individually.
  */
-export function buildScene(
-  messages: readonly ChatMessage[],
-  limit?: number,
-): SceneMessage[] {
+export function buildScene(messages: readonly ChatMessage[], limit?: number): SceneMessage[] {
   if (messages.length === 0) return [];
 
   const tree = treeFromNodes([...messages]);
@@ -223,7 +222,7 @@ export function buildScene(
 
 const ReadLoreInput = Schema.Struct({
   query: Schema.String,
-  limit: Schema.optional(Schema.Int),
+  limit: Schema.optionalKey(Schema.Int),
 });
 
 const LoreResultEntrySchema = Schema.Struct({
@@ -237,16 +236,16 @@ const ReadLoreOutput = Schema.Struct({
 });
 
 const CharacterViewSchema = Schema.Struct({
-  name: Schema.optional(Schema.String),
-  description: Schema.optional(Schema.String),
-  personality: Schema.optional(Schema.String),
-  scenario: Schema.optional(Schema.String),
-  systemPrompt: Schema.optional(Schema.String),
-  tags: Schema.optional(Schema.Array(Schema.String)),
+  name: Schema.optionalKey(Schema.String),
+  description: Schema.optionalKey(Schema.String),
+  personality: Schema.optionalKey(Schema.String),
+  scenario: Schema.optionalKey(Schema.String),
+  systemPrompt: Schema.optionalKey(Schema.String),
+  tags: Schema.optionalKey(Schema.Array(Schema.String)),
 });
 
 const ReadCharacterInput = Schema.Struct({
-  fields: Schema.optional(Schema.Array(Schema.Literals(CHARACTER_FIELDS))),
+  fields: Schema.optionalKey(Schema.Array(Schema.Literals(CHARACTER_FIELDS))),
 });
 
 const SceneMessageSchema = Schema.Struct({
@@ -256,7 +255,7 @@ const SceneMessageSchema = Schema.Struct({
 });
 
 const ReadSceneInput = Schema.Struct({
-  limit: Schema.optional(Schema.Int),
+  limit: Schema.optionalKey(Schema.Int),
 });
 
 const ReadSceneOutput = Schema.Struct({
@@ -386,11 +385,7 @@ async function resolveServerModules(deps: ReadToolDeps): Promise<ServerModules> 
   return { ...modules, db: deps.db };
 }
 
-function decodeArgs<T>(
-  decode: (value: unknown) => T,
-  value: unknown,
-  toolName: string,
-): T {
+function decodeArgs<T>(decode: (value: unknown) => T, value: unknown, toolName: string): T {
   try {
     return decode(value);
   } catch (cause) {
@@ -421,11 +416,7 @@ function requireToolContext(
   return context;
 }
 
-function requireChat(
-  chatId: string,
-  db: DB,
-  getChat: ServerModules["getChat"],
-): ChatDetail {
+function requireChat(chatId: string, db: DB, getChat: ServerModules["getChat"]): ChatDetail {
   try {
     return getChat(chatId, db);
   } catch {
@@ -447,9 +438,21 @@ export function createReadTools(deps: ReadToolDeps = {}) {
   const readLore = readLoreDefinition.server<ToolContext>(async (args, runtime) => {
     const context = requireToolContext(runtime, "read_lore");
     const input = decodeArgs(decodeReadLoreInput, args, "read_lore");
+    if (input.query.trim().length === 0) {
+      throw new GenerationValidationError({
+        message: "read_lore requires a non-empty query.",
+        field: "query",
+      });
+    }
     const modules = await resolveServerModules(deps);
     requireChat(context.chatId, modules.db, modules.getChat);
-    return { entries: filterLoreEntries(modules.getEnabledLoreEntries(modules.db), input.query, input.limit) };
+    return {
+      entries: filterLoreEntries(
+        modules.getEnabledLoreEntries(modules.db),
+        input.query,
+        input.limit,
+      ),
+    };
   });
 
   const readCharacter = readCharacterDefinition.server<ToolContext>(async (args, runtime) => {

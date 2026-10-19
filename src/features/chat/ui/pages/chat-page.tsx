@@ -13,7 +13,7 @@ import {
 } from "@/hooks/useChats";
 import { useChatConfig } from "@/hooks/useChatConfig";
 import { computeActivePathFromMessages } from "@/features/chat/tree/active-path";
-import { useChatGeneration } from "../hooks/use-chat-generation";
+import { useGenerationChat } from "../hooks/use-generation-chat";
 import {
   useChatUiStore,
   selectActivePlaceholderId,
@@ -78,7 +78,7 @@ export function ChatPage() {
   } = useChatMessages(chatId);
 
   const substitute = useChatMacros(config);
-  const generation = useChatGeneration(chatId, config?.chat.lockMessageLocalId ?? null);
+  const generation = useGenerationChat(chatId);
 
   const swipeMutation = useSwipeMessage();
   const deleteMsgMutation = useDeleteMessage();
