@@ -6,6 +6,7 @@ import { ApproxTokenCounter } from "@/lib/st-core/shared/tokens.js";
 import type { ChatCompletionPreset } from "@/lib/chat/types";
 import type { CompiledPrompt, GenerationSnapshot, PromptMode } from "./contract";
 import { ContextOverflowError } from "./errors";
+import { DEFAULT_IMAGE_STYLE } from "./image";
 
 const DEFAULT_TEMPERATURE = 0.8;
 const DEFAULT_TOP_P = 1;
@@ -15,9 +16,6 @@ const TOKEN_SAFETY_MARGIN = 512;
 
 const DEFAULT_IMPERSONATION_PROMPT =
   "Write {{user}}'s next message in the roleplay. Match the narrative voice and prose style of the conversation so far. Stay in character — only narrate {{user}}'s actions and dialogue, not those of {{char}} or other characters. No OOC commentary.";
-
-const DEFAULT_IMAGE_PROMPT_EXAMPLE =
-  "masterpiece, best quality, 1girl, silver hair, long hair, blue eyes, school uniform, standing in a sunlit classroom, cherry blossoms outside the window, looking at viewer, soft lighting, detailed background";
 
 const REWRITE_CONTRACT = [
   "You are a precise prose editor working on an existing roleplay chat.",
@@ -176,7 +174,6 @@ function buildRoleplaySystemPrompts(
 function buildImageSystemPrompts(
   snapshot: GenerationSnapshot,
   names: MacroNames,
-  imageExample: string | undefined,
 ): string[] {
   const { character } = snapshot;
   const context: string[] = [];
@@ -190,23 +187,16 @@ function buildImageSystemPrompts(
   if (character.scenario.trim()) context.push(`Scenario: ${character.scenario}`);
   if (character.tags.length > 0) context.push(`Tags: ${character.tags.join(", ")}`);
 
-  const example = expandMacros(
-    imageExample?.trim() ||
-      snapshot.settings.imagePromptExample?.trim() ||
-      DEFAULT_IMAGE_PROMPT_EXAMPLE,
-    names,
-  ).trim();
-
   return [
     expandMacros(context.join("\n"), names).trim(),
     [
       "You write danbooru-style image prompts for anime image generation.",
-      "Return a single comma-separated tag list: quality tokens, character tags, scene tags, then style/artist tags. No prose and no explanations.",
-      "Keep character tags identical to the character card. Copy style and artist tags verbatim from the reference example.",
-      "Scene delta: describe only the pose, action, setting, lighting, and expression that change for the current scene; do not repeat tags that stay the same.",
-      "Reference example:",
-      example,
+      "Return only the scene delta: a comma-separated list of pose, action, setting, lighting, and expression tags that change for the current scene.",
+      "Do not repeat the character's identity tags. Never invent or change the character's appearance; identity is assembled deterministically after your output.",
+      "No prose, labels, quality tokens, or style/artist tags.",
+      "Scene delta:",
     ].join("\n"),
+    `Style suffix (added automatically, never repeat it): ${DEFAULT_IMAGE_STYLE}`,
   ].filter((prompt) => prompt.length > 0);
 }
 
@@ -296,6 +286,10 @@ export function compilePrompt(
   mode: PromptMode,
   options?: { imageExample?: string },
 ): CompiledPrompt {
+  // The legacy full-example image prompt is intentionally ignored: identity is
+  // assembled deterministically from character tags, never copied from an
+  // example prompt.
+  void options;
   const names: MacroNames = {
     char: snapshot.character.name,
     user: snapshot.persona.name,
@@ -313,7 +307,7 @@ export function compilePrompt(
       break;
     }
     case "image":
-      systemPrompts = buildImageSystemPrompts(snapshot, names, options?.imageExample);
+      systemPrompts = buildImageSystemPrompts(snapshot, names);
       break;
     case "rewrite":
     case "transform":

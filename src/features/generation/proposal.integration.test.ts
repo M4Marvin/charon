@@ -74,6 +74,7 @@ describe("runProposal integration", () => {
     userId = seedTestUser(db);
     fake = await startFakeProvider();
     const data = makeCharacterData();
+    data.tags = ["1girl", "silver hair"];
     db.insert(characters)
       .values({
         id: "char-1",
@@ -126,5 +127,19 @@ describe("runProposal integration", () => {
     const thread = db.select().from(aiChatThreads).where(eq(aiChatThreads.threadId, chatId)).get();
     expect(thread).toBeTruthy();
     expect((thread?.messages as unknown[]).length).toBeGreaterThan(0);
+  }, 20_000);
+
+  it("assembles image prompts with canonical identity and style", async () => {
+    const result = await runProposal(
+      userId,
+      "User",
+      { chatId, trigger: "image" },
+      db,
+      createSqlitePersistence(db),
+    );
+
+    expect(result.text.startsWith("1girl, silver hair,")).toBe(true);
+    expect(result.text).toContain("anime style");
+    expect(result.text).not.toContain("User:");
   }, 20_000);
 });

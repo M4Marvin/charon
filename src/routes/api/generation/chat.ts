@@ -7,7 +7,7 @@ import {
   type TokenUsage,
 } from "@tanstack/ai";
 import { reconstructChat, withPersistence } from "@tanstack/ai-persistence";
-import { getSession } from "@/server/session";
+import { tryGetSession } from "@/server/session";
 import { getJob, getJobByRequestId } from "@/db/repositories/generation";
 import { aiPersistence } from "@/features/generation/persistence-singleton";
 import { loadGenerationSnapshot } from "@/features/generation/context";
@@ -118,14 +118,27 @@ export const Route = createFileRoute("/api/generation/chat")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        await getSession();
+        const session = await tryGetSession();
+        if (!session) {
+          return new Response(JSON.stringify({ code: "unauthorized", message: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
         return reconstructChat(aiPersistence, request, {
           authorize: async () => true,
         });
       },
       POST: async ({ request }) => {
         try {
-          const { user } = await getSession();
+          const session = await tryGetSession();
+          if (!session) {
+            return new Response(JSON.stringify({ code: "unauthorized", message: "Unauthorized" }), {
+              status: 401,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          const { user } = session;
           const body = (await request.json()) as Record<string, unknown>;
           const data = (body.data ?? body.forwardedProps ?? body) as Record<string, unknown>;
           const jobId = String(data.jobId ?? "");

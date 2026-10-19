@@ -336,21 +336,24 @@ describe("compilePrompt", () => {
         },
       ]);
       expect(systemText(result)).toContain("Scene delta:");
-      expect(systemText(result)).toContain("masterpiece, 1girl, Alice, Marv");
+      expect(systemText(result)).toContain("Style suffix");
+      expect(systemText(result)).toContain("anime style");
+      expect(systemText(result)).not.toContain("masterpiece, 1girl");
       expect(JSON.stringify(result)).not.toContain("history-only");
       expect(result.meta.activatedLore).toBe(0);
       expect(result.meta.hasPrefill).toBe(false);
     });
 
-    it("prefers the options image example over the stored setting", () => {
+    it("never copies a full example prompt into identity", () => {
       const snapshot = makeSnapshot({
         settings: { imagePromptExample: "stored example, {{char}}" },
       });
 
       const result = compilePrompt(snapshot, "image", { imageExample: "override, {{char}}" });
 
-      expect(systemText(result)).toContain("override, Alice");
+      expect(systemText(result)).not.toContain("override");
       expect(systemText(result)).not.toContain("stored example");
+      expect(systemText(result)).toContain("identity is assembled deterministically");
     });
   });
 

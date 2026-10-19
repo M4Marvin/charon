@@ -67,6 +67,7 @@ export function useGenerationChat(chatId: string): GenerationChat {
       placeholderRef.current = null;
     },
     onError: (error: unknown) => {
+      if (error instanceof Error && error.name === "AbortError") return;
       const message = error instanceof Error ? error.message : "Generation failed";
       toast.error(message);
       const jobId = jobIdRef.current;
