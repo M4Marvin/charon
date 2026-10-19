@@ -17,8 +17,8 @@ import type { ChatWithCharacter } from "@/db/repositories/chats";
 import type { DB } from "@/db";
 import { db as defaultDb } from "@/db";
 import { createLogger } from "@/features/logging";
+import { contentHash } from "@/lib/chat/content-hash";
 import { computeActivePathFromMessages, getPathToNode } from "./active-path";
-import { ensureChatIdle, getGenerationLock } from "./lock";
 import { appendChild, selectSibling, createSiblingAndSelect, removeBranch } from "./operations";
 import type {
   ChatDetail,
@@ -86,10 +86,6 @@ export function listChats(db: DB = defaultDb): ChatWithCharacter[] {
 
 export function getChat(chatId: string, db: DB = defaultDb): ChatDetail {
   const chat = repoGetChat(chatId, db);
-  // Read the lock through the same staleness gate as the write path: an
-  // orphaned lock must not make the chat look generating forever.
-  const lock = getGenerationLock(chatId, db);
-  const isGenerating = lock !== null;
 
   return {
     id: chat.id,
@@ -102,8 +98,6 @@ export function getChat(chatId: string, db: DB = defaultDb): ChatDetail {
     backgroundId: chat.backgroundId ?? null,
     createdAt: chat.createdAt,
     updatedAt: chat.updatedAt,
-    lockState: isGenerating ? "generating" : "idle",
-    lockMessageLocalId: lock ? lock.messageId : null,
   };
 }
 
@@ -197,8 +191,6 @@ export function createChat(input: CreateChatInput, db: DB = defaultDb): ChatDeta
       backgroundId: chat.backgroundId ?? null,
       createdAt: chat.createdAt,
       updatedAt: chat.updatedAt,
-      lockState: "idle",
-      lockMessageLocalId: null,
     };
   } catch (e) {
     log.error("createChat failed", { chatId, characterId: input.characterId }, e as Error);
@@ -220,7 +212,6 @@ export function deleteChat(chatId: string, db: DB = defaultDb): void {
 
 export function appendMessage(chatId: string, msg: NewMessage, db: DB = defaultDb): ChatMessage {
   log.debug("appendMessage start", { chatId, role: msg.role });
-  ensureChatIdle(chatId, db);
   try {
     const rows = repoListMessages(chatId, db);
     const tree = treeFromNodes(rows.map(rowToMessage));
@@ -251,7 +242,6 @@ export function appendUserAndReply(
     throw new Error("User content cannot be empty");
   }
   log.debug("appendUserAndReply start", { chatId, userContentLength: userContent.length });
-  ensureChatIdle(chatId, db);
 
   try {
     const rows = repoListMessages(chatId, db);
@@ -297,7 +287,6 @@ export function swipe(
   db: DB = defaultDb,
 ): SwipeResult {
   log.debug("swipe start", { chatId, messageLocalId, direction });
-  ensureChatIdle(chatId, db);
   try {
     const rows = repoListMessages(chatId, db);
     const tree = treeFromNodes(rows.map(rowToMessage));
@@ -360,7 +349,6 @@ export function appendSibling(
   db: DB = defaultDb,
 ): ChatMessage {
   log.debug("appendSibling start", { chatId, targetLocalId });
-  ensureChatIdle(chatId, db);
   try {
     const rows = repoListMessages(chatId, db);
     const tree = treeFromNodes(rows.map(rowToMessage));
@@ -389,15 +377,11 @@ export function deleteBranch(
   chatId: string,
   messageLocalId: number,
   db: DB = defaultDb,
-  opts?: { skipIdleCheck?: boolean },
 ): { deletedIds: number[] } {
   if (messageLocalId === 0) {
     throw new Error("Cannot delete the hidden root (localId 0)");
   }
   log.debug("deleteBranch start", { chatId, messageLocalId });
-  if (!opts?.skipIdleCheck) {
-    ensureChatIdle(chatId, db);
-  }
   try {
     const rows = repoListMessages(chatId, db);
     const tree = treeFromNodes(rows.map(rowToMessage));
@@ -427,11 +411,19 @@ export function editMessage(
     throw new Error("Cannot edit the hidden root");
   }
   log.debug("editMessage start", { chatId, messageLocalId, contentLength: content.length });
-  ensureChatIdle(chatId, db);
   try {
     const msg = repoListMessages(chatId, db).find((r) => r.localId === messageLocalId);
     if (!msg) throw new Error("Message not found");
-    repoUpdateMessage(chatId, messageLocalId, { content }, db);
+    const extra = (msg.extra ?? {}) as Record<string, unknown>;
+    repoUpdateMessage(
+      chatId,
+      messageLocalId,
+      {
+        content,
+        extra: { ...extra, rev: Number(extra.rev ?? 0) + 1, contentHash: contentHash(content) },
+      },
+      db,
+    );
     log.info("Message edited", { chatId, messageLocalId, contentLength: content.length });
   } catch (e) {
     log.error("editMessage failed", { chatId, messageLocalId }, e as Error);

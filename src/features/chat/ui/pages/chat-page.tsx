@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useEffect, useState } from "react";
 import { withImageVersion } from "@/lib/image-optimization";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -8,12 +8,11 @@ import {
   useSwipeMessage,
   useDeleteMessage,
   useEditMessage,
-  useImpersonateMessage,
-  useImagePrompt,
 } from "@/hooks/useChats";
+import { useRunProposal } from "@/hooks/useGenerationProposals";
 import { useChatConfig } from "@/hooks/useChatConfig";
 import { computeActivePathFromMessages } from "@/features/chat/tree/active-path";
-import { useChatGeneration } from "../hooks/use-chat-generation";
+import { useGenerationChat } from "../hooks/use-generation-chat";
 import {
   useChatUiStore,
   selectActivePlaceholderId,
@@ -37,7 +36,9 @@ import { SettingsPanel } from "../settings/settings-panel";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { EmptyState } from "@/components/common/EmptyState";
 import { SkeletonRows } from "@/components/common/Skeletons";
-import { MessageSquareX } from "lucide-react";
+import { MessageSquareX, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { SelectionPromptDialog } from "../components/selection-prompt-dialog";
 
 export function ChatPage() {
   const { id: chatId } = useParams({ from: "/chat/$id" });
@@ -59,6 +60,8 @@ export function ChatPage() {
   const openLightbox = useChatUiStore((s) => s.openLightbox);
   const closeLightbox = useChatUiStore((s) => s.closeLightbox);
   const customImage = useChatUiStore((s) => s.customImages[chatId] ?? null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [promptOpen, setPromptOpen] = useState(false);
   const setCustomImage = useChatUiStore((s) => s.setCustomImage);
   const clearCustomImage = useChatUiStore((s) => s.clearCustomImage);
 
@@ -78,13 +81,12 @@ export function ChatPage() {
   } = useChatMessages(chatId);
 
   const substitute = useChatMacros(config);
-  const generation = useChatGeneration(chatId, config?.chat.lockMessageLocalId ?? null);
+  const generation = useGenerationChat(chatId);
 
   const swipeMutation = useSwipeMessage();
   const deleteMsgMutation = useDeleteMessage();
   const editMutation = useEditMessage();
-  const impersonateMutation = useImpersonateMessage();
-  const imagePromptMutation = useImagePrompt();
+  const proposalMutation = useRunProposal();
 
   const activePath = useMemo(
     () =>
@@ -96,7 +98,7 @@ export function ChatPage() {
     [messages],
   );
 
-  const isBusy = config ? config.chat.lockState !== "idle" : false;
+  const isBusy = generation.isStreaming;
   const hasMessages = activePath.length > 0;
   // The placeholder id lives in a global store. Only the chat that owns the
   // live run may read it, otherwise a navigation would render another chat's
@@ -108,7 +110,7 @@ export function ChatPage() {
   const pendingVisible = pendingSend
     ? isPendingVisible(pendingSend, chatId, activePath, scopedPlaceholderId)
     : false;
-  const composerDisabled = config?.chat.lockState === "generating" && scopedPlaceholderId === null;
+  const composerDisabled = generation.isStreaming && !ownsGeneration;
 
   const characterAvatarUrl = config?.characterImagePath
     ? withImageVersion(
@@ -263,12 +265,8 @@ export function ChatPage() {
       refuseBusy();
       return;
     }
-    if (!activePath.some((entry) => entry.message.role === "user")) {
-      toast.error("Add a message before impersonating");
-      return;
-    }
-    impersonateMutation.mutate(
-      { chatId },
+    proposalMutation.mutate(
+      { chatId, trigger: "impersonate" },
       {
         onSuccess: (result) => {
           applyGeneratedText(result.text);
@@ -283,8 +281,7 @@ export function ChatPage() {
     isBusy,
     refuseBusy,
     generation.isStreaming,
-    activePath,
-    impersonateMutation.mutate,
+    proposalMutation.mutate,
     applyGeneratedText,
   ]);
 
@@ -293,8 +290,8 @@ export function ChatPage() {
       refuseBusy();
       return;
     }
-    imagePromptMutation.mutate(
-      { chatId },
+    proposalMutation.mutate(
+      { chatId, trigger: "image" },
       {
         onSuccess: (result) => {
           if (!result.text.trim()) {
@@ -314,7 +311,7 @@ export function ChatPage() {
     isBusy,
     refuseBusy,
     generation.isStreaming,
-    imagePromptMutation.mutate,
+    proposalMutation.mutate,
     applyGeneratedText,
     focusComposer,
   ]);
@@ -334,6 +331,51 @@ export function ChatPage() {
   const handleClearImage = useCallback(() => {
     clearCustomImage(chatId);
   }, [chatId, clearCustomImage]);
+
+  const toggleSelection = useCallback((messageLocalId: number) => {
+    setSelectedIds((previous) =>
+      previous.includes(messageLocalId)
+        ? previous.filter((id) => id !== messageLocalId)
+        : [...previous, messageLocalId],
+    );
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds([]);
+  }, []);
+
+  const handleProposalApplied = useCallback(() => {
+    void refetchMessages();
+  }, [refetchMessages]);
+
+  // Selection prompts land in the composer as editable text; the message is
+  // only written when the user sends it.
+  const handleSelectionPrompt = useCallback(
+    (text: string) => {
+      applyGeneratedText(text);
+      focusComposer();
+    },
+    [applyGeneratedText, focusComposer],
+  );
+
+  // Selection is per-chat UI state: never carry localIds across a route change.
+  useEffect(() => {
+    setSelectedIds([]);
+    setPromptOpen(false);
+  }, [chatId]);
+
+  // Drop ids that left the active path (deleted messages, branch switches) so
+  // the strip never reports messages it cannot prompt.
+  const activeLocalIds = useMemo(
+    () => new Set(activePath.map((entry) => entry.message.localId)),
+    [activePath],
+  );
+  useEffect(() => {
+    setSelectedIds((previous) => {
+      const next = previous.filter((id) => activeLocalIds.has(id));
+      return next.length === previous.length ? previous : next;
+    });
+  }, [activeLocalIds]);
 
   if (configLoading || messagesLoading) {
     return (
@@ -426,6 +468,9 @@ export function ChatPage() {
         onRegenerate={handleRegenerate}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        selectedIds={selectedIds}
+        onToggleSelect={toggleSelection}
+        onProposalApplied={handleProposalApplied}
       />
 
       <CharacterPortraitPanel
@@ -475,23 +520,60 @@ export function ChatPage() {
         }}
       />
 
-      <Composer
+      <SelectionPromptDialog
         chatId={chatId}
-        hasMessages={hasMessages}
-        onSend={handleSend}
-        onStop={generation.stop}
-        onImpersonate={handleImpersonate}
-        onImagePrompt={handleImagePrompt}
-        isStreaming={localStreaming}
-        isFinalizing={ownsGeneration && generation.status === "finalizing"}
-        impersonatePending={impersonateMutation.isPending}
-        imagePromptPending={imagePromptMutation.isPending}
-        disabled={composerDisabled}
-        characterName={config.character.name}
+        messageIds={selectedIds}
+        open={promptOpen}
+        onOpenChange={(open) => {
+          setPromptOpen(open);
+          if (!open) clearSelection();
+        }}
+        onGenerated={handleSelectionPrompt}
       />
+
+      {/* Floating over the message list so selecting never reflows the chat. */}
+      <div className="relative z-30 w-full shrink-0">
+        {selectedIds.length > 0 ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-full z-40 px-3 pb-2">
+            <div className="glass pointer-events-auto mx-auto flex w-full max-w-3xl items-center gap-2 rounded-full px-3 py-1.5 shadow-lg ring-1 ring-(--border-subtle)">
+              <span className="text-xs text-2">{selectedIds.length} selected</span>
+              <Button variant="ghost" size="sm" onClick={clearSelection}>
+                Clear
+              </Button>
+              <Button size="sm" className="ml-auto" onClick={() => setPromptOpen(true)}>
+                Prompt
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearSelection}
+                aria-label="Exit selection"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <Composer
+          chatId={chatId}
+          hasMessages={hasMessages}
+          onSend={handleSend}
+          onStop={generation.stop}
+          onImpersonate={handleImpersonate}
+          onImagePrompt={handleImagePrompt}
+          isStreaming={localStreaming}
+          isFinalizing={ownsGeneration && generation.status === "finalizing"}
+          impersonatePending={proposalMutation.isPending}
+          imagePromptPending={proposalMutation.isPending}
+          disabled={composerDisabled}
+          characterName={config.character.name}
+        />
+      </div>
 
       <SettingsPanel
         chatId={chatId}
+        isStreaming={generation.isStreaming}
         open={settingsOpen}
         onOpenChange={(open) => {
           setSettingsOpen(open);

@@ -5,7 +5,7 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 
 import viteReact from "@vitejs/plugin-react";
-import { privateAssetDevPlugin, viteFsDeny } from "./scripts/vite-dev-policy";
+import { privateAssetDevPlugin, viteFsDeny } from "./scripts/vite-dev-policy.ts";
 import tailwindcss from "@tailwindcss/vite";
 
 // Vite does not populate `process.env` from `.env*` files when evaluating an

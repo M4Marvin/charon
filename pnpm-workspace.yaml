@@ -7,3 +7,18 @@ allowBuilds:
 # Remove when @shadcn/react includes the mount-anchor fix from shadcn-ui/ui#11182.
 patchedDependencies:
   '@shadcn/react@0.3.0': patches/@shadcn__react@0.3.0.patch
+# pnpm 11+ defaults minimumReleaseAge to 1440 minutes. These upgraded packages
+# were published inside that window when this branch was cut; the versions are
+# already pinned in pnpm-lock.yaml. Remove each entry once its version is older
+# than 24h.
+minimumReleaseAgeExclude:
+  - better-auth
+  - '@better-auth/*'
+  - '@tanstack/db'
+  - '@tanstack/query-db-collection'
+  - '@tanstack/react-db'
+  - browserslist
+  - openai
+  - postcss
+  - react-resizable-panels
+  - shadcn

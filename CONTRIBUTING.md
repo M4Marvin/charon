@@ -31,9 +31,9 @@ becomes the owner. There is no separate admin CLI step.
 src/
   features/chat/          # Chat feature
     config/               # Settings resolution (provider, lorebook, persona)
-    generation/           # AI orchestration, SSE streaming, impersonation
-    tree/                 # Branching message tree, lock, active path
+    tree/                 # Branching message tree, active path
     ui/                   # Chat page components, hooks, pages, settings panels
+  features/generation/    # Prompt compiler, jobs, tools, SSE orchestration
   db/                     # Drizzle schema, repositories, test helpers
   server/
     fns/                  # createServerFn handlers
@@ -43,7 +43,7 @@ src/
   routes/
     chat/                 # Chat routes (/chat, /chat/$id)
     api/
-      chat-generate.ts    # SSE streaming endpoint
+      generation/chat.ts  # SSE streaming endpoint
       characters/$id/avatar.ts
       backgrounds/$id/image.ts
       personas/$id/icon.ts
@@ -67,9 +67,8 @@ UI (presentation) → Generation (AI calls) → Tree (structure) → Data (persi
                                Config (settings)
 ```
 
-- **Tree** — branching messages, lock, active path. Pure ops + I/O service. No AI awareness.
-- **Lock** — generation mutex stored on root message `extra` field. Self-healing stale recovery (5 min).
-- **Generation** — `prepareStream`/`finalizeStream`/`cancelStream`, impersonation, provider resolution, prompt assembly.
+- **Tree** — branching messages, active path. Pure ops + I/O service. No AI awareness.
+- **Generation** — prompt compilation, job/lease lifecycle, streaming finalize, impersonation, provider resolution.
 - **Config** — app settings and per-chat overrides for provider, model, preset, lorebooks, persona, prompts.
 - **UI** — pages (`/c`, `/c/$id`), components (composer, message list, side panels, settings), hooks.
 
@@ -111,6 +110,7 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 | `docs/user/personas-scenes-presets.md` | End-user personas, scenes, presets, display options |
 | `docs/user/troubleshooting.md` | End-user FAQ for common local problems |
 | `docs/markdown.md` | Full rendering pipeline (showdown, DOMPurify, CSS scoping, morphdom streaming) |
+| `docs/generation-engine.md` | Generation jobs, lease/finalize, prompt compiler, tools, side paths |
 
 ## Commands
 
@@ -142,7 +142,7 @@ Skip it in a pinch with `git commit --no-verify`.
 
 ## Tests
 
-422 tests across 24 files. All pass. Uses in-memory SQLite for integration tests. Run with `pnpm run test`.
+Uses in-memory SQLite for integration tests. Run with `pnpm run test`.
 
 ## Known typecheck noise
 

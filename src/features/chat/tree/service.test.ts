@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { makeTestDb, type TestDb } from "@/db/__tests__/helpers";
 import { makeCharacterData } from "@/db/__tests__/character-data";
 import { characters, chatMessages } from "@/db/schema";
-import { acquireGenerationLock } from "./lock";
 import {
   createChat,
   getChat,
@@ -500,40 +499,6 @@ describe("tree service", () => {
         .get()!;
       expect(parent.children).toEqual([replyMessage.localId, sibling.localId]);
       expect(parent.selectedChildLocalId).toBe(sibling.localId);
-    });
-
-    it("rejects when locked", () => {
-      const chat = createChat({ characterId: charId, title: "Test", greetings: ["Hi"] }, db);
-
-      const { replyMessage } = appendUserAndReply(chat.id, "Hi", "", { isStreaming: true }, db);
-      acquireGenerationLock(chat.id, replyMessage.localId, db);
-
-      expect(() =>
-        appendSibling(chat.id, replyMessage.localId, { role: "assistant", content: "x" }, db),
-      ).toThrow();
-    });
-  });
-
-  describe("deleteBranch skipIdleCheck", () => {
-    it("works while locked when skipIdleCheck is true", () => {
-      const chat = createChat(
-        { characterId: charId, title: "Test", greetings: ["First", "Second"] },
-        db,
-      );
-
-      acquireGenerationLock(chat.id, 1, db);
-
-      const { deletedIds } = deleteBranch(chat.id, 1, db, { skipIdleCheck: true });
-      expect(deletedIds).toEqual([1]);
-
-      const root = db.select().from(chatMessages).where(eq(chatMessages.localId, 0)).get()!;
-      expect(root.children).toEqual([2]);
-      expect(root.selectedChildLocalId).toBe(2);
-    });
-
-    it("still throws for root even with skipIdleCheck", () => {
-      const chat = createChat({ characterId: charId, title: "Test", greetings: ["Hi"] }, db);
-      expect(() => deleteBranch(chat.id, 0, db, { skipIdleCheck: true })).toThrow("hidden root");
     });
   });
 

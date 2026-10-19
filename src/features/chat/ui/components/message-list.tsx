@@ -33,6 +33,9 @@ interface MessageListProps {
   onRegenerate: (messageLocalId: number) => void;
   onEdit: (messageLocalId: number, content: string) => boolean;
   onDelete: (messageLocalId: number) => boolean;
+  selectedIds?: number[];
+  onToggleSelect?: (messageLocalId: number) => void;
+  onProposalApplied?: () => void;
   /** Instant-send overlay: user bubble content, null when absent. */
   pendingUserContent: string | null;
   /** Instant-send overlay: assistant typing-dots bubble. */
@@ -116,6 +119,9 @@ export function MessageList({
   onRegenerate,
   onEdit,
   onDelete,
+  selectedIds = [],
+  onToggleSelect,
+  onProposalApplied,
   pendingUserContent,
   showPendingAssistant,
 }: MessageListProps) {
@@ -234,6 +240,7 @@ export function MessageList({
                     scrollAnchor={isUserMessage}
                   >
                     <ChatMessage
+                      chatId={chatId}
                       entry={entry}
                       isStreaming={isPlaceholder}
                       streamingText={isPlaceholder ? streamingText : ""}
@@ -252,6 +259,9 @@ export function MessageList({
                       onRegenerate={onRegenerate}
                       onEdit={onEdit}
                       onDelete={onDelete}
+                      selected={selectedIds.includes(entry.message.localId)}
+                      onToggleSelect={onToggleSelect}
+                      onProposalApplied={onProposalApplied}
                     />
                   </MessageScrollerItem>
                 );
@@ -260,6 +270,7 @@ export function MessageList({
             {pendingUserEntry && (
               <MessageScrollerItem messageId="pending-user" scrollAnchor>
                 <ChatMessage
+                  chatId={chatId}
                   entry={pendingUserEntry}
                   isStreaming={false}
                   streamingText=""
@@ -279,6 +290,7 @@ export function MessageList({
             {pendingAssistantEntry && (
               <MessageScrollerItem messageId="pending-assistant">
                 <ChatMessage
+                  chatId={chatId}
                   entry={pendingAssistantEntry}
                   isStreaming
                   streamingText=""

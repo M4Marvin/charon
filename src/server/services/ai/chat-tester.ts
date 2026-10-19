@@ -98,7 +98,7 @@ export const testProviderChatCompletion = (
 
     return { ok: true, latencyMs, reply };
   }).pipe(
-    Effect.catchAll((error) =>
+    Effect.catch((error) =>
       Effect.succeed({
         ok: false,
         latencyMs: 0,

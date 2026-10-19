@@ -306,7 +306,6 @@ export const userSettings = sqliteTable("user_settings", {
   systemPrompt: text("system_prompt"),
   postHistoryInstructions: text("post_history_instructions"),
   impersonationPrompt: text("impersonation_prompt"),
-  imagePromptExample: text("image_prompt_example"),
   onboardingCompletedAt: integer("onboarding_completed_at", { mode: "timestamp_ms" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .notNull()
@@ -315,6 +314,84 @@ export const userSettings = sqliteTable("user_settings", {
     .notNull()
     .$defaultFn(() => new Date()),
 });
+
+// ── Generation engine ────────────────────────────────────────────────────────
+
+export const generationJobs = sqliteTable(
+  "generation_jobs",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    trigger: text("trigger", {
+      enum: ["send", "regenerate", "continue", "impersonate", "image", "rewrite", "transform"],
+    }).notNull(),
+    promptMode: text("prompt_mode", {
+      enum: ["chat", "impersonate", "image", "rewrite", "transform"],
+    }).notNull(),
+    status: text("status", {
+      enum: ["queued", "running", "finalizing", "succeeded", "failed", "cancelled", "expired"],
+    })
+      .notNull()
+      .default("queued"),
+    target: text("target", { mode: "json" }).$type<Record<string, unknown>>(),
+    input: text("input", { mode: "json" }).$type<Record<string, unknown>>(),
+    placeholderLocalId: integer("placeholder_local_id"),
+    leaseOwner: text("lease_owner"),
+    leaseEpoch: integer("lease_epoch").notNull().default(0),
+    leaseExpiresAt: integer("lease_expires_at", { mode: "timestamp_ms" }),
+    error: text("error", { mode: "json" }).$type<Record<string, unknown>>(),
+    usage: text("usage", { mode: "json" }).$type<Record<string, unknown>>(),
+    finishReason: text("finish_reason"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }),
+    finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
+  },
+  (table) => [
+    index("generation_jobs_chat_status_idx").on(table.chatId, table.status),
+    uniqueIndex("generation_jobs_active_chat_uq")
+      .on(table.chatId)
+      .where(sql`status IN ('queued', 'running', 'finalizing')`),
+  ],
+);
+
+export const generationProposals = sqliteTable(
+  "generation_proposals",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => generationJobs.id, { onDelete: "cascade" }),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["rewrite", "transform", "impersonate", "image"] }).notNull(),
+    status: text("status", { enum: ["pending", "accepted", "rejected"] })
+      .notNull()
+      .default("pending"),
+    targetLocalId: integer("target_local_id"),
+    baseRev: integer("base_rev"),
+    baseHash: text("base_hash"),
+    proposedContent: text("proposed_content").notNull(),
+    proposedRole: text("proposed_role", { enum: ["user", "assistant"] }),
+    meta: text("meta", { mode: "json" }).$type<Record<string, unknown>>(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
+  },
+  (table) => [
+    index("generation_proposals_chat_idx").on(table.chatId, table.status),
+    index("generation_proposals_job_idx").on(table.jobId),
+  ],
+);
 
 // ── Relations ────────────────────────────────────────────────────────────────
 // Optional but useful for typed `with: { ... }` joins. Kept minimal here.
@@ -414,3 +491,8 @@ export type NewUserSettings = typeof userSettings.$inferInsert;
 export type NewAiProvider = typeof aiProviders.$inferInsert;
 export type Background = typeof backgrounds.$inferSelect;
 export type NewBackground = typeof backgrounds.$inferInsert;
+
+export type GenerationJob = typeof generationJobs.$inferSelect;
+export type NewGenerationJob = typeof generationJobs.$inferInsert;
+export type GenerationProposal = typeof generationProposals.$inferSelect;
+export type NewGenerationProposal = typeof generationProposals.$inferInsert;

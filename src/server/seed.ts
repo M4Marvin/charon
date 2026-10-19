@@ -11,7 +11,6 @@ import { upsertUserSettings } from "@/db/repositories/userSettings";
 import { backgrounds } from "@/db/schema";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import { DEFAULT_LORE_CONFIG, DEFAULT_LORE_ENTRY } from "@/lib/st-core/lorebook";
-import { DEFAULT_IMAGE_PROMPT_EXAMPLE } from "@/features/chat/generation/image-prompt";
 import {
   diskPathFromStored,
   ensureUploadsDirs,
@@ -157,7 +156,6 @@ export async function seedSampleData(userId: string): Promise<void> {
       "Stay in character and continue the scene naturally. React to {{user}}'s latest message and move the conversation forward.",
     impersonationPrompt:
       "You are {{user}} for a single message only. Write a response as if you were {{user}} speaking to {{char}}. Stay in character for {{user}} based on the conversation so far.",
-    imagePromptExample: DEFAULT_IMAGE_PROMPT_EXAMPLE,
   });
 }
 

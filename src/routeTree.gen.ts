@@ -15,7 +15,6 @@ import { Route as SettingsRouteRouteImport } from './routes/settings/route'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as UpRouteImport } from './routes/up'
-import { Route as ApiChatGenerateRouteImport } from './routes/api/chat-generate'
 import { Route as CharactersIndexRouteImport } from './routes/characters/index'
 import { Route as CharactersIdRouteImport } from './routes/characters/$id'
 import { Route as CharactersNewRouteImport } from './routes/characters/new'
@@ -30,6 +29,7 @@ import { Route as SettingsPresetsRouteImport } from './routes/settings/presets'
 import { Route as SettingsProfileRouteImport } from './routes/settings/profile'
 import { Route as SettingsProvidersRouteImport } from './routes/settings/providers'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiGenerationChatRouteImport } from './routes/api/generation/chat'
 import { Route as CharactersIdEditRouteImport } from './routes/characters/$id_.edit'
 import { Route as ApiBackgroundsIdImageRouteImport } from './routes/api/backgrounds/$id/image'
 import { Route as ApiCharactersIdAvatarRouteImport } from './routes/api/characters/$id/avatar'
@@ -63,11 +63,6 @@ const SigninRoute = SigninRouteImport.update({
 const UpRoute = UpRouteImport.update({
   id: '/up',
   path: '/up',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiChatGenerateRoute = ApiChatGenerateRouteImport.update({
-  id: '/api/chat-generate',
-  path: '/api/chat-generate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CharactersIndexRoute = CharactersIndexRouteImport.update({
@@ -140,6 +135,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGenerationChatRoute = ApiGenerationChatRouteImport.update({
+  id: '/api/generation/chat',
+  path: '/api/generation/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CharactersIdEditRoute = CharactersIdEditRouteImport.update({
   id: '/characters/$id_/edit',
   path: '/characters/$id/edit',
@@ -168,7 +168,6 @@ export interface FileRoutesByFullPath {
   '/setup': typeof SetupRoute
   '/signin': typeof SigninRoute
   '/up': typeof UpRoute
-  '/api/chat-generate': typeof ApiChatGenerateRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
   '/chat/$id': typeof ChatIdRoute
@@ -183,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/lorebooks/': typeof LorebooksIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/generation/chat': typeof ApiGenerationChatRoute
   '/characters/$id/edit': typeof CharactersIdEditRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
   '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
@@ -194,7 +194,6 @@ export interface FileRoutesByTo {
   '/setup': typeof SetupRoute
   '/signin': typeof SigninRoute
   '/up': typeof UpRoute
-  '/api/chat-generate': typeof ApiChatGenerateRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
   '/chat/$id': typeof ChatIdRoute
@@ -209,6 +208,7 @@ export interface FileRoutesByTo {
   '/lorebooks': typeof LorebooksIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/generation/chat': typeof ApiGenerationChatRoute
   '/characters/$id/edit': typeof CharactersIdEditRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
   '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
@@ -222,7 +222,6 @@ export interface FileRoutesById {
   '/setup': typeof SetupRoute
   '/signin': typeof SigninRoute
   '/up': typeof UpRoute
-  '/api/chat-generate': typeof ApiChatGenerateRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
   '/chat/$id': typeof ChatIdRoute
@@ -237,6 +236,7 @@ export interface FileRoutesById {
   '/lorebooks/': typeof LorebooksIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/generation/chat': typeof ApiGenerationChatRoute
   '/characters/$id_/edit': typeof CharactersIdEditRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
   '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
@@ -251,7 +251,6 @@ export interface FileRouteTypes {
     | '/setup'
     | '/signin'
     | '/up'
-    | '/api/chat-generate'
     | '/characters/$id'
     | '/characters/new'
     | '/chat/$id'
@@ -266,6 +265,7 @@ export interface FileRouteTypes {
     | '/lorebooks/'
     | '/settings/'
     | '/api/auth/$'
+    | '/api/generation/chat'
     | '/characters/$id/edit'
     | '/api/backgrounds/$id/image'
     | '/api/characters/$id/avatar'
@@ -277,7 +277,6 @@ export interface FileRouteTypes {
     | '/setup'
     | '/signin'
     | '/up'
-    | '/api/chat-generate'
     | '/characters/$id'
     | '/characters/new'
     | '/chat/$id'
@@ -292,6 +291,7 @@ export interface FileRouteTypes {
     | '/lorebooks'
     | '/settings'
     | '/api/auth/$'
+    | '/api/generation/chat'
     | '/characters/$id/edit'
     | '/api/backgrounds/$id/image'
     | '/api/characters/$id/avatar'
@@ -304,7 +304,6 @@ export interface FileRouteTypes {
     | '/setup'
     | '/signin'
     | '/up'
-    | '/api/chat-generate'
     | '/characters/$id'
     | '/characters/new'
     | '/chat/$id'
@@ -319,6 +318,7 @@ export interface FileRouteTypes {
     | '/lorebooks/'
     | '/settings/'
     | '/api/auth/$'
+    | '/api/generation/chat'
     | '/characters/$id_/edit'
     | '/api/backgrounds/$id/image'
     | '/api/characters/$id/avatar'
@@ -332,7 +332,6 @@ export interface RootRouteChildren {
   SetupRoute: typeof SetupRoute
   SigninRoute: typeof SigninRoute
   UpRoute: typeof UpRoute
-  ApiChatGenerateRoute: typeof ApiChatGenerateRoute
   CharactersIdRoute: typeof CharactersIdRoute
   CharactersNewRoute: typeof CharactersNewRoute
   ChatIdRoute: typeof ChatIdRoute
@@ -342,6 +341,7 @@ export interface RootRouteChildren {
   ChatIndexRoute: typeof ChatIndexRoute
   LorebooksIndexRoute: typeof LorebooksIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiGenerationChatRoute: typeof ApiGenerationChatRoute
   CharactersIdEditRoute: typeof CharactersIdEditRoute
   ApiBackgroundsIdImageRoute: typeof ApiBackgroundsIdImageRoute
   ApiCharactersIdAvatarRoute: typeof ApiCharactersIdAvatarRoute
@@ -390,13 +390,6 @@ declare module '@tanstack/react-router' {
       path: '/up'
       fullPath: '/up'
       preLoaderRoute: typeof UpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/chat-generate': {
-      id: '/api/chat-generate'
-      path: '/api/chat-generate'
-      fullPath: '/api/chat-generate'
-      preLoaderRoute: typeof ApiChatGenerateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/characters/': {
@@ -497,6 +490,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/generation/chat': {
+      id: '/api/generation/chat'
+      path: '/api/generation/chat'
+      fullPath: '/api/generation/chat'
+      preLoaderRoute: typeof ApiGenerationChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/characters/$id_/edit': {
       id: '/characters/$id_/edit'
       path: '/characters/$id/edit'
@@ -555,7 +555,6 @@ const rootRouteChildren: RootRouteChildren = {
   SetupRoute: SetupRoute,
   SigninRoute: SigninRoute,
   UpRoute: UpRoute,
-  ApiChatGenerateRoute: ApiChatGenerateRoute,
   CharactersIdRoute: CharactersIdRoute,
   CharactersNewRoute: CharactersNewRoute,
   ChatIdRoute: ChatIdRoute,
@@ -565,6 +564,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatIndexRoute: ChatIndexRoute,
   LorebooksIndexRoute: LorebooksIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiGenerationChatRoute: ApiGenerationChatRoute,
   CharactersIdEditRoute: CharactersIdEditRoute,
   ApiBackgroundsIdImageRoute: ApiBackgroundsIdImageRoute,
   ApiCharactersIdAvatarRoute: ApiCharactersIdAvatarRoute,

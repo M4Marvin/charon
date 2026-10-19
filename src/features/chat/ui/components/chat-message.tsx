@@ -1,5 +1,15 @@
 import { memo, useState, useLayoutEffect, useRef, useCallback } from "react";
-import { ChevronLeft, ChevronRight, RotateCw, Pencil, Trash2, Check, Copy } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  RotateCw,
+  Pencil,
+  Trash2,
+  Check,
+  Copy,
+  ListChecks,
+} from "lucide-react";
+import { MessageRewriteButton } from "./message-rewrite-button";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +32,7 @@ import type { ActivePathEntry } from "@/features/chat/tree/types";
 const TEXTAREA_MAX_HEIGHT = 240;
 
 interface ChatMessageProps {
+  chatId: string;
   entry: ActivePathEntry;
   isStreaming: boolean;
   streamingText: string;
@@ -36,9 +47,13 @@ interface ChatMessageProps {
   onRegenerate: (messageLocalId: number) => void;
   onEdit: (messageLocalId: number, content: string) => boolean;
   onDelete: (messageLocalId: number) => boolean;
+  selected?: boolean;
+  onToggleSelect?: (messageLocalId: number) => void;
+  onProposalApplied?: () => void;
 }
 
 export const ChatMessage = memo(function ChatMessage({
+  chatId,
   entry,
   isStreaming,
   streamingText,
@@ -52,6 +67,9 @@ export const ChatMessage = memo(function ChatMessage({
   onRegenerate,
   onEdit,
   onDelete,
+  selected = false,
+  onToggleSelect,
+  onProposalApplied,
 }: ChatMessageProps) {
   const { message, siblingIndex, siblingTotal } = entry;
   const isAssistant = message.role === "assistant";
@@ -162,7 +180,8 @@ export const ChatMessage = memo(function ChatMessage({
                 <span
                   className={cn(
                     "ml-auto flex shrink-0 items-center gap-0.5 transition-opacity",
-                    "opacity-40 group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100",
+                    "group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100",
+                    selected ? "opacity-100" : "opacity-40",
                     "motion-reduce:transition-none",
                     disabled && "pointer-events-none",
                   )}
@@ -181,6 +200,24 @@ export const ChatMessage = memo(function ChatMessage({
                   >
                     {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
                   </Button>
+                  {onToggleSelect ? (
+                    <Button
+                      variant={selected ? "secondary" : "ghost"}
+                      size="icon"
+                      className={cn("size-9", selected ? "text-brand" : "text-2 hover:text-brand")}
+                      onClick={() => onToggleSelect(message.localId)}
+                      aria-pressed={selected}
+                      aria-label={selected ? "Deselect message" : "Select message for prompt"}
+                    >
+                      <ListChecks className="size-3.5" />
+                    </Button>
+                  ) : null}
+                  <MessageRewriteButton
+                    chatId={chatId}
+                    messageLocalId={message.localId}
+                    disabled={disabled}
+                    onApplied={onProposalApplied}
+                  />
                   <Button
                     variant="ghost"
                     size="icon"
