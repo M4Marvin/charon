@@ -11,6 +11,7 @@ import {
 } from "@/features/chat/tree/service";
 import { prepareGeneration } from "./prepare";
 import {
+  beginJob,
   cancelJob,
   createProposal,
   getJob,
@@ -18,7 +19,8 @@ import {
   QUEUED_JOB_TTL_MS,
 } from "@/db/repositories/generation";
 import { acceptProposal, denyProposal } from "./proposals";
-import { ChatBusyError, StaleTargetError } from "./errors";
+import { ChatBusyError, LeaseLostError, StaleTargetError } from "./errors";
+import { finalizeChat } from "./finalize";
 
 describe("generation prepare and proposals", () => {
   let ctx: ReturnType<typeof makeTestDb>;
@@ -132,6 +134,52 @@ describe("generation prepare and proposals", () => {
 
     expect(second.jobId).not.toBe(first.jobId);
     expect(getJob(first.jobId, db)?.status).toBe("expired");
+  });
+
+  it("finalizes the placeholder and job together and rolls back on a lost lease", async () => {
+    const prepared = await prepareGeneration(
+      userId,
+      { chatId, trigger: "send", content: "Hi" },
+      "User",
+      db,
+    );
+    const owner = "owner-1";
+    const lease = beginJob({ jobId: prepared.jobId, owner }, db);
+
+    expect(() =>
+      finalizeChat(
+        {
+          jobId: prepared.jobId,
+          owner: "someone-else",
+          epoch: lease.leaseEpoch,
+          text: "reply",
+        },
+        db,
+      ),
+    ).toThrow(LeaseLostError);
+    const untouched = db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.localId, prepared.placeholderLocalId))
+      .get();
+    expect(untouched?.content).toBe("");
+
+    finalizeChat(
+      {
+        jobId: prepared.jobId,
+        owner,
+        epoch: lease.leaseEpoch,
+        text: "reply",
+      },
+      db,
+    );
+    const finalized = db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.localId, prepared.placeholderLocalId))
+      .get();
+    expect(finalized?.content).toBe("reply");
+    expect(getJob(prepared.jobId, db)?.status).toBe("succeeded");
   });
 
   it("does not cancel an already finalized job", async () => {

@@ -9,13 +9,19 @@ import {
 } from "@tanstack/ai";
 import { reconstructChat, withPersistence } from "@tanstack/ai-persistence";
 import { tryGetSession } from "@/server/session";
-import { failJob, getJob, getJobByRequestId, heartbeatJob } from "@/db/repositories/generation";
+import {
+  beginJob,
+  failJob,
+  getJob,
+  getJobByRequestId,
+  heartbeatJob,
+} from "@/db/repositories/generation";
 import { aiPersistence } from "@/features/generation/persistence-singleton";
 import { loadGenerationSnapshot } from "@/features/generation/context";
 import { compilePrompt } from "@/features/generation/prompt";
 import { makeAdapter } from "@/features/generation/provider";
 import { readTools } from "@/features/generation/tools";
-import { runGeneration, withGenerationService } from "@/features/generation/service";
+import { finalizeChat } from "@/features/generation/finalize";
 import { httpStatusFor, isGenerationError, toErrorBody } from "@/features/generation/errors";
 import type { ToolContext } from "@/features/generation/contract";
 import { createLogger } from "@/features/logging";
@@ -66,29 +72,21 @@ async function* finalizeOnTerminal(
           | TokenUsage
           | undefined;
         finishReason = reason;
-        await runGeneration(
-          withGenerationService((service) =>
-            service.finalizeChat({ jobId, owner, epoch, text, usage, finishReason }),
-          ),
-        );
+        finalizeChat({ jobId, owner, epoch, text, usage, finishReason });
         yield chunk;
         continue;
       }
 
       if (chunk.type === "RUN_ERROR") {
         terminal = true;
-        await runGeneration(
-          withGenerationService((service) =>
-            service.fail({
-              jobId,
-              owner,
-              code: "provider_error",
-              message: chunk.message,
-              usage,
-              finishReason,
-            }),
-          ),
-        );
+        failJob({
+          jobId,
+          owner,
+          code: "provider_error",
+          message: chunk.message,
+          usage: usage as unknown as Record<string, unknown> | undefined,
+          finishReason,
+        });
         yield chunk;
         continue;
       }
@@ -97,32 +95,28 @@ async function* finalizeOnTerminal(
     }
 
     if (!terminal) {
-      await runGeneration(
-        withGenerationService((service) =>
-          service.fail({
-            jobId,
-            owner,
-            code: "incomplete_stream",
-            message: "The provider stream ended without a terminal event.",
-            usage,
-            finishReason,
-          }),
-        ),
-      );
+      failJob({
+        jobId,
+        owner,
+        code: "incomplete_stream",
+        message: "The provider stream ended without a terminal event.",
+        usage: usage as unknown as Record<string, unknown> | undefined,
+        finishReason,
+      });
     }
   } catch (error) {
-    await runGeneration(
-      withGenerationService((service) =>
-        service.fail({
-          jobId,
-          owner,
-          code: "finalize_failed",
-          message: error instanceof Error ? error.message : String(error),
-          usage,
-          finishReason,
-        }),
-      ),
-    ).catch(() => {});
+    try {
+      failJob({
+        jobId,
+        owner,
+        code: "finalize_failed",
+        message: error instanceof Error ? error.message : String(error),
+        usage: usage as unknown as Record<string, unknown> | undefined,
+        finishReason,
+      });
+    } catch {
+      // Preserve the original stream error.
+    }
     throw error;
   } finally {
     clearInterval(heartbeat);
@@ -209,9 +203,7 @@ export const Route = createFileRoute("/api/generation/chat")({
           const adapter = makeAdapter(snapshot.provider);
           const tools = readTools;
           const owner = crypto.randomUUID();
-          const lease = await runGeneration(
-            withGenerationService((service) => service.begin(job.id, owner)),
-          );
+          const lease = beginJob({ jobId: job.id, owner });
 
           const toolContext: ToolContext = {
             userId: user.id,
@@ -237,7 +229,7 @@ export const Route = createFileRoute("/api/generation/chat")({
             middleware: [withPersistence(aiPersistence)],
           });
 
-          const finalized = finalizeOnTerminal(job.id, owner, lease.epoch, stream);
+          const finalized = finalizeOnTerminal(job.id, owner, lease.leaseEpoch, stream);
           return toServerSentEventsResponse(finalized, {
             durability: { adapter: durability },
             headers: {

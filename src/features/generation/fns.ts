@@ -25,19 +25,15 @@ const CancelSchema = Schema.Struct({ jobId: Schema.String });
 export const prepareGenerationFn = createServerFn({ method: "POST", strict: { output: false } })
   .validator((data) => Schema.decodeUnknownSync(PrepareSchema)(data))
   .handler(async ({ data }) => {
-    const [{ getSession }, { runGeneration, withGenerationService }] = await Promise.all([
+    const [{ getSession }, { prepareGeneration }] = await Promise.all([
       import("@/server/session"),
-      import("./service"),
+      import("./prepare"),
     ]);
     const { user } = await getSession();
-    const prepared = await runGeneration(
-      withGenerationService((service) =>
-        service.prepare(
-          user.id,
-          { ...data, selection: data.selection ? [...data.selection] : undefined },
-          user.name,
-        ),
-      ),
+    const prepared = await prepareGeneration(
+      user.id,
+      { ...data, selection: data.selection ? [...data.selection] : undefined },
+      user.name,
     );
     return {
       ...prepared,
