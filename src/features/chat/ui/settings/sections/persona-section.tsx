@@ -177,7 +177,11 @@ export function PersonaSection(_props: SectionProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <SectionHeader title="Persona" />
+      <SectionHeader
+        title="Your persona"
+        description="The default persona used in all chats."
+        scope="global"
+      />
 
       {queryError ? (
         <ErrorBanner

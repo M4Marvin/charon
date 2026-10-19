@@ -16,7 +16,7 @@ export function SettingsNav({ sections, activeId, onChange }: SettingsNavProps) 
   return (
     <nav
       aria-label="Settings sections"
-      className="flex w-14 shrink-0 flex-col gap-1 overflow-y-auto border-r border-subtle py-2 scrollbar-thin sm:w-44"
+      className="flex w-14 shrink-0 flex-col gap-1 overflow-y-auto border-r border-subtle py-2 scrollbar-thin sm:w-48"
     >
       {groups.map((group) => (
         <div key={group.id} className="flex flex-col gap-0.5">
@@ -30,8 +30,7 @@ export function SettingsNav({ sections, activeId, onChange }: SettingsNavProps) 
                   type="button"
                   onClick={() => onChange(s.id)}
                   className={cn(
-                    "flex min-h-9 items-center justify-center gap-2.5 rounded-lg px-2 py-2 text-xs transition-colors focus-ring sm:mr-1 sm:justify-start",
-                    s.secondary ? "sm:ml-5" : "sm:ml-1",
+                    "mx-1 flex min-h-9 items-center justify-center gap-2.5 rounded-lg px-2 py-2 text-xs transition-colors focus-ring sm:justify-start",
                     activeId === s.id
                       ? "bg-(--lagoon)/15 text-(--lagoon)"
                       : "text-(--sea-ink-soft) hover:bg-raised hover:text-(--sea-ink)",

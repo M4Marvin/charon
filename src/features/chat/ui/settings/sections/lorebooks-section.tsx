@@ -118,7 +118,8 @@ export function LorebooksSection(_props: SectionProps) {
     <div className="flex flex-col gap-5">
       <SectionHeader
         title="Lorebooks"
-        description="Toggle active books, manage entries."
+        description="Enable lorebooks for all chats. Entries are shared across every conversation."
+        scope="global"
         actions={
           <>
             <Button

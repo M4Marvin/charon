@@ -19,7 +19,11 @@ export function CharacterSection({ chatId, isStreaming }: SectionProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <SectionHeader title="Character overrides" />
+      <SectionHeader
+        title="Character"
+        description="Overrides for this chat. Empty fields use the character card."
+        scope="chat"
+      />
 
       <BlurCommitTextarea
         id="cs-desc"

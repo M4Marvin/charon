@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import { Zap, RotateCw, ArrowRight, CircleCheck, CircleX } from "lucide-react";
+import { Zap, RotateCw, ArrowUpRight, CircleCheck, CircleX } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,10 +25,10 @@ import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings"
 interface SectionProps {
   chatId: string;
   isStreaming: boolean;
-  onNavigate: (sectionId: string) => void;
+  onClose: () => void;
 }
 
-export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
+export function ModelSection({ isStreaming, onClose }: SectionProps) {
   const {
     data: settings,
     error: settingsError,
@@ -122,35 +123,15 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
   return (
     <div className="flex flex-col gap-5">
       <SectionHeader
-        title="Connection"
-        actions={
-          <>
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto gap-1 p-0 text-xs text-(--lagoon)"
-              onClick={() => onNavigate("providers")}
-            >
-              Providers
-              <ArrowRight className="size-3" data-icon="inline-end" />
-            </Button>
-            <Button
-              variant="link"
-              size="sm"
-              className="h-auto gap-1 p-0 text-xs text-(--lagoon)"
-              onClick={() => onNavigate("presets")}
-            >
-              Presets
-              <ArrowRight className="size-3" data-icon="inline-end" />
-            </Button>
-          </>
-        }
+        title="Model & preset"
+        description="The default provider, model, and preset used by every chat."
+        scope="global"
       />
 
       {queryError ? (
         <ErrorBanner
           message={
-            queryError instanceof Error ? queryError.message : "Failed to load connection settings"
+            queryError instanceof Error ? queryError.message : "Failed to load model settings"
           }
           onRetry={() => {
             void Promise.all([refetchSettings(), refetchProviders(), refetchPresets()]);
@@ -161,7 +142,7 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
       {!queryError && settingsQueryLoading ? (
         <div role="status" className="space-y-2">
           <SkeletonText lines={3} />
-          <span className="sr-only">Loading connection settings</span>
+          <span className="sr-only">Loading model settings</span>
         </div>
       ) : null}
 
@@ -285,11 +266,11 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
           disabled={isStreaming}
         >
           <SelectTrigger id="cs-preset">
-            <SelectValue placeholder="Default (no preset)" />
+            <SelectValue placeholder="No preset" />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              <SelectItem value="_none">None (default)</SelectItem>
+              <SelectItem value="_none">No preset</SelectItem>
               {presets?.map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.name}
@@ -299,6 +280,25 @@ export function ConnectionSection({ isStreaming, onNavigate }: SectionProps) {
           </SelectContent>
         </Select>
       </Field>
+
+      <div className="rounded-xl border border-subtle bg-surface p-4">
+        <p className="text-sm font-medium text-1">Manage AI setup</p>
+        <p className="mt-1 text-xs text-2">Providers and presets are shared across all chats.</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/settings/providers" onClick={onClose}>
+              Providers
+              <ArrowUpRight className="size-3.5" data-icon="inline-end" />
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/settings/presets" onClick={onClose}>
+              Presets
+              <ArrowUpRight className="size-3.5" data-icon="inline-end" />
+            </Link>
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

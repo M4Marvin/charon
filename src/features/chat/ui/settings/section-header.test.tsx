@@ -7,10 +7,10 @@ import { SectionHeader } from "./section-header";
 afterEach(cleanup);
 
 describe("SectionHeader", () => {
-  it("renders the title", () => {
+  it("renders the title as a heading", () => {
     render(<SectionHeader title="Display" />);
 
-    expect(screen.getByText("Display")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 3, name: "Display" })).toBeTruthy();
   });
 
   it("renders the description when passed", () => {
@@ -35,5 +35,11 @@ describe("SectionHeader", () => {
     render(<SectionHeader title="Display" />);
 
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("renders the scope when passed", () => {
+    render(<SectionHeader title="Display" scope="browser" />);
+
+    expect(screen.getByText("This browser")).toBeTruthy();
   });
 });

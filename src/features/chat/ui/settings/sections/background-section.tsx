@@ -18,7 +18,7 @@ interface SectionProps {
   isStreaming: boolean;
 }
 
-export function SceneSection({ chatId, isStreaming }: SectionProps) {
+export function BackgroundSection({ chatId, isStreaming }: SectionProps) {
   const { data: config, error: configError, refetch: refetchConfig } = useChatConfig(chatId);
   const {
     data: backgrounds,
@@ -98,11 +98,11 @@ export function SceneSection({ chatId, isStreaming }: SectionProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <SectionHeader title="Scene" />
+      <SectionHeader title="Background" description="The scene behind this chat." scope="chat" />
 
       {queryError ? (
         <ErrorBanner
-          message={queryError instanceof Error ? queryError.message : "Failed to load scenes"}
+          message={queryError instanceof Error ? queryError.message : "Failed to load backgrounds"}
           onRetry={() => {
             void Promise.all([refetchConfig(), refetchBackgrounds()]);
           }}
@@ -158,7 +158,7 @@ export function SceneSection({ chatId, isStreaming }: SectionProps) {
       ) : (
         <EmptyState
           icon={ImageIcon}
-          title="No scenes yet"
+          title="No backgrounds yet"
           description="Upload a background image to set the scene."
         />
       )}
@@ -215,7 +215,7 @@ export function SceneSection({ chatId, isStreaming }: SectionProps) {
           if (!open) setDeleteTarget(null);
         }}
         title="Delete background?"
-        description="This removes the background image from your library. Chats using it will be unaffected."
+        description="This removes the background image from your library. Chats using it will lose this background."
         destructive
         loading={deleteBgMutation.isPending}
         onConfirm={handleDeleteBg}

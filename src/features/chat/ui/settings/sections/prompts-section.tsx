@@ -18,7 +18,11 @@ export function PromptsSection(_props: SectionProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <SectionHeader title="Prompts" />
+      <SectionHeader
+        title="Global prompts"
+        description="Prompts used in every chat."
+        scope="global"
+      />
 
       {error ? (
         <ErrorBanner

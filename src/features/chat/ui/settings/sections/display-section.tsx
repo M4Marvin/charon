@@ -20,7 +20,11 @@ export function DisplaySection(_props: SectionProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <SectionHeader title="Display" />
+      <SectionHeader
+        title="Display"
+        description="Appearance options saved in this browser."
+        scope="browser"
+      />
 
       <Field className="flex items-center justify-between gap-3">
         <FieldLabel htmlFor="ds-highlight" className="text-xs text-2 cursor-pointer">
