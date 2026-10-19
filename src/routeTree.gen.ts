@@ -30,6 +30,7 @@ import { Route as SettingsPresetsRouteImport } from './routes/settings/presets'
 import { Route as SettingsProfileRouteImport } from './routes/settings/profile'
 import { Route as SettingsProvidersRouteImport } from './routes/settings/providers'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiGenerationChatRouteImport } from './routes/api/generation/chat'
 import { Route as CharactersIdEditRouteImport } from './routes/characters/$id_.edit'
 import { Route as ApiBackgroundsIdImageRouteImport } from './routes/api/backgrounds/$id/image'
 import { Route as ApiCharactersIdAvatarRouteImport } from './routes/api/characters/$id/avatar'
@@ -140,6 +141,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGenerationChatRoute = ApiGenerationChatRouteImport.update({
+  id: '/api/generation/chat',
+  path: '/api/generation/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CharactersIdEditRoute = CharactersIdEditRouteImport.update({
   id: '/characters/$id_/edit',
   path: '/characters/$id/edit',
@@ -183,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/lorebooks/': typeof LorebooksIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/generation/chat': typeof ApiGenerationChatRoute
   '/characters/$id/edit': typeof CharactersIdEditRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
   '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/lorebooks': typeof LorebooksIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/generation/chat': typeof ApiGenerationChatRoute
   '/characters/$id/edit': typeof CharactersIdEditRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
   '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/lorebooks/': typeof LorebooksIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/generation/chat': typeof ApiGenerationChatRoute
   '/characters/$id_/edit': typeof CharactersIdEditRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
   '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
@@ -266,6 +275,7 @@ export interface FileRouteTypes {
     | '/lorebooks/'
     | '/settings/'
     | '/api/auth/$'
+    | '/api/generation/chat'
     | '/characters/$id/edit'
     | '/api/backgrounds/$id/image'
     | '/api/characters/$id/avatar'
@@ -292,6 +302,7 @@ export interface FileRouteTypes {
     | '/lorebooks'
     | '/settings'
     | '/api/auth/$'
+    | '/api/generation/chat'
     | '/characters/$id/edit'
     | '/api/backgrounds/$id/image'
     | '/api/characters/$id/avatar'
@@ -319,6 +330,7 @@ export interface FileRouteTypes {
     | '/lorebooks/'
     | '/settings/'
     | '/api/auth/$'
+    | '/api/generation/chat'
     | '/characters/$id_/edit'
     | '/api/backgrounds/$id/image'
     | '/api/characters/$id/avatar'
@@ -342,6 +354,7 @@ export interface RootRouteChildren {
   ChatIndexRoute: typeof ChatIndexRoute
   LorebooksIndexRoute: typeof LorebooksIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiGenerationChatRoute: typeof ApiGenerationChatRoute
   CharactersIdEditRoute: typeof CharactersIdEditRoute
   ApiBackgroundsIdImageRoute: typeof ApiBackgroundsIdImageRoute
   ApiCharactersIdAvatarRoute: typeof ApiCharactersIdAvatarRoute
@@ -497,6 +510,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/generation/chat': {
+      id: '/api/generation/chat'
+      path: '/api/generation/chat'
+      fullPath: '/api/generation/chat'
+      preLoaderRoute: typeof ApiGenerationChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/characters/$id_/edit': {
       id: '/characters/$id_/edit'
       path: '/characters/$id/edit'
@@ -565,6 +585,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatIndexRoute: ChatIndexRoute,
   LorebooksIndexRoute: LorebooksIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiGenerationChatRoute: ApiGenerationChatRoute,
   CharactersIdEditRoute: CharactersIdEditRoute,
   ApiBackgroundsIdImageRoute: ApiBackgroundsIdImageRoute,
   ApiCharactersIdAvatarRoute: ApiCharactersIdAvatarRoute,
@@ -573,12 +594,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
