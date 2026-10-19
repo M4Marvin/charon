@@ -2,13 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   chat as aiChat,
   memoryStream,
+  resumeServerSentEventsResponse,
   toServerSentEventsResponse,
   type StreamChunk,
   type TokenUsage,
 } from "@tanstack/ai";
 import { reconstructChat, withPersistence } from "@tanstack/ai-persistence";
 import { tryGetSession } from "@/server/session";
-import { getJob, getJobByRequestId, heartbeatJob } from "@/db/repositories/generation";
+import { failJob, getJob, getJobByRequestId, heartbeatJob } from "@/db/repositories/generation";
 import { aiPersistence } from "@/features/generation/persistence-singleton";
 import { loadGenerationSnapshot } from "@/features/generation/context";
 import { compilePrompt } from "@/features/generation/prompt";
@@ -20,6 +21,8 @@ import type { ToolContext } from "@/features/generation/contract";
 import { createLogger } from "@/features/logging";
 
 const log = createLogger("api:generation:chat");
+
+async function* noStream(): AsyncGenerator<StreamChunk> {}
 
 function finishReasonOf(chunk: StreamChunk): string | null {
   const value = chunk as unknown as {
@@ -59,7 +62,9 @@ async function* finalizeOnTerminal(
           continue;
         }
         terminal = true;
-        usage = (Array.isArray(chunk.usage) ? chunk.usage[0] : chunk.usage) as TokenUsage | undefined;
+        usage = (Array.isArray(chunk.usage) ? chunk.usage[0] : chunk.usage) as
+          | TokenUsage
+          | undefined;
         finishReason = reason;
         await runGeneration(
           withGenerationService((service) =>
@@ -135,11 +140,16 @@ export const Route = createFileRoute("/api/generation/chat")({
             headers: { "Content-Type": "application/json" },
           });
         }
+        const durability = memoryStream(request);
+        if (durability.resumeFrom() !== null) {
+          return resumeServerSentEventsResponse({ adapter: durability });
+        }
         return reconstructChat(aiPersistence, request, {
           authorize: async () => true,
         });
       },
       POST: async ({ request }) => {
+        let activeJobId: string | null = null;
         try {
           const session = await tryGetSession();
           if (!session) {
@@ -149,23 +159,36 @@ export const Route = createFileRoute("/api/generation/chat")({
             });
           }
           const { user } = session;
+          const durability = memoryStream(request);
+          if (durability.resumeFrom() !== null) {
+            return toServerSentEventsResponse(noStream(), {
+              durability: { adapter: durability },
+            });
+          }
           const body = (await request.json()) as Record<string, unknown>;
           const data = (body.data ?? body.forwardedProps ?? body) as Record<string, unknown>;
           const jobId = String(data.jobId ?? "");
           if (!jobId) {
-            return new Response(JSON.stringify({ code: "invalid_request", message: "jobId is required" }), {
-              status: 400,
-              headers: { "Content-Type": "application/json" },
-            });
+            return new Response(
+              JSON.stringify({ code: "invalid_request", message: "jobId is required" }),
+              {
+                status: 400,
+                headers: { "Content-Type": "application/json" },
+              },
+            );
           }
 
           const job = getJob(jobId) ?? getJobByRequestId(jobId);
           if (!job) {
-            return new Response(JSON.stringify({ code: "not_found", message: "Generation job not found" }), {
-              status: 404,
-              headers: { "Content-Type": "application/json" },
-            });
+            return new Response(
+              JSON.stringify({ code: "not_found", message: "Generation job not found" }),
+              {
+                status: 404,
+                headers: { "Content-Type": "application/json" },
+              },
+            );
           }
+          activeJobId = job.id;
 
           const selectionIds = Array.isArray(job.input?.selection)
             ? (job.input?.selection as number[])
@@ -212,7 +235,7 @@ export const Route = createFileRoute("/api/generation/chat")({
 
           const finalized = finalizeOnTerminal(job.id, owner, lease.epoch, stream);
           return toServerSentEventsResponse(finalized, {
-            durability: { adapter: memoryStream(request) },
+            durability: { adapter: durability },
             headers: {
               "Cache-Control": "no-cache, no-transform",
               "X-Accel-Buffering": "no",
@@ -220,17 +243,19 @@ export const Route = createFileRoute("/api/generation/chat")({
           });
         } catch (error) {
           const err = error as GenerationError & { _tag?: string };
-          log.error("generation chat failed", {
-            tag: err?._tag,
-            message: err instanceof Error ? err.message : String(error),
+          const message = err instanceof Error ? err.message : "Generation failed";
+          log.error("generation chat failed", { tag: err?._tag, message });
+          if (activeJobId) {
+            try {
+              failJob({ jobId: activeJobId, code: "request_failed", message });
+            } catch {
+              // Best effort: the job may already be terminal.
+            }
+          }
+          return new Response(JSON.stringify({ code: err?._tag ?? "internal", message }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
           });
-          return new Response(
-            JSON.stringify({
-              code: err?._tag ?? "internal",
-              message: err instanceof Error ? err.message : "Generation failed",
-            }),
-            { status: 500, headers: { "Content-Type": "application/json" } },
-          );
         }
       },
     },

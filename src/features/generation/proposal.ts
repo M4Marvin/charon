@@ -1,8 +1,4 @@
-import {
-  chat as aiChat,
-  type StreamChunk,
-  type TokenUsage,
-} from "@tanstack/ai";
+import { chat as aiChat, type StreamChunk, type TokenUsage } from "@tanstack/ai";
 import { withPersistence, type ChatPersistence } from "@tanstack/ai-persistence";
 import { db as defaultDb, type DB } from "@/db";
 import {
@@ -56,37 +52,44 @@ export async function runProposal(
   persistence: ChatPersistence = aiPersistence,
 ): Promise<RunProposalResult> {
   const prepared = await prepareGeneration(userId, input, userName, db);
-  const job = getJob(prepared.jobId, db);
-  if (!job) throw new Error("Generation job not found");
-
-  const selection = Array.isArray(job.input?.selection)
-    ? (job.input?.selection as number[])
-    : input.selection ?? (input.messageLocalId ? [input.messageLocalId] : []);
-  const snapshot = await loadGenerationSnapshot(userId, input.chatId, 0, selection, db);
-  const compiled = compilePrompt(snapshot, job.promptMode);
-  const adapter = makeAdapter(snapshot.provider);
-  const owner = crypto.randomUUID();
-  const lease = beginJob({ jobId: job.id, owner }, db);
-  const heartbeat = setInterval(() => {
-    try {
-      heartbeatJob({ jobId: job.id, owner, ttlMs: 120_000 }, db);
-    } catch {
-      // Terminal handling below reports the real outcome.
-    }
-  }, 30_000);
-  const toolContext: ToolContext = {
-    userId,
-    chatId: input.chatId,
-    jobId: job.id,
-    mode: job.promptMode,
-    baseLeafId: job.baseLeafId ?? 0,
-    selection,
-  };
-
+  let job: ReturnType<typeof getJob> | undefined;
+  let owner: string | undefined;
+  let leaseAcquired = false;
+  let heartbeat: ReturnType<typeof setInterval> | undefined;
   let text = "";
   let usage: TokenUsage | undefined;
   let finishReason: string | null = null;
+
   try {
+    job = getJob(prepared.jobId, db);
+    if (!job) throw new Error("Generation job not found");
+
+    const selection = Array.isArray(job.input?.selection)
+      ? (job.input?.selection as number[])
+      : (input.selection ?? (input.messageLocalId ? [input.messageLocalId] : []));
+    const snapshot = await loadGenerationSnapshot(userId, input.chatId, 0, selection, db);
+    const compiled = compilePrompt(snapshot, job.promptMode);
+    const adapter = makeAdapter(snapshot.provider);
+    owner = crypto.randomUUID();
+    const leaseOwner = owner;
+    const lease = beginJob({ jobId: job.id, owner: leaseOwner }, db);
+    leaseAcquired = true;
+    heartbeat = setInterval(() => {
+      try {
+        heartbeatJob({ jobId: job!.id, owner: leaseOwner, ttlMs: 120_000 }, db);
+      } catch {
+        // Terminal handling below reports the real outcome.
+      }
+    }, 30_000);
+    const toolContext: ToolContext = {
+      userId,
+      chatId: input.chatId,
+      jobId: job.id,
+      mode: job.promptMode,
+      baseLeafId: job.baseLeafId ?? 0,
+      selection,
+    };
+
     const stream = aiChat({
       adapter,
       messages: compiled.messages,
@@ -108,7 +111,9 @@ export async function runProposal(
         const reason = finishReasonOf(chunk);
         if (reason === "tool_calls") continue;
         finishReason = reason;
-        usage = (Array.isArray(chunk.usage) ? chunk.usage[0] : chunk.usage) as TokenUsage | undefined;
+        usage = (Array.isArray(chunk.usage) ? chunk.usage[0] : chunk.usage) as
+          | TokenUsage
+          | undefined;
       }
       if (chunk.type === "RUN_ERROR") {
         throw new Error(chunk.message);
@@ -140,7 +145,7 @@ export async function runProposal(
     const targetLocalId =
       typeof target.messageLocalId === "number"
         ? target.messageLocalId
-        : input.messageLocalId ?? null;
+        : (input.messageLocalId ?? null);
     const targetRole =
       targetLocalId != null
         ? getMessages(input.chatId, db).find((message) => message.localId === targetLocalId)?.role
@@ -170,7 +175,7 @@ export async function runProposal(
     const finalized = finalizeJob(
       {
         jobId: job.id,
-        owner,
+        owner: leaseOwner,
         epoch: lease.leaseEpoch,
         result: { kind: "proposal", proposalId: proposal.id },
         usage: usage as unknown as Record<string, unknown> | undefined,
@@ -190,8 +195,8 @@ export async function runProposal(
   } catch (error) {
     failJob(
       {
-        jobId: job.id,
-        owner,
+        jobId: prepared.jobId,
+        owner: leaseAcquired ? owner : undefined,
         code: "proposal_failed",
         message: error instanceof Error ? error.message : String(error),
         usage: usage as unknown as Record<string, unknown> | undefined,
@@ -201,7 +206,7 @@ export async function runProposal(
     );
     throw error;
   } finally {
-    clearInterval(heartbeat);
+    if (heartbeat) clearInterval(heartbeat);
   }
 }
 
