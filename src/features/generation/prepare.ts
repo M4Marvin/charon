@@ -1,5 +1,5 @@
 import { db as defaultDb, type DB } from "@/db";
-import { createJob, failJob, getJob, setJobPlaceholder, cancelJob } from "@/db/repositories/generation";
+import { createJobInTransaction, setJobPlaceholder, cancelJob } from "@/db/repositories/generation";
 import {
   appendMessage,
   appendSibling,
@@ -53,6 +53,11 @@ export async function prepareGeneration(
 ): Promise<PreparedGeneration> {
   if (!input.chatId) throw new GenerationValidationError({ message: "chatId is required" });
   const requestId = input.requestId ?? crypto.randomUUID();
+  const content = input.content?.trim() ?? "";
+  if (input.trigger === "send" && !content) {
+    throw new GenerationValidationError({ message: "Content is required" });
+  }
+
   const config = await loadChatConfig(userId, input.chatId, userName, db);
   if (!config.provider) {
     throw new ConfigError({
@@ -89,9 +94,10 @@ export async function prepareGeneration(
     if (!leaf || leaf.localId === 0) {
       throw new GenerationValidationError({ message: "No active message to continue from" });
     }
-    target = leaf.role === "assistant"
-      ? { kind: "sibling", messageLocalId: leaf.localId }
-      : { kind: "append" };
+    target =
+      leaf.role === "assistant"
+        ? { kind: "sibling", messageLocalId: leaf.localId }
+        : { kind: "append" };
   } else if (input.trigger === "rewrite") {
     const targetId = messageLocalId ?? selection[0];
     if (!targetId) {
@@ -111,42 +117,44 @@ export async function prepareGeneration(
     target = { kind: "insertAfter", messageLocalId: last, role: "assistant" };
   }
 
-  const job = createJob(
-    {
-      requestId,
-      chatId: input.chatId,
-      trigger: input.trigger,
-      promptMode: modeFor(input.trigger),
-      baseLeafId: activeLeafId,
-      target,
-      input: {
-        content: input.content,
-        messageLocalId,
-        selection,
-      },
-      requiresConfirmation:
-        input.trigger === "rewrite" || input.trigger === "transform" || input.trigger === "image",
-    },
-    db,
-  );
+  const userContent =
+    input.trigger === "send"
+      ? substituteMessageMacros(content, {
+          char: config.character.name,
+          user: config.persona.name,
+        })
+      : "";
 
-  try {
+  return db.transaction((tx) => {
+    const txDb = tx as unknown as DB;
+    const job = createJobInTransaction(
+      {
+        requestId,
+        chatId: input.chatId,
+        trigger: input.trigger,
+        promptMode: modeFor(input.trigger),
+        baseLeafId: activeLeafId,
+        target,
+        input: {
+          content: input.content,
+          messageLocalId,
+          selection,
+        },
+        requiresConfirmation:
+          input.trigger === "rewrite" || input.trigger === "transform" || input.trigger === "image",
+      },
+      txDb,
+    );
+
     if (input.trigger === "send") {
-      const content = input.content?.trim() ?? "";
-      if (!content) throw new GenerationValidationError({ message: "Content is required" });
-      const macroEnv = {
-        char: config.character.name,
-        user: config.persona.name,
-      };
-      const userContent = substituteMessageMacros(content, macroEnv);
       const { userMessage, replyMessage } = appendUserAndReply(
         input.chatId,
         userContent,
         "",
         { isStreaming: true, generationJobId: job.id },
-        db,
+        txDb,
       );
-      setJobPlaceholder(job.id, replyMessage.localId, activeLeafId, db);
+      setJobPlaceholder(job.id, replyMessage.localId, activeLeafId, txDb);
       return {
         jobId: job.id,
         placeholderLocalId: replyMessage.localId,
@@ -158,19 +166,28 @@ export async function prepareGeneration(
     if (input.trigger === "regenerate" || input.trigger === "continue") {
       const targetId = input.trigger === "regenerate" ? (messageLocalId ?? 0) : activeLeafId;
       const leaf = getNode(tree, activeLeafId);
-      const created = leaf?.role === "assistant" || input.trigger === "regenerate"
-        ? appendSibling(
-            input.chatId,
-            targetId,
-            { role: "assistant", content: "", extra: { isStreaming: true, generationJobId: job.id } },
-            db,
-          )
-        : appendMessage(
-            input.chatId,
-            { role: "assistant", content: "", extra: { isStreaming: true, generationJobId: job.id } },
-            db,
-          );
-      setJobPlaceholder(job.id, created.localId, activeLeafId, db);
+      const created =
+        leaf?.role === "assistant" || input.trigger === "regenerate"
+          ? appendSibling(
+              input.chatId,
+              targetId,
+              {
+                role: "assistant",
+                content: "",
+                extra: { isStreaming: true, generationJobId: job.id },
+              },
+              txDb,
+            )
+          : appendMessage(
+              input.chatId,
+              {
+                role: "assistant",
+                content: "",
+                extra: { isStreaming: true, generationJobId: job.id },
+              },
+              txDb,
+            );
+      setJobPlaceholder(job.id, created.localId, activeLeafId, txDb);
       return {
         jobId: job.id,
         placeholderLocalId: created.localId,
@@ -179,13 +196,9 @@ export async function prepareGeneration(
       };
     }
 
-    setJobPlaceholder(job.id, 0, activeLeafId, db);
+    setJobPlaceholder(job.id, 0, activeLeafId, txDb);
     return { jobId: job.id, placeholderLocalId: 0, userLocalId: null, requestId };
-  } catch (error) {
-    const jobRow = getJob(job.id, db);
-    if (jobRow) failJob({ jobId: job.id, code: "prepare_failed", message: (error as Error).message }, db);
-    throw error;
-  }
+  });
 }
 
 export function cancelPreparedGeneration(jobId: string, db: DB = defaultDb): void {

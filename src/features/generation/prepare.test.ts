@@ -5,7 +5,12 @@ import { makeCharacterData } from "@/db/__tests__/character-data";
 import { characters, chatMessages, aiProviders, userSettings, generationJobs } from "@/db/schema";
 import { createChat, appendUserAndReply, getMessages } from "@/features/chat/tree/service";
 import { prepareGeneration } from "./prepare";
-import { createProposal, getJob, getProposal } from "@/db/repositories/generation";
+import {
+  createProposal,
+  getJob,
+  getProposal,
+  QUEUED_JOB_TTL_MS,
+} from "@/db/repositories/generation";
 import { acceptProposal, denyProposal } from "./proposals";
 import { ChatBusyError, StaleTargetError } from "./errors";
 
@@ -53,11 +58,20 @@ describe("generation prepare and proposals", () => {
   });
 
   it("prepares a send with a durable job and streaming placeholder", async () => {
-    const prepared = await prepareGeneration(userId, { chatId, trigger: "send", content: "Hi" }, "User", db);
+    const prepared = await prepareGeneration(
+      userId,
+      { chatId, trigger: "send", content: "Hi" },
+      "User",
+      db,
+    );
     const job = getJob(prepared.jobId, db);
     expect(job?.status).toBe("queued");
     expect(job?.placeholderLocalId).toBe(prepared.placeholderLocalId);
-    const reply = db.select().from(chatMessages).where(eq(chatMessages.localId, prepared.placeholderLocalId)).get();
+    const reply = db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.localId, prepared.placeholderLocalId))
+      .get();
     expect(reply?.content).toBe("");
     expect(reply?.extra).toMatchObject({ isStreaming: true, generationJobId: prepared.jobId });
   });
@@ -70,13 +84,46 @@ describe("generation prepare and proposals", () => {
   });
 
   it("reclaims an expired lease instead of wedging the chat", async () => {
-    const first = await prepareGeneration(userId, { chatId, trigger: "send", content: "Hi" }, "User", db);
+    const first = await prepareGeneration(
+      userId,
+      { chatId, trigger: "send", content: "Hi" },
+      "User",
+      db,
+    );
     db.update(generationJobs)
       .set({ status: "running", leaseOwner: "dead", leaseExpiresAt: new Date(Date.now() - 1000) })
       .where(eq(generationJobs.id, first.jobId))
       .run();
 
-    const second = await prepareGeneration(userId, { chatId, trigger: "send", content: "Again" }, "User", db);
+    const second = await prepareGeneration(
+      userId,
+      { chatId, trigger: "send", content: "Again" },
+      "User",
+      db,
+    );
+    expect(second.jobId).not.toBe(first.jobId);
+    expect(getJob(first.jobId, db)?.status).toBe("expired");
+  });
+
+  it("reclaims a prepared job that never reached the stream endpoint", async () => {
+    const first = await prepareGeneration(
+      userId,
+      { chatId, trigger: "send", content: "Hi" },
+      "User",
+      db,
+    );
+    db.update(generationJobs)
+      .set({ createdAt: new Date(Date.now() - QUEUED_JOB_TTL_MS - 1_000) })
+      .where(eq(generationJobs.id, first.jobId))
+      .run();
+
+    const second = await prepareGeneration(
+      userId,
+      { chatId, trigger: "send", content: "Again" },
+      "User",
+      db,
+    );
+
     expect(second.jobId).not.toBe(first.jobId);
     expect(getJob(first.jobId, db)?.status).toBe("expired");
   });
@@ -106,7 +153,11 @@ describe("generation prepare and proposals", () => {
     const accepted = acceptProposal(proposal.id, db);
     expect(accepted.messageLocalId).toBe(replyMessage.localId);
     expect(getProposal(proposal.id, db)?.status).toBe("accepted");
-    const updated = db.select().from(chatMessages).where(eq(chatMessages.localId, replyMessage.localId)).get();
+    const updated = db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.localId, replyMessage.localId))
+      .get();
     expect(updated?.content).toBe("Rewritten reply");
     expect(updated?.extra).toMatchObject({ rev: 1 });
 
@@ -127,7 +178,13 @@ describe("generation prepare and proposals", () => {
   });
 
   it("accepts a transform by appending, never mutating the source", async () => {
-    const { userMessage, replyMessage } = appendUserAndReply(chatId, "Hello", "First reply", undefined, db);
+    const { userMessage, replyMessage } = appendUserAndReply(
+      chatId,
+      "Hello",
+      "First reply",
+      undefined,
+      db,
+    );
     const prepared = await prepareGeneration(
       userId,
       { chatId, trigger: "transform", selection: [userMessage.localId, replyMessage.localId] },
@@ -146,10 +203,12 @@ describe("generation prepare and proposals", () => {
     );
     const accepted = acceptProposal(proposal.id, db);
     expect(accepted.messageLocalId).not.toBeNull();
-    expect(getMessages(chatId, db).find((m) => m.localId === replyMessage.localId)?.content).toBe("First reply");
-    expect(getMessages(chatId, db).find((m) => m.localId === accepted.messageLocalId)?.content).toBe(
-      "Transformed scene",
+    expect(getMessages(chatId, db).find((m) => m.localId === replyMessage.localId)?.content).toBe(
+      "First reply",
     );
+    expect(
+      getMessages(chatId, db).find((m) => m.localId === accepted.messageLocalId)?.content,
+    ).toBe("Transformed scene");
   });
 
   it("denies a proposal without writing", async () => {
@@ -172,6 +231,8 @@ describe("generation prepare and proposals", () => {
     );
     denyProposal(proposal.id, db);
     expect(getProposal(proposal.id, db)?.status).toBe("rejected");
-    expect(getMessages(chatId, db).find((m) => m.localId === replyMessage.localId)?.content).toBe("First reply");
+    expect(getMessages(chatId, db).find((m) => m.localId === replyMessage.localId)?.content).toBe(
+      "First reply",
+    );
   });
 });
