@@ -230,9 +230,16 @@ function resolveMaxTokens(preset: Partial<ChatCompletionPreset>): number {
 function buildModelOptions(
   preset: Partial<ChatCompletionPreset>,
   maxTokens: number,
+  mode: PromptMode,
 ): Record<string, unknown> {
+  const baseTemperature = preset.temperature ?? DEFAULT_TEMPERATURE;
   const options: Record<string, unknown> = {
-    temperature: preset.temperature ?? DEFAULT_TEMPERATURE,
+    temperature:
+      mode === "image"
+        ? 0.2
+        : mode === "rewrite" || mode === "transform"
+          ? Math.min(baseTemperature, 0.8)
+          : baseTemperature,
     top_p: preset.topP ?? DEFAULT_TOP_P,
     // Chat-completions providers use max_tokens; max_output_tokens is the
     // Responses API spelling and is not valid here.
@@ -375,7 +382,7 @@ export function compilePrompt(
   const messages: ModelMessage[] = [...examples, ...keptHistory];
   if (prefill) messages.push(prefill);
 
-  const modelOptions = buildModelOptions(snapshot.preset, maxTokens);
+  const modelOptions = buildModelOptions(snapshot.preset, maxTokens, mode);
   const promptHash = createHash("sha256")
     .update(JSON.stringify({ systemPrompts, messages, modelOptions }))
     .digest("hex");
