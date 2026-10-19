@@ -250,7 +250,7 @@ The app is a single Node process serving a TanStack Start frontend and an SSE ge
 
 Charon is actively developed by one person. The core is stable enough for daily use; the packaging and onboarding are being rebuilt for people who do not want a terminal.
 
-Shipped in v0.1.0:
+Shipped in the latest release:
 
 - one-line installers for macOS, Windows, and Linux;
 - provider presets and a bundled models.dev catalog;

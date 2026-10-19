@@ -367,7 +367,7 @@ changes, and CI in this branch cover roughly the first 30% of Tier 1–2.
 | Onboarding steps | Welcome step removed; provider is step 1, character step auto-skips when the library is non-empty; 7 wizard tests pass |
 | Marketing captures | S1 chat (2/3), S2 library, S3 providers, S4 branch close-up, S5 import, S6 mobile captured from a fresh SFW profile; WebP derivatives in `static/marketing/` |
 
-Validated: v0.1.0 is published, all five platform asset URLs return 200, the
+Validated: the latest release is published, all five platform asset URLs return 200, the
 published installer dry-run resolves the release, and the linux-x64 archive
 installs and serves `/up`. Not yet validated: the Windows installer on a real
 Windows machine, a macOS run, and the preset base URLs against each live
