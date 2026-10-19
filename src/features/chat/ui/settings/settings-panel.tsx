@@ -69,7 +69,7 @@ export function SettingsPanel({ chatId, open, isStreaming, onOpenChange }: Setti
         <SheetHeader className="px-5 pt-5 pb-3 border-b border-subtle">
           <SheetTitle className="font-heading text-1">Chat settings</SheetTitle>
           <SheetDescription className="text-xs">
-            Settings for this chat, plus the defaults it uses.
+            Settings for this chat and its defaults. Changes save automatically.
           </SheetDescription>
         </SheetHeader>
 

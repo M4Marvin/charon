@@ -30,9 +30,6 @@ describe("PromptsSection", () => {
     fireEvent.change(textarea as HTMLElement, { target: { value: "you are my persona" } });
     fireEvent.blur(textarea as HTMLElement);
 
-    expect(mockMutate).toHaveBeenCalledWith(
-      { impersonationPrompt: "you are my persona" },
-      expect.objectContaining({ onError: expect.any(Function) }),
-    );
+    expect(mockMutate).toHaveBeenCalledWith({ impersonationPrompt: "you are my persona" });
   });
 });

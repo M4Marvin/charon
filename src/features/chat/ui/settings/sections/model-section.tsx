@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import { Zap, ArrowUpRight, CircleCheck, CircleX } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -18,6 +17,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ModelCombobox } from "@/components/common/ModelCombobox";
 import { SkeletonText } from "@/components/common/Skeletons";
 import { SectionHeader } from "../section-header";
+import { SaveStatus, getSaveState } from "../save-status";
 import { useAiProviders, useTestProviderConnection } from "@/hooks/useAiProviders";
 import { usePresets } from "@/hooks/usePresets";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
@@ -48,13 +48,13 @@ export function ModelSection({ onClose }: SectionProps) {
   } = usePresets();
   const updateUserSettings = useUpdateUserSettings();
   const testConnection = useTestProviderConnection();
+  const saveState = getSaveState(updateUserSettings);
+  const retrySave = updateUserSettings.variables
+    ? () => updateUserSettings.mutate(updateUserSettings.variables!)
+    : undefined;
 
   const queryError = settingsError ?? providersError ?? presetsError;
   const settingsQueryLoading = settingsLoading || providersLoading || presetsLoading;
-
-  const reportSaveError = useCallback((err: unknown) => {
-    toast.error(`Save failed: ${err instanceof Error ? err.message : String(err)}`);
-  }, []);
 
   const [testResult, setTestResult] = useState<{
     ok: boolean;
@@ -70,17 +70,14 @@ export function ModelSection({ onClose }: SectionProps) {
 
   const applyProviderChange = useCallback(
     (providerId: string) => {
-      updateUserSettings.mutate(
-        {
-          defaultProviderId: providerId,
-          defaultSelectedModel: null,
-          defaultPresetId: null,
-        },
-        { onError: reportSaveError },
-      );
+      updateUserSettings.mutate({
+        defaultProviderId: providerId,
+        defaultSelectedModel: null,
+        defaultPresetId: null,
+      });
       setTestResult(null);
     },
-    [updateUserSettings, reportSaveError],
+    [updateUserSettings],
   );
 
   const handleProviderChange = useCallback(
@@ -99,23 +96,20 @@ export function ModelSection({ onClose }: SectionProps) {
     (model: string) => {
       const value = model.trim();
       if (!value || value === selectedModel) return;
-      updateUserSettings.mutate({ defaultSelectedModel: value }, { onError: reportSaveError });
+      updateUserSettings.mutate({ defaultSelectedModel: value });
     },
-    [selectedModel, updateUserSettings, reportSaveError],
+    [selectedModel, updateUserSettings],
   );
 
   const handleClearModel = useCallback(() => {
-    updateUserSettings.mutate({ defaultSelectedModel: null }, { onError: reportSaveError });
-  }, [updateUserSettings, reportSaveError]);
+    updateUserSettings.mutate({ defaultSelectedModel: null });
+  }, [updateUserSettings]);
 
   const handlePresetChange = useCallback(
     (presetId: string) => {
-      updateUserSettings.mutate(
-        { defaultPresetId: presetId === "_none" ? null : presetId },
-        { onError: reportSaveError },
-      );
+      updateUserSettings.mutate({ defaultPresetId: presetId === "_none" ? null : presetId });
     },
-    [updateUserSettings, reportSaveError],
+    [updateUserSettings],
   );
 
   const handleTest = useCallback(() => {
@@ -135,6 +129,7 @@ export function ModelSection({ onClose }: SectionProps) {
         description="The default provider, model, and preset used by every chat."
         scope="global"
       />
+      <SaveStatus state={saveState} error={updateUserSettings.error} onRetry={retrySave} />
 
       {queryError ? (
         <ErrorBanner

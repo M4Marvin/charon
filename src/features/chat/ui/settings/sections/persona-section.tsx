@@ -36,6 +36,7 @@ import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings"
 import { MAX_IMAGE_UPLOAD_BYTES, withImageVersion } from "@/lib/image-optimization";
 import { SkeletonText } from "@/components/common/Skeletons";
 import { SectionHeader } from "../section-header";
+import { SaveStatus, getSaveState } from "../save-status";
 
 interface SectionProps {
   chatId: string;
@@ -56,6 +57,10 @@ export function PersonaSection(_props: SectionProps) {
     isLoading: personasLoading,
   } = usePersonas();
   const updateUserSettings = useUpdateUserSettings();
+  const saveState = getSaveState(updateUserSettings);
+  const retrySave = updateUserSettings.variables
+    ? () => updateUserSettings.mutate(updateUserSettings.variables!)
+    : undefined;
   const createPersona = useCreatePersona();
   const updatePersona = useUpdatePersona();
   const deletePersona = useDeletePersona();
@@ -86,12 +91,9 @@ export function PersonaSection(_props: SectionProps) {
 
   const handlePersonaChange = useCallback(
     (id: string) => {
-      updateUserSettings.mutate(
-        { defaultPersonaId: id === "_none" ? null : id },
-        { onError: reportMutationError("Save failed") },
-      );
+      updateUserSettings.mutate({ defaultPersonaId: id === "_none" ? null : id });
     },
-    [updateUserSettings, reportMutationError],
+    [updateUserSettings],
   );
 
   const openCreate = useCallback(() => {
@@ -182,6 +184,7 @@ export function PersonaSection(_props: SectionProps) {
         description="The default persona used in all chats."
         scope="global"
       />
+      <SaveStatus state={saveState} error={updateUserSettings.error} onRetry={retrySave} />
 
       {queryError ? (
         <ErrorBanner
@@ -200,7 +203,7 @@ export function PersonaSection(_props: SectionProps) {
       ) : null}
 
       <Field className="space-y-1.5">
-        <FieldLabel htmlFor="ps-persona">Active persona</FieldLabel>
+        <FieldLabel htmlFor="ps-persona">Default persona</FieldLabel>
         <div className="flex gap-2">
           <Select
             value={selectedId || "_none"}

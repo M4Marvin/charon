@@ -1,8 +1,8 @@
-import { toast } from "sonner";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { BlurCommitTextarea } from "../blur-commit-textarea";
 import { SectionHeader } from "../section-header";
+import { SaveStatus, getSaveState } from "../save-status";
 
 interface SectionProps {
   chatId: string;
@@ -12,9 +12,10 @@ interface SectionProps {
 export function PromptsSection(_props: SectionProps) {
   const { data: settings, error, refetch } = useUserSettings();
   const updateUserSettings = useUpdateUserSettings();
-
-  const onSaveError = (err: unknown) =>
-    toast.error(`Save failed: ${err instanceof Error ? err.message : String(err)}`);
+  const saveState = getSaveState(updateUserSettings);
+  const retrySave = updateUserSettings.variables
+    ? () => updateUserSettings.mutate(updateUserSettings.variables!)
+    : undefined;
 
   return (
     <div className="flex flex-col gap-5">
@@ -23,6 +24,7 @@ export function PromptsSection(_props: SectionProps) {
         description="Prompts used in every chat."
         scope="global"
       />
+      <SaveStatus state={saveState} error={updateUserSettings.error} onRetry={retrySave} />
 
       {error ? (
         <ErrorBanner
@@ -36,30 +38,33 @@ export function PromptsSection(_props: SectionProps) {
         label="System prompt"
         placeholder="Sent at the start of every conversation."
         defaultValue={settings?.systemPrompt ?? ""}
-        onCommit={(v) =>
-          updateUserSettings.mutate({ systemPrompt: v || null }, { onError: onSaveError })
-        }
+        status={saveState}
+        error={updateUserSettings.error}
+        onRetry={retrySave}
+        onRevert={() => updateUserSettings.reset()}
+        onCommit={(v) => updateUserSettings.mutate({ systemPrompt: v || null })}
       />
       <BlurCommitTextarea
         id="ps-post-history"
         label="Post-history instructions"
         placeholder="Injected after chat history, before the last message."
         defaultValue={settings?.postHistoryInstructions ?? ""}
-        onCommit={(v) =>
-          updateUserSettings.mutate(
-            { postHistoryInstructions: v || null },
-            { onError: onSaveError },
-          )
-        }
+        status={saveState}
+        error={updateUserSettings.error}
+        onRetry={retrySave}
+        onRevert={() => updateUserSettings.reset()}
+        onCommit={(v) => updateUserSettings.mutate({ postHistoryInstructions: v || null })}
       />
       <BlurCommitTextarea
         id="ps-impersonate"
         label="Impersonation prompt"
         placeholder="Replaces system prompts when using impersonate."
         defaultValue={settings?.impersonationPrompt ?? ""}
-        onCommit={(v) =>
-          updateUserSettings.mutate({ impersonationPrompt: v || null }, { onError: onSaveError })
-        }
+        status={saveState}
+        error={updateUserSettings.error}
+        onRetry={retrySave}
+        onRevert={() => updateUserSettings.reset()}
+        onCommit={(v) => updateUserSettings.mutate({ impersonationPrompt: v || null })}
       />
     </div>
   );

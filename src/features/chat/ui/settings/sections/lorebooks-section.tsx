@@ -13,6 +13,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { SectionHeader } from "../section-header";
+import { SaveStatus, getSaveState } from "../save-status";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
@@ -49,6 +50,10 @@ export function LorebooksSection(_props: SectionProps) {
     refetch: refetchLorebooks,
   } = useLorebooks();
   const toggleLorebook = useToggleLorebook();
+  const saveState = getSaveState(toggleLorebook);
+  const retrySave = toggleLorebook.variables
+    ? () => toggleLorebook.mutate(toggleLorebook.variables!)
+    : undefined;
   const createLorebook = useCreateLorebook();
   const deleteLorebook = useDeleteLorebook();
 
@@ -63,13 +68,7 @@ export function LorebooksSection(_props: SectionProps) {
 
   const handleToggle = useCallback(
     (lorebookId: string, enabled: boolean) => {
-      toggleLorebook.mutate(
-        { lorebookId, enabled },
-        {
-          onError: (err) =>
-            toast.error(`Update failed: ${err instanceof Error ? err.message : String(err)}`),
-        },
-      );
+      toggleLorebook.mutate({ lorebookId, enabled });
     },
     [toggleLorebook],
   );
@@ -149,6 +148,7 @@ export function LorebooksSection(_props: SectionProps) {
           </>
         }
       />
+      <SaveStatus state={saveState} error={toggleLorebook.error} onRetry={retrySave} />
 
       {lorebooksError ? (
         <ErrorBanner

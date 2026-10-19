@@ -12,6 +12,7 @@ import { useBackgrounds, useUploadBackground, useDeleteBackground } from "@/hook
 import { MAX_IMAGE_UPLOAD_BYTES, withImageVersion } from "@/lib/image-optimization";
 import { useChatConfig, useUpdateChatOverrides } from "@/hooks/useChatConfig";
 import { SectionHeader } from "../section-header";
+import { SaveStatus, getSaveState } from "../save-status";
 
 interface SectionProps {
   chatId: string;
@@ -26,6 +27,10 @@ export function BackgroundSection({ chatId }: SectionProps) {
     refetch: refetchBackgrounds,
   } = useBackgrounds();
   const updateOverrides = useUpdateChatOverrides();
+  const saveState = getSaveState(updateOverrides);
+  const retrySave = updateOverrides.variables
+    ? () => updateOverrides.mutate(updateOverrides.variables!)
+    : undefined;
   const uploadBg = useUploadBackground();
   const deleteBgMutation = useDeleteBackground();
 
@@ -39,13 +44,7 @@ export function BackgroundSection({ chatId }: SectionProps) {
 
   const handleSelect = useCallback(
     (id: string | null) => {
-      updateOverrides.mutate(
-        { id: chatId, backgroundId: id },
-        {
-          onError: (err) =>
-            toast.error(`Save failed: ${err instanceof Error ? err.message : String(err)}`),
-        },
-      );
+      updateOverrides.mutate({ id: chatId, backgroundId: id });
     },
     [chatId, updateOverrides],
   );
@@ -98,6 +97,7 @@ export function BackgroundSection({ chatId }: SectionProps) {
   return (
     <div className="flex flex-col gap-5">
       <SectionHeader title="Background" description="The scene behind this chat." scope="chat" />
+      <SaveStatus state={saveState} error={updateOverrides.error} onRetry={retrySave} />
 
       {queryError ? (
         <ErrorBanner
