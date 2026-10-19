@@ -2,7 +2,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import {
-  SettingsFooter,
   SettingsSaveProvider,
   SettingsSaveStatus,
   getSaveState,
@@ -104,16 +103,5 @@ describe("SettingsSaveStatus", () => {
     );
 
     expect(screen.queryByText("Saved")).toBeNull();
-  });
-
-  it("calls onDone from the footer", () => {
-    const onDone = vi.fn();
-    render(
-      <SettingsSaveProvider activeSection="character">
-        <SettingsFooter onDone={onDone} />
-      </SettingsSaveProvider>,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(onDone).toHaveBeenCalledTimes(1);
   });
 });

@@ -36,10 +36,4 @@ describe("SectionHeader", () => {
 
     expect(screen.queryByRole("button")).toBeNull();
   });
-
-  it("renders the scope when passed", () => {
-    render(<SectionHeader title="Display" scope="browser" />);
-
-    expect(screen.getByText("This browser")).toBeTruthy();
-  });
 });

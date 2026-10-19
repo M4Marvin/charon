@@ -1,6 +1,6 @@
 import { useRichTextSettings } from "@/lib/richtext-settings";
 import { Switch } from "@/components/ui/switch";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { SettingsCard, SettingsCardRows, SettingsRow } from "@/components/settings/settings-ui";
 
 function DisplayToggle({
   id,
@@ -16,22 +16,16 @@ function DisplayToggle({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <Field orientation="horizontal" className="items-start justify-between gap-4 py-2">
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <FieldLabel htmlFor={id} className="text-sm text-1 cursor-pointer">
-          {label}
-        </FieldLabel>
-        <p id={`${id}-description`} className="text-xs text-2">
-          {description}
-        </p>
+    <SettingsRow label={label} description={description} htmlFor={id}>
+      <div className="flex size-11 items-center justify-center">
+        <Switch
+          id={id}
+          checked={checked}
+          onCheckedChange={onCheckedChange}
+          aria-describedby={`${id}-description`}
+        />
       </div>
-      <Switch
-        id={id}
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        aria-describedby={`${id}-description`}
-      />
-    </Field>
+    </SettingsRow>
   );
 }
 
@@ -51,28 +45,30 @@ export function DisplayPreferences({ onChanged }: { onChanged?: () => void }) {
   };
 
   return (
-    <div className="flex flex-col divide-y divide-subtle">
-      <DisplayToggle
-        id="ds-highlight"
-        label="Highlight dialogue"
-        description="Tint quoted speech in messages."
-        checked={highlightDialogue}
-        onCheckedChange={update(setHighlightDialogue)}
-      />
-      <DisplayToggle
-        id="ds-markdown"
-        label="Auto-fix markdown"
-        description="Repair common formatting issues in messages."
-        checked={autoFixMarkdown}
-        onCheckedChange={update(setAutoFixMarkdown)}
-      />
-      <DisplayToggle
-        id="ds-media"
-        label="Block external media"
-        description="Don't load remote images or media in messages."
-        checked={blockExternalMedia}
-        onCheckedChange={update(setBlockExternalMedia)}
-      />
-    </div>
+    <SettingsCard>
+      <SettingsCardRows>
+        <DisplayToggle
+          id="ds-highlight"
+          label="Highlight dialogue"
+          description="Tint quoted speech in messages."
+          checked={highlightDialogue}
+          onCheckedChange={update(setHighlightDialogue)}
+        />
+        <DisplayToggle
+          id="ds-markdown"
+          label="Auto-fix markdown"
+          description="Repair common formatting issues in messages."
+          checked={autoFixMarkdown}
+          onCheckedChange={update(setAutoFixMarkdown)}
+        />
+        <DisplayToggle
+          id="ds-media"
+          label="Block external media"
+          description="Don't load remote images or media in messages."
+          checked={blockExternalMedia}
+          onCheckedChange={update(setBlockExternalMedia)}
+        />
+      </SettingsCardRows>
+    </SettingsCard>
   );
 }

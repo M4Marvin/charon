@@ -29,7 +29,6 @@ export function CharacterSection({ chatId }: SectionProps) {
       <SectionHeader
         title="Character"
         description="Overrides for this chat. Empty fields use the character card."
-        scope="chat"
       />
 
       <BlurCommitTextarea

@@ -577,6 +577,11 @@ export function ChatPage() {
         chatId={chatId}
         isStreaming={generation.isStreaming}
         open={settingsOpen}
+        characterName={config.character.name}
+        chatTitle={config.chat.title}
+        characterAvatarSrc={characterAvatarUrl}
+        messageCount={messages?.length ?? 0}
+        onOpenScenePanel={() => setSceneOpen(true)}
         onOpenChange={(open) => {
           setSettingsOpen(open);
           if (!open) settingsButtonRef.current?.focus();

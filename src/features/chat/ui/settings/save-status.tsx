@@ -8,7 +8,6 @@ import {
   useState,
 } from "react";
 import { CircleCheck, LoaderCircle, RotateCw, TriangleAlert } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -191,23 +190,6 @@ export function SettingsSaveStatus() {
           ) : null}
         </>
       ) : null}
-    </div>
-  );
-}
-
-export function SettingsFooter({ onDone }: { onDone: () => void }) {
-  return (
-    <div className="flex items-center justify-between gap-3 border-t border-subtle px-5 py-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))]">
-      <SettingsSaveStatus />
-      <button
-        type="button"
-        className={cn(
-          "inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-border bg-surface px-4 text-[13px] font-medium text-1 transition-colors hover:bg-(--bg-hover) focus-ring active:scale-[0.98] max-sm:h-11",
-        )}
-        onClick={onDone}
-      >
-        Done
-      </button>
     </div>
   );
 }

@@ -162,13 +162,16 @@ export function ModelDefaultsFields() {
           </Select>
           <Button
             variant="outline"
-            size="icon"
-            className="size-10 shrink-0 max-sm:size-11"
+            className="h-10 shrink-0 gap-1.5 px-3 max-sm:h-11"
             disabled={!selectedProviderId || testConnection.isPending}
             onClick={handleTest}
-            aria-label="Test provider connection"
           >
-            {testConnection.isPending ? <Spinner className="size-4" /> : <Zap className="size-4" />}
+            {testConnection.isPending ? (
+              <Spinner className="size-3.5" />
+            ) : (
+              <Zap className="size-3.5" />
+            )}
+            Test
           </Button>
         </div>
       </Field>
@@ -176,7 +179,7 @@ export function ModelDefaultsFields() {
       {testResult ? (
         <div
           role="status"
-          className="flex items-center gap-2 rounded-lg border border-subtle px-3 py-2 text-xs"
+          className="flex items-center gap-2 rounded-xl border border-subtle bg-surface/60 px-3 py-2.5 text-xs"
         >
           {testResult.ok ? (
             <>
@@ -197,7 +200,20 @@ export function ModelDefaultsFields() {
       ) : null}
 
       <Field className="space-y-1.5">
-        <FieldLabel htmlFor="cs-model">Model</FieldLabel>
+        <div className="flex items-center justify-between gap-2">
+          <FieldLabel htmlFor="cs-model">Model</FieldLabel>
+          {selectedModel ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="h-8 px-2 text-xs text-2 hover:text-1"
+              onClick={handleClearModel}
+            >
+              Clear
+            </Button>
+          ) : null}
+        </div>
         <ModelCombobox
           id="cs-model"
           providerId={selectedProviderId}
@@ -206,18 +222,8 @@ export function ModelDefaultsFields() {
           disabled={!selectedProviderId}
           ariaLabel="Default model"
         />
-        {selectedModel ? (
-          <div className="flex">
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className="h-11 w-fit p-0 text-xs text-2"
-              onClick={handleClearModel}
-            >
-              Clear model
-            </Button>
-          </div>
+        {!selectedModel && selectedProviderId ? (
+          <p className="text-xs text-2">Pick a model for this provider.</p>
         ) : null}
       </Field>
 

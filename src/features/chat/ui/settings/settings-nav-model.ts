@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 
 export type SettingsScope = "chat" | "global" | "browser";
+export type SettingsMode = "chat" | "defaults";
 
 export interface SettingsSection {
   id: string;
@@ -11,23 +12,28 @@ export interface SettingsSection {
 
 export const SCOPE_LABELS: Record<SettingsScope, string> = {
   chat: "This chat",
-  global: "All chats",
+  global: "Applies to all chats",
   browser: "This browser",
 };
 
-export function getVisibleNavGroups(
+export const MODE_LABELS: Record<SettingsMode, string> = {
+  chat: "This chat",
+  defaults: "Defaults",
+};
+
+export function getModeForScope(scope: SettingsScope): SettingsMode {
+  return scope === "chat" ? "chat" : "defaults";
+}
+
+export function getSectionsForMode(
   sections: SettingsSection[],
-): { id: SettingsScope; label: string; items: SettingsSection[] }[] {
-  const groups = new Map<SettingsScope, SettingsSection[]>();
+  mode: SettingsMode,
+): SettingsSection[] {
+  return sections.filter((section) => getModeForScope(section.scope) === mode);
+}
 
-  for (const section of sections) {
-    const group = groups.get(section.scope);
-    if (group) {
-      group.push(section);
-    } else {
-      groups.set(section.scope, [section]);
-    }
-  }
-
-  return [...groups.entries()].map(([id, items]) => ({ id, label: SCOPE_LABELS[id], items }));
+export function getModeDescription(mode: SettingsMode): string {
+  return mode === "chat"
+    ? "Only this conversation changes."
+    : "Shared by every chat. Display stays in this browser.";
 }

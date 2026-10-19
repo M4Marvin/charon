@@ -46,11 +46,12 @@ export function ModelCombobox({
 
   return (
     <div ref={ref} className="relative">
-      <div className="flex gap-1.5">
+      <div className="relative">
         <Input
           id={id}
           aria-label={ariaLabel}
-          className="h-10 min-w-0 flex-1 max-sm:h-11"
+          className="h-10 min-w-0 w-full pr-10 max-sm:h-11"
+          title={value || undefined}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -88,7 +89,7 @@ export function ModelCombobox({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-10 shrink-0 max-sm:size-11"
+            className="absolute top-1/2 right-1 size-8 -translate-y-1/2 text-2 hover:text-1"
             disabled={isLoading}
             onClick={() => refetch()}
             aria-label="Refresh models"

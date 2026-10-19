@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { SettingsSection } from "./settings-nav-model";
-import { SCOPE_LABELS, getVisibleNavGroups } from "./settings-nav-model";
+import {
+  MODE_LABELS,
+  SCOPE_LABELS,
+  getModeForScope,
+  getSectionsForMode,
+} from "./settings-nav-model";
 
 /** Real lucide icons aren't needed for grouping logic; a plain stub stands in. */
 const icon = {} as SettingsSection["icon"];
@@ -16,30 +21,41 @@ const SECTIONS: SettingsSection[] = [
   { id: "display", label: "Display", icon, scope: "browser" },
 ];
 
-describe("getVisibleNavGroups", () => {
-  it("groups sections by scope with labels and item counts", () => {
-    const groups = getVisibleNavGroups(SECTIONS);
-
-    expect(groups.map((g) => g.id)).toEqual(["chat", "global", "browser"]);
-    expect(groups.map((g) => g.label)).toEqual(["This chat", "All chats", "This browser"]);
-    expect(groups.map((g) => g.items.length)).toEqual([3, 4, 1]);
+describe("settings modes", () => {
+  it("puts chat-scoped sections in This chat", () => {
+    expect(getSectionsForMode(SECTIONS, "chat").map((s) => s.id)).toEqual([
+      "character",
+      "background",
+      "chat-details",
+    ]);
   });
 
-  it("preserves input order within each group", () => {
-    const groups = getVisibleNavGroups(SECTIONS);
+  it("puts global and browser sections in Defaults", () => {
+    expect(getSectionsForMode(SECTIONS, "defaults").map((s) => s.id)).toEqual([
+      "model",
+      "persona",
+      "lorebooks",
+      "prompts",
+      "display",
+    ]);
+  });
 
-    expect(groups[0].items.map((s) => s.id)).toEqual(["character", "background", "chat-details"]);
-    expect(groups[1].items.map((s) => s.id)).toEqual(["model", "persona", "lorebooks", "prompts"]);
+  it("maps scopes to modes", () => {
+    expect(getModeForScope("chat")).toBe("chat");
+    expect(getModeForScope("global")).toBe("defaults");
+    expect(getModeForScope("browser")).toBe("defaults");
   });
 
   it("returns [] for empty input", () => {
-    expect(getVisibleNavGroups([])).toEqual([]);
+    expect(getSectionsForMode([], "chat")).toEqual([]);
+    expect(getSectionsForMode([], "defaults")).toEqual([]);
   });
 
-  it("uses the documented scope labels everywhere", () => {
+  it("uses the documented labels", () => {
+    expect(MODE_LABELS).toEqual({ chat: "This chat", defaults: "Defaults" });
     expect(SCOPE_LABELS).toEqual({
       chat: "This chat",
-      global: "All chats",
+      global: "Applies to all chats",
       browser: "This browser",
     });
   });

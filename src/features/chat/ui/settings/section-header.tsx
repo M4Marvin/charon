@@ -1,29 +1,28 @@
 import type { ReactNode } from "react";
-import { SCOPE_LABELS, type SettingsScope } from "./settings-nav-model";
+import { cn } from "@/lib/utils";
 
 interface SectionHeaderProps {
   title: string;
   description?: ReactNode;
   actions?: ReactNode;
-  scope?: SettingsScope;
+  className?: string;
 }
 
-export function SectionHeader({ title, description, actions, scope }: SectionHeaderProps) {
+export function SectionHeader({ title, description, actions, className }: SectionHeaderProps) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div
+      className={cn("flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between", className)}
+    >
       <div className="flex min-w-0 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-heading text-headline text-1">{title}</h3>
-          {scope ? (
-            <span className="rounded-full border border-subtle bg-surface px-2 py-0.5 text-[11px] font-medium leading-4 text-2">
-              {SCOPE_LABELS[scope]}
-            </span>
-          ) : null}
-        </div>
-        {description ? <p className="text-[13px] text-2">{description}</p> : null}
+        <h3 className="sr-only text-[17px] font-semibold tracking-[-0.01em] text-1 lg:not-sr-only">
+          {title}
+        </h3>
+        {description ? (
+          <p className="max-w-prose text-[13px] leading-relaxed text-2">{description}</p>
+        ) : null}
       </div>
       {actions ? (
-        <div className="flex w-full shrink-0 flex-wrap items-center gap-1 sm:w-auto">{actions}</div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2 max-sm:w-full">{actions}</div>
       ) : null}
     </div>
   );

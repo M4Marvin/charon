@@ -1,10 +1,19 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Maximize2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+
+const MAX_HEIGHT = 360;
 
 interface BlurCommitTextareaProps {
   id: string;
@@ -41,6 +50,8 @@ export function BlurCommitTextarea({
   onUseCard,
 }: BlurCommitTextareaProps) {
   const [value, setValue] = useState(defaultValue);
+  const [overflowing, setOverflowing] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const initialRef = useRef(defaultValue);
   const focusedRef = useRef(false);
@@ -58,7 +69,9 @@ export function BlurCommitTextarea({
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`;
+    el.style.overflowY = el.scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
+    setOverflowing(el.scrollHeight > MAX_HEIGHT);
   }, [value]);
 
   const commit = useCallback(() => {
@@ -102,6 +115,18 @@ export function BlurCommitTextarea({
                 onClick={onUseCard}
               >
                 Use card
+              </Button>
+            ) : null}
+            {overflowing ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                className="h-8 gap-1 px-2 text-xs text-2 hover:text-1"
+                onClick={() => setExpanded(true)}
+              >
+                <Maximize2 className="size-3" aria-hidden="true" />
+                Expand
               </Button>
             ) : null}
             <Popover>
@@ -165,8 +190,41 @@ export function BlurCommitTextarea({
         disabled={disabled}
         rows={2}
         aria-describedby={descriptionId}
-        className="min-h-[88px] resize-none overflow-hidden break-words"
+        className="min-h-[88px] resize-none break-words"
       />
+
+      <Dialog
+        open={expanded}
+        onOpenChange={(open) => {
+          if (!open) {
+            setExpanded(false);
+            commit();
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{label}</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            rows={18}
+            className="max-h-[60vh] min-h-[45vh] resize-none"
+            aria-label={`${label} (expanded)`}
+          />
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setExpanded(false);
+                commit();
+              }}
+            >
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Field>
   );
 }

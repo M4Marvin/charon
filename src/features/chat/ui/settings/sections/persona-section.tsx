@@ -1,21 +1,12 @@
-import { useState, useCallback, useRef } from "react";
-import { Plus, Pencil, Trash2, Image as ImageIcon, Upload } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { Check, Image as ImageIcon, Pencil, Plus, Trash2, Upload, User } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { ErrorBanner } from "@/components/common/ErrorBanner";
-import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { Label } from "@/components/ui/label";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import {
   Dialog,
   DialogContent,
@@ -23,18 +14,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { OptimizedImage } from "@/components/ui/optimized-image";
+import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { RowActionsMenu } from "@/components/common/RowActionsMenu";
+import { SkeletonText } from "@/components/common/Skeletons";
 import {
   usePersonas,
   useCreatePersona,
   useUpdatePersona,
   useDeletePersona,
   useUploadPersonaIcon,
+  type PersonaListItem,
 } from "@/hooks/usePersonas";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
 import { MAX_IMAGE_UPLOAD_BYTES, withImageVersion } from "@/lib/image-optimization";
-import { SkeletonText } from "@/components/common/Skeletons";
+import { cn } from "@/lib/utils";
 import { SectionHeader } from "../section-header";
 import { getSaveState, useSettingsSaveStatus } from "../save-status";
 
@@ -42,6 +36,79 @@ interface SectionProps {
   chatId: string;
   isStreaming: boolean;
 }
+
+function PersonaAvatar({
+  persona,
+  className,
+}: {
+  persona: Pick<PersonaListItem, "name" | "iconPath" | "id"> | null;
+  className?: string;
+}) {
+  if (persona?.iconPath) {
+    return (
+      <OptimizedImage
+        key={persona.iconPath}
+        src={withImageVersion(`/api/personas/${persona.id}/icon`, persona.iconPath)}
+        alt=""
+        preset="avatar"
+        width={40}
+        height={40}
+        sizes="40px"
+        quality={70}
+        className={cn("size-10 shrink-0 rounded-full border border-border object-cover", className)}
+      />
+    );
+  }
+  return (
+    <span
+      className={cn(
+        "flex size-10 shrink-0 items-center justify-center rounded-full border border-subtle bg-surface text-sm font-medium text-brand",
+        className,
+      )}
+      aria-hidden="true"
+    >
+      {persona?.name.charAt(0).toUpperCase() ?? <User className="size-4" />}
+    </span>
+  );
+}
+
+function PersonaOption({
+  name,
+  description,
+  persona,
+  selected,
+  onSelect,
+}: {
+  name: string;
+  description?: string | null;
+  persona: Pick<PersonaListItem, "name" | "iconPath" | "id"> | null;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "flex min-h-14 w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors focus-ring",
+        selected ? "border-brand/30 bg-brand/10" : "border-transparent hover:bg-(--bg-hover)",
+      )}
+      aria-pressed={selected}
+    >
+      <PersonaAvatar persona={persona} />
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="truncate text-[13px] font-medium text-1">{name}</span>
+        {description ? <span className="line-clamp-1 text-xs text-2">{description}</span> : null}
+      </span>
+      {selected ? <Check className="size-4 shrink-0 text-brand" aria-hidden="true" /> : null}
+    </button>
+  );
+}
+
+type PersonaDialog =
+  | { kind: "create" }
+  | { kind: "edit"; id: string; name: string; description: string; iconPath: string | null }
+  | null;
 
 export function PersonaSection(_props: SectionProps) {
   const {
@@ -57,6 +124,11 @@ export function PersonaSection(_props: SectionProps) {
     isLoading: personasLoading,
   } = usePersonas();
   const updateUserSettings = useUpdateUserSettings();
+  const createPersona = useCreatePersona();
+  const updatePersona = useUpdatePersona();
+  const deletePersona = useDeletePersona();
+  const uploadPersonaIcon = useUploadPersonaIcon();
+
   const retrySave = updateUserSettings.variables
     ? () => updateUserSettings.mutate(updateUserSettings.variables!)
     : undefined;
@@ -65,16 +137,9 @@ export function PersonaSection(_props: SectionProps) {
     at: updateUserSettings.submittedAt,
     error: updateUserSettings.error,
   });
-  const createPersona = useCreatePersona();
-  const updatePersona = useUpdatePersona();
-  const deletePersona = useDeletePersona();
-  const uploadPersonaIcon = useUploadPersonaIcon();
 
-  const [dialog, setDialog] = useState<
-    | { kind: "create" }
-    | { kind: "edit"; id: string; name: string; description: string; iconPath: string | null }
-    | null
-  >(null);
+  const [chooserOpen, setChooserOpen] = useState(false);
+  const [dialog, setDialog] = useState<PersonaDialog>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -85,17 +150,20 @@ export function PersonaSection(_props: SectionProps) {
 
   const queryError = settingsError ?? personasError;
   const queryLoading = settingsLoading || personasLoading;
+  const selectedId = settings?.defaultPersonaId ?? "";
+  const selectedPersona = personas?.find((p) => p.id === selectedId) ?? null;
+
   const reportMutationError = useCallback((action: string) => {
     return (err: unknown) => {
-      toast.error(`${action}: ${err instanceof Error ? err.message : String(err)}`);
+      console.error(`[settings] ${action}`, err);
+      toast.error(`${action}. Please try again.`);
     };
   }, []);
 
-  const selectedId = settings?.defaultPersonaId ?? "";
-
-  const handlePersonaChange = useCallback(
-    (id: string) => {
-      updateUserSettings.mutate({ defaultPersonaId: id === "_none" ? null : id });
+  const selectPersona = useCallback(
+    (id: string | null) => {
+      updateUserSettings.mutate({ defaultPersonaId: id });
+      setChooserOpen(false);
     },
     [updateUserSettings],
   );
@@ -107,12 +175,18 @@ export function PersonaSection(_props: SectionProps) {
     setDialog({ kind: "create" });
   }, []);
 
-  const openEdit = useCallback((id: string, n: string, d: string | null, icon: string | null) => {
-    setName(n);
-    setDescription(d ?? "");
+  const openEdit = useCallback((persona: PersonaListItem) => {
+    setName(persona.name);
+    setDescription(persona.description ?? "");
     setPendingIconPath(null);
     setIconError(null);
-    setDialog({ kind: "edit", id, name: n, description: d ?? "", iconPath: icon });
+    setDialog({
+      kind: "edit",
+      id: persona.id,
+      name: persona.name,
+      description: persona.description ?? "",
+      iconPath: persona.iconPath,
+    });
   }, []);
 
   const closeDialog = useCallback(() => setDialog(null), []);
@@ -155,38 +229,50 @@ export function PersonaSection(_props: SectionProps) {
     if (dialog?.kind === "create") {
       createPersona.mutate(
         { name: trimmed, description: description.trim() || undefined },
-        { onSuccess: closeDialog, onError: reportMutationError("Create failed") },
+        { onSuccess: closeDialog, onError: reportMutationError("Couldn't create persona") },
       );
     } else if (dialog?.kind === "edit") {
       updatePersona.mutate(
         { id: dialog.id, name: trimmed, description: description.trim() || null },
-        { onSuccess: closeDialog, onError: reportMutationError("Save failed") },
+        { onSuccess: closeDialog, onError: reportMutationError("Couldn't save persona") },
       );
     }
   }, [dialog, name, description, createPersona, updatePersona, closeDialog, reportMutationError]);
 
   const handleDelete = useCallback(() => {
     if (!deleteId) return;
+    const deletingDefault = deleteId === selectedId;
     deletePersona.mutate(
       { id: deleteId },
       {
         onSuccess: () => {
+          if (deletingDefault) updateUserSettings.mutate({ defaultPersonaId: null });
           toast.success("Persona deleted");
           setDeleteId(null);
         },
-        onError: reportMutationError("Delete failed"),
+        onError: reportMutationError("Couldn't delete persona"),
       },
     );
-  }, [deleteId, deletePersona, reportMutationError]);
+  }, [deleteId, deletePersona, selectedId, updateUserSettings, reportMutationError]);
 
-  const selectedPersona = personas?.find((p) => p.id === selectedId);
+  const deleteTarget = personas?.find((p) => p.id === deleteId) ?? null;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <SectionHeader
         title="Your persona"
-        description="The default persona used in all chats."
-        scope="global"
+        description="The voice you use in every chat. Names and descriptions help the model write for you."
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 gap-1.5 max-sm:h-11"
+            onClick={openCreate}
+          >
+            <Plus className="size-3.5" aria-hidden="true" />
+            New persona
+          </Button>
+        }
       />
 
       {queryError ? (
@@ -205,67 +291,96 @@ export function PersonaSection(_props: SectionProps) {
         </div>
       ) : null}
 
-      <Field className="space-y-1.5">
-        <FieldLabel htmlFor="ps-persona">Default persona</FieldLabel>
-        <div className="flex gap-2">
-          <Select
-            value={selectedId || "_none"}
-            onValueChange={handlePersonaChange}
-            disabled={queryLoading}
-          >
-            <SelectTrigger id="ps-persona" className="h-10! min-w-0 flex-1 max-sm:h-11!">
-              <SelectValue placeholder="Use account name" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="_none">Use account name</SelectItem>
-                {personas?.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-10 shrink-0 max-sm:size-11"
-            onClick={openCreate}
-            aria-label="Create persona"
-          >
-            <Plus className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-10 shrink-0 max-sm:size-11"
-            disabled={!selectedId}
-            onClick={() =>
-              selectedPersona &&
-              openEdit(
-                selectedPersona.id,
-                selectedPersona.name,
-                selectedPersona.description,
-                selectedPersona.iconPath,
-              )
-            }
-            aria-label="Edit persona"
-          >
-            <Pencil className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-10 shrink-0 max-sm:size-11"
-            disabled={!selectedId}
-            onClick={() => setDeleteId(selectedId)}
-            aria-label="Delete persona"
-          >
-            <Trash2 className="size-4 text-destructive" />
-          </Button>
+      {!queryLoading ? (
+        <div className="rounded-2xl border border-subtle bg-surface/60 p-4">
+          <div className="flex flex-wrap items-start gap-3">
+            <PersonaAvatar persona={selectedPersona} className="size-11" />
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <p className="truncate text-sm font-medium text-1">
+                  {selectedPersona?.name ?? "Account name"}
+                </p>
+                {selectedPersona ? (
+                  <span className="rounded-full border border-brand/25 bg-brand/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand">
+                    Default
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-2">
+                {selectedPersona?.description ||
+                  "Your account name is used when no persona is selected."}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 max-sm:h-11"
+                onClick={() => setChooserOpen(true)}
+              >
+                Change
+              </Button>
+              {selectedPersona ? (
+                <RowActionsMenu
+                  label={`Actions for ${selectedPersona.name}`}
+                  items={[
+                    {
+                      label: "Edit persona",
+                      icon: Pencil,
+                      onSelect: () => openEdit(selectedPersona),
+                    },
+                    {
+                      label: "Delete persona",
+                      icon: Trash2,
+                      destructive: true,
+                      onSelect: () => setDeleteId(selectedPersona.id),
+                    },
+                  ]}
+                />
+              ) : null}
+            </div>
+          </div>
         </div>
-      </Field>
+      ) : null}
+
+      <Dialog open={chooserOpen} onOpenChange={setChooserOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose persona</DialogTitle>
+          </DialogHeader>
+          <div className="flex max-h-[min(60vh,26rem)] flex-col gap-1 overflow-y-auto pr-1">
+            <PersonaOption
+              name="Account name"
+              description="Use the name on your account."
+              persona={null}
+              selected={!selectedPersona}
+              onSelect={() => selectPersona(null)}
+            />
+            {personas?.map((persona) => (
+              <PersonaOption
+                key={persona.id}
+                name={persona.name}
+                description={persona.description}
+                persona={persona}
+                selected={persona.id === selectedId}
+                onSelect={() => selectPersona(persona.id)}
+              />
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setChooserOpen(false);
+                openCreate();
+              }}
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              New persona
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={dialog !== null}
@@ -297,10 +412,10 @@ export function PersonaSection(_props: SectionProps) {
                 rows={3}
               />
             </div>
-            {dialog?.kind === "edit" && (
+            {dialog?.kind === "edit" ? (
               <div className="space-y-1.5">
                 <Label>Icon</Label>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   {showIcon && displayStoredIconPath ? (
                     <OptimizedImage
                       key={displayStoredIconPath}
@@ -315,11 +430,11 @@ export function PersonaSection(_props: SectionProps) {
                       sizes="64px"
                       quality={70}
                       priority
-                      className="size-16 rounded-lg object-cover border border-border"
+                      className="size-16 rounded-full border border-border object-cover"
                       onError={() => setFailedIconPath(displayStoredIconPath)}
                     />
                   ) : (
-                    <div className="size-16 rounded-lg bg-muted flex items-center justify-center border border-border">
+                    <div className="flex size-16 items-center justify-center rounded-full border border-border bg-muted">
                       <ImageIcon className="size-6 text-muted-foreground/40" />
                     </div>
                   )}
@@ -328,7 +443,7 @@ export function PersonaSection(_props: SectionProps) {
                     size="sm"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadPersonaIcon.isPending}
-                    className="flex items-center gap-1.5"
+                    className="gap-1.5"
                   >
                     {uploadPersonaIcon.isPending ? (
                       <Spinner className="size-3.5" />
@@ -355,7 +470,7 @@ export function PersonaSection(_props: SectionProps) {
                   ) : null}
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>
@@ -376,8 +491,8 @@ export function PersonaSection(_props: SectionProps) {
         onOpenChange={(open) => {
           if (!open) setDeleteId(null);
         }}
-        title="Delete persona?"
-        description="This cannot be undone."
+        title={`Delete ${deleteTarget?.name ?? "persona"}?`}
+        description="This removes the persona permanently. Your chats keep their messages."
         destructive
         loading={deletePersona.isPending}
         onConfirm={handleDelete}
