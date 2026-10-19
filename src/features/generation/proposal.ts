@@ -1,5 +1,4 @@
 import { chat as aiChat, type StreamChunk, type TokenUsage } from "@tanstack/ai";
-import { withPersistence, type ChatPersistence } from "@tanstack/ai-persistence";
 import { db as defaultDb, type DB } from "@/db";
 import {
   beginJob,
@@ -11,7 +10,6 @@ import {
   resolveProposal,
 } from "@/db/repositories/generation";
 import { getMessages } from "@/features/chat/tree/service";
-import { aiPersistence } from "./persistence-singleton";
 import { loadGenerationSnapshot } from "./context";
 import { compilePrompt } from "./prompt";
 import { makeAdapter } from "./provider";
@@ -49,7 +47,6 @@ export async function runProposal(
   userName: string,
   input: RunProposalInput,
   db: DB = defaultDb,
-  persistence: ChatPersistence = aiPersistence,
 ): Promise<RunProposalResult> {
   const prepared = await prepareGeneration(userId, input, userName, db);
   let job: ReturnType<typeof getJob> | undefined;
@@ -110,7 +107,6 @@ export async function runProposal(
       context: toolContext,
       threadId: input.chatId,
       runId: job.id,
-      middleware: [withPersistence(persistence)],
     });
 
     for await (const chunk of stream) {

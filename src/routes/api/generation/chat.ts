@@ -2,12 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   chat as aiChat,
   memoryStream,
-  resumeServerSentEventsResponse,
   toServerSentEventsResponse,
   type StreamChunk,
   type TokenUsage,
 } from "@tanstack/ai";
-import { reconstructChat, withPersistence } from "@tanstack/ai-persistence";
 import { tryGetSession } from "@/server/session";
 import {
   beginJob,
@@ -16,7 +14,6 @@ import {
   getJobByRequestId,
   heartbeatJob,
 } from "@/db/repositories/generation";
-import { aiPersistence } from "@/features/generation/persistence-singleton";
 import { loadGenerationSnapshot } from "@/features/generation/context";
 import { compilePrompt } from "@/features/generation/prompt";
 import { makeAdapter } from "@/features/generation/provider";
@@ -126,22 +123,6 @@ async function* finalizeOnTerminal(
 export const Route = createFileRoute("/api/generation/chat")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
-        const session = await tryGetSession();
-        if (!session) {
-          return new Response(JSON.stringify({ code: "unauthorized", message: "Unauthorized" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          });
-        }
-        const durability = memoryStream(request);
-        if (durability.resumeFrom() !== null) {
-          return resumeServerSentEventsResponse({ adapter: durability });
-        }
-        return reconstructChat(aiPersistence, request, {
-          authorize: async () => true,
-        });
-      },
       POST: async ({ request }) => {
         let activeJobId: string | null = null;
         try {
@@ -226,7 +207,6 @@ export const Route = createFileRoute("/api/generation/chat")({
             context: toolContext,
             threadId: job.chatId,
             runId: job.id,
-            middleware: [withPersistence(aiPersistence)],
           });
 
           const finalized = finalizeOnTerminal(job.id, owner, lease.leaseEpoch, stream);

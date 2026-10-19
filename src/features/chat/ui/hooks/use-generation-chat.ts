@@ -80,7 +80,6 @@ export function useGenerationChat(chatId: string): GenerationChat {
 
   const aiChat = useAiChat({
     threadId: chatId,
-    persistence: true,
     connection,
     tools: clientTools,
     onChunk: (chunk: unknown) => {

@@ -3,9 +3,9 @@ import { createServer, type Server } from "node:http";
 import { eq } from "drizzle-orm";
 import { makeTestDb, seedTestUser, type TestDb } from "@/db/__tests__/helpers";
 import { makeCharacterData } from "@/db/__tests__/character-data";
-import { aiChatThreads, aiProviders, characters, generationJobs, userSettings } from "@/db/schema";
+import { aiProviders, characters, generationJobs, userSettings } from "@/db/schema";
 import { createChat } from "@/features/chat/tree/service";
-import { createSqlitePersistence } from "./persistence";
+import { getProposal } from "@/db/repositories/generation";
 import { runProposal } from "./proposal";
 import { prepareGeneration } from "./prepare";
 
@@ -115,16 +115,11 @@ describe("runProposal integration", () => {
     ctx.sqlite.close();
   });
 
-  it("streams, sanitizes impersonation, persists the run, and creates a proposal", async () => {
-    const result = await runProposal(
-      userId,
-      "User",
-      { chatId, trigger: "impersonate" },
-      db,
-      createSqlitePersistence(db),
-    );
+  it("streams, sanitizes impersonation, and creates an accepted proposal", async () => {
+    const result = await runProposal(userId, "User", { chatId, trigger: "impersonate" }, db);
 
     expect(result.text).toBe("Hello from the fake.");
+    expect(getProposal(result.proposalId, db)?.status).toBe("accepted");
     expect(fake.bodies.length).toBeGreaterThan(0);
     const body = fake.bodies[0] as {
       max_output_tokens?: unknown;
@@ -134,23 +129,13 @@ describe("runProposal integration", () => {
     expect(body.max_output_tokens).toBeUndefined();
     expect(typeof body.max_tokens).toBe("number");
     expect(Array.isArray(body.messages)).toBe(true);
-
-    const thread = db.select().from(aiChatThreads).where(eq(aiChatThreads.threadId, chatId)).get();
-    expect(thread).toBeTruthy();
-    expect((thread?.messages as unknown[]).length).toBeGreaterThan(0);
   }, 20_000);
 
   it("fails the job when streaming setup throws before the lease is taken", async () => {
     db.update(aiProviders).set({ baseUrl: "not-a-url" }).where(eq(aiProviders.id, "prov-1")).run();
 
     await expect(
-      runProposal(
-        userId,
-        "User",
-        { chatId, trigger: "impersonate" },
-        db,
-        createSqlitePersistence(db),
-      ),
+      runProposal(userId, "User", { chatId, trigger: "impersonate" }, db),
     ).rejects.toThrow(/base URL/);
 
     const job = db.select().from(generationJobs).where(eq(generationJobs.chatId, chatId)).get();
@@ -163,13 +148,7 @@ describe("runProposal integration", () => {
   }, 20_000);
 
   it("assembles image prompts with canonical identity and style", async () => {
-    const result = await runProposal(
-      userId,
-      "User",
-      { chatId, trigger: "image" },
-      db,
-      createSqlitePersistence(db),
-    );
+    const result = await runProposal(userId, "User", { chatId, trigger: "image" }, db);
 
     expect(result.text.startsWith("1girl, silver hair,")).toBe(true);
     expect(result.text).toContain("anime style");
