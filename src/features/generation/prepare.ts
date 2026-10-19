@@ -19,6 +19,7 @@ export interface PrepareGenerationInput {
   trigger: Trigger;
   content?: string;
   messageLocalId?: number;
+  selection?: number[];
 }
 
 export interface PreparedGeneration {
@@ -65,6 +66,7 @@ export async function prepareGeneration(
 
   let target: InsertionTarget = { kind: "append" };
   const messageLocalId = input.messageLocalId;
+  const selection = input.selection ?? [];
 
   if (input.trigger === "regenerate") {
     const targetId = messageLocalId ?? 0;
@@ -83,18 +85,22 @@ export async function prepareGeneration(
       ? { kind: "sibling", messageLocalId: leaf.localId }
       : { kind: "append" };
   } else if (input.trigger === "rewrite") {
-    if (!messageLocalId) {
+    const targetId = messageLocalId ?? selection[0];
+    if (!targetId) {
       throw new GenerationValidationError({ message: "A message is required to rewrite" });
     }
-    const targetNode = getNode(tree, messageLocalId);
+    const targetNode = getNode(tree, targetId);
     if (!targetNode) throw new GenerationValidationError({ message: "Message not found" });
     const extra = (targetNode.extra ?? {}) as Record<string, unknown>;
     target = {
       kind: "replace",
-      messageLocalId,
+      messageLocalId: targetId,
       baseRev: Number(extra.rev ?? 0),
       baseHash: String(extra.contentHash ?? ""),
     };
+  } else if (input.trigger === "transform") {
+    const last = selection[selection.length - 1] ?? messageLocalId ?? activeLeafId;
+    target = { kind: "insertAfter", messageLocalId: last, role: "assistant" };
   }
 
   const job = createJob(
@@ -108,6 +114,7 @@ export async function prepareGeneration(
       input: {
         content: input.content,
         messageLocalId,
+        selection,
       },
       requiresConfirmation:
         input.trigger === "rewrite" || input.trigger === "transform" || input.trigger === "image",

@@ -59,6 +59,14 @@ export interface GenerationServiceShape {
     role?: "user" | "assistant" | null;
     meta?: Record<string, unknown>;
   }) => Effect.Effect<string, GenerationError>;
+  readonly finalizeProposal: (input: {
+    jobId: string;
+    owner: string;
+    epoch: number;
+    proposalId: string;
+    usage?: TokenUsage;
+    finishReason?: string | null;
+  }) => Effect.Effect<void, GenerationError>;
   readonly cancel: (jobId: string) => Effect.Effect<void, GenerationError>;
 }
 
@@ -163,6 +171,24 @@ export class GenerationService extends Context.Service<
           meta: input.meta,
         });
         return row.id;
+      }),
+
+    finalizeProposal: (input) =>
+      Effect.sync(() => {
+        const ok = finalizeJob({
+          jobId: input.jobId,
+          owner: input.owner,
+          epoch: input.epoch,
+          result: { kind: "proposal", proposalId: input.proposalId },
+          usage: input.usage as unknown as Record<string, unknown> | undefined,
+          finishReason: input.finishReason ?? null,
+        });
+        if (!ok) {
+          throw new LeaseLostError({
+            message: "The generation lease was lost before proposal finalize.",
+            jobId: input.jobId,
+          });
+        }
       }),
 
     cancel: (jobId) =>

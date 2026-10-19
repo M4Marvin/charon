@@ -22,6 +22,7 @@ const PrepareSchema = Schema.Struct({
   trigger: TriggerSchema,
   content: Schema.optional(Schema.String),
   messageLocalId: Schema.optional(Schema.Number),
+  selection: Schema.optional(Schema.Array(Schema.Number)),
 });
 
 const CancelSchema = Schema.Struct({ jobId: Schema.String });
@@ -31,7 +32,13 @@ export const prepareGenerationFn = createServerFn({ method: "POST", strict: { ou
   .handler(async ({ data }) => {
     const { user } = await getSession();
     const prepared = await runGeneration(
-      withGenerationService((service) => service.prepare(user.id, data, user.name)),
+      withGenerationService((service) =>
+        service.prepare(
+          user.id,
+          { ...data, selection: data.selection ? [...data.selection] : undefined },
+          user.name,
+        ),
+      ),
     );
     return {
       ...prepared,

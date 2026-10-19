@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { withImageVersion } from "@/lib/image-optimization";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -8,9 +8,8 @@ import {
   useSwipeMessage,
   useDeleteMessage,
   useEditMessage,
-  useImpersonateMessage,
-  useImagePrompt,
 } from "@/hooks/useChats";
+import { useRunProposal } from "@/hooks/useGenerationProposals";
 import { useChatConfig } from "@/hooks/useChatConfig";
 import { computeActivePathFromMessages } from "@/features/chat/tree/active-path";
 import { useGenerationChat } from "../hooks/use-generation-chat";
@@ -37,7 +36,9 @@ import { SettingsPanel } from "../settings/settings-panel";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { EmptyState } from "@/components/common/EmptyState";
 import { SkeletonRows } from "@/components/common/Skeletons";
-import { MessageSquareX } from "lucide-react";
+import { MessageSquareX, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { TransformSelectionDialog } from "../components/transform-selection-dialog";
 
 export function ChatPage() {
   const { id: chatId } = useParams({ from: "/chat/$id" });
@@ -59,6 +60,9 @@ export function ChatPage() {
   const openLightbox = useChatUiStore((s) => s.openLightbox);
   const closeLightbox = useChatUiStore((s) => s.closeLightbox);
   const customImage = useChatUiStore((s) => s.customImages[chatId] ?? null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [transformOpen, setTransformOpen] = useState(false);
   const setCustomImage = useChatUiStore((s) => s.setCustomImage);
   const clearCustomImage = useChatUiStore((s) => s.clearCustomImage);
 
@@ -83,8 +87,7 @@ export function ChatPage() {
   const swipeMutation = useSwipeMessage();
   const deleteMsgMutation = useDeleteMessage();
   const editMutation = useEditMessage();
-  const impersonateMutation = useImpersonateMessage();
-  const imagePromptMutation = useImagePrompt();
+  const proposalMutation = useRunProposal();
 
   const activePath = useMemo(
     () =>
@@ -263,12 +266,8 @@ export function ChatPage() {
       refuseBusy();
       return;
     }
-    if (!activePath.some((entry) => entry.message.role === "user")) {
-      toast.error("Add a message before impersonating");
-      return;
-    }
-    impersonateMutation.mutate(
-      { chatId },
+    proposalMutation.mutate(
+      { chatId, trigger: "impersonate" },
       {
         onSuccess: (result) => {
           applyGeneratedText(result.text);
@@ -283,8 +282,7 @@ export function ChatPage() {
     isBusy,
     refuseBusy,
     generation.isStreaming,
-    activePath,
-    impersonateMutation.mutate,
+    proposalMutation.mutate,
     applyGeneratedText,
   ]);
 
@@ -293,8 +291,8 @@ export function ChatPage() {
       refuseBusy();
       return;
     }
-    imagePromptMutation.mutate(
-      { chatId },
+    proposalMutation.mutate(
+      { chatId, trigger: "image" },
       {
         onSuccess: (result) => {
           if (!result.text.trim()) {
@@ -314,7 +312,7 @@ export function ChatPage() {
     isBusy,
     refuseBusy,
     generation.isStreaming,
-    imagePromptMutation.mutate,
+    proposalMutation.mutate,
     applyGeneratedText,
     focusComposer,
   ]);
@@ -393,6 +391,20 @@ export function ChatPage() {
     );
   }
 
+  const toggleSelection = useCallback((messageLocalId: number) => {
+    setSelectionMode(true);
+    setSelectedIds((previous) =>
+      previous.includes(messageLocalId)
+        ? previous.filter((id) => id !== messageLocalId)
+        : [...previous, messageLocalId],
+    );
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds([]);
+    setSelectionMode(false);
+  }, []);
+
   return (
     <main className="grid h-dvh w-full grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-base pb-[var(--keyboard-inset,0px)]">
       <ChatBackground src={backgroundUrl} fallbackSrc={characterAvatarUrl} />
@@ -426,6 +438,8 @@ export function ChatPage() {
         onRegenerate={handleRegenerate}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        selectedIds={selectedIds}
+        onToggleSelect={toggleSelection}
       />
 
       <CharacterPortraitPanel
@@ -475,6 +489,36 @@ export function ChatPage() {
         }}
       />
 
+      {selectionMode ? (
+        <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-3 pb-2">
+          <span className="text-xs text-2">{selectedIds.length} selected</span>
+          <Button variant="ghost" size="sm" onClick={clearSelection}>
+            Clear
+          </Button>
+          <Button
+            size="sm"
+            className="ml-auto"
+            disabled={selectedIds.length === 0}
+            onClick={() => setTransformOpen(true)}
+          >
+            Transform
+          </Button>
+          <Button variant="ghost" size="icon" onClick={clearSelection} aria-label="Exit selection">
+            <X className="size-4" />
+          </Button>
+        </div>
+      ) : null}
+
+      <TransformSelectionDialog
+        chatId={chatId}
+        messageIds={selectedIds}
+        open={transformOpen}
+        onOpenChange={(open) => {
+          setTransformOpen(open);
+          if (!open) clearSelection();
+        }}
+      />
+
       <Composer
         chatId={chatId}
         hasMessages={hasMessages}
@@ -484,8 +528,8 @@ export function ChatPage() {
         onImagePrompt={handleImagePrompt}
         isStreaming={localStreaming}
         isFinalizing={ownsGeneration && generation.status === "finalizing"}
-        impersonatePending={impersonateMutation.isPending}
-        imagePromptPending={imagePromptMutation.isPending}
+        impersonatePending={proposalMutation.isPending}
+        imagePromptPending={proposalMutation.isPending}
         disabled={composerDisabled}
         characterName={config.character.name}
       />

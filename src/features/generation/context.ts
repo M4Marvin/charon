@@ -1,7 +1,8 @@
 import { db as defaultDb, type DB } from "@/db";
-import { getMessages, getPathToMessage } from "@/features/chat/tree/service";
+import { getChat, getMessages, getPathToMessage } from "@/features/chat/tree/service";
 import { loadChatConfig } from "@/features/chat/config/service";
-import { getChat } from "@/features/chat/tree/service";
+import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
+import { getActiveLeafId, getActivePath } from "@/lib/st-core/chat-tree/tree";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
 import type { GenerationSnapshot } from "./contract";
 
@@ -25,7 +26,10 @@ export async function loadGenerationSnapshot(
       path = getMessages(chatId, db);
     }
   } else {
-    path = getMessages(chatId, db);
+    const all = getMessages(chatId, db);
+    const tree = treeFromNodes(all);
+    const activeLeafId = getActiveLeafId(tree);
+    path = activeLeafId === null ? all : getActivePath(tree, activeLeafId);
   }
 
   const selection = selectionIds.length
