@@ -16,7 +16,7 @@ import { compilePrompt } from "@/features/generation/prompt";
 import { makeAdapter } from "@/features/generation/provider";
 import { readTools } from "@/features/generation/tools";
 import { runGeneration, withGenerationService } from "@/features/generation/service";
-import type { GenerationError } from "@/features/generation/errors";
+import { httpStatusFor, isGenerationError, toErrorBody } from "@/features/generation/errors";
 import type { ToolContext } from "@/features/generation/contract";
 import { createLogger } from "@/features/logging";
 
@@ -246,18 +246,26 @@ export const Route = createFileRoute("/api/generation/chat")({
             },
           });
         } catch (error) {
-          const err = error as GenerationError & { _tag?: string };
-          const message = err instanceof Error ? err.message : "Generation failed";
-          log.error("generation chat failed", { tag: err?._tag, message });
+          const generationError = isGenerationError(error) ? error : null;
+          const message = error instanceof Error ? error.message : "Generation failed";
+          const status = generationError ? httpStatusFor(generationError) : 500;
+          const body = generationError
+            ? toErrorBody(generationError)
+            : { code: "internal", message };
+          log.error("generation chat failed", {
+            tag: generationError?._tag,
+            message,
+            status,
+          });
           if (activeJobId) {
             try {
-              failJob({ jobId: activeJobId, code: "request_failed", message });
+              failJob({ jobId: activeJobId, code: body.code, message });
             } catch {
               // Best effort: the job may already be terminal.
             }
           }
-          return new Response(JSON.stringify({ code: err?._tag ?? "internal", message }), {
-            status: 500,
+          return new Response(JSON.stringify(body), {
+            status,
             headers: { "Content-Type": "application/json" },
           });
         }

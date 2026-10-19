@@ -118,81 +118,60 @@ export type GenerationError =
   | OutputValidationError
   | StructuredOutputUnsupportedError;
 
+const HTTP_STATUS: Record<GenerationError["_tag"], number> = {
+  GenerationValidationError: 400,
+  ConfigError: 422,
+  ChatBusyError: 409,
+  LeaseLostError: 409,
+  StaleTargetError: 409,
+  InvalidSelectionError: 400,
+  SelectionTooLargeError: 413,
+  ContextOverflowError: 413,
+  ProviderAuthError: 502,
+  ProviderRateLimitError: 429,
+  ProviderUnavailableError: 503,
+  ProviderTimeoutError: 504,
+  ContentFilterError: 422,
+  RefusalError: 422,
+  EmptyResponseError: 502,
+  AbortedError: 499,
+  OutputValidationError: 422,
+  StructuredOutputUnsupportedError: 502,
+};
+
+const ERROR_CODES: Record<GenerationError["_tag"], string> = {
+  GenerationValidationError: "invalid_request",
+  ConfigError: "config",
+  ChatBusyError: "busy",
+  LeaseLostError: "lease_lost",
+  StaleTargetError: "stale_target",
+  InvalidSelectionError: "invalid_selection",
+  SelectionTooLargeError: "selection_too_large",
+  ContextOverflowError: "context_overflow",
+  ProviderAuthError: "provider_auth",
+  ProviderRateLimitError: "rate_limited",
+  ProviderUnavailableError: "provider_unavailable",
+  ProviderTimeoutError: "timeout",
+  ContentFilterError: "content_filter",
+  RefusalError: "refusal",
+  EmptyResponseError: "empty_response",
+  AbortedError: "aborted",
+  OutputValidationError: "invalid_output",
+  StructuredOutputUnsupportedError: "structured_unsupported",
+};
+
+export function isGenerationError(value: unknown): value is GenerationError {
+  if (typeof value !== "object" || value === null || !("_tag" in value)) return false;
+  const tag = (value as { _tag: unknown })._tag;
+  return typeof tag === "string" && Object.hasOwn(HTTP_STATUS, tag);
+}
+
 export function httpStatusFor(error: GenerationError): number {
-  switch (error._tag) {
-    case "GenerationValidationError":
-    case "InvalidSelectionError":
-      return 400;
-    case "ConfigError":
-      return 422;
-    case "ChatBusyError":
-    case "StaleTargetError":
-      return 409;
-    case "SelectionTooLargeError":
-    case "ContextOverflowError":
-      return 413;
-    case "ProviderAuthError":
-      return 502;
-    case "ProviderRateLimitError":
-      return 429;
-    case "ProviderUnavailableError":
-      return 503;
-    case "ProviderTimeoutError":
-      return 504;
-    case "ContentFilterError":
-    case "RefusalError":
-    case "OutputValidationError":
-      return 422;
-    case "EmptyResponseError":
-      return 502;
-    case "StructuredOutputUnsupportedError":
-      return 502;
-    case "AbortedError":
-      return 499;
-    case "LeaseLostError":
-      return 409;
-  }
+  return HTTP_STATUS[error._tag];
 }
 
 export function codeFor(error: GenerationError): string {
-  switch (error._tag) {
-    case "GenerationValidationError":
-      return "invalid_request";
-    case "ConfigError":
-      return "config";
-    case "ChatBusyError":
-      return "busy";
-    case "LeaseLostError":
-      return "lease_lost";
-    case "StaleTargetError":
-      return "stale_target";
-    case "InvalidSelectionError":
-      return "invalid_selection";
-    case "SelectionTooLargeError":
-      return "selection_too_large";
-    case "ContextOverflowError":
-      return "context_overflow";
-    case "ProviderAuthError":
-      return "provider_auth";
-    case "ProviderRateLimitError":
-      return "rate_limited";
-    case "ProviderUnavailableError":
-      return "provider_unavailable";
-    case "ProviderTimeoutError":
-      return "timeout";
-    case "ContentFilterError":
-      return "content_filter";
-    case "RefusalError":
-      return "refusal";
-    case "EmptyResponseError":
-      return "empty_response";
-    case "AbortedError":
-      return "aborted";
-    case "OutputValidationError":
-      return "invalid_output";
-    case "StructuredOutputUnsupportedError":
-      return "structured_unsupported";
-  }
+  return ERROR_CODES[error._tag];
 }
 
 export function toErrorBody(error: GenerationError): { code: string; message: string } {
