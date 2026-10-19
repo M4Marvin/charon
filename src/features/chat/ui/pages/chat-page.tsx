@@ -347,6 +347,10 @@ export function ChatPage() {
     setSelectionMode(false);
   }, []);
 
+  const handleProposalApplied = useCallback(() => {
+    void refetchMessages();
+  }, [refetchMessages]);
+
   // Selection is per-chat UI state: never carry localIds across a route change.
   useEffect(() => {
     setSelectedIds([]);
@@ -447,7 +451,7 @@ export function ChatPage() {
         onDelete={handleDelete}
         selectedIds={selectedIds}
         onToggleSelect={toggleSelection}
-        onProposalApplied={() => void refetchMessages()}
+        onProposalApplied={handleProposalApplied}
       />
 
       <CharacterPortraitPanel

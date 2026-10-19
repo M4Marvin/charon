@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,11 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  useAcceptProposal,
-  useDenyProposal,
-  useRunProposal,
-} from "@/hooks/useGenerationProposals";
+import { useAcceptProposal, useDenyProposal, useRunProposal } from "@/hooks/useGenerationProposals";
 
 export function TransformSelectionDialog({
   chatId,
@@ -33,20 +29,20 @@ export function TransformSelectionDialog({
   const accept = useAcceptProposal();
   const deny = useDenyProposal();
 
+  // Accept/deny close the dialog through the controlled 'open' prop, which
+  // does not call Radix's onOpenChange. Reset here so a reopened dialog never
+  // shows a resolved proposal.
+  useEffect(() => {
+    if (open) return;
+    setInstruction("");
+    setProposal(null);
+    run.reset();
+    accept.reset();
+    deny.reset();
+  }, [open]);
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        onOpenChange(next);
-        if (!next) {
-          setInstruction("");
-          setProposal(null);
-          run.reset();
-          accept.reset();
-          deny.reset();
-        }
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Transform {messageIds.length} messages</DialogTitle>
