@@ -231,8 +231,15 @@ export interface FailJobInput {
 
 export function failJob(input: FailJobInput, db: DB = defaultDb): boolean {
   const where = input.owner
-    ? and(eq(generationJobs.id, input.jobId), eq(generationJobs.leaseOwner, input.owner))
-    : eq(generationJobs.id, input.jobId);
+    ? and(
+        eq(generationJobs.id, input.jobId),
+        eq(generationJobs.leaseOwner, input.owner),
+        inArray(generationJobs.status, ["queued", "running", "finalizing"]),
+      )
+    : and(
+        eq(generationJobs.id, input.jobId),
+        inArray(generationJobs.status, ["queued", "running", "finalizing"]),
+      );
   const row = db
     .update(generationJobs)
     .set({

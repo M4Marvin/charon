@@ -35,6 +35,7 @@ interface MessageListProps {
   onDelete: (messageLocalId: number) => boolean;
   selectedIds?: number[];
   onToggleSelect?: (messageLocalId: number) => void;
+  onProposalApplied?: () => void;
   /** Instant-send overlay: user bubble content, null when absent. */
   pendingUserContent: string | null;
   /** Instant-send overlay: assistant typing-dots bubble. */
@@ -120,6 +121,7 @@ export function MessageList({
   onDelete,
   selectedIds = [],
   onToggleSelect,
+  onProposalApplied,
   pendingUserContent,
   showPendingAssistant,
 }: MessageListProps) {
@@ -259,6 +261,7 @@ export function MessageList({
                       onDelete={onDelete}
                       selected={selectedIds.includes(entry.message.localId)}
                       onToggleSelect={onToggleSelect}
+                      onProposalApplied={onProposalApplied}
                     />
                   </MessageScrollerItem>
                 );

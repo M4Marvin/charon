@@ -440,6 +440,7 @@ export function ChatPage() {
         onDelete={handleDelete}
         selectedIds={selectedIds}
         onToggleSelect={toggleSelection}
+        onProposalApplied={() => void refetchMessages()}
       />
 
       <CharacterPortraitPanel

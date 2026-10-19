@@ -326,6 +326,15 @@ export function compilePrompt(
       ? parseExampleMessages(snapshot.character.mesExample, names)
       : [];
   const history = selectHistoryMessages(snapshot, mode);
+  if (examples.length === 0 && history.length === 0 && mode !== "impersonate") {
+    history.push({
+      role: "user",
+      content:
+        mode === "image"
+          ? "Write the Danbooru-style image prompt delta for the current scene now."
+          : "Proceed with the task now.",
+    });
+  }
   const prefill: ModelMessage | null =
     mode === "impersonate" ? { role: "assistant", content: `${snapshot.persona.name}: ` } : null;
 

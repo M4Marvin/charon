@@ -329,7 +329,12 @@ describe("compilePrompt", () => {
         imageExample: "masterpiece, 1girl, {{char}}, {{user}}",
       });
 
-      expect(result.messages).toEqual([]);
+      expect(result.messages).toEqual([
+        {
+          role: "user",
+          content: "Write the Danbooru-style image prompt delta for the current scene now.",
+        },
+      ]);
       expect(systemText(result)).toContain("Scene delta:");
       expect(systemText(result)).toContain("masterpiece, 1girl, Alice, Marv");
       expect(JSON.stringify(result)).not.toContain("history-only");

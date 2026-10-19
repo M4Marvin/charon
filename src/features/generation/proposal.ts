@@ -15,6 +15,7 @@ import { readTools } from "./tools";
 import { prepareGeneration } from "./prepare";
 import { runGeneration, withGenerationService } from "./service";
 import { EmptyResponseError, type GenerationError } from "./errors";
+import { assembleImagePrompt, sanitizeImpersonation } from "./image";
 import type { ToolContext, Trigger } from "./contract";
 
 export interface RunProposalInput {
@@ -116,6 +117,12 @@ export async function runProposal(
           : input.trigger === "rewrite"
             ? "rewrite"
             : "transform";
+    const finalText =
+      kind === "image"
+        ? assembleImagePrompt(snapshot.character, text)
+        : kind === "impersonate"
+          ? sanitizeImpersonation(text, snapshot.persona.name)
+          : text.trim();
     const target = (job.target ?? {}) as Record<string, unknown>;
     const targetLocalId =
       typeof target.messageLocalId === "number"
@@ -132,7 +139,7 @@ export async function runProposal(
           jobId: job.id,
           chatId: input.chatId,
           kind,
-          content: text,
+          content: finalText,
           targetLocalId,
           baseRev: typeof target.baseRev === "number" ? target.baseRev : null,
           baseHash: typeof target.baseHash === "string" ? target.baseHash : null,
@@ -166,7 +173,7 @@ export async function runProposal(
       resolveProposal(proposalId, "accepted", db);
     }
 
-    return { jobId: job.id, proposalId, text };
+    return { jobId: job.id, proposalId, text: finalText };
   } catch (error) {
     await runGeneration(
       withGenerationService((service) =>

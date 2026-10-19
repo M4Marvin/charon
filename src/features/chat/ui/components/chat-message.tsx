@@ -40,6 +40,7 @@ interface ChatMessageProps {
   onDelete: (messageLocalId: number) => boolean;
   selected?: boolean;
   onToggleSelect?: (messageLocalId: number) => void;
+  onProposalApplied?: () => void;
 }
 
 export const ChatMessage = memo(function ChatMessage({
@@ -59,6 +60,7 @@ export const ChatMessage = memo(function ChatMessage({
   onDelete,
   selected = false,
   onToggleSelect,
+  onProposalApplied,
 }: ChatMessageProps) {
   const { message, siblingIndex, siblingTotal } = entry;
   const isAssistant = message.role === "assistant";
@@ -204,6 +206,7 @@ export const ChatMessage = memo(function ChatMessage({
                     chatId={chatId}
                     messageLocalId={message.localId}
                     disabled={disabled}
+                    onApplied={onProposalApplied}
                   />
                   <Button
                     variant="ghost"

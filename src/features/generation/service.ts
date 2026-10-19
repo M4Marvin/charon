@@ -117,15 +117,7 @@ export class GenerationService extends Context.Service<
               finishReason: input.finishReason ?? null,
             });
           }
-          const ok = finalizeJob({
-            jobId: input.jobId,
-            owner: input.owner,
-            epoch: input.epoch,
-            result: { kind: "message", localIds: job.placeholderLocalId ? [job.placeholderLocalId] : [] },
-            usage: input.usage as unknown as Record<string, unknown> | undefined,
-            finishReason: input.finishReason ?? null,
-          });
-          if (!ok) {
+          if (job.leaseOwner !== input.owner || job.leaseEpoch !== input.epoch) {
             throw new LeaseLostError({
               message: "The generation lease was lost before finalize.",
               jobId: input.jobId,
@@ -139,6 +131,20 @@ export class GenerationService extends Context.Service<
                 finishReason: input.finishReason ?? null,
                 usage: input.usage ?? null,
               },
+            });
+          }
+          const ok = finalizeJob({
+            jobId: input.jobId,
+            owner: input.owner,
+            epoch: input.epoch,
+            result: { kind: "message", localIds: job.placeholderLocalId ? [job.placeholderLocalId] : [] },
+            usage: input.usage as unknown as Record<string, unknown> | undefined,
+            finishReason: input.finishReason ?? null,
+          });
+          if (!ok) {
+            throw new LeaseLostError({
+              message: "The generation lease was lost before finalize.",
+              jobId: input.jobId,
             });
           }
         },
