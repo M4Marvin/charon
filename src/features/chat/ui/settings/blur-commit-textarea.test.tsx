@@ -58,46 +58,7 @@ describe("BlurCommitTextarea", () => {
     expect(onCommit).toHaveBeenCalledWith("new");
   });
 
-  it("shows save state and retry", () => {
-    const onRetry = vi.fn();
-    render(
-      <BlurCommitTextarea
-        id="description"
-        label="Description"
-        defaultValue="old"
-        onCommit={vi.fn()}
-        status="error"
-        error={new Error("network")}
-        onRetry={onRetry}
-      />,
-    );
-
-    const textarea = screen.getByLabelText("Description");
-    fireEvent.change(textarea, { target: { value: "draft" } });
-
-    expect(screen.getByText(/Couldn't save/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    expect(onRetry).toHaveBeenCalledTimes(1);
-  });
-
-  it("offers reset to the character card when an override exists", () => {
-    const onReset = vi.fn();
-    render(
-      <BlurCommitTextarea
-        id="description"
-        label="Description"
-        defaultValue="override"
-        onCommit={vi.fn()}
-        onReset={onReset}
-        resetLabel="Reset to card"
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Reset to card" }));
-    expect(onReset).toHaveBeenCalledTimes(1);
-  });
-
-  it("keeps the draft when a save fails", () => {
+  it("keeps the draft when the server value rolls back underneath it", () => {
     const { rerender } = render(
       <BlurCommitTextarea
         id="description"
@@ -108,45 +69,52 @@ describe("BlurCommitTextarea", () => {
     );
 
     const textarea = screen.getByLabelText("Description") as HTMLTextAreaElement;
+    fireEvent.focus(textarea);
     fireEvent.change(textarea, { target: { value: "new" } });
 
     rerender(
       <BlurCommitTextarea
         id="description"
         label="Description"
-        defaultValue="new"
-        onCommit={vi.fn()}
-        status="saving"
-      />,
-    );
-    rerender(
-      <BlurCommitTextarea
-        id="description"
-        label="Description"
         defaultValue="old"
         onCommit={vi.fn()}
-        status="error"
-        error={new Error("network")}
       />,
     );
 
     expect(textarea.value).toBe("new");
   });
 
-  it("offers a local revert for unsaved text", () => {
+  it("shows inherited state and offers to use the card value", () => {
+    const onUseCard = vi.fn();
     render(
       <BlurCommitTextarea
         id="description"
         label="Description"
-        defaultValue="old"
+        defaultValue="override"
+        inheritedValue="card text"
+        onUseCard={onUseCard}
         onCommit={vi.fn()}
       />,
     );
 
-    const textarea = screen.getByLabelText("Description") as HTMLTextAreaElement;
-    fireEvent.change(textarea, { target: { value: "draft" } });
-    fireEvent.click(screen.getByRole("button", { name: "Revert" }));
+    expect(screen.getByText("Custom")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Original" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Use card" }));
+    expect(onUseCard).toHaveBeenCalledTimes(1);
+  });
 
-    expect(textarea.value).toBe("old");
+  it("labels an empty override as using the card", () => {
+    render(
+      <BlurCommitTextarea
+        id="description"
+        label="Description"
+        defaultValue=""
+        inheritedValue="card text"
+        onCommit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Using card")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Use card" })).toBeNull();
   });
 });

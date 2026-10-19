@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { useChatConfig } from "@/hooks/useChatConfig";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { SettingsNav } from "./settings-nav";
+import { SettingsFooter, SettingsSaveProvider } from "./save-status";
 import { SettingsSectionPicker } from "./settings-section-picker";
 import type { SettingsSection } from "./settings-nav-model";
 import { ModelSection } from "./sections/model-section";
@@ -98,79 +99,70 @@ export function SettingsPanel({ chatId, open, isStreaming, onOpenChange }: Setti
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex flex-1 min-h-0 flex-col md:flex-row">
-          <div className="border-b border-subtle px-4 py-3 md:hidden">
-            <SettingsSectionPicker
+        <SettingsSaveProvider activeSection={activeId}>
+          <div className="flex flex-1 min-h-0 flex-col md:flex-row">
+            <div className="border-b border-subtle px-4 py-3 md:hidden">
+              <SettingsSectionPicker
+                sections={SECTIONS}
+                activeId={activeId}
+                onChange={handleSectionChange}
+              />
+            </div>
+            <SettingsNav
               sections={SECTIONS}
               activeId={activeId}
               onChange={handleSectionChange}
+              open={open}
             />
-          </div>
-          <SettingsNav
-            sections={SECTIONS}
-            activeId={activeId}
-            onChange={handleSectionChange}
-            open={open}
-          />
 
-          <div
-            ref={contentRef}
-            className="flex-1 min-w-0 overflow-y-auto px-5 py-5 scrollbar-thin scroll-fade-y"
-          >
-            <p className="sr-only" aria-live="polite" aria-atomic="true">
-              Showing {activeSection.label} settings
-            </p>
-            {isStreaming ? (
-              <div
-                role="status"
-                className="mb-4 flex items-start gap-2 rounded-lg border border-subtle bg-surface px-3 py-2 text-xs text-2"
-              >
-                <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                A reply is generating. Changes apply to your next reply.
-              </div>
-            ) : null}
-            {configError ? (
-              <div className="mb-4">
-                <ErrorBanner
-                  message={
-                    configError instanceof Error
-                      ? configError.message
-                      : "Failed to load chat config"
-                  }
-                  onRetry={() => void refetchConfig()}
-                />
-              </div>
-            ) : null}
             <div
-              key={activeId}
-              id="settings-panel"
-              role="region"
-              aria-label={`${activeSection.label} settings`}
-              className="section-switch"
+              ref={contentRef}
+              className="flex-1 min-w-0 overflow-y-auto overscroll-contain px-5 py-5 scrollbar-thin"
             >
-              {activeId === "character" && <CharacterSection {...sectionProps} />}
-              {activeId === "background" && <BackgroundSection {...sectionProps} />}
-              {activeId === "chat-details" && <ChatDetailsSection {...sectionProps} />}
-              {activeId === "model" && <ModelSection {...sectionProps} />}
-              {activeId === "persona" && <PersonaSection {...sectionProps} />}
-              {activeId === "lorebooks" && <LorebooksSection {...sectionProps} />}
-              {activeId === "prompts" && <PromptsSection {...sectionProps} />}
-              {activeId === "display" && <DisplaySection {...sectionProps} />}
+              <p className="sr-only" aria-live="polite" aria-atomic="true">
+                Showing {activeSection.label} settings
+              </p>
+              {isStreaming ? (
+                <div
+                  role="status"
+                  className="mb-4 flex items-start gap-2 rounded-lg border border-subtle bg-surface px-3 py-2 text-xs text-2"
+                >
+                  <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                  A reply is generating. Changes apply to your next reply.
+                </div>
+              ) : null}
+              {configError ? (
+                <div className="mb-4">
+                  <ErrorBanner
+                    message={
+                      configError instanceof Error
+                        ? configError.message
+                        : "Failed to load chat config"
+                    }
+                    onRetry={() => void refetchConfig()}
+                  />
+                </div>
+              ) : null}
+              <div
+                key={activeId}
+                id="settings-panel"
+                role="region"
+                aria-label={`${activeSection.label} settings`}
+                className="section-switch"
+              >
+                {activeId === "character" && <CharacterSection {...sectionProps} />}
+                {activeId === "background" && <BackgroundSection {...sectionProps} />}
+                {activeId === "chat-details" && <ChatDetailsSection {...sectionProps} />}
+                {activeId === "model" && <ModelSection {...sectionProps} />}
+                {activeId === "persona" && <PersonaSection {...sectionProps} />}
+                {activeId === "lorebooks" && <LorebooksSection {...sectionProps} />}
+                {activeId === "prompts" && <PromptsSection {...sectionProps} />}
+                {activeId === "display" && <DisplaySection {...sectionProps} />}
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="flex items-center justify-between gap-3 border-t border-subtle px-5 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-          <p className="text-[13px] text-2">Changes save automatically.</p>
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-10 px-4 max-sm:h-11"
-            onClick={handleClose}
-          >
-            Done
-          </Button>
-        </div>
+          <SettingsFooter onDone={handleClose} />
+        </SettingsSaveProvider>
       </SheetContent>
     </Sheet>
   );

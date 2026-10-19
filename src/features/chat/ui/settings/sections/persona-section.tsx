@@ -36,7 +36,7 @@ import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings"
 import { MAX_IMAGE_UPLOAD_BYTES, withImageVersion } from "@/lib/image-optimization";
 import { SkeletonText } from "@/components/common/Skeletons";
 import { SectionHeader } from "../section-header";
-import { SaveStatus, getSaveState } from "../save-status";
+import { getSaveState, useSettingsSaveStatus } from "../save-status";
 
 interface SectionProps {
   chatId: string;
@@ -57,10 +57,14 @@ export function PersonaSection(_props: SectionProps) {
     isLoading: personasLoading,
   } = usePersonas();
   const updateUserSettings = useUpdateUserSettings();
-  const saveState = getSaveState(updateUserSettings);
   const retrySave = updateUserSettings.variables
     ? () => updateUserSettings.mutate(updateUserSettings.variables!)
     : undefined;
+  useSettingsSaveStatus("persona", getSaveState(updateUserSettings), {
+    retry: retrySave,
+    at: updateUserSettings.submittedAt,
+    error: updateUserSettings.error,
+  });
   const createPersona = useCreatePersona();
   const updatePersona = useUpdatePersona();
   const deletePersona = useDeletePersona();
@@ -184,7 +188,6 @@ export function PersonaSection(_props: SectionProps) {
         description="The default persona used in all chats."
         scope="global"
       />
-      <SaveStatus state={saveState} error={updateUserSettings.error} onRetry={retrySave} />
 
       {queryError ? (
         <ErrorBanner

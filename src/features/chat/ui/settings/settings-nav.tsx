@@ -66,10 +66,10 @@ export function SettingsNav({ sections, activeId, onChange, open }: SettingsNavP
               tabIndex={activeId === s.id ? 0 : -1}
               aria-controls="settings-panel"
               className={cn(
-                "mx-1 flex min-h-10 cursor-pointer items-center justify-start gap-2.5 rounded-lg px-2 py-2 text-[13px] transition-colors focus-ring",
+                "relative mx-1 flex min-h-10 cursor-pointer items-center justify-start gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors focus-ring",
                 activeId === s.id
-                  ? "bg-brand/15 text-brand"
-                  : "text-2 hover:bg-raised hover:text-1",
+                  ? "bg-brand/15 text-brand before:absolute before:top-2 before:bottom-2 before:left-0 before:w-0.5 before:rounded-full before:bg-brand"
+                  : "text-2 hover:bg-(--bg-hover) hover:text-1",
               )}
               aria-current={activeId === s.id ? "true" : undefined}
               aria-label={s.label}

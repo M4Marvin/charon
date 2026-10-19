@@ -13,7 +13,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { SectionHeader } from "../section-header";
-import { SaveStatus, getSaveState } from "../save-status";
+import { getSaveState, useSettingsSaveStatus } from "../save-status";
 import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
@@ -50,10 +50,14 @@ export function LorebooksSection(_props: SectionProps) {
     refetch: refetchLorebooks,
   } = useLorebooks();
   const toggleLorebook = useToggleLorebook();
-  const saveState = getSaveState(toggleLorebook);
   const retrySave = toggleLorebook.variables
     ? () => toggleLorebook.mutate(toggleLorebook.variables!)
     : undefined;
+  useSettingsSaveStatus("lorebooks", getSaveState(toggleLorebook), {
+    retry: retrySave,
+    at: toggleLorebook.submittedAt,
+    error: toggleLorebook.error,
+  });
   const createLorebook = useCreateLorebook();
   const deleteLorebook = useDeleteLorebook();
 
@@ -148,7 +152,6 @@ export function LorebooksSection(_props: SectionProps) {
           </>
         }
       />
-      <SaveStatus state={saveState} error={toggleLorebook.error} onRetry={retrySave} />
 
       {lorebooksError ? (
         <ErrorBanner

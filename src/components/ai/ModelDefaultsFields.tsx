@@ -15,7 +15,7 @@ import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ModelCombobox } from "@/components/common/ModelCombobox";
 import { SkeletonText } from "@/components/common/Skeletons";
-import { SaveStatus, getSaveState } from "@/features/chat/ui/settings/save-status";
+import { getSaveState, useSettingsSaveStatus } from "@/features/chat/ui/settings/save-status";
 import { useAiProviders, useTestProviderConnection } from "@/hooks/useAiProviders";
 import { usePresets } from "@/hooks/usePresets";
 import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings";
@@ -41,10 +41,14 @@ export function ModelDefaultsFields() {
   } = usePresets();
   const updateUserSettings = useUpdateUserSettings();
   const testConnection = useTestProviderConnection();
-  const saveState = getSaveState(updateUserSettings);
   const retrySave = updateUserSettings.variables
     ? () => updateUserSettings.mutate(updateUserSettings.variables!)
     : undefined;
+  useSettingsSaveStatus("model", getSaveState(updateUserSettings), {
+    retry: retrySave,
+    at: updateUserSettings.submittedAt,
+    error: updateUserSettings.error,
+  });
 
   const queryError = settingsError ?? providersError ?? presetsError;
   const settingsQueryLoading = settingsLoading || providersLoading || presetsLoading;
@@ -117,8 +121,6 @@ export function ModelDefaultsFields() {
 
   return (
     <div className="flex flex-col gap-5">
-      <SaveStatus state={saveState} error={updateUserSettings.error} onRetry={retrySave} />
-
       {queryError ? (
         <ErrorBanner
           message={

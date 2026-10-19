@@ -35,7 +35,7 @@ function DisplayToggle({
   );
 }
 
-export function DisplayPreferences() {
+export function DisplayPreferences({ onChanged }: { onChanged?: () => void }) {
   const {
     blockExternalMedia,
     setBlockExternalMedia,
@@ -45,6 +45,11 @@ export function DisplayPreferences() {
     setAutoFixMarkdown,
   } = useRichTextSettings();
 
+  const update = (setter: (value: boolean) => void) => (value: boolean) => {
+    setter(value);
+    onChanged?.();
+  };
+
   return (
     <div className="flex flex-col divide-y divide-subtle">
       <DisplayToggle
@@ -52,21 +57,21 @@ export function DisplayPreferences() {
         label="Highlight dialogue"
         description="Tint quoted speech in messages."
         checked={highlightDialogue}
-        onCheckedChange={setHighlightDialogue}
+        onCheckedChange={update(setHighlightDialogue)}
       />
       <DisplayToggle
         id="ds-markdown"
         label="Auto-fix markdown"
         description="Repair common formatting issues in messages."
         checked={autoFixMarkdown}
-        onCheckedChange={setAutoFixMarkdown}
+        onCheckedChange={update(setAutoFixMarkdown)}
       />
       <DisplayToggle
         id="ds-media"
         label="Block external media"
         description="Don't load remote images or media in messages."
         checked={blockExternalMedia}
-        onCheckedChange={setBlockExternalMedia}
+        onCheckedChange={update(setBlockExternalMedia)}
       />
     </div>
   );

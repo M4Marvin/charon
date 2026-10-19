@@ -1,10 +1,10 @@
-import { useLayoutEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { BookOpen } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { SaveStatus, type SaveState } from "./save-status";
-
-const MAX_HEIGHT = 320;
 
 interface BlurCommitTextareaProps {
   id: string;
@@ -15,15 +15,19 @@ interface BlurCommitTextareaProps {
   onCommit: (value: string) => void;
   disabled?: boolean;
   className?: string;
-  status?: SaveState;
-  error?: unknown;
-  onRetry?: () => void;
-  onReset?: () => void;
-  onRevert?: () => void;
-  resetLabel?: string;
-  original?: string | null;
+  /**
+   * The value this field inherits when empty (character-card overrides). When
+   * provided, the field shows a Custom / Using card chip and an Original preview.
+   */
+  inheritedValue?: string | null;
+  onUseCard?: () => void;
 }
 
+/**
+ * Grows with its content, so the sheet has a single scroll surface and no text
+ * is ever clipped mid-line. Commits on blur or Cmd/Ctrl+Enter; the panel footer
+ * owns the save state.
+ */
 export function BlurCommitTextarea({
   id,
   label,
@@ -33,13 +37,8 @@ export function BlurCommitTextarea({
   onCommit,
   disabled,
   className,
-  status,
-  error,
-  onRetry,
-  onReset,
-  onRevert,
-  resetLabel = "Reset",
-  original,
+  inheritedValue,
+  onUseCard,
 }: BlurCommitTextareaProps) {
   const [value, setValue] = useState(defaultValue);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -49,19 +48,18 @@ export function BlurCommitTextarea({
   useLayoutEffect(() => {
     if (initialRef.current !== defaultValue) {
       initialRef.current = defaultValue;
-      // Keep the draft on a failed save so the user can retry instead of losing text.
-      if (!focusedRef.current && status !== "error") setValue(defaultValue);
+      // Keep the user's draft when the server value changes underneath us
+      // (for example a failed save rolled back).
+      if (!focusedRef.current) setValue(defaultValue);
     }
-  }, [defaultValue, status]);
+  }, [defaultValue]);
 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`;
+    el.style.height = `${el.scrollHeight}px`;
   }, [value]);
-
-  const dirty = value.trim() !== defaultValue.trim();
 
   const commit = useCallback(() => {
     const trimmed = value.trim();
@@ -73,22 +71,81 @@ export function BlurCommitTextarea({
     commit();
   }, [commit]);
 
-  const handleReset = useCallback(() => {
-    if (onReset) {
-      setValue("");
-      onReset();
-      return;
-    }
-    setValue(defaultValue);
-  }, [onReset, defaultValue]);
+  const isOverridden = inheritedValue !== undefined && value.trim() !== "";
+  const inherited = inheritedValue?.trim() ?? "";
+  const descriptionId = description ? `${id}-description` : undefined;
 
   return (
-    <Field className={cn("space-y-1.5", className)}>
-      <div className="flex items-center justify-between gap-2">
-        <FieldLabel htmlFor={id}>{label}</FieldLabel>
-        {dirty ? <span className="text-[11px] text-2">Unsaved</span> : null}
+    <Field className={cn("space-y-2", className)}>
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <FieldLabel htmlFor={id} className="text-[13px] font-medium text-1">
+          {label}
+        </FieldLabel>
+        {inheritedValue !== undefined ? (
+          <div className="flex items-center gap-0.5">
+            <span
+              className={cn(
+                "rounded-full border px-2 py-0.5 text-[11px] leading-4 font-medium",
+                isOverridden
+                  ? "border-brand/25 bg-brand/10 text-brand"
+                  : "border-subtle bg-surface text-2",
+              )}
+            >
+              {isOverridden ? "Custom" : "Using card"}
+            </span>
+            {isOverridden && onUseCard ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                className="h-8 px-2 text-xs text-2 hover:text-1"
+                onClick={onUseCard}
+              >
+                Use card
+              </Button>
+            ) : null}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  className="h-8 gap-1 px-2 text-xs text-2 hover:text-1"
+                >
+                  <BookOpen className="size-3" aria-hidden="true" />
+                  Original
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[min(26rem,calc(100vw-2.5rem))] p-0">
+                <div className="flex items-center justify-between gap-3 border-b border-subtle px-4 py-2.5">
+                  <p className="text-xs font-medium text-1">From the character card</p>
+                  {isOverridden && onUseCard ? (
+                    <button
+                      type="button"
+                      className="rounded px-1 text-xs font-medium text-brand underline underline-offset-2 focus-ring"
+                      onClick={onUseCard}
+                    >
+                      Use card
+                    </button>
+                  ) : null}
+                </div>
+                <div className="max-h-64 overflow-y-auto px-4 py-3 scrollbar-thin">
+                  <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-2">
+                    {inherited || "The character card has no value for this field."}
+                  </p>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        ) : null}
       </div>
-      {description ? <p className="text-[13px] text-2">{description}</p> : null}
+
+      {description ? (
+        <p id={descriptionId} className="text-xs leading-relaxed text-2">
+          {description}
+        </p>
+      ) : null}
+
       <Textarea
         ref={ref}
         id={id}
@@ -107,45 +164,9 @@ export function BlurCommitTextarea({
         placeholder={placeholder}
         disabled={disabled}
         rows={2}
-        className="min-h-[60px] resize-none scrollbar-thin"
-        style={{ maxHeight: MAX_HEIGHT }}
+        aria-describedby={descriptionId}
+        className="min-h-[88px] resize-none overflow-hidden break-words"
       />
-      <div className="flex min-h-4 flex-wrap items-center gap-3">
-        {dirty && (status === "saving" || status === "error") ? (
-          <SaveStatus state={status} error={error} onRetry={onRetry} />
-        ) : null}
-        {dirty ? (
-          <button
-            type="button"
-            className="inline-flex min-h-11 items-center px-1 text-xs text-2 underline underline-offset-2 transition-colors hover:text-1 focus-ring sm:min-h-8"
-            onClick={() => {
-              setValue(defaultValue);
-              onRevert?.();
-            }}
-          >
-            Revert
-          </button>
-        ) : null}
-        {onReset && defaultValue.trim() ? (
-          <button
-            type="button"
-            className="inline-flex min-h-11 items-center px-1 text-xs text-2 underline underline-offset-2 transition-colors hover:text-1 focus-ring sm:min-h-8"
-            onClick={handleReset}
-          >
-            {resetLabel}
-          </button>
-        ) : null}
-      </div>
-      {original ? (
-        <details className="text-xs text-2">
-          <summary className="inline-flex min-h-11 w-fit cursor-pointer select-none items-center rounded focus-ring sm:min-h-8">
-            Show character card original
-          </summary>
-          <p className="mt-1 whitespace-pre-wrap break-words rounded-lg border border-subtle bg-surface p-2">
-            {original}
-          </p>
-        </details>
-      ) : null}
     </Field>
   );
 }

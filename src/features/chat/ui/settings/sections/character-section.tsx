@@ -2,7 +2,7 @@ import { useChatConfig } from "@/hooks/useChatConfig";
 import { useUpdateChatOverrides } from "@/hooks/useChatConfig";
 import { BlurCommitTextarea } from "../blur-commit-textarea";
 import { SectionHeader } from "../section-header";
-import { SaveStatus, getSaveState } from "../save-status";
+import { getSaveState, useSettingsSaveStatus } from "../save-status";
 
 interface SectionProps {
   chatId: string;
@@ -16,28 +16,29 @@ export function CharacterSection({ chatId }: SectionProps) {
     ? () => updateOverrides.mutate(updateOverrides.variables!)
     : undefined;
 
+  useSettingsSaveStatus("character", saveState, {
+    retry: retrySave,
+    at: updateOverrides.submittedAt,
+    error: updateOverrides.error,
+  });
+
   const chat = config?.chat;
+  const card = config?.character;
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <SectionHeader
         title="Character"
         description="Overrides for this chat. Empty fields use the character card."
         scope="chat"
       />
-      <SaveStatus state={saveState} error={updateOverrides.error} onRetry={retrySave} />
 
       <BlurCommitTextarea
         id="cs-desc"
         label="Description"
         placeholder="Leave empty to use the character card"
         defaultValue={chat?.characterDescription ?? ""}
-        original={config?.character.description ?? null}
-        status={saveState}
-        error={updateOverrides.error}
-        onRetry={retrySave}
-        onRevert={() => updateOverrides.reset()}
-        onReset={() => updateOverrides.mutate({ id: chatId, characterDescription: null })}
-        resetLabel="Reset to card"
+        inheritedValue={card ? card.description : undefined}
+        onUseCard={() => updateOverrides.mutate({ id: chatId, characterDescription: null })}
         onCommit={(v) => updateOverrides.mutate({ id: chatId, characterDescription: v || null })}
       />
       <BlurCommitTextarea
@@ -45,13 +46,8 @@ export function CharacterSection({ chatId }: SectionProps) {
         label="Personality"
         placeholder="Leave empty to use the character card"
         defaultValue={chat?.characterPersonality ?? ""}
-        original={config?.character.personality ?? null}
-        status={saveState}
-        error={updateOverrides.error}
-        onRetry={retrySave}
-        onRevert={() => updateOverrides.reset()}
-        onReset={() => updateOverrides.mutate({ id: chatId, characterPersonality: null })}
-        resetLabel="Reset to card"
+        inheritedValue={card ? card.personality : undefined}
+        onUseCard={() => updateOverrides.mutate({ id: chatId, characterPersonality: null })}
         onCommit={(v) => updateOverrides.mutate({ id: chatId, characterPersonality: v || null })}
       />
       <BlurCommitTextarea
@@ -59,13 +55,8 @@ export function CharacterSection({ chatId }: SectionProps) {
         label="Scenario"
         placeholder="Leave empty to use the character card"
         defaultValue={chat?.characterScenario ?? ""}
-        original={config?.character.scenario ?? null}
-        status={saveState}
-        error={updateOverrides.error}
-        onRetry={retrySave}
-        onRevert={() => updateOverrides.reset()}
-        onReset={() => updateOverrides.mutate({ id: chatId, characterScenario: null })}
-        resetLabel="Reset to card"
+        inheritedValue={card ? card.scenario : undefined}
+        onUseCard={() => updateOverrides.mutate({ id: chatId, characterScenario: null })}
         onCommit={(v) => updateOverrides.mutate({ id: chatId, characterScenario: v || null })}
       />
       <BlurCommitTextarea
@@ -73,13 +64,8 @@ export function CharacterSection({ chatId }: SectionProps) {
         label="Chat system prompt"
         placeholder="Leave empty to use the character card"
         defaultValue={chat?.characterSystemPrompt ?? ""}
-        original={config?.character.system_prompt ?? null}
-        status={saveState}
-        error={updateOverrides.error}
-        onRetry={retrySave}
-        onRevert={() => updateOverrides.reset()}
-        onReset={() => updateOverrides.mutate({ id: chatId, characterSystemPrompt: null })}
-        resetLabel="Reset to card"
+        inheritedValue={card ? card.system_prompt : undefined}
+        onUseCard={() => updateOverrides.mutate({ id: chatId, characterSystemPrompt: null })}
         onCommit={(v) => updateOverrides.mutate({ id: chatId, characterSystemPrompt: v || null })}
       />
     </div>

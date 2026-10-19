@@ -2,7 +2,7 @@ import { useUserSettings, useUpdateUserSettings } from "@/hooks/useUserSettings"
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { BlurCommitTextarea } from "../blur-commit-textarea";
 import { SectionHeader } from "../section-header";
-import { SaveStatus, getSaveState } from "../save-status";
+import { getSaveState, useSettingsSaveStatus } from "../save-status";
 
 interface SectionProps {
   chatId: string;
@@ -17,14 +17,19 @@ export function PromptsSection(_props: SectionProps) {
     ? () => updateUserSettings.mutate(updateUserSettings.variables!)
     : undefined;
 
+  useSettingsSaveStatus("prompts", saveState, {
+    retry: retrySave,
+    at: updateUserSettings.submittedAt,
+    error: updateUserSettings.error,
+  });
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <SectionHeader
         title="Global prompts"
         description="Prompts used in every chat."
         scope="global"
       />
-      <SaveStatus state={saveState} error={updateUserSettings.error} onRetry={retrySave} />
 
       {error ? (
         <ErrorBanner
@@ -39,10 +44,6 @@ export function PromptsSection(_props: SectionProps) {
         description="Sent at the start of every conversation."
         placeholder="Write the global system prompt."
         defaultValue={settings?.systemPrompt ?? ""}
-        status={saveState}
-        error={updateUserSettings.error}
-        onRetry={retrySave}
-        onRevert={() => updateUserSettings.reset()}
         onCommit={(v) => updateUserSettings.mutate({ systemPrompt: v || null })}
       />
       <BlurCommitTextarea
@@ -51,10 +52,6 @@ export function PromptsSection(_props: SectionProps) {
         description="Added to the system prompt for every chat."
         placeholder="Optional instructions for every reply."
         defaultValue={settings?.postHistoryInstructions ?? ""}
-        status={saveState}
-        error={updateUserSettings.error}
-        onRetry={retrySave}
-        onRevert={() => updateUserSettings.reset()}
         onCommit={(v) => updateUserSettings.mutate({ postHistoryInstructions: v || null })}
       />
       <BlurCommitTextarea
@@ -63,10 +60,6 @@ export function PromptsSection(_props: SectionProps) {
         description="Used when generating an impersonated reply."
         placeholder="Optional guidance for impersonation."
         defaultValue={settings?.impersonationPrompt ?? ""}
-        status={saveState}
-        error={updateUserSettings.error}
-        onRetry={retrySave}
-        onRevert={() => updateUserSettings.reset()}
         onCommit={(v) => updateUserSettings.mutate({ impersonationPrompt: v || null })}
       />
     </div>

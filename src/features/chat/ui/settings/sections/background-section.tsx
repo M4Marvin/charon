@@ -13,7 +13,7 @@ import { MAX_IMAGE_UPLOAD_BYTES, withImageVersion } from "@/lib/image-optimizati
 import { useChatConfig, useUpdateChatOverrides } from "@/hooks/useChatConfig";
 import { useChatUiStore } from "../../chat-store";
 import { SectionHeader } from "../section-header";
-import { SaveStatus, getSaveState } from "../save-status";
+import { getSaveState, useSettingsSaveStatus } from "../save-status";
 
 interface SectionProps {
   chatId: string;
@@ -28,10 +28,14 @@ export function BackgroundSection({ chatId }: SectionProps) {
     refetch: refetchBackgrounds,
   } = useBackgrounds();
   const updateOverrides = useUpdateChatOverrides();
-  const saveState = getSaveState(updateOverrides);
   const retrySave = updateOverrides.variables
     ? () => updateOverrides.mutate(updateOverrides.variables!)
     : undefined;
+  useSettingsSaveStatus("background", getSaveState(updateOverrides), {
+    retry: retrySave,
+    at: updateOverrides.submittedAt,
+    error: updateOverrides.error,
+  });
   const uploadBg = useUploadBackground();
   const deleteBgMutation = useDeleteBackground();
 
@@ -99,7 +103,6 @@ export function BackgroundSection({ chatId }: SectionProps) {
   return (
     <div className="flex flex-col gap-5">
       <SectionHeader title="Background" description="The scene behind this chat." scope="chat" />
-      <SaveStatus state={saveState} error={updateOverrides.error} onRetry={retrySave} />
       {customImage ? (
         <p className="text-[13px] text-2">
           A custom image is currently shown instead of this background. Clear it from the scene

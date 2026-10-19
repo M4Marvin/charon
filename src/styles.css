@@ -56,6 +56,26 @@
   }
 }
 
+.settings-save-status[data-state="saved"] {
+  animation: settings-save-fade 2.4s ease-out forwards;
+}
+
+@keyframes settings-save-fade {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-save-status[data-state="saved"] {
+    animation: none;
+  }
+}
+
 /* ── Message text (parity with SillyTavern .mes_text) ── */
 
 .rt-mes-text {
@@ -1035,6 +1055,7 @@
   /* ── Semantic ui-overhaul tokens ── */
   --bg-surface: #111a24;
   --bg-raised: #182635;
+  --bg-hover: #1f3041;
   --border-subtle: rgba(157, 178, 196, 0.12);
   --text-1: #e8eff6;
   --text-2: #9db2c4;
