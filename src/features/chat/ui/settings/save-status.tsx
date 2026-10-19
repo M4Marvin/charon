@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { CircleCheck, LoaderCircle, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,10 @@ interface SaveStatusProps {
 }
 
 export function SaveStatus({ state, error, onRetry, className }: SaveStatusProps) {
+  useEffect(() => {
+    if (state === "error") console.error("[settings] save failed", error);
+  }, [state, error]);
+
   if (state === "idle") return null;
 
   return (
@@ -44,9 +49,7 @@ export function SaveStatus({ state, error, onRetry, className }: SaveStatusProps
       ) : (
         <>
           <TriangleAlert className="size-3.5 shrink-0 text-danger" aria-hidden="true" />
-          <span className="text-danger">
-            Couldn't save{error instanceof Error ? `: ${error.message}` : ""}
-          </span>
+          <span className="text-danger">Couldn't save. Please try again.</span>
           {onRetry ? (
             <button
               type="button"

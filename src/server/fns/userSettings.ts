@@ -4,9 +4,9 @@ import { getSession } from "@/server/session";
 import {
   getUserSettings as repoGetUserSettings,
   upsertUserSettings as repoUpsertUserSettings,
-  type UserSettingsPatch,
 } from "@/db/repositories/userSettings";
 import { UpdateUserSettings } from "@/server/schemas/chat";
+import { toUserSettingsPatch } from "@/server/settings-patch";
 
 export type UserSettingsView = {
   defaultProviderId: string | null;
@@ -54,17 +54,6 @@ export const updateUserSettings = createServerFn({ method: "POST", strict: { out
   .validator((data) => Schema.decodeUnknownSync(UpdateUserSettings)(data))
   .handler(async ({ data }): Promise<UserSettingsView> => {
     const { user } = await getSession();
-    const patch: UserSettingsPatch = {};
-    if (data.defaultProviderId !== undefined) patch.defaultProviderId = data.defaultProviderId;
-    if (data.defaultPresetId !== undefined) patch.defaultPresetId = data.defaultPresetId;
-    if (data.defaultSelectedModel !== undefined)
-      patch.defaultSelectedModel = data.defaultSelectedModel;
-    if (data.defaultPersonaId !== undefined) patch.defaultPersonaId = data.defaultPersonaId;
-    if (data.systemPrompt !== undefined) patch.systemPrompt = data.systemPrompt;
-    if (data.postHistoryInstructions !== undefined)
-      patch.postHistoryInstructions = data.postHistoryInstructions;
-    if (data.impersonationPrompt !== undefined)
-      patch.impersonationPrompt = data.impersonationPrompt;
-    const row = repoUpsertUserSettings(user.id, patch); // account FK
+    const row = repoUpsertUserSettings(user.id, toUserSettingsPatch(data)); // account FK
     return toView(row);
   });

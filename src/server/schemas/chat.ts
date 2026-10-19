@@ -7,7 +7,11 @@ const ChatId = Schema.Struct({ id: Schema.String });
 // "absent (undefined) = leave alone, null = clear, string = set"
 // Encoded: string | null | undefined. The repo's partial-patch guard
 // (`!== undefined`) does the right thing automatically.
-const NullableOptionalString = Schema.UndefinedOr(Schema.NullOr(Schema.String));
+//
+// `Schema.optional` is required here: `Schema.UndefinedOr` widens the value
+// type but Effect structs still require the key. Without it every partial
+// settings patch fails with "Missing key at [...]".
+const NullableOptionalString = Schema.optional(Schema.NullOr(Schema.String));
 
 // ── Chat CRUD ───────────────────────────────────────────────────────────────
 

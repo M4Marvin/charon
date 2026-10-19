@@ -87,8 +87,10 @@ function ChatDetailsForm({
       { id: chatId, title: trimmed },
       {
         onSuccess: () => toast.success("Chat renamed"),
-        onError: (err) =>
-          setError(err instanceof Error ? err.message : "Rename failed. Please try again."),
+        onError: (err) => {
+          console.error("[settings] rename failed", err);
+          setError("Couldn't rename this chat. Please try again.");
+        },
       },
     );
   };

@@ -26,6 +26,7 @@ import { getBackground as repoGetBackground } from "@/db/repositories/background
 import { getPersona as repoGetPersona } from "@/db/repositories/personas";
 import { getUserSettings as repoGetUserSettings } from "@/db/repositories/userSettings";
 import { substituteMessageMacros } from "@/lib/chat/substitute-message-macros";
+import { toChatSettingsPatch } from "@/server/settings-patch";
 
 function resolveUserName(user: { id: string; name: string }): string {
   try {
@@ -192,18 +193,7 @@ export const updateChatSettings = createServerFn({ method: "POST", strict: { out
   .validator((data) => Schema.decodeUnknownSync(UpdateChatSettings)(data))
   .handler(async ({ data }): Promise<{ id: string }> => {
     await getSession();
-    const patch: Parameters<typeof repoUpdateChat>[1] = {};
-    if (data.title !== undefined) patch.title = data.title ?? "";
-    if (data.characterDescription !== undefined)
-      patch.characterDescription = data.characterDescription ?? "";
-    if (data.characterPersonality !== undefined)
-      patch.characterPersonality = data.characterPersonality ?? "";
-    if (data.characterScenario !== undefined)
-      patch.characterScenario = data.characterScenario ?? "";
-    if (data.characterSystemPrompt !== undefined)
-      patch.characterSystemPrompt = data.characterSystemPrompt ?? "";
-    if (data.backgroundId !== undefined) patch.backgroundId = data.backgroundId;
-    repoUpdateChat(data.id, patch);
+    repoUpdateChat(data.id, toChatSettingsPatch(data));
     return { id: data.id };
   });
 
