@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { db as defaultDb, type DB } from "@/db";
 import {
   getProposal,
@@ -10,11 +9,8 @@ import {
 import { getMessage, updateMessage } from "@/db/repositories/chats";
 import { appendMessage } from "@/features/chat/tree/service";
 import { StaleTargetError, GenerationValidationError } from "./errors";
+import { contentHash } from "@/lib/chat/content-hash";
 import type { ProposalView } from "./contract";
-
-export function contentHash(content: string): string {
-  return createHash("sha256").update(content).digest("hex");
-}
 
 export function toProposalView(row: ReturnType<typeof getProposal>): ProposalView | null {
   if (!row) return null;

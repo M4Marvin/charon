@@ -11,6 +11,7 @@ import { getActiveLeafId, getNode } from "@/lib/st-core/chat-tree/tree";
 import { loadChatConfig } from "@/features/chat/config/service";
 import { getMessage, updateMessage } from "@/db/repositories/chats";
 import { substituteMessageMacros } from "@/lib/chat/substitute-message-macros";
+import { contentHash } from "@/lib/chat/content-hash";
 import { ConfigError, GenerationValidationError } from "./errors";
 import type { Trigger, InsertionTarget } from "./contract";
 
@@ -115,7 +116,7 @@ export async function prepareGeneration(
       kind: "replace",
       messageLocalId: targetId,
       baseRev: Number(extra.rev ?? 0),
-      baseHash: String(extra.contentHash ?? ""),
+      baseHash: contentHash(targetNode.content),
     };
   } else if (input.trigger === "transform") {
     const last = selection[selection.length - 1] ?? messageLocalId ?? activeLeafId;

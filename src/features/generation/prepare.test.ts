@@ -3,7 +3,12 @@ import { eq } from "drizzle-orm";
 import { makeTestDb, seedTestUser, type TestDb } from "@/db/__tests__/helpers";
 import { makeCharacterData } from "@/db/__tests__/character-data";
 import { characters, chatMessages, aiProviders, userSettings, generationJobs } from "@/db/schema";
-import { createChat, appendUserAndReply, getMessages } from "@/features/chat/tree/service";
+import {
+  appendUserAndReply,
+  createChat,
+  editMessage,
+  getMessages,
+} from "@/features/chat/tree/service";
 import { prepareGeneration } from "./prepare";
 import {
   cancelJob,
@@ -155,6 +160,41 @@ describe("generation prepare and proposals", () => {
     );
 
     expect(getJob(prepared.jobId, db)?.input?.selection).toEqual([replyMessage.localId]);
+  });
+
+  it("rejects a rewrite when the target was edited after prepare", async () => {
+    const { replyMessage } = appendUserAndReply(chatId, "Hello", "First reply", undefined, db);
+    const prepared = await prepareGeneration(
+      userId,
+      { chatId, trigger: "rewrite", messageLocalId: replyMessage.localId },
+      "User",
+      db,
+    );
+    const job = getJob(prepared.jobId, db);
+    const target = (job?.target ?? {}) as { baseRev?: number; baseHash?: string };
+
+    editMessage(chatId, replyMessage.localId, "Edited by user", db);
+    const edited = getMessages(chatId, db).find((m) => m.localId === replyMessage.localId);
+    expect(edited?.extra).toMatchObject({ rev: 1 });
+
+    const proposal = createProposal(
+      {
+        jobId: prepared.jobId,
+        chatId,
+        kind: "rewrite",
+        targetLocalId: replyMessage.localId,
+        baseRev: target.baseRev ?? 0,
+        baseHash: target.baseHash ?? null,
+        proposedContent: "AI rewrite",
+        proposedRole: "assistant",
+      },
+      db,
+    );
+
+    expect(() => acceptProposal(proposal.id, db)).toThrow(StaleTargetError);
+    expect(getMessages(chatId, db).find((m) => m.localId === replyMessage.localId)?.content).toBe(
+      "Edited by user",
+    );
   });
 
   it("accepts a rewrite with a revision and rejects a stale base revision", async () => {

@@ -17,6 +17,7 @@ import type { ChatWithCharacter } from "@/db/repositories/chats";
 import type { DB } from "@/db";
 import { db as defaultDb } from "@/db";
 import { createLogger } from "@/features/logging";
+import { contentHash } from "@/lib/chat/content-hash";
 import { computeActivePathFromMessages, getPathToNode } from "./active-path";
 import { ensureChatIdle, getGenerationLock } from "./lock";
 import { appendChild, selectSibling, createSiblingAndSelect, removeBranch } from "./operations";
@@ -431,7 +432,16 @@ export function editMessage(
   try {
     const msg = repoListMessages(chatId, db).find((r) => r.localId === messageLocalId);
     if (!msg) throw new Error("Message not found");
-    repoUpdateMessage(chatId, messageLocalId, { content }, db);
+    const extra = (msg.extra ?? {}) as Record<string, unknown>;
+    repoUpdateMessage(
+      chatId,
+      messageLocalId,
+      {
+        content,
+        extra: { ...extra, rev: Number(extra.rev ?? 0) + 1, contentHash: contentHash(content) },
+      },
+      db,
+    );
     log.info("Message edited", { chatId, messageLocalId, contentLength: content.length });
   } catch (e) {
     log.error("editMessage failed", { chatId, messageLocalId }, e as Error);
