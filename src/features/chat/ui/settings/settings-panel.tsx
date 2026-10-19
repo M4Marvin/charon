@@ -62,15 +62,14 @@ const SECTIONS: SettingsSection[] = [
 interface SettingsPanelProps {
   chatId: string;
   open: boolean;
+  isStreaming: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function SettingsPanel({ chatId, open, onOpenChange }: SettingsPanelProps) {
+export function SettingsPanel({ chatId, open, isStreaming, onOpenChange }: SettingsPanelProps) {
   const navigate = useNavigate();
-  const { data: config, error: configError, refetch: refetchConfig } = useChatConfig(chatId);
+  const { error: configError, refetch: refetchConfig } = useChatConfig(chatId);
   const deleteChat = useDeleteChat();
-
-  const isStreaming = config?.chat.lockState === "generating";
 
   const [activeId, setActiveId] = useState(SECTIONS[0].id);
   const [deleteOpen, setDeleteOpen] = useState(false);

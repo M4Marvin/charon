@@ -52,7 +52,7 @@ export const cancelGenerationFn = createServerFn({ method: "POST", strict: { out
     // would delete the completed reply.
     if (cancelled && job?.placeholderLocalId && job.placeholderLocalId > 0) {
       try {
-        deleteBranch(job.chatId, job.placeholderLocalId, undefined, { skipIdleCheck: true });
+        deleteBranch(job.chatId, job.placeholderLocalId);
       } catch {
         // The branch may already be gone; the job is still cancelled.
       }

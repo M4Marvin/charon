@@ -99,7 +99,7 @@ export function ChatPage() {
     [messages],
   );
 
-  const isBusy = config ? config.chat.lockState !== "idle" : false;
+  const isBusy = generation.isStreaming;
   const hasMessages = activePath.length > 0;
   // The placeholder id lives in a global store. Only the chat that owns the
   // live run may read it, otherwise a navigation would render another chat's
@@ -111,7 +111,7 @@ export function ChatPage() {
   const pendingVisible = pendingSend
     ? isPendingVisible(pendingSend, chatId, activePath, scopedPlaceholderId)
     : false;
-  const composerDisabled = config?.chat.lockState === "generating" && scopedPlaceholderId === null;
+  const composerDisabled = generation.isStreaming && !ownsGeneration;
 
   const characterAvatarUrl = config?.characterImagePath
     ? withImageVersion(
@@ -548,6 +548,7 @@ export function ChatPage() {
 
       <SettingsPanel
         chatId={chatId}
+        isStreaming={generation.isStreaming}
         open={settingsOpen}
         onOpenChange={(open) => {
           setSettingsOpen(open);

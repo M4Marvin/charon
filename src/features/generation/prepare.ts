@@ -9,7 +9,6 @@ import {
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import { getActiveLeafId, getNode } from "@/lib/st-core/chat-tree/tree";
 import { loadChatConfig } from "@/features/chat/config/service";
-import { getMessage, updateMessage } from "@/db/repositories/chats";
 import { substituteMessageMacros } from "@/lib/chat/substitute-message-macros";
 import { contentHash } from "@/lib/chat/content-hash";
 import { ConfigError, GenerationValidationError } from "./errors";
@@ -62,13 +61,6 @@ export async function prepareGeneration(
     throw new ConfigError({
       message: "No AI provider/model is configured for this chat.",
     });
-  }
-
-  // The v1 engine used a 5-minute message-keyed root lock. The new engine owns
-  // concurrency in generation_jobs; clear any inherited lock before writing.
-  const root = getMessage(input.chatId, 0, db);
-  if (root?.extra && (root.extra as Record<string, unknown>).lock === "generating") {
-    updateMessage(input.chatId, 0, { extra: null }, db);
   }
 
   const messages = getMessages(input.chatId, db);
