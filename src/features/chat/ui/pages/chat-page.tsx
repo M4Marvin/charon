@@ -60,7 +60,6 @@ export function ChatPage() {
   const openLightbox = useChatUiStore((s) => s.openLightbox);
   const closeLightbox = useChatUiStore((s) => s.closeLightbox);
   const customImage = useChatUiStore((s) => s.customImages[chatId] ?? null);
-  const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [promptOpen, setPromptOpen] = useState(false);
   const setCustomImage = useChatUiStore((s) => s.setCustomImage);
@@ -334,7 +333,6 @@ export function ChatPage() {
   }, [chatId, clearCustomImage]);
 
   const toggleSelection = useCallback((messageLocalId: number) => {
-    setSelectionMode(true);
     setSelectedIds((previous) =>
       previous.includes(messageLocalId)
         ? previous.filter((id) => id !== messageLocalId)
@@ -344,7 +342,6 @@ export function ChatPage() {
 
   const clearSelection = useCallback(() => {
     setSelectedIds([]);
-    setSelectionMode(false);
   }, []);
 
   const handleProposalApplied = useCallback(() => {
@@ -364,9 +361,21 @@ export function ChatPage() {
   // Selection is per-chat UI state: never carry localIds across a route change.
   useEffect(() => {
     setSelectedIds([]);
-    setSelectionMode(false);
     setPromptOpen(false);
   }, [chatId]);
+
+  // Drop ids that left the active path (deleted messages, branch switches) so
+  // the strip never reports messages it cannot prompt.
+  const activeLocalIds = useMemo(
+    () => new Set(activePath.map((entry) => entry.message.localId)),
+    [activePath],
+  );
+  useEffect(() => {
+    setSelectedIds((previous) => {
+      const next = previous.filter((id) => activeLocalIds.has(id));
+      return next.length === previous.length ? previous : next;
+    });
+  }, [activeLocalIds]);
 
   if (configLoading || messagesLoading) {
     return (
@@ -427,7 +436,7 @@ export function ChatPage() {
   }
 
   return (
-    <main className="grid h-dvh w-full grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-base pb-[var(--keyboard-inset,0px)]">
+    <main className="grid h-dvh w-full grid-rows-[auto_minmax(0,1fr)_auto_auto] overflow-hidden bg-base pb-[var(--keyboard-inset,0px)]">
       <ChatBackground src={backgroundUrl} fallbackSrc={characterAvatarUrl} />
 
       <ChatHeader
@@ -511,7 +520,7 @@ export function ChatPage() {
         }}
       />
 
-      {selectionMode ? (
+      {selectedIds.length > 0 ? (
         <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-3 pb-2">
           <span className="text-xs text-2">{selectedIds.length} selected</span>
           <Button variant="ghost" size="sm" onClick={clearSelection}>
