@@ -160,7 +160,10 @@ export function LorebooksSection(_props: SectionProps) {
       ) : null}
 
       {lorebooksLoading ? (
-        <SkeletonText lines={2} />
+        <div role="status" aria-label="Loading lorebooks">
+          <SkeletonText lines={2} />
+          <span className="sr-only">Loading lorebooks</span>
+        </div>
       ) : (
         <>
           {enabled.length > 0 && (

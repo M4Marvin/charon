@@ -50,6 +50,12 @@
   animation: var(--animate-section-in);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .section-switch {
+    animation: none;
+  }
+}
+
 /* ── Message text (parity with SillyTavern .mes_text) ── */
 
 .rt-mes-text {

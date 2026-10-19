@@ -109,7 +109,10 @@ export function BackgroundSection({ chatId }: SectionProps) {
       ) : null}
 
       {isLoading ? (
-        <SkeletonCardGrid count={6} lanes={3} aspect="aspect-video" />
+        <div role="status" aria-label="Loading backgrounds">
+          <SkeletonCardGrid count={6} lanes={3} aspect="aspect-video" />
+          <span className="sr-only">Loading backgrounds</span>
+        </div>
       ) : backgroundsError ? null : backgrounds?.length ? (
         <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 md:grid-cols-3">
           {backgrounds.map((bg) => {

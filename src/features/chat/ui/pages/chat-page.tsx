@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect, useState } from "react";
+import { useMemo, useCallback, useEffect, useRef, useState } from "react";
 import { withImageVersion } from "@/lib/image-optimization";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -55,6 +55,7 @@ export function ChatPage() {
   const clearInput = useChatUiStore((s) => s.clearInputDraft);
   const focusComposer = useChatUiStore((s) => s.focusComposer);
   const setSettingsOpen = useChatUiStore((s) => s.setSettingsOpen);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const setPortraitOpen = useChatUiStore((s) => s.setPortraitOpen);
   const setSceneOpen = useChatUiStore((s) => s.setSceneOpen);
   const openLightbox = useChatUiStore((s) => s.openLightbox);
@@ -449,6 +450,7 @@ export function ChatPage() {
         onTogglePortrait={() => setPortraitOpen(!portraitOpen)}
         onToggleScene={() => setSceneOpen(!sceneOpen)}
         onOpenSettings={() => setSettingsOpen(true)}
+        settingsButtonRef={settingsButtonRef}
       />
 
       <MessageList
@@ -577,7 +579,7 @@ export function ChatPage() {
         open={settingsOpen}
         onOpenChange={(open) => {
           setSettingsOpen(open);
-          if (!open) focusComposer();
+          if (!open) settingsButtonRef.current?.focus();
         }}
       />
     </main>
