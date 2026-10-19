@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useCallback, useEffect, useState } from "react";
 import { withImageVersion } from "@/lib/image-optimization";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -333,6 +333,27 @@ export function ChatPage() {
     clearCustomImage(chatId);
   }, [chatId, clearCustomImage]);
 
+  const toggleSelection = useCallback((messageLocalId: number) => {
+    setSelectionMode(true);
+    setSelectedIds((previous) =>
+      previous.includes(messageLocalId)
+        ? previous.filter((id) => id !== messageLocalId)
+        : [...previous, messageLocalId],
+    );
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds([]);
+    setSelectionMode(false);
+  }, []);
+
+  // Selection is per-chat UI state: never carry localIds across a route change.
+  useEffect(() => {
+    setSelectedIds([]);
+    setSelectionMode(false);
+    setTransformOpen(false);
+  }, [chatId]);
+
   if (configLoading || messagesLoading) {
     return (
       <main
@@ -390,20 +411,6 @@ export function ChatPage() {
       </main>
     );
   }
-
-  const toggleSelection = useCallback((messageLocalId: number) => {
-    setSelectionMode(true);
-    setSelectedIds((previous) =>
-      previous.includes(messageLocalId)
-        ? previous.filter((id) => id !== messageLocalId)
-        : [...previous, messageLocalId],
-    );
-  }, []);
-
-  const clearSelection = useCallback(() => {
-    setSelectedIds([]);
-    setSelectionMode(false);
-  }, []);
 
   return (
     <main className="grid h-dvh w-full grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-base pb-[var(--keyboard-inset,0px)]">
