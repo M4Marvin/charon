@@ -1,5 +1,6 @@
 import { db as defaultDb, type DB } from "@/db";
-import { getMessages, getPathToMessage } from "@/features/chat/tree/service";
+import { getMessages } from "@/features/chat/tree/service";
+import { getPathToNode } from "@/features/chat/tree/active-path";
 import { loadChatConfig } from "@/features/chat/config/service";
 import { treeFromNodes } from "@/lib/st-core/chat-tree/tree-io";
 import { getActiveLeafId, getActivePath } from "@/lib/st-core/chat-tree/tree";
@@ -8,6 +9,7 @@ import type { CharacterDataV2 } from "@/lib/st-core/character/types";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
 import type { LoreEntry } from "@/lib/st-core/lorebook/types";
 import type { GenerationSnapshot } from "./contract";
+import { ConfigError } from "./errors";
 
 /** Merge the card's embedded book with the standalone lorebooks, keeping uids unique. */
 export function mergeLoreEntries(standalone: LoreEntry[], character: CharacterDataV2): LoreEntry[] {
@@ -31,25 +33,22 @@ export async function loadGenerationSnapshot(
 ): Promise<GenerationSnapshot> {
   const config = await loadChatConfig(userId, chatId, "User", db);
   if (!config.provider) {
-    throw new Error("No AI provider/model configured");
+    throw new ConfigError({ message: "No AI provider/model is configured for this chat." });
   }
 
-  let path: ChatMessage[];
+  const all = getMessages(chatId, db);
+  const tree = treeFromNodes(all);
+  const activeLeafId = getActiveLeafId(tree);
+  const activePath = activeLeafId === null ? all : getActivePath(tree, activeLeafId);
+
+  let path: ChatMessage[] = activePath;
   if (placeholderLocalId > 0) {
-    try {
-      path = getPathToMessage(chatId, placeholderLocalId, db);
-    } catch {
-      path = getMessages(chatId, db);
-    }
-  } else {
-    const all = getMessages(chatId, db);
-    const tree = treeFromNodes(all);
-    const activeLeafId = getActiveLeafId(tree);
-    path = activeLeafId === null ? all : getActivePath(tree, activeLeafId);
+    const toPlaceholder = getPathToNode(tree, placeholderLocalId);
+    if (toPlaceholder.length > 0) path = toPlaceholder;
   }
 
   const selection = selectionIds.length
-    ? getMessages(chatId, db).filter((m) => selectionIds.includes(m.localId))
+    ? all.filter((message) => selectionIds.includes(message.localId))
     : [];
 
   const chat = config.chat;
