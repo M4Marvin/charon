@@ -29,7 +29,7 @@ describe("image prompt assembly", () => {
   });
 
   it("always appends the canonical style suffix", () => {
-    expect(assembleImagePrompt(character, "rain")).toContain("anime style");
+    expect(assembleImagePrompt(character, "rain")).toContain("painterly");
   });
 });
 

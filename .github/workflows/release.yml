@@ -1,0 +1,142 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release, e.g. v1.0.0"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.14.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm lint
+      - run: pnpm run test
+      - run: pnpm check:docs
+
+  package:
+    name: package ${{ matrix.tag }}
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            tag: linux-x64
+            archive: tar.gz
+          - os: ubuntu-24.04-arm
+            tag: linux-arm64
+            archive: tar.gz
+          - os: macos-15-intel
+            tag: darwin-x64
+            archive: tar.gz
+          - os: macos-15
+            tag: darwin-arm64
+            archive: tar.gz
+          - os: windows-latest
+            tag: windows-x64
+            archive: zip
+    runs-on: ${{ matrix.os }}
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.14.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Stage
+        shell: bash
+        run: |
+          mkdir -p stage
+          cp -R .output stage/.output
+          cp -R drizzle stage/drizzle
+          cp -R bin stage/bin
+          cp LICENSE NOTICE README.md stage/
+          printf 'Source for this release: https://github.com/%s/tree/%s\n' "$GITHUB_REPOSITORY" "$TAG" > stage/SOURCE.txt
+      - name: Package (tar.gz)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: tar -czf "charon-${{ matrix.tag }}.tar.gz" -C stage .
+      - name: Package (zip)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: Compress-Archive -Path stage/.output,stage/drizzle,stage/bin,stage/LICENSE,stage/NOTICE,stage/README.md,stage/SOURCE.txt -DestinationPath "charon-${{ matrix.tag }}.zip"
+      - name: Checksum
+        shell: bash
+        run: |
+          if [ "${{ matrix.archive }}" = "zip" ]; then
+            file="charon-${{ matrix.tag }}.zip"
+          else
+            file="charon-${{ matrix.tag }}.tar.gz"
+          fi
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$file" > "$file.sha256"
+          else
+            shasum -a 256 "$file" > "$file.sha256"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: charon-${{ matrix.tag }}
+          path: charon-${{ matrix.tag }}.*
+          if-no-files-found: error
+
+  release:
+    name: publish release
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Combine checksums
+        working-directory: dist
+        run: |
+          sha256sum *.tar.gz *.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/*
+            scripts/install.sh
+            scripts/install.ps1

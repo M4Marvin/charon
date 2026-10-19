@@ -108,7 +108,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         name: "description",
         content:
-          "A modern self-hosted AI character chat platform. Import V2 character cards, build lorebooks, connect any LLM provider, and chat with branching narratives.",
+          "Charon is a self-hosted chat app for stories and roleplay. Import character cards, bring your own model, and keep every branching conversation on your own computer.",
       },
       {
         property: "og:site_name",
@@ -121,7 +121,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         property: "og:description",
         content:
-          "Import character cards, build lorebooks, connect any LLM provider, and have immersive branching conversations.",
+          "A private home for your AI characters. Self-hosted, branching conversations, your cards and your model.",
       },
       {
         property: "og:type",
@@ -192,6 +192,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const { queryClient, user } = Route.useRouteContext();
   const location = useLocation();
   const hideGlobalHeader =
+    location.pathname === "/" ||
     location.pathname.startsWith("/chat/") ||
     /^\/c\/(?!new$)[^/]+$/.test(location.pathname) ||
     location.pathname === "/onboarding";

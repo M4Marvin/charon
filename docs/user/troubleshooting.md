@@ -6,7 +6,7 @@ Stuck on something? Here are the answers to the most common questions, in plain 
 
 **Q: The app won't start.**
 
-A: Check that Docker (or the dev server) is running, and that nothing else is using port 3000. The README at ../../README.md has the install commands. Restarting the container or server usually fixes it.
+A: Run `charon doctor`. It checks Node, the app files, the data folder, and `/up`, then names what failed. `charon logs` shows the server log. Check that nothing else is using port 3000. With Docker, check `docker ps`. The README has the install commands.
 
 **Q: Test connection fails when I add a provider.**
 
@@ -18,7 +18,7 @@ A: Run **Test connection** first. Charon fetches the model list from the provide
 
 **Q: I forgot my password.**
 
-A: If you're still signed in, change it under **Settings** → **Profile**. If you're locked out, the account was created on first run and can't be re-created through the UI. As a last resort, stop Charon, delete the `dev.db` file, and start again to redo the first-run setup. That erases all data, so back it up first. See [getting-started.md](getting-started.md).
+A: If you're still signed in, change it under **Settings** → **Profile**. If you're locked out, the account was created on first run and can't be re-created through the UI. As a last resort, stop Charon, back up the data folder (`~/.charon/data`), delete `charon.db` there, and start again to redo the first-run setup. That erases all chats, so keep the backup. See [getting-started.md](getting-started.md).
 
 **Q: A character card won't import.**
 
@@ -34,7 +34,7 @@ A: Try the display toggles. **Auto-fix Markdown** repairs common formatting slip
 
 **Q: Where is my data? How do I back up?**
 
-A: Everything is stored in a local SQLite file, plus an uploads folder for images, inside the Charon data directory on your machine. Backing up that folder backs up everything. See the [README](../../README.md) for the exact path.
+A: Everything is stored in a local SQLite file, plus an uploads folder for images, inside the Charon data directory on your machine. With the one-line installer that is `~/.charon/data` (macOS/Linux) or `%LOCALAPPDATA%\Charon\data` (Windows). With Docker it is the `charon-data` volume. Backing up that folder backs up everything; `charon backup` writes a consistent snapshot. See the [README](../../README.md) for the exact path.
 
 **Q: Will accounts be removed?**
 

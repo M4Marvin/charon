@@ -24,6 +24,29 @@ export const listProviderModels = createServerFn({ method: "GET", strict: { outp
     return result.models;
   });
 
+const ProbeProviderInput = type({
+  baseUrl: "string > 0",
+  "apiKey?": "string",
+});
+
+/** Probe an endpoint before it is saved, so onboarding cannot persist a typo. */
+export const probeProviderConfig = createServerFn({ method: "POST" })
+  .validator((data) => {
+    const result = ProbeProviderInput(data);
+    if (result instanceof type.errors) throw new Error("Invalid provider input");
+    return result;
+  })
+  .handler(async ({ data }): Promise<ProbeResult> => {
+    await getSession();
+    return Effect.runPromise(
+      probeProviderModels({
+        baseUrl: data.baseUrl,
+        apiKey: data.apiKey ?? "",
+        defaultHeaders: null,
+      }),
+    );
+  });
+
 export const testProviderConnection = createServerFn({ method: "GET" })
   .validator(validateId)
   .handler(async ({ data }): Promise<ProbeResult> => {

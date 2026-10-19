@@ -4,14 +4,30 @@ Charon is a roleplaying app that runs on your own computer. This page walks you 
 
 ## You've already installed Charon
 
-This guide assumes Charon is installed and running. If it is not, the README at ../../README.md has the full install steps. You can run Charon with Docker (`docker compose up -d`) or with the pnpm dev server. Migrations run automatically on first start, so there is nothing else to do. When Charon is ready, open http://localhost:3000 in your browser.
+This guide assumes Charon is installed and running. If it is not, the README at ../../README.md has the full install steps.
+
+The easy path is one command. On macOS or Linux:
+
+```bash
+curl -fsSL https://github.com/M4Marvin/charon/releases/latest/download/install.sh | sh
+```
+
+On Windows, in PowerShell:
+
+```powershell
+irm https://github.com/M4Marvin/charon/releases/latest/download/install.ps1 | iex
+```
+
+The installer puts Charon in your user folder, downloads a private copy of Node.js if you do not have one, verifies the download, and opens the browser for you. It does not need an administrator password.
+
+If you prefer Docker, the README has a one-line `docker run`. Migrations run automatically on first start, so there is nothing else to do. When Charon is ready, open http://localhost:3000 in your browser.
 
 ## Create your account (first run)
 
-The first time you open Charon, the welcome page has a **Get Started** button. It leads to the **Create your account** page. You only see this page on a fresh install; once your account exists, it sends you to sign-in instead.
+The first time you open Charon, the welcome page has one action: **Create your account**. You only see this page on a fresh install; once your account exists, Charon asks you to sign in instead.
 
 1. Open http://localhost:3000.
-2. Click **Get Started**.
+2. Click **Create your account**.
 3. Pick a **username**. It must be at least 3 characters, using letters, numbers, and underscores only.
 4. Pick a **password**. It must be at least 8 characters.
 

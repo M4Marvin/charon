@@ -6,20 +6,23 @@ import { db } from "@/db";
 import { account, session, user, verification } from "@/db/schema";
 import { seedSampleData } from "@/server/seed";
 
-const appUrl = process.env.APP_URL || "http://localhost:3000";
+const port = process.env.PORT || "3000";
+const appUrl = process.env.APP_URL || `http://localhost:${port}`;
 const extraOrigins = (process.env.TRUSTED_ORIGINS || "")
   .split(",")
   .map((o) => o.trim())
   .filter(Boolean);
+// Treat both loopback spellings as the same local origin. better-auth checks
+// the Origin header on cookie POSTs, and localhost !== 127.0.0.1.
+const localOrigins = [`http://localhost:${port}`, `http://127.0.0.1:${port}`];
 
 export const auth = betterAuth({
   baseURL: appUrl,
-  trustedOrigins: [appUrl, "http://localhost:4173", ...extraOrigins],
-  // Allow cookie auth over plain-HTTP origins (LAN / reverse proxy without
-  // TLS). With an https baseURL, better-auth sets the Secure flag and browsers
-  // won't send the session cookie back over http, breaking login there.
+  trustedOrigins: [...localOrigins, appUrl, "http://localhost:4173", ...extraOrigins],
+  // Secure cookies whenever the configured public URL is HTTPS. Plain-HTTP
+  // localhost/LAN installs keep working, but a public deployment gets the flag.
   advanced: {
-    useSecureCookies: false,
+    useSecureCookies: appUrl.trim().toLowerCase().startsWith("https://"),
   },
   database: drizzleAdapter(db, {
     provider: "sqlite",

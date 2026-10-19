@@ -29,6 +29,10 @@ vi.mock("./provider-step", () => ({
   ProviderStep: () => <div data-testid="provider-step" />,
 }));
 
+vi.mock("./persona-step", () => ({
+  PersonaStep: () => <div data-testid="persona-step" />,
+}));
+
 vi.mock("./character-step", () => ({
   CharacterStep: () => <div data-testid="character-step" />,
 }));
@@ -56,9 +60,10 @@ describe("OnboardingWizard", () => {
     cleanup();
   });
 
-  it("renders the welcome step first", () => {
+  it("starts on the provider step when no provider is configured", () => {
     render(<OnboardingWizard />);
-    expect(screen.getByText("Welcome to Charon")).toBeTruthy();
+    expect(screen.getByText("Connect an AI provider")).toBeTruthy();
+    expect(screen.queryByText("Welcome to Charon")).toBeNull();
   });
 
   it("shows the provider step when no provider is configured", () => {
@@ -72,9 +77,15 @@ describe("OnboardingWizard", () => {
     expect(screen.queryByTestId("provider-step")).toBeNull();
   });
 
-  it("shows the character step", () => {
+  it("shows the character step when the library is empty", () => {
     render(<OnboardingWizard />);
     expect(screen.getByTestId("character-step")).toBeTruthy();
+  });
+
+  it("skips the character step when characters already exist", () => {
+    mockStatus = baseStatus({ hasConfiguredProvider: true, hasCharacter: true });
+    render(<OnboardingWizard />);
+    expect(screen.queryByTestId("character-step")).toBeNull();
   });
 
   it("submits and navigates to /chat on success", async () => {
@@ -86,9 +97,7 @@ describe("OnboardingWizard", () => {
       opts.onSuccess();
     });
     render(<OnboardingWizard />);
-    fireEvent.click(screen.getByRole("radio", { name: /Let's get started/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("radio", { name: /Continue/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Continue to characters/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(screen.getByRole("radio", { name: /Start chatting/ }));
     fireEvent.click(screen.getByRole("button", { name: "Start chatting" }));
@@ -99,7 +108,7 @@ describe("OnboardingWizard", () => {
   it("moves to the character step when completion fails for a missing character", async () => {
     mockStatus = baseStatus({
       hasConfiguredProvider: true,
-      hasCharacter: true,
+      hasCharacter: false,
     });
     completeOnboarding.mockImplementation(
       (_args: unknown, opts: { onError: (e: Error) => void }) => {
@@ -107,9 +116,9 @@ describe("OnboardingWizard", () => {
       },
     );
     render(<OnboardingWizard />);
-    fireEvent.click(screen.getByRole("radio", { name: /Let's get started/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Continue to characters/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    fireEvent.click(screen.getByRole("radio", { name: /Continue/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Continue without importing/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(screen.getByRole("radio", { name: /Start chatting/ }));
     fireEvent.click(screen.getByRole("button", { name: "Start chatting" }));

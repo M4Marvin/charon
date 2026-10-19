@@ -337,12 +337,12 @@ describe("compilePrompt", () => {
       expect(result.messages).toEqual([
         {
           role: "user",
-          content: "Write the Danbooru-style image prompt delta for the current scene now.",
+          content: "Write the image prompt delta for the current scene now.",
         },
       ]);
       expect(systemText(result)).toContain("Scene delta:");
       expect(systemText(result)).toContain("Style suffix");
-      expect(systemText(result)).toContain("anime style");
+      expect(systemText(result)).toContain("cinematic composition");
       expect(systemText(result)).not.toContain("masterpiece, 1girl");
       expect(JSON.stringify(result)).not.toContain("history-only");
     });

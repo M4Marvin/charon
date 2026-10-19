@@ -115,7 +115,7 @@ describe("seedSampleData", () => {
     ctx.sqlite.close();
   });
 
-  it("seeds the persona, Sample + starter characters, adventure lorebooks, Creative preset, and settings", async () => {
+  it("seeds the persona, three portrait-ready starters, Harborlight lore, Creative preset, and settings", async () => {
     await seedSampleData(userId);
 
     const personas = listPersonas(holder.db);
@@ -123,24 +123,20 @@ describe("seedSampleData", () => {
     expect(personas[0]!.name).toBe("Default");
 
     const chars = listCharacters(holder.db);
+    expect(chars).toHaveLength(3);
     const byId = new Map(chars.map((c) => [c.id, c]));
-    expect(byId.get("starter-captain")?.name).toBe("Captain Jack Ryder");
-    expect(byId.get("starter-scientist")?.name).toBe("Dr. Elena Vasquez");
-    const sample = chars.find((c) => c.name === "Sample");
-    expect(sample).toBeDefined();
-    expect(sample!.data.first_mes).toBe("*Awaits your input*");
+    expect(byId.get("starter-ferryman")?.name).toBe("Captain Elias Thorne");
+    expect(byId.get("starter-naturalist")?.name).toBe("Dr. Margaret Finch");
+    expect(byId.get("starter-storyteller")?.name).toBe("Lucien Vane");
 
     const books = listLorebooks(holder.db);
     const byName = new Map(books.map((b) => [b.name, b]));
-    const gazetteer = byName.get("Outer Rim Gazetteer");
-    expect(gazetteer).toBeDefined();
-    expect(gazetteer!.enabled).toBe(true);
-    expect(gazetteer!.entryCount).toBeGreaterThan(0);
-    const xenobiology = byName.get("Xenobiology of Themis");
-    expect(xenobiology).toBeDefined();
-    expect(xenobiology!.enabled).toBe(true);
-    const entries = listEntries("starter-outer-rim", holder.db);
-    expect(entries.map((e) => e.data.comment)).toContain("Nexus Station");
+    const almanac = byName.get("The Harborlight Almanac");
+    expect(almanac).toBeDefined();
+    expect(almanac!.enabled).toBe(true);
+    expect(almanac!.entryCount).toBeGreaterThan(0);
+    const entries = listEntries("starter-harborlight", holder.db);
+    expect(entries.map((e) => e.data.comment)).toContain("Harborlight");
 
     const presets = listPresets(holder.db);
     const creative = presets.find((p) => p.name === "Creative");

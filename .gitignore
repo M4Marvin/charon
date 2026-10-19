@@ -30,3 +30,6 @@ logs/
 /blob-report/
 /playwright/.cache/
 .playwright-mcp/
+
+# Local review workspace (agent reports, captures, session cookies)
+.review/

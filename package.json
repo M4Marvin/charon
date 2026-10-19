@@ -26,7 +26,8 @@
     "db:studio": "drizzle-kit studio",
     "format": "oxfmt src",
     "lint": "oxlint src",
-    "check:docs": "node scripts/verify-user-docs.mjs"
+    "check:docs": "node scripts/verify-user-docs.mjs",
+    "models:sync": "node scripts/sync-models-dev.mjs"
   },
   "dependencies": {
     "@adobe/css-tools": "^4.5.0",

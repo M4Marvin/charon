@@ -170,7 +170,7 @@ describe("runProposal integration", () => {
     const result = await runProposal(userId, "User", { chatId, trigger: "image" }, db);
 
     expect(result.text.startsWith("1girl, silver hair,")).toBe(true);
-    expect(result.text).toContain("anime style");
+    expect(result.text).toContain("painterly");
     expect(result.text).not.toContain("User:");
   }, 20_000);
 });

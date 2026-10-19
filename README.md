@@ -1,82 +1,200 @@
 # Charon
 
-> My take on properly building an app that combines features from Chub, SillyTavern, and everything else I always wanted.
+**A private home for your AI characters.**
 
-Charon is a self-hosted web app for roleplaying with AI characters. Import character cards from SillyTavern or Chub, chat with branching message trees, swipe between replies, and keep everything local.
+Charon is a self-hosted chat app for stories and roleplay. Bring the character cards you already have, connect your own AI provider (or a model running on your machine), and keep every conversation — including every branch of it — on your own computer.
 
----
+No cloud account. No subscription. No telemetry. One SQLite file you can copy.
 
-## Features
-
-- **Branching conversations** — every swipe creates a new branch. Navigate freely, edit inline, never lose a reply.
-- **Character cards V2 + V3** — import `.png` cards from SillyTavern, Chub, or anywhere. No conversion needed.
-- **Your own API key** — BYO OpenAI-compatible provider (OpenAI, Anthropic via proxy, OpenRouter, Ollama, vLLM, etc.). Keys encrypted at rest.
-- **Lorebooks** — attach background lore to a chat. The AI reads relevant entries automatically.
-- **Personas** — define multiple personas and switch per chat.
-- **Markdown rendering** — bold, italic, code blocks, images, `<style>` scoping, dialogue highlighting. Streaming-safe with fade-in.
-- **Self-hosted** — your data stays in a local SQLite file. No cloud, no telemetry, no accounts except yours.
+![A conversation with Captain Elias Thorne, with a 2/3 branch counter under the last reply](static/marketing/chat-branching.webp)
 
 ---
 
-## Quick start
+## What makes it different
 
-### Option A: Docker (recommended)
+**Every reply is a branch.** Swipe to see another version of a reply and the one you had stays where it was. Regenerate, edit, or continue, and each choice becomes a path you can come back to. Nothing is overwritten.
+
+**Your library comes with you.** Charon reads V2 and V3 PNG character cards from SillyTavern, Chub, and anywhere else that follows the card spec. Portraits, greetings, tags, and embedded lorebooks come across. You can also import SillyTavern world-info JSON.
+
+**You choose the model.** OpenAI, OpenRouter, Anthropic through a proxy, vLLM, LM Studio, Ollama, or any other OpenAI-compatible endpoint. Your key is encrypted before it is stored, and it only travels to the provider you configured.
+
+**It is a web app you host.** Run it on your desktop, a home server, or a small VPS. Open it from your laptop or phone. There is one library and one account.
+
+---
+
+## Install
+
+Charon is single-user and runs on your own machine. Pick one path.
+
+### macOS and Linux — one command
 
 ```bash
-docker compose up -d
+curl -fsSL https://github.com/M4Marvin/charon/releases/latest/download/install.sh | sh
 ```
 
-Open http://localhost:3000. Data persists in a Docker volume (`charon-data`).
-Set `BETTER_AUTH_SECRET` and `ENCRYPTION_KEY` in your environment (or a `.env`
-file next to `docker-compose.yml`) — see below for generating them.
+The installer:
 
-### Option B: pnpm
+- checks for Node.js 22.14+ and downloads a private copy into `~/.charon/runtime` if you do not have one;
+- downloads the Charon release for your OS and CPU, and verifies its SHA-256 checksum (the installer itself is served from the release asset; read it first if you prefer);
+- installs everything under `~/.charon` — **no `sudo`, nothing system-wide**;
+- starts Charon and opens **http://localhost:3000**.
+
+Your data lives in `~/.charon/data`. To update later: `charon update`. To back up: `charon backup`.
+
+Prefer to read before you run? [Download the script](https://github.com/M4Marvin/charon/blob/main/scripts/install.sh) first. It is plain POSIX shell and every step prints what it is doing.
+
+### Windows — one command
+
+Open **PowerShell** (not the old Command Prompt) and run:
+
+```powershell
+irm https://github.com/M4Marvin/charon/releases/latest/download/install.ps1 | iex
+```
+
+It installs under `%LOCALAPPDATA%\Charon`, needs no administrator prompt, downloads a private Node.js runtime if needed, verifies the release checksum, and starts Charon at [http://localhost:3000](http://localhost:3000).
+
+### Docker
+
+If you already run Docker, the prebuilt multi-arch image is the shortest path:
+
+```bash
+docker run -d --name charon --restart unless-stopped \
+  -p 127.0.0.1:3000:3000 \
+  -v charon-data:/app/data \
+  ghcr.io/m4marvin/charon:latest
+```
+
+Open [http://localhost:3000](http://localhost:3000). Everything persists in the `charon-data` volume. Secrets are generated inside the volume on first start; you do not need to create any.
+
+To reach it from your phone on the same network, publish the port on all interfaces and set `APP_URL` to the address you will open:
+
+```bash
+docker run -d --name charon --restart unless-stopped \
+  -p 3000:3000 \
+  -e APP_URL=http://192.168.1.20:3000 \
+  -v charon-data:/app/data \
+  ghcr.io/m4marvin/charon:latest
+```
+
+### From source (contributors)
 
 ```bash
 pnpm install
-echo 'DATABASE_URL="dev.db"' > .env
-echo 'BETTER_AUTH_SECRET="your-64-char-secret"' >> .env
-echo 'ENCRYPTION_KEY="your-32-char-secret"' >> .env
+cp .env.example .env          # set BETTER_AUTH_SECRET and ENCRYPTION_KEY
 pnpm run dev
 ```
 
-Don't have pnpm? `npm install -g pnpm` or see [pnpm.io](https://pnpm.io/installation).
-
-Generate secrets:
-
-```bash
-openssl rand -hex 64  # BETTER_AUTH_SECRET
-openssl rand -hex 32  # ENCRYPTION_KEY
-```
-
-Migrations run automatically on first start — no manual `db:migrate` needed.
-
-Upgrading an existing database from an older version? The first boot after the single-user update migrates it to a single admin account (removing other accounts). To do that deliberately and reversibly, stop the app and run `pnpm migrate:single-user` first — it copies the database (and its `-wal`/`-shm` sidecars, if any) to `dev.db.bak-single-user-<timestamp>` before migrating. If anything goes wrong, restore it with `cp dev.db.bak-single-user-<timestamp> dev.db` (using the exact `<timestamp>` the backup printed, plus the matching `-wal`/`-shm` backups if present) and start again.
+Generate the two secrets with `openssl rand -hex 64` and `openssl rand -hex 32`. Migrations run automatically on first start. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the architecture and commands.
 
 ---
 
-## First-time setup
+## First five minutes
 
-1. Open http://localhost:3000 and **Create your account** — pick a username and password.
-2. You'll land in the guided **onboarding wizard**, which takes you through the
-   rest: connect an AI provider, and get a character.
-3. Click **Start chatting** and you're in — pick a character and type.
+1. **Create your account.** A local username and password. No email, no verification, nothing to confirm.
+2. **Connect an AI provider.** Pick a preset — OpenAI, OpenRouter, Ollama, LM Studio, and others — or enter any OpenAI-compatible endpoint. Models come from a bundled [models.dev](https://models.dev) catalog, and Charon tests the connection before saving it.
+3. **Tell it who you are.** A display name and a sentence about the part you play. Optional, and editable later.
+4. **Pick a character.** Three SFW starter characters are already there, with portraits — *Captain Elias Thorne*, *Dr. Margaret Finch*, and *Lucien Vane* — or drag in a PNG card of your own.
+5. **Say hello.** Press Enter. The reply streams in.
 
-Characters not included. Grab some from [Chub](https://chub.ai) or copy `.png` files from a SillyTavern `public/characters/` folder.
+The setup wizard appears on first run and only shows the steps you still need. You can reopen it from Settings later.
 
-### Chat controls
+### Provider base URLs
 
-| Action                            | How                                                                         |
-| --------------------------------- | --------------------------------------------------------------------------- |
-| **Send**                          | Type in the composer, press Enter (Enter also stops while the AI is typing) |
-| **New line**                      | Shift+Enter                                                                 |
-| **Swipe** (see alternate replies) | Click the ← / → buttons under an AI message                                 |
-| **Regenerate**                    | Click the circular-arrow button on the last AI message                      |
-| **Edit**                          | Click the ✏️ icon, edit, click ✓ (or Ctrl/Cmd+Enter; Esc cancels)           |
-| **Impersonate**                   | Click the wand icon in the composer, review the draft, press Enter          |
-| **Continue**                      | Leave the input empty and press Enter                                       |
-| **Delete branch**                 | Trash icon on any message                                                   |
-| **Command menu**                  | Ctrl+K                                                                      |
+Charon speaks the OpenAI chat-completions API. The setup wizard reads a bundled
+[models.dev](https://models.dev) snapshot, so provider names, base URLs, and
+model lists work offline. Most cloud providers need a key; local servers do not.
+
+| Provider | Base URL | Notes |
+| --- | --- | --- |
+| OpenAI | `https://api.openai.com/v1` | Key required |
+| OpenRouter | `https://openrouter.ai/api/v1` | Key required; good model selection |
+| Ollama | `http://localhost:11434/v1` | Run `ollama serve` and pull a model first |
+| LM Studio | `http://localhost:1234/v1` | Start the local server in LM Studio |
+| vLLM | `http://localhost:8000/v1` | Point at your deployment |
+| Anthropic | via an OpenAI-compatible proxy | Anthropic's native API is not called directly |
+
+> **Local-model note:** choose **Ollama** or **LM Studio** and leave the API key blank. The wizard can detect the models on the default port with **Detect models**. If your server runs elsewhere, change the Base URL under **Advanced**.
+
+---
+
+## Chat controls
+
+| Action | How |
+| --- | --- |
+| Send | Enter |
+| New line | Shift + Enter |
+| Swipe alternate replies | ← / → under an AI message |
+| Regenerate | Circular-arrow button on the last AI message |
+| Edit a message | Pencil icon, then check (Ctrl/Cmd + Enter saves, Esc cancels) |
+| Impersonate | Wand icon in the composer |
+| Continue | Leave the input empty and press Enter |
+| Delete a branch | Trash icon on any message |
+| Command menu | Ctrl + K |
+
+---
+
+## Characters
+
+Drag a PNG card onto the Characters page, or use **Import PNG**. V2 and V3 cards work. The import preview shows the portrait, description, tags, greetings, and a warning if a character with the same name already exists.
+
+Embedded lorebooks are extracted into editable standalone lorebooks. SillyTavern world-info JSON can be imported from the Lorebooks page.
+
+If you are bringing a whole SillyTavern install, see [Import from SillyTavern](#import-from-sillytavern).
+
+---
+
+## Privacy and security
+
+- **Local by default.** Characters, chats, lorebooks, personas, settings, and uploads live in one folder: `~/.charon/data`, `%LOCALAPPDATA%\Charon\data`, or the `charon-data` Docker volume.
+- **One SQLite database.** Copy the data folder to back it up. Move it to move the install.
+- **Keys encrypted at rest.** Provider keys are encrypted with a per-install key before they are written to the database.
+- **No analytics, no telemetry, no account on our servers.** The project has no server to send anything to.
+- **Your messages go to the provider you choose.** If you use OpenAI or OpenRouter, their terms apply. If you want nothing to leave the machine, point Charon at Ollama or another local server.
+- **Self-hosted interface fonts.** No request to Google Fonts or any other font CDN.
+
+Backups:
+
+```bash
+charon backup                 # database + uploads + instance secrets, in ~/.charon/data/backups
+charon stop && cp -R ~/.charon/data /path/to/backup
+```
+
+---
+
+## FAQ
+
+**Is this NSFW?**
+No. Charon is built and presented for stories and roleplay. It ships SFW starter characters, bundles no adult content, and is not marketed as an unfiltered or adult platform. Because it runs on your machine and uses your model, what you import and write is your choice — but if you are looking for an adult platform, this is not one.
+
+**Do I need to be technical?**
+The installer is one command. After that, setup happens in the browser: account, provider, character, chat. There are no config files to edit for normal use. A desktop app with no terminal at all is on the roadmap.
+
+**What does it cost?**
+Charon is free and open source. You pay your AI provider directly, or nothing if you run a local model. There is no subscription and nothing to unlock.
+
+**Do I need an API key?**
+For real replies, yes — Charon connects to a provider rather than bundling a model. Use a key from OpenAI, OpenRouter, or a compatible service, or run Ollama / LM Studio locally.
+
+**Does it work on my phone?**
+Yes. Run Charon on a computer, publish the port, and open the computer's address from your phone's browser on the same network. One library, one account.
+
+**Can I import my SillyTavern or Chub characters?**
+Yes. V2 and V3 PNG cards, including embedded lorebooks. SillyTavern world-info JSON imports too.
+
+**Which models work?**
+Anything that speaks the OpenAI chat-completions API. If it has a base URL, Charon can probably talk to it.
+
+**Where do my chats live?**
+In one SQLite file plus an uploads folder, in the data directory listed above. Nothing is stored anywhere else.
+
+**How do I update?**
+`charon update` on macOS/Linux. On Windows, run `charon update` from a new terminal. Docker: `docker pull ghcr.io/m4marvin/charon:latest` and recreate the container. Your data is untouched.
+
+**How do I uninstall?**
+macOS/Linux: run the installer with `--uninstall` to remove the app and keep your data, or delete `~/.charon`. Windows: run `install.ps1 -Uninstall` or remove `%LOCALAPPDATA%\Charon`. Docker: `docker rm -f charon && docker volume rm charon-data` (the second command deletes your chats).
+
+**Something is broken.**
+Run `charon doctor`. It checks Node, the app bundle, the data directory, and `/up`. Then read [troubleshooting](./docs/user/troubleshooting.md).
 
 ---
 
@@ -86,29 +204,81 @@ Characters not included. Grab some from [Chub](https://chub.ai) or copy `.png` f
 # Copy your old data into private migration storage
 cp -r /path/to/SillyTavern/public/* data/import/
 
-# Import into the database and private data/uploads/ storage
+# Import into the database and private uploads
 pnpm run migrate
+```
 
-# For installs with data still under the old public/data path
+For installs with data under the old `public/data` path:
+
+```bash
 pnpm run prepare:migration
-
-# For installs that already ran the old migration, move legacy public/data images
 pnpm run migrate:image-paths
 ```
 
 ---
 
-## Production
+## How it works
 
-```bash
-pnpm run build
-pnpm run start         # port 3000
+```
+Browser (React 19 + TanStack Start)
+        │
+        ▼
+Generation ── prompt compiler, streaming jobs, tools
+        │
+        ▼
+Tree ──────── branching messages, active path, swipes
+        │
+        ▼
+SQLite ────── one file: characters, chats, lorebooks, settings
 ```
 
-Set `APP_URL` to your public URL for auth cookies. The production server is the same app, built once.
+The app is a single Node process serving a TanStack Start frontend and an SSE generation endpoint. Native dependencies are `better-sqlite3` and `sharp`; both ship prebuilt binaries, so no compiler is needed on the host.
 
 ---
 
-## For developers
+## Documentation
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, project layout, architecture, and commands.
+| Guide | What it covers |
+| --- | --- |
+| [Getting started](./docs/user/getting-started.md) | Account, wizard, first chat |
+| [Chatting](./docs/user/chatting.md) | Swipe, branch, edit, impersonate, shortcuts |
+| [Characters](./docs/user/characters.md) | Library, import, detail, edit |
+| [Lorebooks](./docs/user/lorebooks.md) | Activation and imports |
+| [Personas, scenes, presets](./docs/user/personas-scenes-presets.md) | Tuning how the AI writes |
+| [Troubleshooting](./docs/user/troubleshooting.md) | Common local problems |
+| [Contributing](./CONTRIBUTING.md) | Architecture, commands, conventions |
+
+---
+
+## Project status
+
+Charon is actively developed by one person. The core is stable enough for daily use; the packaging and onboarding are being rebuilt for people who do not want a terminal.
+
+Implemented in this branch, waiting on the first tagged release:
+
+- one-line installers for macOS, Windows, and Linux;
+- a prebuilt multi-arch image published to GHCR;
+- provider presets and a bundled models.dev catalog;
+- a persona step and self-hosted fonts.
+
+Still planned:
+
+- a desktop app with no Docker and no terminal;
+- a no-key demo mode;
+- a model-catalog refresh button (the snapshot updates with `pnpm models:sync`).
+
+---
+
+## Contributing
+
+Issues and pull requests are welcome. Read [CONTRIBUTING.md](./CONTRIBUTING.md) first. The pre-commit hook runs format, lint, tests, and typecheck.
+
+If you hit friction — a confusing error, a missing doc, a command that failed — log it with `npx frog log`. That is how the rough edges above get fixed.
+
+---
+
+## License
+
+See [LICENSE](./LICENSE) and [NOTICE](./NOTICE). Charon includes code derived from SillyTavern, which is licensed under AGPL-3.0; the NOTICE file records the provenance.
+
+Character-card parsing follows the [Character Card V2/V3 specification](https://github.com/kwaroran/character-card-spec-v3). Provider and model metadata comes from [models.dev](https://models.dev). Inter, Fraunces, and JetBrains Mono are self-hosted under the SIL Open Font License. See [NOTICE](./NOTICE) for the full attributions.

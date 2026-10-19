@@ -1,0 +1,7 @@
+# Contributor overlay: build the image from this checkout instead of pulling.
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  charon:
+    image: charon:local
+    build:
+      context: .

@@ -28,7 +28,8 @@ function toListItem(row: AiProvider): AiProviderListItem {
 const CreateProviderInput = type({
   name: "string > 0",
   baseUrl: "string > 0",
-  apiKey: "string > 0",
+  // Local OpenAI-compatible servers (Ollama, LM Studio) do not need a key.
+  apiKey: "string",
   "defaultModel?": "string",
   "defaultHeaders?": "object",
 });

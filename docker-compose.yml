@@ -1,16 +1,34 @@
 services:
   charon:
-    build: .
+    # Prebuilt, multi-arch image. No clone and no local build required.
+    image: ghcr.io/m4marvin/charon:latest
+    container_name: charon
+    init: true
     ports:
-      - "3000:3000"
+      # Loopback by default: the app is local and private on this machine.
+      # To use it from your phone on the same network, change this to "3000:3000"
+      # and set APP_URL to the address you open (e.g. http://192.168.1.20:3000).
+      - "127.0.0.1:3000:3000"
     environment:
-      DATABASE_URL: /app/data/local.db
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-in-a-real-deployment}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-me-in-a-real-deployment}
       APP_URL: http://localhost:3000
+      # Secrets are generated once inside /app/data on first start.
+      # Set BETTER_AUTH_SECRET / ENCRYPTION_KEY here only if you are migrating
+      # an existing install and need to keep its keys.
     volumes:
       - charon-data:/app/data
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/up').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
 
 volumes:
   charon-data:

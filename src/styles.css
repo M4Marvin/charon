@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap");
+@import "./fonts.css";
 @import "tailwindcss";
 @plugin '@tailwindcss/typography';
 
@@ -1200,6 +1200,16 @@
     font-size: 1.75rem;
     line-height: 2.125rem;
   }
+}
+
+/* Landing-page display size. The app's page-title scale is intentionally much
+   smaller; keeping this separate avoids relying on utility emit order. */
+@utility text-hero {
+  font-family: var(--font-heading);
+  font-size: clamp(2.25rem, 1.75rem + 2.9vw, 4.5rem);
+  line-height: 1.02;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 @utility text-title {

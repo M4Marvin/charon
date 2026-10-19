@@ -1,0 +1,47 @@
+# NOTICE
+
+Charon includes source code derived from **SillyTavern**
+(<https://github.com/SillyTavern/SillyTavern>), which is licensed under the
+**GNU Affero General Public License, version 3 (AGPL-3.0)**.
+
+Derived portions include:
+
+- `src/lib/st-core/**` — shared types, character-card parsing and validation,
+  chat-tree structures, lorebook buffer and context assembly, STscript
+  parser/runtime, text-transform macros, and story-string rendering.
+- `src/lib/character/**` where it adapts those primitives for Charon.
+
+The upstream license is available at
+<https://github.com/SillyTavern/SillyTavern/blob/release/LICENSE>.
+
+The AGPL requires derivative works to be distributed under the same license.
+These portions — and any distribution that includes them — must therefore be
+treated as AGPL-3.0. The repository's top-level MIT `LICENSE` does not override
+that obligation. The project owner is resolving the license for the combined
+work before the first public release; until then, do not describe the whole
+repository as MIT-only.
+
+## Fonts
+
+The interface self-hosts **Inter**, **Fraunces**, and **JetBrains Mono** from
+`static/fonts/`. Each is licensed under the SIL Open Font License 1.1; the
+license texts are alongside the font files as `OFL-*.txt`.
+
+## Starter portraits
+
+The three bundled starter portraits are public-domain works from Wikimedia
+Commons, cropped and re-encoded:
+
+- Captain Elias Thorne — *Portrait of Captain James Cook*.
+- Dr. Margaret Finch — *Maria Sibylla Merian*.
+- Lucien Vane — *Young Man Playing the Lute* by Jan van Bijlert.
+
+The source images are in the public domain; the crops are distributed with the
+app under the same terms as the rest of the seed content.
+
+## Model catalog
+
+Provider and model metadata in `src/lib/models-dev.json` is generated from
+[models.dev](https://models.dev), which is MIT licensed. The snapshot is
+committed so the setup wizard works offline and makes no third-party request.
+Refresh it with `pnpm models:sync`.

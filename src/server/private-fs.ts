@@ -7,7 +7,9 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { MAX_IMAGE_BYTES } from "@/server/image-limits";
 
-export const UPLOADS_DISK_ROOT = "data";
+// Packaged installs keep mutable data outside the application directory so an
+// update can replace the app without touching chats or uploads.
+export const UPLOADS_DISK_ROOT = process.env.CHARON_DATA_DIR ?? "data";
 export const UPLOADS_PUBLIC_PREFIX = "uploads";
 
 export const UPLOADS_SUBDIRS = {

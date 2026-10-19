@@ -111,6 +111,7 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 | `docs/user/troubleshooting.md` | End-user FAQ for common local problems |
 | `docs/markdown.md` | Full rendering pipeline (showdown, DOMPurify, CSS scoping, morphdom streaming) |
 | `docs/generation-engine.md` | Generation jobs, lease/finalize, prompt compiler, tools, side paths |
+| `docs/packaging.md` | Packaging ladder, installer/CLI design, onboarding fixes, SFW positioning |
 
 ## Commands
 
@@ -126,6 +127,9 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 | DB push | `pnpm run db:push` |
 | DB studio | `pnpm run db:studio` |
 | Single-user migration (operator) | `pnpm run migrate:single-user` |
+| Package a release locally | `pnpm build`, then tar `.output`, `drizzle`, `bin` |
+| Run the packaged server | `node bin/charon.mjs serve` (zero-config) |
+| Installer smoke test | `CHARON_SOURCE=... CHARON_ALLOW_UNVERIFIED=1 sh scripts/install.sh --no-open` |
 
 Upgrading an existing database after the single-user change? Run `pnpm migrate:single-user` before the first boot: it backs the DB up to `dev.db.bak-single-user-<timestamp>` (including `-wal`/`-shm` if present) and then applies pending migrations through the same `src/db` migrator production uses, so the migration is deliberate and reversible (`cp dev.db.bak-single-user-<timestamp> dev.db`, plus the matching `-wal`/`-shm` backups if present).
 
@@ -153,7 +157,10 @@ Don't fix unless asked:
 
 ## Remaining todos
 
-- [ ] Encrypt stored provider API keys at rest (currently plain text in `ai_providers.api_key`).
+- [ ] Provider preset cards and keyless Ollama onboarding (see `docs/packaging.md` §5).
+- [ ] Test the provider connection before saving it, so onboarding cannot finish broken.
+- [ ] Self-host the UI fonts; the app currently requests them from Google.
+- [ ] Decide the license for the AGPL-derived `src/lib/st-core` (see `NOTICE`).
 
 ## Image rendering
 

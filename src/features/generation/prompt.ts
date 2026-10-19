@@ -203,7 +203,7 @@ function buildImageSystemPrompts(snapshot: GenerationSnapshot, names: MacroNames
   return [
     expandMacros(context.join("\n"), names).trim(),
     [
-      "You write danbooru-style image prompts for anime image generation.",
+      "You write concise image prompts for the current scene.",
       "Return only the scene delta: a comma-separated list of pose, action, setting, lighting, and expression tags that change for the current scene.",
       "Do not repeat the character's identity tags. Never invent or change the character's appearance; identity is assembled deterministically after your output.",
       "No prose, labels, quality tokens, or style/artist tags.",
@@ -349,7 +349,7 @@ export function compilePrompt(
       role: "user",
       content:
         mode === "image"
-          ? "Write the Danbooru-style image prompt delta for the current scene now."
+          ? "Write the image prompt delta for the current scene now."
           : "Proceed with the task now.",
     });
   }

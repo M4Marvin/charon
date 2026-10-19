@@ -1,5 +1,11 @@
 # Charon — Marketing Campaign
 
+> **Superseded in part (2026-10-20).** Packaging, onboarding, and positioning
+> were revised after an end-to-end audit. See [packaging.md](./packaging.md).
+> Specifically: the "zero API key" demo is **not implemented**; "no filtering"
+> is no longer a selling point; and the MIT claim depends on the license
+> decision recorded in [NOTICE](../NOTICE).
+>
 > **Product:** Charon — a self-hosted AI character roleplay app (web, TanStack Start, SQLite).
 > **Campaign goal:** Take Charon from "a tool Marv built for himself" to a polished, widely-used self-hosted roleplay app.
 > **Audience:** SillyTavern and Chub users who are frustrated, curious, or privacy-minded; self-hosters; the AI-roleplay subreddits and Discords.
@@ -176,7 +182,7 @@ Five claims, each backed by a real product behavior. Lead with Pillar 1 — it's
 
 **Section 5 — "Yours alone, done properly."** One instance, one user, nothing to administer. `docker compose up -d` and it's yours — your library, chats, and personas in a single local dataset, reachable from any device. (Screenshot: settings / profile.)
 
-**Section 6 — "SillyTavern-grade, without the fight."** Lorebooks with keyword triggers, personas, presets, scenes, impersonation, dialogue-highlighting markdown, and danbooru-style image prompts — all with a clean UI. (Feature grid, 8 tiles.)
+**Section 6 — "SillyTavern-grade, without the fight."** Lorebooks with keyword triggers, personas, presets, scenes, impersonation, dialogue-highlighting markdown, and descriptive image prompts — all with a clean UI. (Feature grid, 8 tiles.)
 
 **Footer:** _Board the ferry. Bring your characters._ · GitHub · Discord (TBD) · MIT
 

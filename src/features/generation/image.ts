@@ -1,7 +1,6 @@
 import type { EffectiveCharacter } from "./contract";
 
-export const DEFAULT_IMAGE_STYLE =
-  "anime style, clean lineart, detailed shading, cinematic composition";
+export const DEFAULT_IMAGE_STYLE = "cinematic composition, natural lighting, detailed, painterly";
 
 function normalizeTag(tag: string): string {
   return tag
@@ -13,9 +12,9 @@ function normalizeTag(tag: string): string {
 }
 
 /**
- * The stable, deterministic part of a Danbooru-style prompt. Only tags that
- * describe the character belong here; scene, pose, and camera go in the
- * model-produced delta and are never allowed to redefine identity.
+ * The stable, deterministic part of an image prompt. Only tags that describe
+ * the character belong here; scene, pose, and camera go in the model-produced
+ * delta and are never allowed to redefine identity.
  */
 export function canonicalIdentity(character: EffectiveCharacter): string[] {
   const seen = new Set<string>();

@@ -135,9 +135,6 @@ export default function Header() {
               <Button asChild variant="ghost" size="sm">
                 <Link to="/signin">Sign in</Link>
               </Button>
-              <Button asChild size="sm">
-                <Link to="/setup">Create account</Link>
-              </Button>
             </div>
           )}
         </nav>
