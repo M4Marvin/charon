@@ -55,26 +55,22 @@ It installs under `%LOCALAPPDATA%\Charon`, needs no administrator prompt, downlo
 
 ### Docker
 
-If you already run Docker, the prebuilt multi-arch image is the shortest path:
+The GHCR image is built from this release but is not published yet (it needs a
+package-write token). Until then, build it locally:
 
 ```bash
-docker run -d --name charon --restart unless-stopped \
-  -p 127.0.0.1:3000:3000 \
-  -v charon-data:/app/data \
-  ghcr.io/m4marvin/charon:latest
+git clone https://github.com/M4Marvin/charon.git charon
+cd charon
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Everything persists in the `charon-data` volume. Secrets are generated inside the volume on first start; you do not need to create any.
+Open [http://localhost:3000](http://localhost:3000). Everything persists in the
+`charon-data` volume. Secrets are generated inside the volume on first start;
+you do not need to create any.
 
-To reach it from your phone on the same network, publish the port on all interfaces and set `APP_URL` to the address you will open:
-
-```bash
-docker run -d --name charon --restart unless-stopped \
-  -p 3000:3000 \
-  -e APP_URL=http://192.168.1.20:3000 \
-  -v charon-data:/app/data \
-  ghcr.io/m4marvin/charon:latest
-```
+To reach it from your phone on the same network, change the port mapping in
+`docker-compose.yml` to `3000:3000` and set `APP_URL` in the service
+environment to the address you will open.
 
 ### From source (contributors)
 
@@ -254,12 +250,16 @@ The app is a single Node process serving a TanStack Start frontend and an SSE ge
 
 Charon is actively developed by one person. The core is stable enough for daily use; the packaging and onboarding are being rebuilt for people who do not want a terminal.
 
-Implemented in this branch, waiting on the first tagged release:
+Shipped in v0.1.0:
 
 - one-line installers for macOS, Windows, and Linux;
-- a prebuilt multi-arch image published to GHCR;
 - provider presets and a bundled models.dev catalog;
-- a persona step and self-hosted fonts.
+- a persona step, self-hosted fonts, and three portrait'd SFW starters;
+- a landing page with an SFW screenshot tour.
+
+The GHCR image is built from the same release commit; publishing it requires a
+token with `write:packages`. Until then, use the installer or the local Docker
+build above.
 
 Still planned:
 

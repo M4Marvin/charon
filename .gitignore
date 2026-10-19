@@ -33,3 +33,6 @@ logs/
 
 # Local review workspace (agent reports, captures, session cookies)
 .review/
+
+# Local release build artifacts
+.release-cache/

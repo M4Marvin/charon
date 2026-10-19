@@ -87,10 +87,10 @@ const INSTALL_METHODS = [
     id: "docker",
     label: "Docker",
     terminal: "Open a terminal",
-    prerequisite: "Docker Desktop or Docker Engine.",
+    prerequisite: "Docker Desktop or Docker Engine. Builds locally.",
     command:
-      "docker run -d --name charon --restart unless-stopped -p 127.0.0.1:3000:3000 -v charon-data:/app/data ghcr.io/m4marvin/charon:latest",
-    note: "The image generates its secrets on first start; chats and uploads live in the charon-data volume.",
+      "git clone https://github.com/M4Marvin/charon.git charon && cd charon && docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build",
+    note: "The prebuilt GHCR image is pending; this builds from source. Secrets and data are generated in the charon-data volume.",
     installer: false,
     script: null,
   },

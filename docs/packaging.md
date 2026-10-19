@@ -54,7 +54,7 @@ them replaces the others.
 | 0 | Contributor / homelab | `git clone && docker compose up -d` | Git, Docker | Works; now pulls a prebuilt image instead of compiling |
 | 1 | Anyone on macOS/Linux | `curl -fsSL .../install.sh | sh` | none | Script implemented; needs a release to exist |
 | 1 | Anyone on Windows | `irm .../install.ps1 | iex` | none | Script implemented; needs a release to exist |
-| 2 | Docker user | `docker run ... ghcr.io/m4marvin/charon` | Docker only | Image + workflow implemented; needs a tag |
+| 2 | Docker user | `docker run ... ghcr.io/m4marvin/charon` | Docker only | Image built from the same release commit |
 | 3 | "I will not open a terminal" | Download, double-click | none | Roadmap (Electron, 10–15 dev-days) |
 
 ### Tier 0 — Docker, but pull instead of build
@@ -125,9 +125,11 @@ is ~80 MB compressed. Expect a ~90–100 MB pull, below Open WebUI's 197 MB
 `:slim`. Optional trimming (foreign `better-sqlite3` prebuilds and musl libvips)
 can take another ~15 MB; do it after the first release works.
 
-The publish workflow builds natively on `ubuntu-latest` and
-`ubuntu-24.04-arm`, pushes per-arch images, merges a multi-arch manifest, and
-signs it with cosign keyless OIDC. No QEMU, no cross-compiling native modules.
+Releases are built locally with `scripts/release-local.sh` — no GitHub Actions.
+The script builds `.output`, fetches the non-host Sharp binaries from npm,
+assembles the four tarballs plus the Windows zip, writes checksums, and
+publishes with `gh release create`. The Docker image is built from the same
+commit and pushed to GHCR manually.
 
 ### Tier 3 — desktop (defer)
 
@@ -149,8 +151,7 @@ users, not before.
 | `Dockerfile` | Two-stage, non-root, `NODE_ENV=production`, healthcheck, `charon serve` |
 | `docker-compose.yml` | Prebuilt GHCR image, loopback binding, no secret defaults, healthcheck |
 | `docker-compose.build.yml` | Contributor overlay for local builds |
-| `.github/workflows/release.yml` | Per-platform tarballs/zips + checksums + install scripts as release assets |
-| `.github/workflows/publish-image.yml` | Multi-arch GHCR publish + cosign signature |
+| `scripts/release-local.sh` | Local release build: per-platform tarballs/zips, checksums, `gh release create` (no Actions) |
 | `README.md` | Rewritten for a non-technical first-time user; honest about limitations |
 | `src/routes/index.tsx` | State-aware landing page: first-run welcome or marketing hero, OS install tabs with copy feedback, features, branch diagram, privacy, FAQ |
 | `src/routes/__root.tsx` | Landing page owns its nav; SFW meta description |
@@ -366,11 +367,11 @@ changes, and CI in this branch cover roughly the first 30% of Tier 1–2.
 | Onboarding steps | Welcome step removed; provider is step 1, character step auto-skips when the library is non-empty; 7 wizard tests pass |
 | Marketing captures | S1 chat (2/3), S2 library, S3 providers, S4 branch close-up, S5 import, S6 mobile captured from a fresh SFW profile; WebP derivatives in `static/marketing/` |
 
-Not yet validated: the first real GitHub tag and release asset URLs, the
-Windows installer on a real Windows machine, macOS builds, the multi-arch
-image merge and cosign signature, the release workflow's runner labels, and
-the preset base URLs against each live provider. Those are the first things to
-exercise after the first tag.
+Validated: v0.1.0 is published, all five platform asset URLs return 200, the
+published installer dry-run resolves the release, and the linux-x64 archive
+installs and serves `/up`. Not yet validated: the Windows installer on a real
+Windows machine, a macOS run, and the preset base URLs against each live
+provider.
 
 The license question is deprioritized by the owner (not selling; obfuscation is
 an option if it ever matters). `NOTICE` stays factually accurate for the
