@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { makeTestDb, seedTestUser, type TestDb } from "@/db/__tests__/helpers";
 import { makeCharacterData } from "@/db/__tests__/character-data";
 import { aiProviders, characters, generationJobs, userSettings } from "@/db/schema";
-import { createChat } from "@/features/chat/tree/service";
+import { createChat, getMessages } from "@/features/chat/tree/service";
 import { getProposal } from "@/db/repositories/generation";
 import { runProposal } from "./proposal";
 import { prepareGeneration } from "./prepare";
@@ -145,6 +145,25 @@ describe("runProposal integration", () => {
     await expect(
       prepareGeneration(userId, { chatId, trigger: "send", content: "Hi" }, "User", db),
     ).resolves.toMatchObject({ jobId: expect.any(String) });
+  }, 20_000);
+
+  it("treats a transform as a composer draft and never appends a message", async () => {
+    const before = getMessages(chatId, db);
+    const result = await runProposal(
+      userId,
+      "User",
+      {
+        chatId,
+        trigger: "transform",
+        selection: [before[0].localId],
+        instruction: "Summarize this.",
+      },
+      db,
+    );
+
+    expect(result.text).toBe("User: Hello from the fake.");
+    expect(getProposal(result.proposalId, db)?.status).toBe("accepted");
+    expect(getMessages(chatId, db)).toHaveLength(before.length);
   }, 20_000);
 
   it("assembles image prompts with canonical identity and style", async () => {

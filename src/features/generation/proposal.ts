@@ -204,9 +204,9 @@ export async function runProposal(
     );
     if (!finalized) throw new Error("The generation lease was lost before proposal finalize.");
 
-    // Impersonation drafts and image prompts are reviewed directly in the
-    // composer/result panel; they do not need a separate accept step.
-    if (kind === "impersonate" || kind === "image") {
+    // Impersonation drafts, image prompts, and selection prompts are consumed
+    // directly in the composer; they do not need a separate accept step.
+    if (kind === "impersonate" || kind === "image" || kind === "transform") {
       resolveProposal(proposal.id, "accepted", db);
     }
 

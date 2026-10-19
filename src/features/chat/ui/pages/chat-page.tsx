@@ -38,7 +38,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { SkeletonRows } from "@/components/common/Skeletons";
 import { MessageSquareX, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TransformSelectionDialog } from "../components/transform-selection-dialog";
+import { SelectionPromptDialog } from "../components/selection-prompt-dialog";
 
 export function ChatPage() {
   const { id: chatId } = useParams({ from: "/chat/$id" });
@@ -62,7 +62,7 @@ export function ChatPage() {
   const customImage = useChatUiStore((s) => s.customImages[chatId] ?? null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [transformOpen, setTransformOpen] = useState(false);
+  const [promptOpen, setPromptOpen] = useState(false);
   const setCustomImage = useChatUiStore((s) => s.setCustomImage);
   const clearCustomImage = useChatUiStore((s) => s.clearCustomImage);
 
@@ -351,11 +351,21 @@ export function ChatPage() {
     void refetchMessages();
   }, [refetchMessages]);
 
+  // Selection prompts land in the composer as editable text; the message is
+  // only written when the user sends it.
+  const handleSelectionPrompt = useCallback(
+    (text: string) => {
+      applyGeneratedText(text);
+      focusComposer();
+    },
+    [applyGeneratedText, focusComposer],
+  );
+
   // Selection is per-chat UI state: never carry localIds across a route change.
   useEffect(() => {
     setSelectedIds([]);
     setSelectionMode(false);
-    setTransformOpen(false);
+    setPromptOpen(false);
   }, [chatId]);
 
   if (configLoading || messagesLoading) {
@@ -511,9 +521,9 @@ export function ChatPage() {
             size="sm"
             className="ml-auto"
             disabled={selectedIds.length === 0}
-            onClick={() => setTransformOpen(true)}
+            onClick={() => setPromptOpen(true)}
           >
-            Transform
+            Prompt
           </Button>
           <Button variant="ghost" size="icon" onClick={clearSelection} aria-label="Exit selection">
             <X className="size-4" />
@@ -521,14 +531,15 @@ export function ChatPage() {
         </div>
       ) : null}
 
-      <TransformSelectionDialog
+      <SelectionPromptDialog
         chatId={chatId}
         messageIds={selectedIds}
-        open={transformOpen}
+        open={promptOpen}
         onOpenChange={(open) => {
-          setTransformOpen(open);
+          setPromptOpen(open);
           if (!open) clearSelection();
         }}
+        onGenerated={handleSelectionPrompt}
       />
 
       <Composer

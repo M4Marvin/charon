@@ -66,8 +66,9 @@ All four side paths use the same snapshot and compiler:
   Preparing captures a hash of the current content; editing a message bumps
   `rev` and `contentHash`. Accepting compares both and returns
   `StaleTargetError` if the target changed.
-- **Transform**: multi-select source messages, proposal output appended as a new
-  assistant message. Source messages are never mutated.
+- **Transform**: multi-select source messages plus a custom prompt. The result
+  is inserted into the composer as an editable draft; nothing is written to the
+  chat and the source messages are never mutated.
 
 Proposal acceptance is compare-and-set on the message revision and content hash.
 There is no undo/revision table; a rewrite overwrites the target after the CAS
@@ -82,8 +83,9 @@ pruned by later migrations:
   Stores trigger, prompt mode, lease, placeholder, target and input. Dead
   columns (`request_id`, `base_leaf_id`, `attempt`, `draft_text`,
   `chunk_seq`, `requires_confirmation`) were dropped in 0024.
-- `generation_proposals` — pending rewrite/transform drafts and accepted
-  impersonate/image results.
+- `generation_proposals` — pending rewrite drafts; impersonate, image, and
+  transform results are recorded as accepted because they are consumed in the
+  composer.
 
 The TanStack AI persistence tables were removed in 0023 because the UI renders
 the app's canonical message tree, not a hydrated TanStack thread.

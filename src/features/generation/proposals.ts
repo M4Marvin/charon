@@ -1,7 +1,6 @@
 import { db as defaultDb, type DB } from "@/db";
 import { getProposal, getJob, resolveProposal } from "@/db/repositories/generation";
 import { getMessage, updateMessage } from "@/db/repositories/chats";
-import { appendMessage } from "@/features/chat/tree/service";
 import { StaleTargetError, GenerationValidationError } from "./errors";
 import { contentHash } from "@/lib/chat/content-hash";
 import type { ProposalView } from "./contract";
@@ -85,25 +84,9 @@ export function acceptProposal(
       return { ok: true, proposal: toProposalView(updated), messageLocalId: targetId };
     }
 
-    // transform: append the proposed text as a new assistant message at the
-    // active leaf. The source messages are never mutated.
-    const created = appendMessage(
-      proposal.chatId,
-      {
-        role: "assistant",
-        content: proposal.proposedContent,
-        extra: {
-          generationJobId: job.id,
-          proposalId: proposal.id,
-          kind: "transform",
-          source: job.input?.selection ?? [],
-        },
-      },
-      tx,
-    );
-    const updated = resolveProposal(proposalId, "accepted", tx);
-    if (!updated) throw new GenerationValidationError({ message: "Proposal changed" });
-    return { ok: true, proposal: toProposalView(updated), messageLocalId: created.localId };
+    // Everything else (transform) is delivered to the composer and resolved
+    // as accepted by the runner; there is nothing to apply here.
+    throw new GenerationValidationError({ message: "Proposal kind cannot be accepted" });
   });
 }
 

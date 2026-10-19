@@ -294,43 +294,6 @@ describe("generation prepare and proposals", () => {
     expect(() => acceptProposal(second.id, db)).toThrow(StaleTargetError);
   });
 
-  it("accepts a transform by appending, never mutating the source", async () => {
-    const { userMessage, replyMessage } = appendUserAndReply(
-      chatId,
-      "Hello",
-      "First reply",
-      undefined,
-      db,
-    );
-    const prepared = await prepareGeneration(
-      userId,
-      { chatId, trigger: "transform", selection: [userMessage.localId, replyMessage.localId] },
-      "User",
-      db,
-    );
-    const proposal = createProposal(
-      {
-        jobId: prepared.jobId,
-        chatId,
-        kind: "transform",
-        proposedContent: "Transformed scene",
-        proposedRole: "assistant",
-      },
-      db,
-    );
-    const accepted = acceptProposal(proposal.id, db);
-    expect(accepted.messageLocalId).not.toBeNull();
-    expect(getMessages(chatId, db).find((m) => m.localId === replyMessage.localId)?.content).toBe(
-      "First reply",
-    );
-    expect(
-      getMessages(chatId, db).find((m) => m.localId === accepted.messageLocalId)?.content,
-    ).toBe("Transformed scene");
-    expect(getMessages(chatId, db).find((m) => m.localId === accepted.messageLocalId)?.role).toBe(
-      "assistant",
-    );
-  });
-
   it("denies a proposal without writing", async () => {
     const { replyMessage } = appendUserAndReply(chatId, "Hello", "First reply", undefined, db);
     const prepared = await prepareGeneration(

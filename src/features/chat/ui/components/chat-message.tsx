@@ -206,7 +206,7 @@ export const ChatMessage = memo(function ChatMessage({
                       className="size-9 text-2 hover:text-brand"
                       onClick={() => onToggleSelect(message.localId)}
                       aria-pressed={selected}
-                      aria-label={selected ? "Deselect message" : "Select message for transform"}
+                      aria-label={selected ? "Deselect message" : "Select message for prompt"}
                     >
                       <ListChecks className="size-3.5" />
                     </Button>
