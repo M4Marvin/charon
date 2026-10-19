@@ -55,6 +55,22 @@ function hasOwn(target: object, key: PropertyKey): boolean {
   return Object.prototype.hasOwnProperty.call(target, key);
 }
 
+/** JSON storage turns ModelMessage.createdAt into an ISO string; restore its Date type. */
+function toModelMessages(value: Array<unknown>): Array<ModelMessage> {
+  return value.map((entry) => {
+    if (entry === null || typeof entry !== "object") return entry as ModelMessage;
+    const message = entry as Record<string, unknown>;
+    const createdAt = message.createdAt;
+    if (typeof createdAt === "string" || typeof createdAt === "number") {
+      const parsed = new Date(createdAt);
+      if (!Number.isNaN(parsed.getTime())) {
+        return { ...message, createdAt: parsed } as unknown as ModelMessage;
+      }
+    }
+    return message as unknown as ModelMessage;
+  });
+}
+
 function toRunRecord(row: AiRun): RunRecord {
   if (!isRunStatus(row.status)) {
     // The readers downstream act destructively on a status, so never hand out
@@ -197,7 +213,7 @@ export function createSqlitePersistence(db: DB): ChatPersistence {
           .from(aiChatThreads)
           .where(eq(aiChatThreads.threadId, threadId))
           .get();
-        return (row?.messages ?? []) as Array<ModelMessage>;
+        return toModelMessages(row?.messages ?? []);
       }),
     saveThread: (threadId, transcript) =>
       fromSync(() => {
