@@ -75,7 +75,7 @@ export const probeProviderModels = (
       models: ids.map((id) => ({ id })),
     };
   }).pipe(
-    Effect.catchAll((error) =>
+    Effect.catch((error) =>
       Effect.succeed({
         ok: false,
         latencyMs: 0,

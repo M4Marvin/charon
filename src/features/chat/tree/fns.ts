@@ -22,10 +22,10 @@ const EditMessageSchema = Schema.Struct({
 const SwipeSchema = Schema.Struct({
   chatId: Schema.String,
   messageLocalId: Schema.Number,
-  direction: Schema.Literal("next", "prev"),
+  direction: Schema.Literals(["next", "prev"]),
   createIfMissing: Schema.optional(
     Schema.Struct({
-      role: Schema.Literal("user", "assistant"),
+      role: Schema.Literals(["user", "assistant"]),
       content: Schema.String,
     }),
   ),

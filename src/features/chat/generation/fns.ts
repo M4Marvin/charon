@@ -7,7 +7,7 @@ import { generateImagePrompt } from "./image-prompt";
 
 const PrepareStreamSchema = Schema.Struct({
   chatId: Schema.String,
-  mode: Schema.Literal("send", "regenerate", "continue"),
+  mode: Schema.Literals(["send", "regenerate", "continue"]),
   content: Schema.optional(Schema.String),
   messageLocalId: Schema.optional(Schema.Number),
 });
