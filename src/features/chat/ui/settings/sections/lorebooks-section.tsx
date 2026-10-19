@@ -226,7 +226,7 @@ export function LorebooksSection(_props: SectionProps) {
             }}
             disabled={available.length === 0}
           >
-            <SelectTrigger id="ls-add">
+            <SelectTrigger id="ls-add" className="h-10! w-full max-sm:h-11!">
               <SelectValue
                 placeholder={available.length === 0 ? "All books enabled" : "Select lorebook"}
               />

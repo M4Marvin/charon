@@ -174,7 +174,7 @@ export function BackgroundSection({ chatId }: SectionProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="text-xs"
+            className="h-10 text-xs max-sm:h-11"
             onClick={() => handleSelect(null)}
             aria-label="Clear background"
           >
@@ -187,7 +187,7 @@ export function BackgroundSection({ chatId }: SectionProps) {
           size="sm"
           onClick={() => fileRef.current?.click()}
           disabled={uploadBg.isPending}
-          className="flex items-center gap-1.5"
+          className="h-10 max-sm:h-11"
         >
           {uploadBg.isPending ? (
             <Spinner className="size-3.5" />

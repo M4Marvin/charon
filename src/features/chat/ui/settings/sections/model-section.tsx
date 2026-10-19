@@ -157,7 +157,7 @@ export function ModelSection({ onClose }: SectionProps) {
             onValueChange={handleProviderChange}
             disabled={settingsQueryLoading}
           >
-            <SelectTrigger id="cs-provider" className="min-w-0 flex-1">
+            <SelectTrigger id="cs-provider" className="h-10! min-w-0 flex-1 max-sm:h-11!">
               <SelectValue placeholder="Select provider" />
             </SelectTrigger>
             <SelectContent>
@@ -173,7 +173,7 @@ export function ModelSection({ onClose }: SectionProps) {
           <Button
             variant="outline"
             size="icon"
-            className="size-9 shrink-0"
+            className="size-10 shrink-0 max-sm:size-11"
             disabled={!selectedProviderId || testConnection.isPending}
             onClick={handleTest}
             aria-label="Test provider connection"
@@ -234,7 +234,7 @@ export function ModelSection({ onClose }: SectionProps) {
       <Field className="space-y-1.5">
         <FieldLabel htmlFor="cs-preset">Preset</FieldLabel>
         <Select value={selectedPresetId || "_none"} onValueChange={handlePresetChange}>
-          <SelectTrigger id="cs-preset">
+          <SelectTrigger id="cs-preset" className="h-10! w-full max-sm:h-11!">
             <SelectValue placeholder="No preset" />
           </SelectTrigger>
           <SelectContent>

@@ -50,7 +50,7 @@ export function ModelCombobox({
         <Input
           id={id}
           aria-label={ariaLabel}
-          className="min-w-0 flex-1"
+          className="h-10 min-w-0 flex-1 max-sm:h-11"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -88,7 +88,7 @@ export function ModelCombobox({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-8 shrink-0"
+            className="size-10 shrink-0 max-sm:size-11"
             disabled={isLoading}
             onClick={() => refetch()}
             aria-label="Refresh models"

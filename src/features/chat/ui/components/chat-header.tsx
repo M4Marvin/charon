@@ -59,7 +59,7 @@ export function ChatHeader({
             [0, 150, 300].map((delay) => (
               <span
                 key={delay}
-                className="size-1 rounded-full bg-(--lagoon) motion-safe:animate-bounce motion-reduce:animate-none"
+                className="size-1 rounded-full bg-brand motion-safe:animate-bounce motion-reduce:animate-none"
                 style={{ animationDelay: `${delay}ms` }}
               />
             ))}

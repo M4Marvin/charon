@@ -39,7 +39,7 @@
   }
 
   --animate-msg-in: msg-in 0.3s ease-out;
-  --animate-section-in: msg-in 0.15s ease-out;
+  --animate-section-in: msg-in 0.18s ease-out;
 }
 
 .rt-msg-in {

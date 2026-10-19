@@ -210,7 +210,7 @@ export function PersonaSection(_props: SectionProps) {
             onValueChange={handlePersonaChange}
             disabled={queryLoading}
           >
-            <SelectTrigger id="ps-persona" className="flex-1">
+            <SelectTrigger id="ps-persona" className="h-10! min-w-0 flex-1 max-sm:h-11!">
               <SelectValue placeholder="None (account name)" />
             </SelectTrigger>
             <SelectContent>
@@ -227,7 +227,7 @@ export function PersonaSection(_props: SectionProps) {
           <Button
             variant="outline"
             size="icon"
-            className="size-9 shrink-0"
+            className="size-10 shrink-0 max-sm:size-11"
             onClick={openCreate}
             aria-label="Create persona"
           >
@@ -236,7 +236,7 @@ export function PersonaSection(_props: SectionProps) {
           <Button
             variant="outline"
             size="icon"
-            className="size-9 shrink-0"
+            className="size-10 shrink-0 max-sm:size-11"
             disabled={!selectedId}
             onClick={() =>
               selectedPersona &&
@@ -254,7 +254,7 @@ export function PersonaSection(_props: SectionProps) {
           <Button
             variant="outline"
             size="icon"
-            className="size-9 shrink-0"
+            className="size-10 shrink-0 max-sm:size-11"
             disabled={!selectedId}
             onClick={() => setDeleteId(selectedId)}
             aria-label="Delete persona"

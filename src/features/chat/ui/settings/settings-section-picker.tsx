@@ -36,7 +36,7 @@ export function SettingsSectionPicker({
         >
           <span className="flex min-w-0 items-center gap-2">
             <active.icon className="size-4 shrink-0" aria-hidden="true" />
-            <span className="truncate text-sm">{active.label}</span>
+            <span className="truncate text-[13px]">{active.label}</span>
             <span className="shrink-0 text-[11px] text-2">{SCOPE_LABELS[active.scope]}</span>
           </span>
           <ChevronDown className="size-4 shrink-0 text-2" aria-hidden="true" />

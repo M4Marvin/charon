@@ -128,6 +128,7 @@ function ChatDetailsForm({
           <div className="flex gap-2">
             <Input
               id="chat-title"
+              className="h-10 max-sm:h-11"
               value={draft}
               onChange={(event) => {
                 setDraft(event.target.value);
@@ -137,7 +138,11 @@ function ChatDetailsForm({
               aria-describedby={error ? "chat-title-error" : undefined}
               disabled={renameChat.isPending}
             />
-            <Button type="submit" disabled={!dirty || !trimmed || renameChat.isPending}>
+            <Button
+              type="submit"
+              className="h-10 max-sm:h-11"
+              disabled={!dirty || !trimmed || renameChat.isPending}
+            >
               {renameChat.isPending ? "Saving…" : "Save"}
             </Button>
           </div>

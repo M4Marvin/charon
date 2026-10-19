@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   Zap,
   User,
@@ -56,7 +56,12 @@ export function SettingsPanel({ chatId, open, isStreaming, onOpenChange }: Setti
   const { error: configError, refetch: refetchConfig } = useChatConfig(chatId);
 
   const [activeId, setActiveId] = useState("character");
+  const contentRef = useRef<HTMLDivElement>(null);
   const activeSection = SECTIONS.find((section) => section.id === activeId) ?? SECTIONS[0];
+
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0 });
+  }, [activeId]);
 
   const handleSectionChange = useCallback((id: string) => {
     setActiveId(id);
@@ -70,7 +75,7 @@ export function SettingsPanel({ chatId, open, isStreaming, onOpenChange }: Setti
       <SheetContent
         side="right"
         showCloseButton={false}
-        className="w-full data-[side=right]:w-full data-[side=right]:sm:max-w-2xl glass-strong flex flex-col gap-0 p-0"
+        className="w-full data-[side=right]:w-full data-[side=right]:sm:max-w-2xl flex flex-col gap-0 p-0 bg-(--bg-raised)/90 backdrop-blur-2xl shadow-[-24px_0_60px_-24px_rgba(0,0,0,0.75)] ring-1 ring-inset ring-(--border-subtle) duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
       >
         <SheetHeader className="relative px-5 pr-14 pt-5 pb-3 border-b border-subtle">
           <SheetClose
@@ -85,9 +90,11 @@ export function SettingsPanel({ chatId, open, isStreaming, onOpenChange }: Setti
             <X />
             <span className="sr-only">Close</span>
           </SheetClose>
-          <SheetTitle className="font-heading text-1">Chat settings</SheetTitle>
-          <SheetDescription className="text-xs">
-            Settings for this chat and its defaults. Changes save automatically.
+          <SheetTitle className="font-heading text-xl font-semibold text-1">
+            Chat settings
+          </SheetTitle>
+          <SheetDescription className="text-[13px]">
+            Settings for this chat and its defaults.
           </SheetDescription>
         </SheetHeader>
 
@@ -106,7 +113,10 @@ export function SettingsPanel({ chatId, open, isStreaming, onOpenChange }: Setti
             open={open}
           />
 
-          <div className="flex-1 min-w-0 overflow-y-auto px-5 py-5 scrollbar-thin scroll-fade-b">
+          <div
+            ref={contentRef}
+            className="flex-1 min-w-0 overflow-y-auto px-5 py-5 scrollbar-thin scroll-fade-y"
+          >
             <p className="sr-only" aria-live="polite" aria-atomic="true">
               Showing {activeSection.label} settings
             </p>
@@ -148,6 +158,18 @@ export function SettingsPanel({ chatId, open, isStreaming, onOpenChange }: Setti
               {activeId === "display" && <DisplaySection {...sectionProps} />}
             </div>
           </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-t border-subtle px-5 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+          <p className="text-[13px] text-2">Changes save automatically.</p>
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-10 px-4 max-sm:h-11"
+            onClick={handleClose}
+          >
+            Done
+          </Button>
         </div>
       </SheetContent>
     </Sheet>
