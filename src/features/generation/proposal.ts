@@ -11,6 +11,7 @@ import {
   failJob,
   finalizeJob,
   getJob,
+  heartbeatJob,
   resolveProposal,
 } from "@/db/repositories/generation";
 import { getMessages } from "@/features/chat/tree/service";
@@ -66,6 +67,13 @@ export async function runProposal(
   const adapter = makeAdapter(snapshot.provider);
   const owner = crypto.randomUUID();
   const lease = beginJob({ jobId: job.id, owner }, db);
+  const heartbeat = setInterval(() => {
+    try {
+      heartbeatJob({ jobId: job.id, owner, ttlMs: 120_000 }, db);
+    } catch {
+      // Terminal handling below reports the real outcome.
+    }
+  }, 30_000);
   const toolContext: ToolContext = {
     userId,
     chatId: input.chatId,
@@ -192,6 +200,8 @@ export async function runProposal(
       db,
     );
     throw error;
+  } finally {
+    clearInterval(heartbeat);
   }
 }
 
