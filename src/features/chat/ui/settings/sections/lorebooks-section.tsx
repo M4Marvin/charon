@@ -122,9 +122,9 @@ export function LorebooksSection(_props: SectionProps) {
         actions={
           <>
             <Button
-              variant="link"
+              variant="ghost"
               size="sm"
-              className="h-auto gap-1 p-0 text-xs text-(--lagoon)"
+              className="h-11 gap-1 px-2 text-xs sm:h-8"
               onClick={() => {
                 setNewOpen(true);
                 setImportOpen(false);
@@ -134,9 +134,9 @@ export function LorebooksSection(_props: SectionProps) {
               New
             </Button>
             <Button
-              variant="link"
+              variant="ghost"
               size="sm"
-              className="h-auto gap-1 p-0 text-xs text-(--lagoon)"
+              className="h-11 gap-1 px-2 text-xs sm:h-8"
               onClick={() => {
                 setImportOpen(true);
                 setNewOpen(false);

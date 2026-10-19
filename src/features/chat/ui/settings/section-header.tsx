@@ -10,7 +10,7 @@ interface SectionHeaderProps {
 
 export function SectionHeader({ title, description, actions, scope }: SectionHeaderProps) {
   return (
-    <div className="flex items-start justify-between gap-3">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex min-w-0 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-heading text-headline text-(--sea-ink)">{title}</h3>
@@ -22,7 +22,9 @@ export function SectionHeader({ title, description, actions, scope }: SectionHea
         </div>
         {description ? <p className="text-sm text-2">{description}</p> : null}
       </div>
-      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-1">{actions}</div> : null}
+      {actions ? (
+        <div className="flex w-full shrink-0 flex-wrap items-center gap-1 sm:w-auto">{actions}</div>
+      ) : null}
     </div>
   );
 }

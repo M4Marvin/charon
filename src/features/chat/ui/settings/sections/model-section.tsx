@@ -157,7 +157,7 @@ export function ModelSection({ onClose }: SectionProps) {
             onValueChange={handleProviderChange}
             disabled={settingsQueryLoading}
           >
-            <SelectTrigger id="cs-provider" className="flex-1">
+            <SelectTrigger id="cs-provider" className="min-w-0 flex-1">
               <SelectValue placeholder="Select provider" />
             </SelectTrigger>
             <SelectContent>
@@ -217,15 +217,17 @@ export function ModelSection({ onClose }: SectionProps) {
           ariaLabel="Default model"
         />
         {selectedModel ? (
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            className="h-auto self-start p-0 text-xs text-2"
-            onClick={handleClearModel}
-          >
-            Clear model
-          </Button>
+          <div className="flex">
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto w-fit p-0 text-xs text-2"
+              onClick={handleClearModel}
+            >
+              Clear model
+            </Button>
+          </div>
         ) : null}
       </Field>
 
@@ -252,13 +254,13 @@ export function ModelSection({ onClose }: SectionProps) {
         <p className="text-sm font-medium text-1">Manage AI setup</p>
         <p className="mt-1 text-xs text-2">Providers and presets are shared across all chats.</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" className="min-h-11 sm:min-h-8" asChild>
             <Link to="/settings/providers" onClick={onClose}>
               Providers
               <ArrowUpRight className="size-3.5" data-icon="inline-end" />
             </Link>
           </Button>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" className="min-h-11 sm:min-h-8" asChild>
             <Link to="/settings/presets" onClick={onClose}>
               Presets
               <ArrowUpRight className="size-3.5" data-icon="inline-end" />

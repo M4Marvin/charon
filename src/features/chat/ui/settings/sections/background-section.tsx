@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { Upload, X, Image as ImageIcon } from "lucide-react";
+import { Check, Upload, X, Image as ImageIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -111,7 +111,7 @@ export function BackgroundSection({ chatId }: SectionProps) {
       {isLoading ? (
         <SkeletonCardGrid count={6} lanes={3} aspect="aspect-video" />
       ) : backgroundsError ? null : backgrounds?.length ? (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2 md:grid-cols-3">
           {backgrounds.map((bg) => {
             const src = withImageVersion(`/api/backgrounds/${bg.id}/image`, bg.path);
             return (
@@ -141,13 +141,18 @@ export function BackgroundSection({ chatId }: SectionProps) {
                     </div>
                   )}
                 </button>
+                {bg.id === selectedId ? (
+                  <span className="pointer-events-none absolute top-1.5 left-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-brand text-(--bg-base)">
+                    <Check className="size-3" aria-hidden="true" />
+                  </span>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => setDeleteTarget(bg.id)}
-                  className="absolute top-0.5 right-0.5 z-10 flex size-8 items-center justify-center rounded-full bg-(--bg-base)/80 text-2 after:absolute after:-inset-1 hover:bg-raised hover:text-danger focus-ring"
+                  className="absolute top-1 right-1 z-10 flex size-11 items-center justify-center rounded-full bg-(--bg-base)/90 text-2 backdrop-blur-sm after:absolute after:-inset-1 hover:bg-raised hover:text-danger focus-ring"
                   aria-label={`Delete ${bg.name}`}
                 >
-                  <X className="size-3" />
+                  <Trash2 className="size-4" />
                 </button>
               </div>
             );

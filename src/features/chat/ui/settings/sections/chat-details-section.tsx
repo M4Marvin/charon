@@ -158,7 +158,7 @@ function ChatDetailsForm({
           ref={deleteButtonRef}
           type="button"
           variant="outline"
-          className="mt-3 gap-2 text-danger"
+          className="mt-3 min-h-11 gap-2 text-danger"
           disabled={isStreaming || deleteChat.isPending}
           onClick={() => setDeleteOpen(true)}
         >

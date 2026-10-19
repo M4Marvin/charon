@@ -50,6 +50,7 @@ export function ModelCombobox({
         <Input
           id={id}
           aria-label={ariaLabel}
+          className="min-w-0 flex-1"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
