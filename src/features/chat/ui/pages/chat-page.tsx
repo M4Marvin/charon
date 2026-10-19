@@ -436,7 +436,7 @@ export function ChatPage() {
   }
 
   return (
-    <main className="grid h-dvh w-full grid-rows-[auto_minmax(0,1fr)_auto_auto] overflow-hidden bg-base pb-[var(--keyboard-inset,0px)]">
+    <main className="grid h-dvh w-full grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden bg-base pb-[var(--keyboard-inset,0px)]">
       <ChatBackground src={backgroundUrl} fallbackSrc={characterAvatarUrl} />
 
       <ChatHeader
@@ -520,26 +520,6 @@ export function ChatPage() {
         }}
       />
 
-      {selectedIds.length > 0 ? (
-        <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-3 pb-2">
-          <span className="text-xs text-2">{selectedIds.length} selected</span>
-          <Button variant="ghost" size="sm" onClick={clearSelection}>
-            Clear
-          </Button>
-          <Button
-            size="sm"
-            className="ml-auto"
-            disabled={selectedIds.length === 0}
-            onClick={() => setPromptOpen(true)}
-          >
-            Prompt
-          </Button>
-          <Button variant="ghost" size="icon" onClick={clearSelection} aria-label="Exit selection">
-            <X className="size-4" />
-          </Button>
-        </div>
-      ) : null}
-
       <SelectionPromptDialog
         chatId={chatId}
         messageIds={selectedIds}
@@ -551,20 +531,45 @@ export function ChatPage() {
         onGenerated={handleSelectionPrompt}
       />
 
-      <Composer
-        chatId={chatId}
-        hasMessages={hasMessages}
-        onSend={handleSend}
-        onStop={generation.stop}
-        onImpersonate={handleImpersonate}
-        onImagePrompt={handleImagePrompt}
-        isStreaming={localStreaming}
-        isFinalizing={ownsGeneration && generation.status === "finalizing"}
-        impersonatePending={proposalMutation.isPending}
-        imagePromptPending={proposalMutation.isPending}
-        disabled={composerDisabled}
-        characterName={config.character.name}
-      />
+      {/* Floating over the message list so selecting never reflows the chat. */}
+      <div className="relative z-30 w-full shrink-0">
+        {selectedIds.length > 0 ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-full z-40 px-3 pb-2">
+            <div className="glass pointer-events-auto mx-auto flex w-full max-w-3xl items-center gap-2 rounded-full px-3 py-1.5 shadow-lg ring-1 ring-(--border-subtle)">
+              <span className="text-xs text-2">{selectedIds.length} selected</span>
+              <Button variant="ghost" size="sm" onClick={clearSelection}>
+                Clear
+              </Button>
+              <Button size="sm" className="ml-auto" onClick={() => setPromptOpen(true)}>
+                Prompt
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearSelection}
+                aria-label="Exit selection"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <Composer
+          chatId={chatId}
+          hasMessages={hasMessages}
+          onSend={handleSend}
+          onStop={generation.stop}
+          onImpersonate={handleImpersonate}
+          onImagePrompt={handleImagePrompt}
+          isStreaming={localStreaming}
+          isFinalizing={ownsGeneration && generation.status === "finalizing"}
+          impersonatePending={proposalMutation.isPending}
+          imagePromptPending={proposalMutation.isPending}
+          disabled={composerDisabled}
+          characterName={config.character.name}
+        />
+      </div>
 
       <SettingsPanel
         chatId={chatId}
