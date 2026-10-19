@@ -21,6 +21,7 @@ export interface PrepareGenerationInput {
   content?: string;
   messageLocalId?: number;
   selection?: number[];
+  instruction?: string;
 }
 
 export interface PreparedGeneration {
@@ -79,7 +80,11 @@ export async function prepareGeneration(
 
   let target: InsertionTarget = { kind: "append" };
   const messageLocalId = input.messageLocalId;
-  const selection = input.selection ?? [];
+  const selection = input.selection?.length
+    ? input.selection
+    : messageLocalId
+      ? [messageLocalId]
+      : [];
 
   if (input.trigger === "regenerate") {
     const targetId = messageLocalId ?? 0;
@@ -139,6 +144,7 @@ export async function prepareGeneration(
           content: input.content,
           messageLocalId,
           selection,
+          instruction: input.instruction,
         },
         requiresConfirmation:
           input.trigger === "rewrite" || input.trigger === "transform" || input.trigger === "image",

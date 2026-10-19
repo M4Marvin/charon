@@ -171,10 +171,7 @@ function buildRoleplaySystemPrompts(
   return { prompts, activatedLore };
 }
 
-function buildImageSystemPrompts(
-  snapshot: GenerationSnapshot,
-  names: MacroNames,
-): string[] {
+function buildImageSystemPrompts(snapshot: GenerationSnapshot, names: MacroNames): string[] {
   const { character } = snapshot;
   const context: string[] = [];
 
@@ -204,6 +201,7 @@ function buildEditorSystemPrompts(
   snapshot: GenerationSnapshot,
   names: MacroNames,
   mode: "rewrite" | "transform",
+  instruction?: string,
 ): string[] {
   const { character } = snapshot;
   const context: string[] = [];
@@ -220,6 +218,7 @@ function buildEditorSystemPrompts(
   const prompts: string[] = [];
   addPrompt(prompts, expandMacros(context.join("\n"), names));
   prompts.push(mode === "rewrite" ? REWRITE_CONTRACT : TRANSFORM_CONTRACT);
+  if (instruction?.trim()) prompts.push(`Instruction: ${instruction.trim()}`);
   return prompts;
 }
 
@@ -291,12 +290,8 @@ function selectHistoryMessages(snapshot: GenerationSnapshot, mode: PromptMode): 
 export function compilePrompt(
   snapshot: GenerationSnapshot,
   mode: PromptMode,
-  options?: { imageExample?: string },
+  options?: { instruction?: string },
 ): CompiledPrompt {
-  // The legacy full-example image prompt is intentionally ignored: identity is
-  // assembled deterministically from character tags, never copied from an
-  // example prompt.
-  void options;
   const names: MacroNames = {
     char: snapshot.character.name,
     user: snapshot.persona.name,
@@ -318,7 +313,7 @@ export function compilePrompt(
       break;
     case "rewrite":
     case "transform":
-      systemPrompts = buildEditorSystemPrompts(snapshot, names, mode);
+      systemPrompts = buildEditorSystemPrompts(snapshot, names, mode, options?.instruction);
       break;
   }
 

@@ -190,18 +190,22 @@ export const Route = createFileRoute("/api/generation/chat")({
           }
           activeJobId = job.id;
 
-          const selectionIds = Array.isArray(job.input?.selection)
-            ? (job.input?.selection as number[])
-            : job.target?.kind === "replace"
-              ? [Number(job.target.messageLocalId)]
-              : [];
+          const storedSelection = job.input?.selection;
+          const selectionIds =
+            Array.isArray(storedSelection) && storedSelection.length > 0
+              ? (storedSelection as number[])
+              : job.target?.kind === "replace"
+                ? [Number(job.target.messageLocalId)]
+                : [];
           const snapshot = await loadGenerationSnapshot(
             user.id,
             job.chatId,
             job.placeholderLocalId ?? 0,
             selectionIds,
           );
-          const compiled = compilePrompt(snapshot, job.promptMode);
+          const instruction =
+            typeof job.input?.instruction === "string" ? job.input.instruction : undefined;
+          const compiled = compilePrompt(snapshot, job.promptMode, { instruction });
           const adapter = makeAdapter(snapshot.provider);
           const tools = readTools;
           const owner = crypto.randomUUID();

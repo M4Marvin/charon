@@ -64,11 +64,19 @@ export async function runProposal(
     job = getJob(prepared.jobId, db);
     if (!job) throw new Error("Generation job not found");
 
-    const selection = Array.isArray(job.input?.selection)
-      ? (job.input?.selection as number[])
-      : (input.selection ?? (input.messageLocalId ? [input.messageLocalId] : []));
+    const storedSelection = job.input?.selection;
+    const selection =
+      Array.isArray(storedSelection) && storedSelection.length > 0
+        ? (storedSelection as number[])
+        : input.selection?.length
+          ? input.selection
+          : input.messageLocalId
+            ? [input.messageLocalId]
+            : [];
+    const instruction =
+      typeof job.input?.instruction === "string" ? job.input.instruction : input.instruction;
     const snapshot = await loadGenerationSnapshot(userId, input.chatId, 0, selection, db);
-    const compiled = compilePrompt(snapshot, job.promptMode);
+    const compiled = compilePrompt(snapshot, job.promptMode, { instruction });
     const adapter = makeAdapter(snapshot.provider);
     owner = crypto.randomUUID();
     const leaseOwner = owner;
@@ -161,7 +169,11 @@ export async function runProposal(
         baseRev: typeof target.baseRev === "number" ? target.baseRev : null,
         baseHash: typeof target.baseHash === "string" ? target.baseHash : null,
         proposedRole:
-          targetRole === "user" || targetRole === "assistant" ? targetRole : "assistant",
+          kind === "transform"
+            ? "assistant"
+            : targetRole === "user" || targetRole === "assistant"
+              ? targetRole
+              : "assistant",
         meta: {
           instruction: input.instruction ?? null,
           selection,

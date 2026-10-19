@@ -116,7 +116,7 @@ export function acceptProposal(
     const created = appendMessage(
       proposal.chatId,
       {
-        role: proposal.proposedRole ?? "assistant",
+        role: "assistant",
         content: proposal.proposedContent,
         extra: {
           generationJobId: job.id,
@@ -133,10 +133,7 @@ export function acceptProposal(
   });
 }
 
-export function denyProposal(
-  proposalId: string,
-  db: DB = defaultDb,
-): { ok: true } {
+export function denyProposal(proposalId: string, db: DB = defaultDb): { ok: true } {
   const updated = resolveProposal(proposalId, "rejected", db);
   if (!updated) {
     const existing = getProposal(proposalId, db);

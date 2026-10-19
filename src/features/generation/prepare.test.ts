@@ -145,6 +145,18 @@ describe("generation prepare and proposals", () => {
     expect(getJob(prepared.jobId, db)?.status).toBe("succeeded");
   });
 
+  it("records the rewrite target as the selection when only messageLocalId is sent", async () => {
+    const { replyMessage } = appendUserAndReply(chatId, "Hello", "First reply", undefined, db);
+    const prepared = await prepareGeneration(
+      userId,
+      { chatId, trigger: "rewrite", messageLocalId: replyMessage.localId },
+      "User",
+      db,
+    );
+
+    expect(getJob(prepared.jobId, db)?.input?.selection).toEqual([replyMessage.localId]);
+  });
+
   it("accepts a rewrite with a revision and rejects a stale base revision", async () => {
     const { replyMessage } = appendUserAndReply(chatId, "Hello", "First reply", undefined, db);
     const prepared = await prepareGeneration(
@@ -226,6 +238,9 @@ describe("generation prepare and proposals", () => {
     expect(
       getMessages(chatId, db).find((m) => m.localId === accepted.messageLocalId)?.content,
     ).toBe("Transformed scene");
+    expect(getMessages(chatId, db).find((m) => m.localId === accepted.messageLocalId)?.role).toBe(
+      "assistant",
+    );
   });
 
   it("denies a proposal without writing", async () => {

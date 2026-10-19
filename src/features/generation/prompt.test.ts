@@ -325,9 +325,7 @@ describe("compilePrompt", () => {
         ],
       });
 
-      const result = compilePrompt(snapshot, "image", {
-        imageExample: "masterpiece, 1girl, {{char}}, {{user}}",
-      });
+      const result = compilePrompt(snapshot, "image");
 
       expect(result.messages).toEqual([
         {
@@ -349,9 +347,8 @@ describe("compilePrompt", () => {
         settings: { imagePromptExample: "stored example, {{char}}" },
       });
 
-      const result = compilePrompt(snapshot, "image", { imageExample: "override, {{char}}" });
+      const result = compilePrompt(snapshot, "image");
 
-      expect(systemText(result)).not.toContain("override");
       expect(systemText(result)).not.toContain("stored example");
       expect(systemText(result)).toContain("identity is assembled deterministically");
     });
@@ -380,6 +377,18 @@ describe("compilePrompt", () => {
 
       expect(systemText(transform)).toContain("Transform the selected text");
       expect(transform.messages).toEqual([{ role: "assistant", content: "Original paragraph." }]);
+    });
+
+    it("puts the user's instruction into the editor system prompt", () => {
+      const snapshot = makeSnapshot({
+        selection: [message(5, "assistant", "Original paragraph.")],
+      });
+
+      const result = compilePrompt(snapshot, "transform", {
+        instruction: "Make it shorter.",
+      });
+
+      expect(systemText(result)).toContain("Instruction: Make it shorter.");
     });
 
     it("falls back to the active path when no selection is present", () => {
