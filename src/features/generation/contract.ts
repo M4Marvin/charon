@@ -1,5 +1,4 @@
 import type { ModelMessage } from "@tanstack/ai";
-import type { CharacterDataV2 } from "@/lib/st-core/character/types";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
 import type { LoreEntry } from "@/lib/st-core/lorebook/types";
 import type { ChatCompletionPreset } from "@/lib/chat/types";
@@ -55,8 +54,10 @@ export interface EffectiveCharacter {
   mesExample: string;
   postHistoryInstructions: string;
   depthPrompt: string;
+  depthPromptDepth: number;
+  depthPromptRole: "system" | "user" | "assistant";
+  creatorNotes: string;
   tags: string[];
-  characterBook?: CharacterDataV2["character_book"];
 }
 
 export interface GenerationSnapshot {

@@ -11,6 +11,9 @@ const character: EffectiveCharacter = {
   mesExample: "",
   postHistoryInstructions: "",
   depthPrompt: "",
+  depthPromptDepth: 4,
+  depthPromptRole: "system",
+  creatorNotes: "",
   tags: ["1girl", "Silver Hair", "(red eyes)", "1girl", "oc"],
 };
 
