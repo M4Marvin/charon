@@ -5,15 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { useAiProviders } from "@/hooks/useAiProviders";
 import {
@@ -46,8 +37,7 @@ function paramSummary(p: PresetListItem): string {
  * Shared by the /settings/presets route and the chat settings sheet so
  * management stays in sync.
  */
-export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet" } = {}) {
-  const isSheet = variant === "sheet";
+export function PresetManager() {
   const { data: providers = [] } = useAiProviders();
   const { data: userSettings, error: settingsError, refetch: refetchSettings } = useUserSettings();
   const updateDefaults = useUpdateUserSettings();
@@ -84,9 +74,7 @@ export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet"
   return (
     <div className="space-y-6">
       {presets.length === 0 ? (
-        <p className={`text-2 text-sm py-4 ${isSheet ? "text-(--sea-ink-soft)/70" : ""}`}>
-          No presets configured yet.
-        </p>
+        <p className="text-2 text-sm py-4">No presets configured yet.</p>
       ) : (
         <div className="space-y-2">
           {presets.map((p) => {
@@ -95,37 +83,20 @@ export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet"
               <div
                 key={p.id}
                 className={`rounded-lg border p-4 ${
-                  isSheet
-                    ? isDefault
-                      ? "border-(--lagoon)/30 bg-(--lagoon)/5"
-                      : "bg-raised"
-                    : isDefault
-                      ? "border-brand/30 bg-brand/5"
-                      : "bg-card"
+                  isDefault ? "border-brand/30 bg-brand/5" : "bg-card"
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-1.5">
-                      <p className={`text-headline truncate ${isSheet ? "text-(--sea-ink)" : ""}`}>
-                        {p.name}
-                      </p>
+                      <p className="text-headline truncate">{p.name}</p>
                       {isDefault ? (
-                        <Badge
-                          variant="default"
-                          className={`shrink-0 text-xs ${
-                            isSheet ? "bg-(--lagoon)/15 text-(--lagoon) border-(--lagoon)/20" : ""
-                          }`}
-                        >
+                        <Badge variant="default" className="shrink-0 text-xs">
                           Default
                         </Badge>
                       ) : null}
                     </div>
-                    <p
-                      className={`text-3 text-xs font-mono ${isSheet ? "text-(--sea-ink-soft)/70" : ""}`}
-                    >
-                      {paramSummary(p)}
-                    </p>
+                    <p className="text-3 text-xs font-mono">{paramSummary(p)}</p>
                   </div>
                   <RowActionsMenu
                     label={`Actions for ${p.name}`}
@@ -184,33 +155,6 @@ export function PresetManager({ variant = "page" }: { variant?: "page" | "sheet"
       <Button variant="outline" size="sm" onClick={() => setEditing("new")}>
         + Add preset
       </Button>
-
-      <div className="space-y-1.5">
-        <Label>Default preset</Label>
-        <Select
-          value={selectedPresetId || "_none"}
-          onValueChange={(v) =>
-            updateDefaults.mutate(
-              { defaultPresetId: v === "_none" ? null : v },
-              { onError: (e) => toast.error(`Update failed: ${(e as Error).message}`) },
-            )
-          }
-        >
-          <SelectTrigger className="w-full" aria-label="Default preset">
-            <SelectValue placeholder="Select preset" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value="_none">— None —</SelectItem>
-              {presets.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </div>
 
       <PresetDialog
         state={editing}

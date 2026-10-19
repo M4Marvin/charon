@@ -9,6 +9,7 @@ const MAX_HEIGHT = 320;
 interface BlurCommitTextareaProps {
   id: string;
   label: string;
+  description?: string;
   placeholder?: string;
   defaultValue: string;
   onCommit: (value: string) => void;
@@ -26,6 +27,7 @@ interface BlurCommitTextareaProps {
 export function BlurCommitTextarea({
   id,
   label,
+  description,
   placeholder,
   defaultValue,
   onCommit,
@@ -86,6 +88,7 @@ export function BlurCommitTextarea({
         <FieldLabel htmlFor={id}>{label}</FieldLabel>
         {dirty ? <span className="text-[11px] text-2">Unsaved</span> : null}
       </div>
+      {description ? <p className="text-[13px] text-2">{description}</p> : null}
       <Textarea
         ref={ref}
         id={id}

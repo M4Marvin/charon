@@ -13,6 +13,7 @@ All your conversations in one place, grouped by recency: **Today / Yesterday / P
 An immersive full-screen conversation view with a blurred backdrop and glassy message bubbles. The chat screen is where you spend most of your time.
 
 **Conversing:**
+
 - Characters greet you with their first message when you start a chat
 - Type responses and the AI replies, streamed in real time
 - **Swipe** between alternate AI responses — the conversation branches, and you pick the branch you like best
@@ -23,18 +24,30 @@ An immersive full-screen conversation view with a blurred backdrop and glassy me
 - **Continue** with an empty input to prompt the AI to keep the scene going
 
 **Chat panels:**
+
 - **Character Portrait** — a large portrait of who you're talking to; click to open the full-screen lightbox with zoom
 - **Scene** — a visual backdrop for the conversation. Pick a background from the library, upload your own custom scene image, or clear it
 
-**Chat settings** (accessible from inside any conversation):
-- **Connection** — switch AI providers, test latency, pick a model, or choose a generation preset
-- **Persona** — who you are in the conversation. Create multiple personas with a name, description, and icon; switch between them on the fly
-- **Lorebooks** — toggle world lore on and off per chat, expand to enable or disable individual lore entries, import lorebook JSON files
-- **Prompts** — customize your system prompt, post-history instructions, and impersonation prompt. Changes are saved and specific to this chat
-- **Character overrides** — tweak the character's description, personality, scenario, or system prompt just for this conversation without changing the original card
-- **Scene** — pick a background from the library
-- **Display** — highlight dialogue, auto-fix Markdown formatting, block external media
-- **Delete chat** — permanently remove the conversation and all its messages
+**Chat settings** (accessible from inside any conversation), grouped by scope:
+
+**This chat**
+
+- **Character** — override the description, personality, scenario, or system prompt for this conversation only; reset any field to the character card
+- **Background** — pick a background from the library or upload one; the choice applies to this chat
+- **Chat details** — rename the chat or permanently delete it and all its messages
+
+**All chats**
+
+- **Model & preset** — the default provider, model, and generation preset used by every chat; test latency and manage providers/presets
+- **Your persona** — the account-wide persona: name, description, icon, and voice
+- **Lorebooks** — enable world lore for all chats, expand to enable or disable individual entries, import lorebook JSON files
+- **Global prompts** — the system prompt, additional instructions, and impersonation prompt used by every chat
+
+**This browser**
+
+- **Display** — highlight dialogue, auto-fix Markdown formatting, and block external media; saved in the browser
+
+Providers and presets are managed from **Settings**. Chat settings changes save automatically and show a saving/saved/error status.
 
 ## Characters
 

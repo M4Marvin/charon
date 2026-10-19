@@ -211,11 +211,11 @@ export function PersonaSection(_props: SectionProps) {
             disabled={queryLoading}
           >
             <SelectTrigger id="ps-persona" className="h-10! min-w-0 flex-1 max-sm:h-11!">
-              <SelectValue placeholder="None (account name)" />
+              <SelectValue placeholder="Use account name" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectItem value="_none">None (account name)</SelectItem>
+                <SelectItem value="_none">Use account name</SelectItem>
                 {personas?.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}

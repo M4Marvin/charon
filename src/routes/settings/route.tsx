@@ -10,6 +10,7 @@ function SettingsLayout() {
     { to: "/settings/preferences", label: "Preferences" },
     { to: "/settings/profile", label: "Profile" },
     { to: "/onboarding", label: "Onboarding" },
+    { to: "/settings/defaults", label: "Defaults" },
     { to: "/settings/providers", label: "Providers" },
     { to: "/settings/presets", label: "Presets" },
   ];

@@ -36,7 +36,8 @@ export function PromptsSection(_props: SectionProps) {
       <BlurCommitTextarea
         id="ps-system"
         label="System prompt"
-        placeholder="Sent at the start of every conversation."
+        description="Sent at the start of every conversation."
+        placeholder="Write the global system prompt."
         defaultValue={settings?.systemPrompt ?? ""}
         status={saveState}
         error={updateUserSettings.error}
@@ -46,8 +47,9 @@ export function PromptsSection(_props: SectionProps) {
       />
       <BlurCommitTextarea
         id="ps-post-history"
-        label="Post-history instructions"
-        placeholder="Injected after chat history, before the last message."
+        label="Additional instructions"
+        description="Added to the system prompt for every chat."
+        placeholder="Optional instructions for every reply."
         defaultValue={settings?.postHistoryInstructions ?? ""}
         status={saveState}
         error={updateUserSettings.error}
@@ -58,7 +60,8 @@ export function PromptsSection(_props: SectionProps) {
       <BlurCommitTextarea
         id="ps-impersonate"
         label="Impersonation prompt"
-        placeholder="Replaces system prompts when using impersonate."
+        description="Used when generating an impersonated reply."
+        placeholder="Optional guidance for impersonation."
         defaultValue={settings?.impersonationPrompt ?? ""}
         status={saveState}
         error={updateUserSettings.error}

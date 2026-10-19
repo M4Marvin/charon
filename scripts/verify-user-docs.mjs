@@ -130,13 +130,7 @@ const REQUIRED_LABELS = {
     "Import PNG",
     "Start Chat",
   ],
-  "chatting.md": [
-    "Shift+Enter",
-    "Ctrl/Cmd+Enter",
-    "Ctrl+K",
-    "wand",
-    "all messages after it",
-  ],
+  "chatting.md": ["Shift+Enter", "Ctrl/Cmd+Enter", "Ctrl+K", "wand", "all messages after it"],
   "characters.md": [
     "Import PNG",
     "No description on card",
@@ -158,7 +152,9 @@ const REQUIRED_LABELS = {
     "world-info",
   ],
   "personas-scenes-presets.md": [
-    "Active persona",
+    "Your persona",
+    "Chat details",
+    "Model & preset",
     "Clear scene",
     "Temperature",
     "Top P",
@@ -171,23 +167,11 @@ const REQUIRED_LABELS = {
     "Block external media",
     "Profile",
   ],
-  "troubleshooting.md": [
-    "dev.db",
-    "50 MB",
-    "Auto-fix Markdown",
-    "SQLite",
-  ],
+  "troubleshooting.md": ["dev.db", "50 MB", "Auto-fix Markdown", "SQLite"],
 };
 
 // The six verified keyboard shortcuts — everything else is dead code.
-const SHORTCUT_WHITELIST = [
-  "Enter",
-  "Shift+Enter",
-  "Ctrl/Cmd+Enter",
-  "Esc",
-  "Ctrl+K",
-  "/",
-];
+const SHORTCUT_WHITELIST = ["Enter", "Shift+Enter", "Ctrl/Cmd+Enter", "Esc", "Ctrl+K", "/"];
 
 let failures = 0;
 
@@ -400,7 +384,9 @@ function checkLorebookGlobal() {
 
 // ── main ────────────────────────────────────────────────────────────────────
 
-const onlyFile = process.argv.includes("--file") ? process.argv[process.argv.indexOf("--file") + 1] : null;
+const onlyFile = process.argv.includes("--file")
+  ? process.argv[process.argv.indexOf("--file") + 1]
+  : null;
 
 const checks = [
   ["1", checkFileExistence],

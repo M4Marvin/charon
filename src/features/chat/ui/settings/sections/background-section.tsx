@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { useBackgrounds, useUploadBackground, useDeleteBackground } from "@/hooks/useBackgrounds";
 import { MAX_IMAGE_UPLOAD_BYTES, withImageVersion } from "@/lib/image-optimization";
 import { useChatConfig, useUpdateChatOverrides } from "@/hooks/useChatConfig";
+import { useChatUiStore } from "../../chat-store";
 import { SectionHeader } from "../section-header";
 import { SaveStatus, getSaveState } from "../save-status";
 
@@ -40,6 +41,7 @@ export function BackgroundSection({ chatId }: SectionProps) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const selectedId = config?.chat.backgroundId ?? null;
+  const customImage = useChatUiStore((state) => state.customImages[chatId] ?? null);
   const queryError = configError ?? backgroundsError;
 
   const handleSelect = useCallback(
@@ -98,6 +100,12 @@ export function BackgroundSection({ chatId }: SectionProps) {
     <div className="flex flex-col gap-5">
       <SectionHeader title="Background" description="The scene behind this chat." scope="chat" />
       <SaveStatus state={saveState} error={updateOverrides.error} onRetry={retrySave} />
+      {customImage ? (
+        <p className="text-[13px] text-2">
+          A custom image is currently shown instead of this background. Clear it from the scene
+          panel in the chat header.
+        </p>
+      ) : null}
 
       {queryError ? (
         <ErrorBanner

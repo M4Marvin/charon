@@ -6,8 +6,6 @@ import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { StatusDot } from "@/components/common/StatusDot";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
-import { ModelCombobox } from "@/components/common/ModelCombobox";
-import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import {
   useAiProviders,
@@ -22,13 +20,7 @@ import { ProviderDialog } from "@/components/ai/ProviderDialog";
 import { TestMessageDialog } from "@/components/ai/TestMessageDialog";
 import type { ProbeResult } from "@/server/fns/models";
 
-/**
- * Full provider management UI (list, add/edit/delete, test connection,
- * test message, set default, default model). Shared by the /settings/providers
- * route and the chat settings sheet so management stays in sync.
- */
-export function ProviderManager({ variant = "page" }: { variant?: "page" | "sheet" } = {}) {
-  const isSheet = variant === "sheet";
+export function ProviderManager() {
   const {
     data: userSettings,
     isLoading: settingsLoading,
@@ -93,9 +85,7 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
   return (
     <div className="space-y-6">
       {providers.length === 0 ? (
-        <p className={`text-2 text-sm py-4 ${isSheet ? "text-(--sea-ink-soft)/70" : ""}`}>
-          No providers configured yet.
-        </p>
+        <p className="text-2 text-sm py-4">No providers configured yet.</p>
       ) : (
         <div className="space-y-2">
           {providers.map((p) => {
@@ -105,13 +95,7 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
               <div
                 key={p.id}
                 className={`rounded-lg border p-4 ${
-                  isSheet
-                    ? isDefault
-                      ? "border-(--lagoon)/30 bg-(--lagoon)/5"
-                      : "bg-raised"
-                    : isDefault
-                      ? "border-brand/30 bg-brand/5"
-                      : "bg-card"
+                  isDefault ? "border-brand/30 bg-brand/5" : "bg-card"
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -128,31 +112,16 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
                       ) : (
                         <StatusDot tone="muted" label="Untested" />
                       )}
-                      <span
-                        className={`text-headline truncate ${isSheet ? "text-(--sea-ink)" : ""}`}
-                      >
-                        {p.name}
-                      </span>
+                      <span className="text-headline truncate">{p.name}</span>
                       {isDefault ? (
-                        <Badge
-                          variant="default"
-                          className={`text-xs ml-1 ${
-                            isSheet ? "bg-(--lagoon)/15 text-(--lagoon) border-(--lagoon)/20" : ""
-                          }`}
-                        >
+                        <Badge variant="default" className="text-xs ml-1">
                           Default
                         </Badge>
                       ) : null}
                     </div>
-                    <p
-                      className={`text-2 text-xs font-mono truncate ${
-                        isSheet ? "text-(--sea-ink-soft)" : ""
-                      }`}
-                    >
-                      {p.baseUrl}
-                    </p>
+                    <p className="text-2 text-xs font-mono truncate">{p.baseUrl}</p>
                     {testResult && testResult.ok ? (
-                      <p className={`text-3 text-xs ${isSheet ? "text-(--sea-ink-soft)/70" : ""}`}>
+                      <p className="text-3 text-xs">
                         {testResult.latencyMs}ms · {testResult.modelCount} models
                       </p>
                     ) : null}
@@ -211,23 +180,6 @@ export function ProviderManager({ variant = "page" }: { variant?: "page" | "shee
       <Button variant="outline" size="sm" onClick={() => setEditingProvider("new")}>
         + Add provider
       </Button>
-
-      {defaultProviderId ? (
-        <div className="space-y-1.5">
-          <Label>Default model</Label>
-          <ModelCombobox
-            providerId={defaultProviderId}
-            value={userSettings?.defaultSelectedModel ?? ""}
-            onChange={(model) =>
-              updateDefaults.mutate(
-                { defaultSelectedModel: model || null },
-                { onError: (e) => toast.error(`Update failed: ${(e as Error).message}`) },
-              )
-            }
-            aria-label="Default model"
-          />
-        </div>
-      ) : null}
 
       <ProviderDialog
         state={editingProvider}

@@ -24,6 +24,7 @@ import { Route as LorebooksIndexRouteImport } from './routes/lorebooks/index'
 import { Route as LorebooksIdRouteImport } from './routes/lorebooks/$id'
 import { Route as LorebooksNewRouteImport } from './routes/lorebooks/new'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
+import { Route as SettingsDefaultsRouteImport } from './routes/settings/defaults'
 import { Route as SettingsPreferencesRouteImport } from './routes/settings/preferences'
 import { Route as SettingsPresetsRouteImport } from './routes/settings/presets'
 import { Route as SettingsProfileRouteImport } from './routes/settings/profile'
@@ -110,6 +111,11 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SettingsRouteRoute,
 } as any)
+const SettingsDefaultsRoute = SettingsDefaultsRouteImport.update({
+  id: '/defaults',
+  path: '/defaults',
+  getParentRoute: () => SettingsRouteRoute,
+} as any)
 const SettingsPreferencesRoute = SettingsPreferencesRouteImport.update({
   id: '/preferences',
   path: '/preferences',
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/chat/$id': typeof ChatIdRoute
   '/lorebooks/$id': typeof LorebooksIdRoute
   '/lorebooks/new': typeof LorebooksNewRoute
+  '/settings/defaults': typeof SettingsDefaultsRoute
   '/settings/preferences': typeof SettingsPreferencesRoute
   '/settings/presets': typeof SettingsPresetsRoute
   '/settings/profile': typeof SettingsProfileRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/chat/$id': typeof ChatIdRoute
   '/lorebooks/$id': typeof LorebooksIdRoute
   '/lorebooks/new': typeof LorebooksNewRoute
+  '/settings/defaults': typeof SettingsDefaultsRoute
   '/settings/preferences': typeof SettingsPreferencesRoute
   '/settings/presets': typeof SettingsPresetsRoute
   '/settings/profile': typeof SettingsProfileRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   '/chat/$id': typeof ChatIdRoute
   '/lorebooks/$id': typeof LorebooksIdRoute
   '/lorebooks/new': typeof LorebooksNewRoute
+  '/settings/defaults': typeof SettingsDefaultsRoute
   '/settings/preferences': typeof SettingsPreferencesRoute
   '/settings/presets': typeof SettingsPresetsRoute
   '/settings/profile': typeof SettingsProfileRoute
@@ -256,6 +265,7 @@ export interface FileRouteTypes {
     | '/chat/$id'
     | '/lorebooks/$id'
     | '/lorebooks/new'
+    | '/settings/defaults'
     | '/settings/preferences'
     | '/settings/presets'
     | '/settings/profile'
@@ -282,6 +292,7 @@ export interface FileRouteTypes {
     | '/chat/$id'
     | '/lorebooks/$id'
     | '/lorebooks/new'
+    | '/settings/defaults'
     | '/settings/preferences'
     | '/settings/presets'
     | '/settings/profile'
@@ -309,6 +320,7 @@ export interface FileRouteTypes {
     | '/chat/$id'
     | '/lorebooks/$id'
     | '/lorebooks/new'
+    | '/settings/defaults'
     | '/settings/preferences'
     | '/settings/presets'
     | '/settings/profile'
@@ -455,6 +467,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsIndexRouteImport
       parentRoute: typeof SettingsRouteRoute
     }
+    '/settings/defaults': {
+      id: '/settings/defaults'
+      path: '/defaults'
+      fullPath: '/settings/defaults'
+      preLoaderRoute: typeof SettingsDefaultsRouteImport
+      parentRoute: typeof SettingsRouteRoute
+    }
     '/settings/preferences': {
       id: '/settings/preferences'
       path: '/preferences'
@@ -529,6 +548,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface SettingsRouteRouteChildren {
+  SettingsDefaultsRoute: typeof SettingsDefaultsRoute
   SettingsPreferencesRoute: typeof SettingsPreferencesRoute
   SettingsPresetsRoute: typeof SettingsPresetsRoute
   SettingsProfileRoute: typeof SettingsProfileRoute
@@ -537,6 +557,7 @@ interface SettingsRouteRouteChildren {
 }
 
 const SettingsRouteRouteChildren: SettingsRouteRouteChildren = {
+  SettingsDefaultsRoute: SettingsDefaultsRoute,
   SettingsPreferencesRoute: SettingsPreferencesRoute,
   SettingsPresetsRoute: SettingsPresetsRoute,
   SettingsProfileRoute: SettingsProfileRoute,
