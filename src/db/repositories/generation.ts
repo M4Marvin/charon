@@ -1,13 +1,12 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, lte, or, sql } from "drizzle-orm";
 import { db as defaultDb, type DB } from "@/db";
 import {
   generationJobs,
   generationProposals,
-  chatMessageRevisions,
   type GenerationJob,
   type GenerationProposal,
 } from "@/db/schema";
-import { ChatBusyError, LeaseLostError, type GenerationError } from "@/features/generation/errors";
+import { ChatBusyError, LeaseLostError } from "@/features/generation/errors";
 import type { InsertionTarget, PromptMode, Trigger } from "@/features/generation/contract";
 
 const ACTIVE_STATUSES = ["queued", "running", "finalizing"] as const;
@@ -16,46 +15,16 @@ const ACTIVE_STATUSES = ["queued", "running", "finalizing"] as const;
 export const QUEUED_JOB_TTL_MS = 2 * 60_000;
 
 export interface CreateGenerationJobInput {
-  requestId: string;
   chatId: string;
   trigger: Trigger;
   promptMode: PromptMode;
-  baseLeafId: number;
   target?: InsertionTarget;
   input?: Record<string, unknown>;
-  requiresConfirmation?: boolean;
   placeholderLocalId?: number | null;
 }
 
 export function getJob(jobId: string, db: DB = defaultDb): GenerationJob | undefined {
   return db.select().from(generationJobs).where(eq(generationJobs.id, jobId)).get();
-}
-
-export function getJobByRequestId(
-  requestId: string,
-  db: DB = defaultDb,
-): GenerationJob | undefined {
-  return db.select().from(generationJobs).where(eq(generationJobs.requestId, requestId)).get();
-}
-
-export function getActiveJob(chatId: string, db: DB = defaultDb): GenerationJob | undefined {
-  return db
-    .select()
-    .from(generationJobs)
-    .where(
-      and(eq(generationJobs.chatId, chatId), inArray(generationJobs.status, [...ACTIVE_STATUSES])),
-    )
-    .get();
-}
-
-export function listRecentJobs(chatId: string, db: DB = defaultDb, limit = 20): GenerationJob[] {
-  return db
-    .select()
-    .from(generationJobs)
-    .where(eq(generationJobs.chatId, chatId))
-    .orderBy(desc(generationJobs.createdAt))
-    .limit(limit)
-    .all();
 }
 
 function isStaleActiveJob(job: GenerationJob, now: number): boolean {
@@ -64,24 +33,11 @@ function isStaleActiveJob(job: GenerationJob, now: number): boolean {
 }
 
 /**
- * Idempotent job creation plus the one-active-job gate. better-sqlite3
- * transactions are synchronous; the partial unique index is the final guard.
- *
- * Callers that need to write the job and its messages atomically must use
- * createJobInTransaction inside their own transaction.
+ * Job creation plus the one-active-job gate. The caller must own the
+ * transaction so the job and its messages commit or roll back together; the
+ * partial unique index is the final guard.
  */
-export function createJob(input: CreateGenerationJobInput, db: DB = defaultDb): GenerationJob {
-  return db.transaction((tx) => createJobInTransaction(input, tx as unknown as DB));
-}
-
 export function createJobInTransaction(input: CreateGenerationJobInput, db: DB): GenerationJob {
-  const existing = db
-    .select()
-    .from(generationJobs)
-    .where(eq(generationJobs.requestId, input.requestId))
-    .get();
-  if (existing) return existing;
-
   let active = db
     .select()
     .from(generationJobs)
@@ -119,16 +75,13 @@ export function createJobInTransaction(input: CreateGenerationJobInput, db: DB):
   const row = db
     .insert(generationJobs)
     .values({
-      requestId: input.requestId,
       chatId: input.chatId,
       trigger: input.trigger,
       promptMode: input.promptMode,
       status: "queued",
-      baseLeafId: input.baseLeafId,
       target: input.target as unknown as Record<string, unknown> | undefined,
       input: input.input,
       placeholderLocalId: input.placeholderLocalId ?? null,
-      requiresConfirmation: input.requiresConfirmation ?? false,
       createdAt: new Date(),
     })
     .returning()
@@ -140,13 +93,9 @@ export function createJobInTransaction(input: CreateGenerationJobInput, db: DB):
 export function setJobPlaceholder(
   jobId: string,
   placeholderLocalId: number,
-  baseLeafId: number,
   db: DB = defaultDb,
 ): void {
-  db.update(generationJobs)
-    .set({ placeholderLocalId, baseLeafId })
-    .where(eq(generationJobs.id, jobId))
-    .run();
+  db.update(generationJobs).set({ placeholderLocalId }).where(eq(generationJobs.id, jobId)).run();
 }
 
 export interface LeaseInput {
@@ -163,15 +112,17 @@ export function beginJob(input: LeaseInput, db: DB = defaultDb): GenerationJob {
     .set({
       status: "running",
       leaseOwner: input.owner,
-      leaseEpoch: (getJob(input.jobId, db)?.leaseEpoch ?? 0) + 1,
+      leaseEpoch: sql`${generationJobs.leaseEpoch} + 1`,
       leaseExpiresAt: expires,
       startedAt: now,
-      attempt: (getJob(input.jobId, db)?.attempt ?? 0) + 1,
     })
     .where(
       and(
         eq(generationJobs.id, input.jobId),
-        inArray(generationJobs.status, ["queued", "running"]),
+        or(
+          eq(generationJobs.status, "queued"),
+          and(eq(generationJobs.status, "running"), lte(generationJobs.leaseExpiresAt, now)),
+        ),
       ),
     )
     .returning()
@@ -196,13 +147,6 @@ export function heartbeatJob(input: LeaseInput, db: DB = defaultDb): void {
         eq(generationJobs.status, "running"),
       ),
     )
-    .run();
-}
-
-export function updateDraft(jobId: string, text: string, seq: number, db: DB = defaultDb): void {
-  db.update(generationJobs)
-    .set({ draftText: text.slice(-64_000), chunkSeq: seq })
-    .where(eq(generationJobs.id, jobId))
     .run();
 }
 
@@ -331,18 +275,9 @@ export function getProposal(id: string, db: DB = defaultDb): GenerationProposal 
   return db.select().from(generationProposals).where(eq(generationProposals.id, id)).get();
 }
 
-export function listPendingProposals(chatId: string, db: DB = defaultDb): GenerationProposal[] {
-  return db
-    .select()
-    .from(generationProposals)
-    .where(and(eq(generationProposals.chatId, chatId), eq(generationProposals.status, "pending")))
-    .orderBy(desc(generationProposals.createdAt))
-    .all();
-}
-
 export function resolveProposal(
   id: string,
-  status: "accepted" | "rejected" | "superseded",
+  status: "accepted" | "rejected",
   db: DB = defaultDb,
 ): GenerationProposal | undefined {
   return db
@@ -351,36 +286,4 @@ export function resolveProposal(
     .where(and(eq(generationProposals.id, id), eq(generationProposals.status, "pending")))
     .returning()
     .get();
-}
-
-export function insertRevision(
-  input: {
-    chatId: string;
-    messageLocalId: number;
-    rev: number;
-    content: string;
-    source: "edit" | "rewrite" | "undo";
-    jobId?: string | null;
-  },
-  db: DB = defaultDb,
-): void {
-  db.insert(chatMessageRevisions).values(input).run();
-}
-
-export function getRevisions(chatId: string, messageLocalId: number, db: DB = defaultDb) {
-  return db
-    .select()
-    .from(chatMessageRevisions)
-    .where(
-      and(
-        eq(chatMessageRevisions.chatId, chatId),
-        eq(chatMessageRevisions.messageLocalId, messageLocalId),
-      ),
-    )
-    .orderBy(desc(chatMessageRevisions.rev))
-    .all();
-}
-
-export function generationErrorToBody(error: GenerationError): { code: string; message: string } {
-  return { code: error._tag, message: error.message };
 }

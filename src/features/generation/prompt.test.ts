@@ -1,11 +1,9 @@
-import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { ChatCompletionPreset } from "@/lib/chat/types";
 import type { UserSettingsView, PersonaInfo } from "@/features/chat/config/types";
 import { DEFAULT_LORE_ENTRY, LorePosition } from "@/lib/st-core/lorebook/types";
 import type { LoreEntry } from "@/lib/st-core/lorebook/types";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
-import { ApproxTokenCounter } from "@/lib/st-core/shared/tokens.js";
 import type { EffectiveCharacter, GenerationSnapshot } from "./contract";
 import { compilePrompt } from "./prompt";
 import { ContextOverflowError } from "./errors";
@@ -53,7 +51,6 @@ function makeSnapshot(overrides: SnapshotOverrides = {}): GenerationSnapshot {
   } = overrides;
 
   return {
-    chatId: "chat-1",
     character: { ...DEFAULT_CHARACTER, ...characterOverrides },
     persona: { ...DEFAULT_PERSONA, ...personaOverrides },
     path: [],
@@ -65,7 +62,6 @@ function makeSnapshot(overrides: SnapshotOverrides = {}): GenerationSnapshot {
       preset: {},
     },
     settings: { ...DEFAULT_SETTINGS, ...settingsOverrides },
-    config: {} as GenerationSnapshot["config"],
     ...rest,
   };
 }
@@ -313,7 +309,6 @@ describe("compilePrompt", () => {
         { role: "user", content: "I greet you." },
         { role: "assistant", content: "Marv: " },
       ]);
-      expect(result.meta.hasPrefill).toBe(true);
       expect(result.stop).toEqual(["\nAlice:", "\nAlice :"]);
       expect(result.systemPrompts.at(-1)).toBe("Speak as Marv for one message.");
       expect(result.modelOptions).toHaveProperty("max_tokens");
@@ -323,7 +318,6 @@ describe("compilePrompt", () => {
     it("marks chat prompts as not prefilled", () => {
       const result = compilePrompt(makeSnapshot(), "chat");
 
-      expect(result.meta.hasPrefill).toBe(false);
       expect(result.stop).toBeUndefined();
       expect(result.messages.some((entry) => entry.role === "assistant")).toBe(false);
     });
@@ -352,8 +346,6 @@ describe("compilePrompt", () => {
       expect(systemText(result)).toContain("anime style");
       expect(systemText(result)).not.toContain("masterpiece, 1girl");
       expect(JSON.stringify(result)).not.toContain("history-only");
-      expect(result.meta.activatedLore).toBe(0);
-      expect(result.meta.hasPrefill).toBe(false);
     });
 
     it("never copies a full example prompt into identity", () => {
@@ -430,7 +422,6 @@ describe("compilePrompt", () => {
 
       const result = compilePrompt(snapshot, "chat");
 
-      expect(result.meta.activatedLore).toBe(1);
       expect(systemText(result)).toContain("Lore about Alice.");
       expect(systemText(result)).not.toContain("Disabled lore.");
       expect(systemText(result)).not.toContain("Unrelated lore.");
@@ -540,7 +531,6 @@ describe("compilePrompt", () => {
 
       const result = compilePrompt(snapshot, "chat");
 
-      expect(result.meta.droppedMessages).toBe(5);
       expect(result.messages).toHaveLength(5);
       expect(result.messages[0]).toEqual({ role: "assistant", content: history[5].content });
       expect(result.messages.at(-1)).toEqual({
@@ -569,52 +559,6 @@ describe("compilePrompt", () => {
       expect(overflow.contextWindow).toBe(700);
       expect(overflow.estimatedTokens).toBeGreaterThan(700 - 100 - 512);
       expect(overflow.message).toContain("reserving 100");
-    });
-  });
-
-  describe("metadata", () => {
-    it("hashes system prompts, messages, and model options with sha256", () => {
-      const snapshot = makeSnapshot({
-        character: { description: "Alice is a pilot." },
-        settings: { systemPrompt: "Be brief." },
-        path: [message(1, "user", "hello")],
-      });
-
-      const result = compilePrompt(snapshot, "chat");
-      const expected = createHash("sha256")
-        .update(
-          JSON.stringify({
-            systemPrompts: result.systemPrompts,
-            messages: result.messages,
-            modelOptions: result.modelOptions,
-          }),
-        )
-        .digest("hex");
-
-      expect(result.meta.promptHash).toBe(expected);
-      expect(result.meta.promptHash).toMatch(/^[0-9a-f]{64}$/);
-      expect(result.meta.mode).toBe("chat");
-    });
-
-    it("is deterministic and reports input tokens for the compiled prompt", () => {
-      const snapshot = makeSnapshot({
-        character: { description: "Alice is a pilot." },
-        path: [message(1, "user", "hello")],
-      });
-
-      const first = compilePrompt(snapshot, "chat");
-      const second = compilePrompt(snapshot, "chat");
-      const counter = new ApproxTokenCounter();
-      const expectedTokens =
-        first.systemPrompts.reduce((total, prompt) => total + counter.count(prompt), 0) +
-        first.messages.reduce(
-          (total, entry) =>
-            total + (typeof entry.content === "string" ? counter.count(entry.content) : 0),
-          0,
-        );
-
-      expect(second.meta.promptHash).toBe(first.meta.promptHash);
-      expect(second.meta.inputTokens).toBe(expectedTokens);
     });
   });
 });

@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { chatKeys } from "@/hooks/useChats";
 import { useChatUiStore } from "../chat-store";
 import { clearGenerationOverlay } from "../generation-overlay";
-import { clientTools } from "@/features/generation/tools";
 import { prepareGenerationFn, cancelGenerationFn } from "@/features/generation/fns";
 
 type StreamStatus = "idle" | "streaming" | "finalizing";
@@ -81,7 +80,6 @@ export function useGenerationChat(chatId: string): GenerationChat {
   const aiChat = useAiChat({
     threadId: chatId,
     connection,
-    tools: clientTools,
     onChunk: (chunk: unknown) => {
       const value = chunk as { type?: string; delta?: string; content?: string };
       if (value.type !== "TEXT_MESSAGE_CONTENT") return;

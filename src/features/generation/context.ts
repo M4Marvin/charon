@@ -57,7 +57,6 @@ export async function loadGenerationSnapshot(
   const depthPrompt = character.extensions?.depth_prompt;
 
   return {
-    chatId,
     character: {
       name: character.name,
       description: chat.characterDescription || character.description,
@@ -78,7 +77,6 @@ export async function loadGenerationSnapshot(
     preset: config.provider.preset,
     provider: config.provider,
     settings: config.settings,
-    config,
     selection,
   };
 }

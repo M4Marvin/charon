@@ -324,7 +324,6 @@ export const generationJobs = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    requestId: text("request_id").notNull(),
     chatId: text("chat_id")
       .notNull()
       .references(() => chats.id, { onDelete: "cascade" }),
@@ -339,23 +338,16 @@ export const generationJobs = sqliteTable(
     })
       .notNull()
       .default("queued"),
-    baseLeafId: integer("base_leaf_id"),
     target: text("target", { mode: "json" }).$type<Record<string, unknown>>(),
     input: text("input", { mode: "json" }).$type<Record<string, unknown>>(),
     placeholderLocalId: integer("placeholder_local_id"),
     leaseOwner: text("lease_owner"),
     leaseEpoch: integer("lease_epoch").notNull().default(0),
     leaseExpiresAt: integer("lease_expires_at", { mode: "timestamp_ms" }),
-    attempt: integer("attempt").notNull().default(0),
-    requiresConfirmation: integer("requires_confirmation", { mode: "boolean" })
-      .notNull()
-      .default(false),
     result: text("result", { mode: "json" }).$type<Record<string, unknown>>(),
     error: text("error", { mode: "json" }).$type<Record<string, unknown>>(),
     usage: text("usage", { mode: "json" }).$type<Record<string, unknown>>(),
     finishReason: text("finish_reason"),
-    draftText: text("draft_text"),
-    chunkSeq: integer("chunk_seq").notNull().default(0),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -363,9 +355,10 @@ export const generationJobs = sqliteTable(
     finishedAt: integer("finished_at", { mode: "timestamp_ms" }),
   },
   (table) => [
-    uniqueIndex("generation_jobs_request_id_uq").on(table.requestId),
     index("generation_jobs_chat_status_idx").on(table.chatId, table.status),
-    index("generation_jobs_created_at_idx").on(table.createdAt),
+    uniqueIndex("generation_jobs_active_chat_uq")
+      .on(table.chatId)
+      .where(sql`status IN ('queued', 'running', 'finalizing')`),
   ],
 );
 
@@ -382,7 +375,7 @@ export const generationProposals = sqliteTable(
       .notNull()
       .references(() => chats.id, { onDelete: "cascade" }),
     kind: text("kind", { enum: ["rewrite", "transform", "impersonate", "image"] }).notNull(),
-    status: text("status", { enum: ["pending", "accepted", "rejected", "superseded"] })
+    status: text("status", { enum: ["pending", "accepted", "rejected"] })
       .notNull()
       .default("pending"),
     targetLocalId: integer("target_local_id"),
@@ -399,30 +392,6 @@ export const generationProposals = sqliteTable(
   (table) => [
     index("generation_proposals_chat_idx").on(table.chatId, table.status),
     index("generation_proposals_job_idx").on(table.jobId),
-  ],
-);
-
-export const chatMessageRevisions = sqliteTable(
-  "chat_message_revisions",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    chatId: text("chat_id")
-      .notNull()
-      .references(() => chats.id, { onDelete: "cascade" }),
-    messageLocalId: integer("message_local_id").notNull(),
-    rev: integer("rev").notNull(),
-    content: text("content").notNull(),
-    source: text("source", { enum: ["edit", "rewrite", "undo"] }).notNull(),
-    jobId: text("job_id"),
-    createdAt: integer("created_at", { mode: "timestamp_ms" })
-      .notNull()
-      .$defaultFn(() => new Date()),
-  },
-  (table) => [
-    uniqueIndex("chat_message_revisions_uq").on(table.chatId, table.messageLocalId, table.rev),
-    index("chat_message_revisions_chat_idx").on(table.chatId),
   ],
 );
 
@@ -529,5 +498,3 @@ export type GenerationJob = typeof generationJobs.$inferSelect;
 export type NewGenerationJob = typeof generationJobs.$inferInsert;
 export type GenerationProposal = typeof generationProposals.$inferSelect;
 export type NewGenerationProposal = typeof generationProposals.$inferInsert;
-export type ChatMessageRevision = typeof chatMessageRevisions.$inferSelect;
-export type NewChatMessageRevision = typeof chatMessageRevisions.$inferInsert;

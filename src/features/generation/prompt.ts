@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { ModelMessage } from "@tanstack/ai";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
 import type { LoreEntry, LoreGlobalData } from "@/lib/st-core/lorebook/types";
@@ -315,14 +314,12 @@ export function compilePrompt(
   };
 
   let systemPrompts: string[];
-  let activatedLore = 0;
   let atDepthLore: LoreEntry[] = [];
 
   switch (mode) {
     case "chat":
     case "impersonate": {
       const scan = scanLore(snapshot);
-      activatedLore = scan.activated.length;
       atDepthLore = scan.activated.filter((entry) => entry.position === LorePosition.AtDepth);
       systemPrompts = buildRoleplaySystemPrompts(
         snapshot,
@@ -406,7 +403,6 @@ export function compilePrompt(
   }
 
   const keptHistory = [...history];
-  let droppedMessages = 0;
   let totalTokens =
     systemTokens + exampleTokens + prefillTokens + countMessages(counter, keptHistory);
 
@@ -414,7 +410,6 @@ export function compilePrompt(
     const dropped = keptHistory.shift();
     if (!dropped) break;
     totalTokens -= countMessages(counter, [dropped]);
-    droppedMessages += 1;
   }
 
   if (totalTokens > budget) {
@@ -429,23 +424,11 @@ export function compilePrompt(
   if (prefill) messages.push(prefill);
 
   const modelOptions = buildModelOptions(snapshot.preset, maxTokens, mode);
-  const promptHash = createHash("sha256")
-    .update(JSON.stringify({ systemPrompts, messages, modelOptions }))
-    .digest("hex");
-  const inputTokens = systemTokens + countMessages(counter, messages);
 
   return {
     systemPrompts,
     messages,
     modelOptions,
     stop: buildStopStrings(mode, snapshot.character.name),
-    meta: {
-      mode,
-      promptHash,
-      inputTokens,
-      droppedMessages,
-      activatedLore,
-      hasPrefill: prefill !== null,
-    },
   };
 }

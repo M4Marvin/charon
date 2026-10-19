@@ -1,19 +1,14 @@
 import { db as defaultDb, type DB } from "@/db";
-import {
-  getProposal,
-  getJob,
-  listPendingProposals,
-  resolveProposal,
-  insertRevision,
-} from "@/db/repositories/generation";
+import { getProposal, getJob, resolveProposal } from "@/db/repositories/generation";
 import { getMessage, updateMessage } from "@/db/repositories/chats";
 import { appendMessage } from "@/features/chat/tree/service";
 import { StaleTargetError, GenerationValidationError } from "./errors";
 import { contentHash } from "@/lib/chat/content-hash";
 import type { ProposalView } from "./contract";
 
-export function toProposalView(row: ReturnType<typeof getProposal>): ProposalView | null {
-  if (!row) return null;
+export function toProposalView(
+  row: Exclude<ReturnType<typeof getProposal>, undefined>,
+): ProposalView {
   return {
     id: row.id,
     jobId: row.jobId,
@@ -29,12 +24,6 @@ export function toProposalView(row: ReturnType<typeof getProposal>): ProposalVie
     createdAt: row.createdAt.toISOString(),
     resolvedAt: row.resolvedAt?.toISOString() ?? null,
   };
-}
-
-export function listProposals(chatId: string, db: DB = defaultDb): ProposalView[] {
-  return listPendingProposals(chatId, db)
-    .map((row) => toProposalView(row))
-    .filter((row): row is ProposalView => row !== null);
 }
 
 export function acceptProposal(
@@ -53,7 +42,7 @@ export function acceptProposal(
     if (proposal.kind === "impersonate" || proposal.kind === "image") {
       const updated = resolveProposal(proposalId, "accepted", tx);
       if (!updated) throw new GenerationValidationError({ message: "Proposal changed" });
-      return { ok: true, proposal: toProposalView(updated)!, messageLocalId: null };
+      return { ok: true, proposal: toProposalView(updated), messageLocalId: null };
     }
 
     if (proposal.kind === "rewrite") {
@@ -91,20 +80,9 @@ export function acceptProposal(
         },
         tx,
       );
-      insertRevision(
-        {
-          chatId: proposal.chatId,
-          messageLocalId: targetId,
-          rev: actualRev,
-          content: existing.content,
-          source: "rewrite",
-          jobId: job.id,
-        },
-        tx,
-      );
       const updated = resolveProposal(proposalId, "accepted", tx);
       if (!updated) throw new GenerationValidationError({ message: "Proposal changed" });
-      return { ok: true, proposal: toProposalView(updated)!, messageLocalId: targetId };
+      return { ok: true, proposal: toProposalView(updated), messageLocalId: targetId };
     }
 
     // transform: append the proposed text as a new assistant message at the
@@ -125,7 +103,7 @@ export function acceptProposal(
     );
     const updated = resolveProposal(proposalId, "accepted", tx);
     if (!updated) throw new GenerationValidationError({ message: "Proposal changed" });
-    return { ok: true, proposal: toProposalView(updated)!, messageLocalId: created.localId };
+    return { ok: true, proposal: toProposalView(updated), messageLocalId: created.localId };
   });
 }
 

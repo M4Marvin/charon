@@ -13,7 +13,6 @@ const TriggerSchema = Schema.Literals([
 
 const PrepareSchema = Schema.Struct({
   chatId: Schema.String,
-  requestId: Schema.optional(Schema.String),
   trigger: TriggerSchema,
   content: Schema.optional(Schema.String),
   messageLocalId: Schema.optional(Schema.Number),
@@ -35,10 +34,7 @@ export const prepareGenerationFn = createServerFn({ method: "POST", strict: { ou
       { ...data, selection: data.selection ? [...data.selection] : undefined },
       user.name,
     );
-    return {
-      ...prepared,
-      streamPath: "/api/generation/chat",
-    };
+    return prepared;
   });
 
 export const cancelGenerationFn = createServerFn({ method: "POST", strict: { output: false } })

@@ -13,9 +13,6 @@ import {
   SCENE_CONTENT_CAP,
   buildCharacterView,
   buildScene,
-  clientToolDefinitions,
-  clientTools,
-  createClientTools,
   createReadTools,
   filterLoreEntries,
   normalizeQueryTerms,
@@ -26,10 +23,6 @@ function runtime(chatId: string, overrides: Partial<ToolContext> = {}) {
   const context: ToolContext = {
     userId: "user-1",
     chatId,
-    jobId: "job-1",
-    mode: "chat",
-    baseLeafId: 0,
-    selection: [],
     ...overrides,
   };
   return { context, emitCustomEvent: () => {} };
@@ -157,36 +150,6 @@ describe("generation read tools", () => {
         tags: { type: "array" },
       });
       expect(output.required ?? []).toEqual([]);
-    });
-
-    it("exposes shareable client definitions and no-op client tools", () => {
-      expect(clientToolDefinitions.map((tool) => tool.name)).toEqual([
-        "highlight_messages",
-        "scroll_to_message",
-        "open_proposal",
-      ]);
-      expect(clientTools.map((tool) => tool.name)).toEqual([
-        "highlight_messages",
-        "scroll_to_message",
-        "open_proposal",
-      ]);
-      for (const tool of clientTools) {
-        expect(tool.__toolSide).toBe("client");
-      }
-    });
-
-    it("runs client handler placeholders and returns ok", async () => {
-      const seen: unknown[] = [];
-      const tools = createClientTools({
-        highlightMessages: (args) => seen.push(args),
-        scrollToMessage: (args) => seen.push(args),
-        openProposal: (args) => seen.push(args),
-      });
-
-      expect(tools[0].execute!({ localIds: [7, 9] })).toEqual({ ok: true });
-      expect(tools[1].execute!({ localId: 9 })).toEqual({ ok: true });
-      expect(tools[2].execute!({ proposalId: "p-1" })).toEqual({ ok: true });
-      expect(seen).toEqual([{ localIds: [7, 9] }, { localId: 9 }, { proposalId: "p-1" }]);
     });
   });
 

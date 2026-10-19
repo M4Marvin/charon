@@ -1,5 +1,5 @@
 import { db as defaultDb, type DB } from "@/db";
-import { createJobInTransaction, setJobPlaceholder, cancelJob } from "@/db/repositories/generation";
+import { createJobInTransaction, setJobPlaceholder } from "@/db/repositories/generation";
 import {
   appendMessage,
   appendSibling,
@@ -17,7 +17,6 @@ import type { Trigger, InsertionTarget } from "./contract";
 
 export interface PrepareGenerationInput {
   chatId: string;
-  requestId?: string;
   trigger: Trigger;
   content?: string;
   messageLocalId?: number;
@@ -29,7 +28,6 @@ export interface PreparedGeneration {
   jobId: string;
   placeholderLocalId: number;
   userLocalId: number | null;
-  requestId: string;
 }
 
 function modeFor(trigger: Trigger): "chat" | "impersonate" | "image" | "rewrite" | "transform" {
@@ -54,7 +52,6 @@ export async function prepareGeneration(
   db: DB = defaultDb,
 ): Promise<PreparedGeneration> {
   if (!input.chatId) throw new GenerationValidationError({ message: "chatId is required" });
-  const requestId = input.requestId ?? crypto.randomUUID();
   const content = input.content?.trim() ?? "";
   if (input.trigger === "send" && !content) {
     throw new GenerationValidationError({ message: "Content is required" });
@@ -135,11 +132,9 @@ export async function prepareGeneration(
     const txDb = tx as unknown as DB;
     const job = createJobInTransaction(
       {
-        requestId,
         chatId: input.chatId,
         trigger: input.trigger,
         promptMode: modeFor(input.trigger),
-        baseLeafId: activeLeafId,
         target,
         input: {
           content: input.content,
@@ -147,8 +142,6 @@ export async function prepareGeneration(
           selection,
           instruction: input.instruction,
         },
-        requiresConfirmation:
-          input.trigger === "rewrite" || input.trigger === "transform" || input.trigger === "image",
       },
       txDb,
     );
@@ -161,12 +154,11 @@ export async function prepareGeneration(
         { isStreaming: true, generationJobId: job.id },
         txDb,
       );
-      setJobPlaceholder(job.id, replyMessage.localId, activeLeafId, txDb);
+      setJobPlaceholder(job.id, replyMessage.localId, txDb);
       return {
         jobId: job.id,
         placeholderLocalId: replyMessage.localId,
         userLocalId: userMessage.localId,
-        requestId,
       };
     }
 
@@ -194,20 +186,15 @@ export async function prepareGeneration(
               },
               txDb,
             );
-      setJobPlaceholder(job.id, created.localId, activeLeafId, txDb);
+      setJobPlaceholder(job.id, created.localId, txDb);
       return {
         jobId: job.id,
         placeholderLocalId: created.localId,
         userLocalId: null,
-        requestId,
       };
     }
 
-    setJobPlaceholder(job.id, 0, activeLeafId, txDb);
-    return { jobId: job.id, placeholderLocalId: 0, userLocalId: null, requestId };
+    setJobPlaceholder(job.id, 0, txDb);
+    return { jobId: job.id, placeholderLocalId: 0, userLocalId: null };
   });
-}
-
-export function cancelPreparedGeneration(jobId: string, db: DB = defaultDb): void {
-  cancelJob(jobId, db);
 }

@@ -162,6 +162,13 @@
       "when": 1788426600000,
       "tag": "0023_drop_tanstack_persistence",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1788427200000,
+      "tag": "0024_slim_generation_jobs",
+      "breakpoints": true
     }
   ]
 }

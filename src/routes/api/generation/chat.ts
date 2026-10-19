@@ -7,13 +7,7 @@ import {
   type TokenUsage,
 } from "@tanstack/ai";
 import { tryGetSession } from "@/server/session";
-import {
-  beginJob,
-  failJob,
-  getJob,
-  getJobByRequestId,
-  heartbeatJob,
-} from "@/db/repositories/generation";
+import { beginJob, failJob, getJob, heartbeatJob } from "@/db/repositories/generation";
 import { loadGenerationSnapshot } from "@/features/generation/context";
 import { compilePrompt } from "@/features/generation/prompt";
 import { makeAdapter } from "@/features/generation/provider";
@@ -153,7 +147,7 @@ export const Route = createFileRoute("/api/generation/chat")({
             );
           }
 
-          const job = getJob(jobId) ?? getJobByRequestId(jobId);
+          const job = getJob(jobId);
           if (!job) {
             return new Response(
               JSON.stringify({ code: "not_found", message: "Generation job not found" }),
@@ -189,10 +183,6 @@ export const Route = createFileRoute("/api/generation/chat")({
           const toolContext: ToolContext = {
             userId: user.id,
             chatId: job.chatId,
-            jobId: job.id,
-            mode: job.promptMode,
-            baseLeafId: job.baseLeafId ?? 0,
-            selection: selectionIds,
           };
 
           const stream = aiChat({

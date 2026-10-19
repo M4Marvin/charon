@@ -89,10 +89,6 @@ export async function runProposal(
     const toolContext: ToolContext = {
       userId,
       chatId: input.chatId,
-      jobId: job.id,
-      mode: job.promptMode,
-      baseLeafId: job.baseLeafId ?? 0,
-      selection,
     };
 
     const stream = aiChat({
