@@ -55,12 +55,14 @@ export const cancelGenerationFn = createServerFn({ method: "POST", strict: { out
     ]);
     await getSession();
     const job = getJob(data.jobId);
-    cancelJob(data.jobId);
-    if (job?.placeholderLocalId && job.placeholderLocalId > 0) {
+    const cancelled = cancelJob(data.jobId);
+    // A finalized run is no longer cancellable; deleting its placeholder now
+    // would delete the completed reply.
+    if (cancelled && job?.placeholderLocalId && job.placeholderLocalId > 0) {
       try {
         deleteBranch(job.chatId, job.placeholderLocalId, undefined, { skipIdleCheck: true });
       } catch {
-        // The run may have finalized first; keep its content.
+        // The branch may already be gone; the job is still cancelled.
       }
     }
     return { ok: true };

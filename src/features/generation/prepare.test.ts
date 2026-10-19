@@ -6,6 +6,7 @@ import { characters, chatMessages, aiProviders, userSettings, generationJobs } f
 import { createChat, appendUserAndReply, getMessages } from "@/features/chat/tree/service";
 import { prepareGeneration } from "./prepare";
 import {
+  cancelJob,
   createProposal,
   getJob,
   getProposal,
@@ -126,6 +127,22 @@ describe("generation prepare and proposals", () => {
 
     expect(second.jobId).not.toBe(first.jobId);
     expect(getJob(first.jobId, db)?.status).toBe("expired");
+  });
+
+  it("does not cancel an already finalized job", async () => {
+    const prepared = await prepareGeneration(
+      userId,
+      { chatId, trigger: "send", content: "Hi" },
+      "User",
+      db,
+    );
+    db.update(generationJobs)
+      .set({ status: "succeeded" })
+      .where(eq(generationJobs.id, prepared.jobId))
+      .run();
+
+    expect(cancelJob(prepared.jobId, db)).toBe(false);
+    expect(getJob(prepared.jobId, db)?.status).toBe("succeeded");
   });
 
   it("accepts a rewrite with a revision and rejects a stale base revision", async () => {
