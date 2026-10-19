@@ -1,5 +1,14 @@
 import { memo, useState, useLayoutEffect, useRef, useCallback } from "react";
-import { ChevronLeft, ChevronRight, RotateCw, Pencil, Trash2, Check, Copy, ListChecks } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  RotateCw,
+  Pencil,
+  Trash2,
+  Check,
+  Copy,
+  ListChecks,
+} from "lucide-react";
 import { MessageRewriteButton } from "./message-rewrite-button";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
