@@ -29,6 +29,17 @@ function Harness({
   return <SettingsSaveStatus />;
 }
 
+describe("SettingsSaveStatus", () => {
+  it("renders an idle label when nothing has been saved", () => {
+    render(
+      <SettingsSaveProvider activeSection="model">
+        <SettingsSaveStatus idleLabel="Changes save automatically" />
+      </SettingsSaveProvider>,
+    );
+    expect(screen.getByRole("status").textContent).toContain("Changes save automatically");
+  });
+});
+
 describe("getSaveState", () => {
   it("maps mutation flags", () => {
     expect(getSaveState({ isPending: true, isError: false, isSuccess: false })).toBe("saving");

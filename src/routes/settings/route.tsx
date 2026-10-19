@@ -1,11 +1,24 @@
-import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { PageHeader } from "@/components/common/PageHeader";
+import { SettingsSaveProvider, SettingsSaveStatus } from "@/features/chat/ui/settings/save-status";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsLayout,
 });
 
+const SECTION_IDS: Record<string, string> = {
+  "/settings": "overview",
+  "/settings/preferences": "display",
+  "/settings/profile": "profile",
+  "/settings/defaults": "model",
+  "/settings/providers": "providers",
+  "/settings/presets": "presets",
+};
+
 function SettingsLayout() {
+  const { pathname } = useLocation();
+  const sectionId = SECTION_IDS[pathname] ?? "overview";
+
   const links = [
     { to: "/settings/preferences", label: "Preferences" },
     { to: "/settings/profile", label: "Profile" },
@@ -31,9 +44,16 @@ function SettingsLayout() {
             </Link>
           ))}
         </nav>
-        <div className="flex-1 max-w-2xl pt-4 lg:pt-0">
-          <Outlet />
-        </div>
+        <SettingsSaveProvider activeSection={sectionId}>
+          <div className="flex-1 max-w-2xl pt-4 lg:pt-0">
+            {sectionId === "model" || sectionId === "display" ? (
+              <div className="mb-4 flex min-h-5 items-center">
+                <SettingsSaveStatus idleLabel="Changes save automatically" />
+              </div>
+            ) : null}
+            <Outlet />
+          </div>
+        </SettingsSaveProvider>
       </div>
     </main>
   );

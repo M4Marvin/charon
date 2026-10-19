@@ -1,21 +1,94 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "stv.richtext";
+const CHANGE_EVENT = "stv:richtext-change";
 
-interface StoredSettings {
+export interface StoredSettings {
   blockExternalMedia: boolean;
   highlightDialogue: boolean;
   autoFixMarkdown: boolean;
 }
 
-function readStored(): StoredSettings {
-  if (typeof window === "undefined")
-    return { blockExternalMedia: false, highlightDialogue: true, autoFixMarkdown: true };
+const DEFAULTS: StoredSettings = {
+  blockExternalMedia: false,
+  highlightDialogue: true,
+  autoFixMarkdown: true,
+};
+
+let cachedRaw: string | null = null;
+let cachedValue: StoredSettings = DEFAULTS;
+
+function readRaw(): string | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { blockExternalMedia: false, highlightDialogue: true, autoFixMarkdown: true };
+    return window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function parseStored(raw: string | null): StoredSettings {
+  if (!raw) return DEFAULTS;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return DEFAULTS;
+    const value = parsed as Partial<StoredSettings>;
+    return {
+      blockExternalMedia:
+        typeof value.blockExternalMedia === "boolean"
+          ? value.blockExternalMedia
+          : DEFAULTS.blockExternalMedia,
+      highlightDialogue:
+        typeof value.highlightDialogue === "boolean"
+          ? value.highlightDialogue
+          : DEFAULTS.highlightDialogue,
+      autoFixMarkdown:
+        typeof value.autoFixMarkdown === "boolean"
+          ? value.autoFixMarkdown
+          : DEFAULTS.autoFixMarkdown,
+    };
+  } catch {
+    return DEFAULTS;
+  }
+}
+
+function getSnapshot(): StoredSettings {
+  if (typeof window === "undefined") return DEFAULTS;
+  const raw = readRaw();
+  if (raw !== cachedRaw) {
+    cachedRaw = raw;
+    cachedValue = parseStored(raw);
+  }
+  return cachedValue;
+}
+
+function getServerSnapshot(): StoredSettings {
+  return DEFAULTS;
+}
+
+function subscribe(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === null || event.key === STORAGE_KEY) onChange();
+  };
+  window.addEventListener("storage", onStorage);
+  window.addEventListener(CHANGE_EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener(CHANGE_EVENT, onChange);
+  };
+}
+
+function writeStored(next: StoredSettings) {
+  cachedRaw = null;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // Storage can be unavailable (private mode, quota); keep the in-memory
+    // snapshot correct for this tab even when persistence fails.
+    cachedRaw = readRaw();
+    cachedValue = next;
+  }
+  window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
 export interface RichTextSettings {
@@ -38,38 +111,22 @@ const defaults: RichTextSettings = {
 
 const RichTextSettingsCtx = createContext<RichTextSettings>(defaults);
 
-function persist(next: StoredSettings) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  } catch {}
-}
-
 export function RichTextSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [stored, setStored] = useState(readStored);
+  const stored = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const setBlockExternalMedia = useCallback((v: boolean) => {
-    setStored((prev) => {
-      const next = { ...prev, blockExternalMedia: v };
-      persist(next);
-      return next;
-    });
+  const update = useCallback((patch: Partial<StoredSettings>) => {
+    writeStored({ ...getSnapshot(), ...patch });
   }, []);
 
-  const setHighlightDialogue = useCallback((v: boolean) => {
-    setStored((prev) => {
-      const next = { ...prev, highlightDialogue: v };
-      persist(next);
-      return next;
-    });
-  }, []);
-
-  const setAutoFixMarkdown = useCallback((v: boolean) => {
-    setStored((prev) => {
-      const next = { ...prev, autoFixMarkdown: v };
-      persist(next);
-      return next;
-    });
-  }, []);
+  const setBlockExternalMedia = useCallback(
+    (v: boolean) => update({ blockExternalMedia: v }),
+    [update],
+  );
+  const setHighlightDialogue = useCallback(
+    (v: boolean) => update({ highlightDialogue: v }),
+    [update],
+  );
+  const setAutoFixMarkdown = useCallback((v: boolean) => update({ autoFixMarkdown: v }), [update]);
 
   const value: RichTextSettings = useMemo(
     () => ({

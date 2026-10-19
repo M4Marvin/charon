@@ -153,7 +153,7 @@ export function useSettingsSaveStatus(
  * The panel's only save indicator. Rendered inside the footer so it is visible
  * while any field is being edited; `Saved` fades after a short hold.
  */
-export function SettingsSaveStatus() {
+export function SettingsSaveStatus({ idleLabel }: { idleLabel?: string } = {}) {
   const status = useContext(SaveStatusContext);
 
   return (
@@ -189,6 +189,8 @@ export function SettingsSaveStatus() {
             </button>
           ) : null}
         </>
+      ) : idleLabel ? (
+        <span className="truncate text-2">{idleLabel}</span>
       ) : null}
     </div>
   );
