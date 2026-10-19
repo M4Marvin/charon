@@ -13,7 +13,6 @@ vi.mock("@/hooks/useUserSettings", () => ({
       systemPrompt: "default system",
       postHistoryInstructions: "default post-history",
       impersonationPrompt: "default impersonation",
-      imagePromptExample: "default image example",
     },
   }),
   useUpdateUserSettings: () => ({ mutate: mockMutate }),
@@ -22,23 +21,6 @@ vi.mock("@/hooks/useUserSettings", () => ({
 import { PromptsSection } from "./prompts-section";
 
 describe("PromptsSection", () => {
-  it("commits a typed image prompt example on blur", () => {
-    const { container } = render(<PromptsSection chatId="c1" isStreaming={false} />);
-
-    const textarea = container.querySelector("#ps-image-prompt-example");
-    expect(textarea).not.toBeNull();
-
-    fireEvent.change(textarea as HTMLElement, {
-      target: { value: "masterpiece, best quality, 1girl" },
-    });
-    fireEvent.blur(textarea as HTMLElement);
-
-    expect(mockMutate).toHaveBeenCalledWith(
-      { imagePromptExample: "masterpiece, best quality, 1girl" },
-      expect.objectContaining({ onError: expect.any(Function) }),
-    );
-  });
-
   it("still renders and commits the impersonation prompt (regression)", () => {
     const { container } = render(<PromptsSection chatId="c1" isStreaming={false} />);
 

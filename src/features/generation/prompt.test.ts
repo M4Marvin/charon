@@ -16,7 +16,6 @@ const DEFAULT_SETTINGS: UserSettingsView = {
   systemPrompt: null,
   postHistoryInstructions: null,
   impersonationPrompt: null,
-  imagePromptExample: null,
 };
 
 const DEFAULT_CHARACTER: EffectiveCharacter = {
@@ -348,14 +347,9 @@ describe("compilePrompt", () => {
       expect(JSON.stringify(result)).not.toContain("history-only");
     });
 
-    it("never copies a full example prompt into identity", () => {
-      const snapshot = makeSnapshot({
-        settings: { imagePromptExample: "stored example, {{char}}" },
-      });
+    it("never copies an example prompt into identity", () => {
+      const result = compilePrompt(makeSnapshot(), "image");
 
-      const result = compilePrompt(snapshot, "image");
-
-      expect(systemText(result)).not.toContain("stored example");
       expect(systemText(result)).toContain("identity is assembled deterministically");
     });
   });
