@@ -1,10 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Schema } from "effect";
-import { getSession } from "@/server/session";
-import { runGeneration, withGenerationService } from "./service";
-import { getJob } from "@/db/repositories/generation";
-import { deleteBranch } from "@/features/chat/tree/service";
-import { cancelJob } from "@/db/repositories/generation";
 
 const TriggerSchema = Schema.Literals([
   "send",
@@ -30,6 +25,10 @@ const CancelSchema = Schema.Struct({ jobId: Schema.String });
 export const prepareGenerationFn = createServerFn({ method: "POST", strict: { output: false } })
   .validator((data) => Schema.decodeUnknownSync(PrepareSchema)(data))
   .handler(async ({ data }) => {
+    const [{ getSession }, { runGeneration, withGenerationService }] = await Promise.all([
+      import("@/server/session"),
+      import("./service"),
+    ]);
     const { user } = await getSession();
     const prepared = await runGeneration(
       withGenerationService((service) =>
@@ -49,6 +48,11 @@ export const prepareGenerationFn = createServerFn({ method: "POST", strict: { ou
 export const cancelGenerationFn = createServerFn({ method: "POST", strict: { output: false } })
   .validator((data) => Schema.decodeUnknownSync(CancelSchema)(data))
   .handler(async ({ data }) => {
+    const [{ getSession }, { getJob, cancelJob }, { deleteBranch }] = await Promise.all([
+      import("@/server/session"),
+      import("@/db/repositories/generation"),
+      import("@/features/chat/tree/service"),
+    ]);
     await getSession();
     const job = getJob(data.jobId);
     cancelJob(data.jobId);
