@@ -64,7 +64,7 @@ export function CharacterPortraitPanel({
       aria-hidden={!open}
       inert={!open}
       className={cn(
-        "fixed left-4 top-1/2 -translate-y-1/2 z-20 hidden xl:flex flex-col gap-2 transition-all duration-300",
+        "fixed left-4 top-1/2 -translate-y-1/2 z-20 hidden xl:flex flex-col gap-2 transition-[transform,opacity] duration-300",
         open ? "translate-x-0 opacity-100" : "-translate-x-[calc(100%_+_2rem)] opacity-0",
       )}
     >

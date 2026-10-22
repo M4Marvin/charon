@@ -139,9 +139,9 @@ export function NewCharacterPage() {
             }`}
           >
             {processing ? (
-              <Spinner className="size-10 text-3" />
+              <Spinner className="size-10 text-2" />
             ) : (
-              <Upload className="size-10 text-3" />
+              <Upload className="size-10 text-2" />
             )}
             <div>
               <p className="text-headline">
@@ -210,7 +210,7 @@ export function NewCharacterPage() {
                 {preview.preview.tags.length > 0 ? (
                   <div className="flex flex-wrap gap-1 mt-2">
                     {preview.preview.tags.map((t) => (
-                      <Badge key={t} variant="secondary" className="text-[10px]">
+                      <Badge key={t} variant="secondary" className="text-[11px]">
                         {t}
                       </Badge>
                     ))}

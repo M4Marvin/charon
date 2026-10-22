@@ -336,7 +336,7 @@ export const ChatMessage = memo(function ChatMessage({
                   >
                     Cancel
                   </Button>
-                  <span className="ml-auto text-xs text-3">Ctrl/⌘+Enter</span>
+                  <span className="ml-auto text-xs text-2">Ctrl/⌘+Enter</span>
                 </div>
               </div>
             ) : isStreaming && !streamingText ? (
@@ -360,7 +360,7 @@ export const ChatMessage = memo(function ChatMessage({
                     )}
                   />
                 ) : (
-                  <span className="text-3 italic">Empty message</span>
+                  <span className="text-2 italic">Empty message</span>
                 )}
               </div>
             )}

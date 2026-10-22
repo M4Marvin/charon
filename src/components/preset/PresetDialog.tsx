@@ -29,6 +29,7 @@ interface PresetDialogProps {
   state: PresetListItem | "new" | null;
   providers: AiProviderListItem[];
   defaultModel: string;
+  pending?: boolean;
   onClose: () => void;
   onCreate: (input: {
     name: string;
@@ -49,6 +50,7 @@ export function PresetDialog({
   state,
   providers,
   defaultModel,
+  pending = false,
   onClose,
   onCreate,
   onUpdate,
@@ -339,7 +341,7 @@ export function PresetDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
           <Button
@@ -371,7 +373,7 @@ export function PresetDialog({
               }
             }}
           >
-            {editing ? "Save" : "Create"}
+            {pending ? "Saving…" : editing ? "Save" : "Create"}
           </Button>
         </DialogFooter>
       </DialogContent>

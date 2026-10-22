@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Server } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,7 +7,8 @@ import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { StatusDot } from "@/components/common/StatusDot";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
-import { Spinner } from "@/components/ui/spinner";
+import { SkeletonRows } from "@/components/common/Skeletons";
+import { EmptyState } from "@/components/common/EmptyState";
 import {
   useAiProviders,
   useCreateAiProvider,
@@ -64,18 +66,18 @@ export function ProviderManager() {
   const isLoading = settingsLoading || providersLoading;
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Spinner label="Loading providers" />
-      </div>
-    );
+    return <SkeletonRows rows={3} />;
   }
 
   if (providersError || settingsError) {
     const failure = providersError ?? settingsError;
     return (
       <ErrorBanner
-        message={failure instanceof Error ? failure.message : "Failed to load providers"}
+        message={
+          failure instanceof Error
+            ? `We couldn’t load your providers. ${failure.message}`
+            : "We couldn’t load your providers."
+        }
         onRetry={() => {
           void refetchProviders();
           void refetchSettings();
@@ -87,9 +89,22 @@ export function ProviderManager() {
   const deletingProvider = providers.find((p) => p.id === delProviderId) ?? null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      <div className="flex items-center justify-end">
+        <Button size="sm" className="h-10 px-3" onClick={() => setEditingProvider("new")}>
+          + Add provider
+        </Button>
+      </div>
       {providers.length === 0 ? (
-        <p className="text-2 text-sm py-4">No providers configured yet.</p>
+        <EmptyState
+          icon={Server}
+          title="No providers yet"
+          description="Connect an OpenAI-compatible endpoint to choose a model."
+        >
+          <Button className="h-10" onClick={() => setEditingProvider("new")}>
+            Add provider
+          </Button>
+        </EmptyState>
       ) : (
         <div className="space-y-2">
           {providers.map((p) => {
@@ -127,7 +142,7 @@ export function ProviderManager() {
                       <span className="truncate font-mono">{p.baseUrl}</span>
                     </div>
                     {testResult && testResult.ok ? (
-                      <p className="text-3 text-xs">
+                      <p className="text-2 text-xs">
                         {testResult.latencyMs}ms · {testResult.modelCount} models
                       </p>
                     ) : null}
@@ -140,7 +155,10 @@ export function ProviderManager() {
                     items={[
                       {
                         label: "Edit",
-                        onSelect: () => setEditingProvider(p),
+                        onSelect: () => {
+                          setTestResults((prev) => ({ ...prev, [p.id]: null }));
+                          setEditingProvider(p);
+                        },
                       },
                       {
                         label: "Test connection",
@@ -171,10 +189,6 @@ export function ProviderManager() {
           })}
         </div>
       )}
-
-      <Button variant="outline" size="sm" onClick={() => setEditingProvider("new")}>
-        + Add provider
-      </Button>
 
       <ProviderDialog
         state={editingProvider}

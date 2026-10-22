@@ -1,9 +1,8 @@
 import { useCallback, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 import { Eye, EyeOff } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -11,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { authClient } from "@/lib/auth-client";
 import { getOnboardingStatus } from "@/server/fns/onboarding";
+import { getSession } from "@/lib/auth.functions";
 import { postAuthTarget } from "@/features/onboarding/onboarding-gate";
 
 const signinSchema = z.object({
@@ -19,6 +19,10 @@ const signinSchema = z.object({
 });
 
 export const Route = createFileRoute("/signin")({
+  beforeLoad: async () => {
+    const session = await getSession();
+    if (session) throw redirect({ to: "/chat" });
+  },
   component: SigninPage,
 });
 
@@ -38,7 +42,6 @@ function SigninPage() {
       });
       if (result.error) {
         setError(result.error.message || result.error.statusText || "Sign in failed");
-        toast.error(result.error.message || "Sign in failed");
         return;
       }
       const status = await getOnboardingStatus();
@@ -148,13 +151,7 @@ function SigninPage() {
                       {isSubmitting ? "Signing in..." : "Sign In"}
                     </Button>
                     <p className="text-center text-sm text-2">
-                      Don&apos;t have an account?{" "}
-                      <Link
-                        to="/setup"
-                        className="text-brand hover:text-brand-strong underline underline-offset-4"
-                      >
-                        Sign up
-                      </Link>
+                      This install is single-user. Use the owner account created during setup.
                     </p>
                   </Field>
                 )}

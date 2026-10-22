@@ -122,8 +122,9 @@ export function ProviderDialog({
             Cancel
           </Button>
           <Button
-            disabled={pending}
+            disabled={pending || !name.trim() || !baseUrl.trim()}
             onClick={() => {
+              if (!name.trim() || !baseUrl.trim()) return;
               let defaultHeaders: Record<string, string> | undefined;
               if (headersText.trim()) {
                 try {

@@ -459,7 +459,7 @@ function CharacterCard({
             />
           ) : (
             <div className="flex size-full items-center justify-center bg-raised">
-              <span className="font-heading text-4xl text-3">{character.name.charAt(0)}</span>
+              <span className="font-heading text-4xl text-2">{character.name.charAt(0)}</span>
             </div>
           )}
         </div>

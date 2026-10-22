@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Logo } from "@/components/common/Logo";
+import { openNewSheet } from "@/components/common/NewSheet";
 import { authClient } from "@/lib/auth-client";
 
 export default function Header() {
@@ -65,6 +66,16 @@ export default function Header() {
         >
           {isPending ? null : session?.user ? (
             <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => window.dispatchEvent(new Event("charon:command-menu"))}
+                aria-label="Search"
+                className="size-10 md:hidden"
+              >
+                <Search className="size-4" />
+              </Button>
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new Event("charon:command-menu"))}
@@ -75,25 +86,10 @@ export default function Header() {
                 <span>Search</span>
                 <Kbd>Ctrl K</Kbd>
               </button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-1.5">
-                    <Plus className="size-4" data-icon="inline-start" />
-                    New
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem asChild>
-                    <Link to="/characters">New chat</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/characters/new">Import character</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/lorebooks/new">New lorebook</Link>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button variant="ghost" size="sm" className="h-10 gap-1.5" onClick={openNewSheet}>
+                <Plus className="size-4" data-icon="inline-start" aria-hidden="true" />
+                New
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 rounded-full pl-0.5 text-sm outline-none hover:bg-muted/50 rounded-lg px-1.5 py-1 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">

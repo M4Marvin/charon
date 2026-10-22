@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { MessageCircle, Users, BookOpen, Plus } from "lucide-react";
+import { openNewSheet } from "@/components/common/NewSheet";
 
 export function MobileTabBar() {
   const base =
@@ -20,11 +21,11 @@ export function MobileTabBar() {
           <Users className="size-5" />
           Characters
         </Link>
-        <Link to="/characters" className={base} aria-label="Choose a character">
+        <button type="button" onClick={openNewSheet} className={base} aria-label="Create">
           <div className="flex size-10 items-center justify-center rounded-full bg-brand text-primary-foreground shadow-lg">
-            <Plus className="size-5" />
+            <Plus className="size-5" aria-hidden="true" />
           </div>
-        </Link>
+        </button>
         <Link to="/lorebooks" className={base} activeProps={{ className: `${base} ${active}` }}>
           <BookOpen className="size-5" />
           Lorebooks

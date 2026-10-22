@@ -50,7 +50,7 @@ export function MoreByCreator({ creator, currentId }: { creator: string; current
                     avatarUrl ? " hidden" : ""
                   }`}
                 >
-                  <span className="font-heading text-2xl text-3">{item.name.charAt(0)}</span>
+                  <span className="font-heading text-2xl text-2">{item.name.charAt(0)}</span>
                 </div>
               </div>
               <div className="p-2">

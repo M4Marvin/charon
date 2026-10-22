@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { openNewSheet } from "@/components/common/NewSheet";
 import { Plus, Search, MessageCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -41,10 +41,9 @@ export function ChatListPage() {
       <PageHeader
         title="Chats"
         actions={
-          <Button asChild size="sm" className="gap-1.5">
-            <Link to="/characters">
-              <Plus className="size-4" data-icon="inline-start" /> Choose a character
-            </Link>
+          <Button size="sm" className="h-10 gap-1.5" onClick={openNewSheet}>
+            <Plus className="size-4" data-icon="inline-start" aria-hidden="true" /> Choose a
+            character
           </Button>
         }
       />

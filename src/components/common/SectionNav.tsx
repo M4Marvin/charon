@@ -56,7 +56,7 @@ export function SectionNav({ sections }: SectionNavProps) {
             }`}
           >
             {s.label}
-            {s.empty ? <span className="text-3 ml-1 text-xs">· empty</span> : null}
+            {s.empty ? <span className="text-2 ml-1 text-xs">· empty</span> : null}
           </button>
         ))}
       </nav>
@@ -74,7 +74,7 @@ export function SectionNav({ sections }: SectionNavProps) {
             }`}
           >
             {s.label}
-            {s.empty ? <span className="text-3"> · empty</span> : null}
+            {s.empty ? <span className="text-2"> · empty</span> : null}
           </button>
         ))}
       </nav>

@@ -65,7 +65,7 @@ describe("ChatListPage", () => {
 
     renderPage();
 
-    expect(screen.getByRole("link", { name: /Choose a character/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Choose a character/ })).toBeTruthy();
     expect(screen.getByRole("status").textContent).toBe("Loading chats…");
   });
 
@@ -103,7 +103,7 @@ describe("ChatListPage", () => {
     renderPage();
 
     expect(screen.getByText("load failed")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Choose a character/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Choose a character/ })).toBeTruthy();
   });
 
   it("shows the empty state when there are no chats", () => {

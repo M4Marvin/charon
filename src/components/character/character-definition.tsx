@@ -200,7 +200,7 @@ function CopyButton({ text }: { text: string }) {
       aria-label={copied ? "Copied" : "Copy to clipboard"}
     >
       {copied ? (
-        <span className="text-success text-[10px] font-medium">✓</span>
+        <span className="text-success text-[11px] font-medium">✓</span>
       ) : (
         <Copy className="size-3.5" />
       )}

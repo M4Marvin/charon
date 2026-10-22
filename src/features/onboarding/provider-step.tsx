@@ -185,7 +185,7 @@ export function ProviderStep({ onCreated }: { onCreated: () => void }) {
           }
           autoComplete="off"
         />
-        <p className="text-3 text-xs">
+        <p className="text-2 text-xs">
           Stored encrypted on this machine. It is only sent to {name || "this provider"}.
         </p>
       </div>
@@ -266,7 +266,7 @@ export function ProviderStep({ onCreated }: { onCreated: () => void }) {
           )}
         </div>
         {model ? (
-          <p className="text-3 text-xs">
+          <p className="text-2 text-xs">
             Selected: <span className="text-2">{model}</span>
           </p>
         ) : null}
@@ -300,7 +300,7 @@ export function ProviderStep({ onCreated }: { onCreated: () => void }) {
               placeholder="My provider"
             />
           </div>
-          <p className="text-3 text-xs">
+          <p className="text-2 text-xs">
             Anthropic does not expose an OpenAI-compatible endpoint. Use a proxy and enter it here.
           </p>
         </div>

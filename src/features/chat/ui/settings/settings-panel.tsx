@@ -176,7 +176,7 @@ export function SettingsPanel({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-2">
                   Chat settings
                 </p>
                 <SheetTitle className="truncate font-heading text-[21px] leading-6 font-semibold text-1">

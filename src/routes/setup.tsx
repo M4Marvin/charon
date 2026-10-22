@@ -3,7 +3,6 @@ import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-ro
 import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 import { Eye, EyeOff, Check } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -55,7 +54,6 @@ function SetupPage() {
       });
       if (result.error) {
         setError(result.error.message || "Couldn't create your account");
-        toast.error(result.error.message || "Couldn't create your account");
         return;
       }
       const status = await getOnboardingStatus();

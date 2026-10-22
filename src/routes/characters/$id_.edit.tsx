@@ -387,7 +387,7 @@ function CharacterEditPage() {
                     <div className="space-y-2">
                       {field.state.value.map((_: any, idx: number) => (
                         <div key={idx} className="flex items-start gap-2">
-                          <span className="text-3 text-xs font-mono mt-3">#{idx + 1}</span>
+                          <span className="text-2 text-xs font-mono mt-3">#{idx + 1}</span>
                           <form.Field
                             name={`alternate_greetings[${idx}]`}
                             children={(sub: any) => (

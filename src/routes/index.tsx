@@ -828,7 +828,7 @@ function LandingFooter() {
           external
         />
       </div>
-      <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-5 text-xs text-3 sm:px-6">
+      <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-5 text-xs text-2 sm:px-6">
         <span>Runs on your machine · No telemetry · Built by Marv</span>
         <span>Charon</span>
       </div>

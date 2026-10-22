@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import {
   HeadContent,
+  Link,
   Scripts,
   createRootRouteWithContext,
   redirect,
@@ -17,8 +19,10 @@ import Header from "@/components/Header";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { TriangleAlert, Compass } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { MobileTabBar } from "@/components/common/MobileTabBar";
 import { CommandMenu } from "@/components/common/CommandMenu";
+import { NewSheet } from "@/components/common/NewSheet";
 import { PageTransition, RouteProgress } from "@/components/common/PageTransition";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
@@ -36,20 +40,22 @@ interface MyRouterContext {
   user?: User;
 }
 
-function RootErrorComponent({ error }: ErrorComponentProps) {
+function RootErrorComponent(_props: ErrorComponentProps) {
   return (
     <div className="flex h-dvh items-center justify-center bg-base">
       <EmptyState
         icon={TriangleAlert}
         title="Something went wrong"
-        description={error instanceof Error ? error.message : String(error)}
+        description="The page couldn’t be rendered. Reloading usually fixes it."
       >
-        <button
-          onClick={() => window.location.reload()}
-          className="text-sm text-brand hover:underline cursor-pointer"
-        >
-          Reload page
-        </button>
+        <div className="flex flex-col items-center gap-2">
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            Reload page
+          </Button>
+          <Button asChild variant="ghost">
+            <Link to="/chat">Back to chats</Link>
+          </Button>
+        </div>
       </EmptyState>
     </div>
   );
@@ -57,12 +63,16 @@ function RootErrorComponent({ error }: ErrorComponentProps) {
 
 function RootNotFoundComponent() {
   return (
-    <div className="flex h-dvh items-center justify-center bg-base">
+    <div className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center bg-base pb-20 md:pb-0">
       <EmptyState
         icon={Compass}
         title="Page not found"
         description="The page you're looking for doesn't exist."
-      />
+      >
+        <Button asChild variant="outline">
+          <Link to="/chat">Back to chats</Link>
+        </Button>
+      </EmptyState>
     </div>
   );
 }
@@ -189,11 +199,43 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   shellComponent: RootDocument,
 });
 
+const DOCUMENT_TITLES: Array<[RegExp, string]> = [
+  [/^\/$/, "Charon — a private home for your AI characters"],
+  [/^\/signin$/, "Sign in · Charon"],
+  [/^\/setup$/, "Create owner account · Charon"],
+  [/^\/onboarding$/, "Set up Charon · Charon"],
+  [/^\/chat$/, "Chats · Charon"],
+  [/^\/chat\/[^/]+$/, "Chat · Charon"],
+  [/^\/characters$/, "Characters · Charon"],
+  [/^\/characters\/new$/, "Import character · Charon"],
+  [/^\/characters\/[^/]+\/edit$/, "Edit character · Charon"],
+  [/^\/characters\/[^/]+$/, "Character · Charon"],
+  [/^\/lorebooks$/, "Lorebooks · Charon"],
+  [/^\/lorebooks\/new$/, "New lorebook · Charon"],
+  [/^\/lorebooks\/[^/]+$/, "Lorebook · Charon"],
+  [/^\/settings\/preferences$/, "Preferences · Settings · Charon"],
+  [/^\/settings\/profile$/, "Profile · Settings · Charon"],
+  [/^\/settings\/defaults$/, "AI defaults · Settings · Charon"],
+  [/^\/settings\/providers$/, "Providers · Settings · Charon"],
+  [/^\/settings\/presets$/, "Presets · Settings · Charon"],
+];
+
+function DocumentTitle() {
+  const pathname = useLocation({ select: (location) => location.pathname });
+  useEffect(() => {
+    const match = DOCUMENT_TITLES.find(([pattern]) => pattern.test(pathname));
+    document.title = match?.[1] ?? "Page not found · Charon";
+  }, [pathname]);
+  return null;
+}
+
 function RootDocument({ children }: { children: React.ReactNode }) {
   const { queryClient, user } = Route.useRouteContext();
   const location = useLocation();
   const hideGlobalHeader =
     location.pathname === "/" ||
+    location.pathname === "/signin" ||
+    location.pathname === "/setup" ||
     location.pathname.startsWith("/chat/") ||
     /^\/c\/(?!new$)[^/]+$/.test(location.pathname) ||
     location.pathname === "/onboarding";
@@ -228,8 +270,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                 </RichTextSettingsProvider>
               </div>
               <RouteProgress />
+              <DocumentTitle />
               {isAuthed && !hideGlobalHeader && <MobileTabBar />}
               {isAuthed && <CommandMenu />}
+              {isAuthed && <NewSheet />}
               <Toaster />
             </ErrorBoundary>
             <TanStackDevtools

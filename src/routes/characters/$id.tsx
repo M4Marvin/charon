@@ -213,7 +213,7 @@ export function CharacterDetailPage() {
               {data.character_book ? (
                 <EmbeddedLorebookPanel book={data.character_book} />
               ) : (
-                <p className="text-3 text-sm italic">No embedded lorebook.</p>
+                <p className="text-2 text-sm italic">No embedded lorebook.</p>
               )}
             </section>
 

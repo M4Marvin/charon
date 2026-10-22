@@ -1,11 +1,13 @@
 import { useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
-import { Spinner } from "@/components/ui/spinner";
+import { SkeletonRows } from "@/components/common/Skeletons";
+import { EmptyState } from "@/components/common/EmptyState";
 import { useAiProviders } from "@/hooks/useAiProviders";
 import {
   usePresets,
@@ -51,18 +53,18 @@ export function PresetManager() {
   const selectedPresetId = userSettings?.defaultPresetId ?? "";
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Spinner label="Loading presets" />
-      </div>
-    );
+    return <SkeletonRows rows={3} />;
   }
 
   if (error || settingsError) {
     const failure = error ?? settingsError;
     return (
       <ErrorBanner
-        message={failure instanceof Error ? failure.message : "Failed to load presets"}
+        message={
+          failure instanceof Error
+            ? `We couldn’t load your presets. ${failure.message}`
+            : "We couldn’t load your presets."
+        }
         onRetry={() => {
           void refetchPresets();
           void refetchSettings();
@@ -74,9 +76,22 @@ export function PresetManager() {
   const deletingPreset = presets.find((p) => p.id === delPresetId) ?? null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      <div className="flex items-center justify-end">
+        <Button size="sm" className="h-10 px-3" onClick={() => setEditing("new")}>
+          + Add preset
+        </Button>
+      </div>
       {presets.length === 0 ? (
-        <p className="text-2 text-sm py-4">No presets configured yet.</p>
+        <EmptyState
+          icon={SlidersHorizontal}
+          title="No presets yet"
+          description="Save generation parameters you reuse across chats."
+        >
+          <Button className="h-10" onClick={() => setEditing("new")}>
+            Add preset
+          </Button>
+        </EmptyState>
       ) : (
         <div className="space-y-2">
           {presets.map((p) => {
@@ -98,7 +113,7 @@ export function PresetManager() {
                         </Badge>
                       ) : null}
                     </div>
-                    <p className="text-3 text-xs font-mono">{paramSummary(p)}</p>
+                    <p className="text-2 text-xs font-mono">{paramSummary(p)}</p>
                   </div>
                   <RowActionsMenu
                     label={`Actions for ${p.name}`}
@@ -154,12 +169,9 @@ export function PresetManager() {
         </div>
       )}
 
-      <Button variant="outline" size="sm" onClick={() => setEditing("new")}>
-        + Add preset
-      </Button>
-
       <PresetDialog
         state={editing}
+        pending={createPreset.isPending || updatePreset.isPending}
         providers={providers}
         defaultModel={userSettings?.defaultSelectedModel ?? ""}
         onClose={() => setEditing(null)}

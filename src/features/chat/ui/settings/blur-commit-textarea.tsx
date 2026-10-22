@@ -94,28 +94,64 @@ export function BlurCommitTextarea({
         <FieldLabel htmlFor={id} className="text-[13px] font-medium text-1">
           {label}
         </FieldLabel>
-        {inheritedValue !== undefined ? (
+        {inheritedValue !== undefined || overflowing ? (
           <div className="flex items-center gap-0.5">
-            <span
-              className={cn(
-                "rounded-full border px-2 py-0.5 text-[11px] leading-4 font-medium",
-                isOverridden
-                  ? "border-brand/25 bg-brand/10 text-brand"
-                  : "border-subtle bg-surface text-2",
-              )}
-            >
-              {isOverridden ? "Custom" : "Using card"}
-            </span>
-            {isOverridden && onUseCard ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                className="h-8 px-2 text-xs text-2 hover:text-1"
-                onClick={onUseCard}
-              >
-                Use card
-              </Button>
+            {inheritedValue !== undefined ? (
+              <>
+                <span
+                  className={cn(
+                    "rounded-full border px-2 py-0.5 text-[11px] leading-4 font-medium",
+                    isOverridden
+                      ? "border-brand/25 bg-brand/10 text-brand"
+                      : "border-subtle bg-surface text-2",
+                  )}
+                >
+                  {isOverridden ? "Custom" : "Using card"}
+                </span>
+                {isOverridden && onUseCard ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    className="h-8 px-2 text-xs text-2 hover:text-1"
+                    onClick={onUseCard}
+                  >
+                    Use card
+                  </Button>
+                ) : null}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      className="h-8 gap-1 px-2 text-xs text-2 hover:text-1"
+                    >
+                      <BookOpen className="size-3" aria-hidden="true" />
+                      Original
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-[min(26rem,calc(100vw-2.5rem))] p-0">
+                    <div className="flex items-center justify-between gap-3 border-b border-subtle px-4 py-2.5">
+                      <p className="text-xs font-medium text-1">From the character card</p>
+                      {isOverridden && onUseCard ? (
+                        <button
+                          type="button"
+                          className="focus-ring rounded px-1 text-xs font-medium text-brand underline underline-offset-2"
+                          onClick={onUseCard}
+                        >
+                          Use card
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className="max-h-64 overflow-y-auto px-4 py-3 scrollbar-thin">
+                      <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-2">
+                        {inherited || "The character card has no value for this field."}
+                      </p>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </>
             ) : null}
             {overflowing ? (
               <Button
@@ -129,38 +165,6 @@ export function BlurCommitTextarea({
                 Expand
               </Button>
             ) : null}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  className="h-8 gap-1 px-2 text-xs text-2 hover:text-1"
-                >
-                  <BookOpen className="size-3" aria-hidden="true" />
-                  Original
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-[min(26rem,calc(100vw-2.5rem))] p-0">
-                <div className="flex items-center justify-between gap-3 border-b border-subtle px-4 py-2.5">
-                  <p className="text-xs font-medium text-1">From the character card</p>
-                  {isOverridden && onUseCard ? (
-                    <button
-                      type="button"
-                      className="rounded px-1 text-xs font-medium text-brand underline underline-offset-2 focus-ring"
-                      onClick={onUseCard}
-                    >
-                      Use card
-                    </button>
-                  ) : null}
-                </div>
-                <div className="max-h-64 overflow-y-auto px-4 py-3 scrollbar-thin">
-                  <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-2">
-                    {inherited || "The character card has no value for this field."}
-                  </p>
-                </div>
-              </PopoverContent>
-            </Popover>
           </div>
         ) : null}
       </div>

@@ -10,6 +10,7 @@ import { getChatConfigFn } from "@/features/chat/config/fns";
 import { chatKeys } from "@/hooks/useChats";
 import { chatConfigKeys } from "@/hooks/useChatConfig";
 import { withImageVersion } from "@/lib/image-optimization";
+import { plainExcerpt } from "@/lib/plain-text";
 
 interface ChatRowProps {
   chat: ChatListItem;
@@ -101,7 +102,11 @@ export function ChatRow({ chat, now, onRename, onDelete }: ChatRowProps) {
             className="mt-1 min-h-10 text-sm leading-5 text-2 line-clamp-2"
             title={chat.lastMessagePreview ?? undefined}
           >
-            {chat.lastMessagePreview ?? <span className="italic">No messages yet</span>}
+            {chat.lastMessagePreview ? (
+              plainExcerpt(chat.lastMessagePreview, { max: 180 })
+            ) : (
+              <span className="italic">No messages yet</span>
+            )}
           </p>
 
           <div className="mt-3 flex items-center justify-between gap-3">
