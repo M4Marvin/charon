@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { ArrowLeft, MessageCircle } from "lucide-react";
+import { UserRoundX } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import { CharacterDefinition } from "@/components/character/character-definition
 import { MoreByCreator } from "@/components/character/more-by-creator";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { EmptyState } from "@/components/common/EmptyState";
 import { RowActionsMenu } from "@/components/common/RowActionsMenu";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { RelativeTime } from "@/components/common/RelativeTime";
@@ -39,7 +40,7 @@ export const Route = createFileRoute("/characters/$id")({
 export function CharacterDetailPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const { data: character, isLoading, error } = useCharacter(id);
+  const { data: character, isLoading, error, refetch } = useCharacter(id);
   const deleteMutation = useDeleteCharacter();
   const createChatMutation = useCreateChat();
   const { data: characterChats } = useChatsByCharacter(id);
@@ -60,7 +61,10 @@ export function CharacterDetailPage() {
     return (
       <main className="mx-auto max-w-[1200px] px-4 py-8">
         <PageHeader backTo="/characters" />
-        <SkeletonForm />
+        <div className="grid gap-8 lg:grid-cols-[minmax(280px,340px)_1fr]">
+          <div className="aspect-[3/4] w-full animate-pulse rounded-xl bg-raised motion-reduce:animate-none" />
+          <SkeletonForm />
+        </div>
       </main>
     );
   }
@@ -69,7 +73,14 @@ export function CharacterDetailPage() {
     return (
       <main className="mx-auto max-w-[1200px] px-4 py-8">
         <PageHeader title="Character" backTo="/characters" />
-        <ErrorBanner message={(error as Error).message ?? "Failed to load character"} />
+        <ErrorBanner
+          message={
+            error instanceof Error
+              ? `We couldn’t load this character. ${error.message}`
+              : "We couldn’t load this character."
+          }
+          onRetry={() => void refetch()}
+        />
       </main>
     );
   }
@@ -78,7 +89,15 @@ export function CharacterDetailPage() {
     return (
       <main className="mx-auto max-w-[1200px] px-4 py-8">
         <PageHeader title="Character" backTo="/characters" />
-        <ErrorBanner message="Character not found." />
+        <EmptyState
+          icon={UserRoundX}
+          title="Character not found"
+          description="It may have been deleted, or the link may be wrong."
+        >
+          <Button asChild variant="outline">
+            <a href="/characters">Back to characters</a>
+          </Button>
+        </EmptyState>
       </main>
     );
   }
@@ -90,14 +109,13 @@ export function CharacterDetailPage() {
     : null;
 
   return (
-    <main className="relative isolate mx-auto flex w-full max-w-[1200px] flex-col px-4 py-6 lg:h-[calc(100dvh-3.5rem)] lg:overflow-hidden">
+    <main className="relative isolate mx-auto w-full max-w-[1200px] px-4 py-6 pb-24 md:pb-8">
       {avatarUrl ? (
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[360px] overflow-hidden"
         >
           <OptimizedImage
-            key={avatarUrl}
             src={avatarUrl}
             alt=""
             preset="background"
@@ -105,17 +123,38 @@ export function CharacterDetailPage() {
             quality={60}
             className="h-full w-full scale-110 object-cover opacity-20 blur-3xl"
             onError={(e) => {
-              e.currentTarget.style.display = "none";
-              e.currentTarget.nextElementSibling?.classList.remove("hidden");
+              e.currentTarget.style.visibility = "hidden";
             }}
           />
-          <div className="hidden h-full w-full bg-raised" />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background" />
         </div>
       ) : null}
 
-      <div className="lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(280px,340px)_1fr] lg:items-stretch lg:gap-8">
-        <div className="lg:min-h-0 lg:overflow-hidden">
+      <PageHeader
+        title={character.name}
+        backTo="/characters"
+        subtitle={creator ? `@${creator}` : undefined}
+        actions={
+          <RowActionsMenu
+            label="Character actions"
+            text="Actions"
+            items={[
+              ...(characterChats && characterChats.length > 0
+                ? [{ label: "New chat", onSelect: () => void handleStartChat() }]
+                : []),
+              {
+                label: "Edit",
+                onSelect: () => void navigate({ to: "/characters/$id/edit", params: { id } }),
+              },
+              { label: "Rename", onSelect: () => setRenameOpen(true) },
+              { label: "Delete", destructive: true, onSelect: () => setDelOpen(true) },
+            ]}
+          />
+        }
+      />
+
+      <div className="lg:grid lg:grid-cols-[minmax(280px,340px)_1fr] lg:items-start lg:gap-8">
+        <div className="lg:sticky lg:top-20">
           <CharacterPoster
             character={character}
             chats={characterChats ?? []}
@@ -124,46 +163,19 @@ export function CharacterDetailPage() {
           />
         </div>
 
-        <div className="min-w-0 lg:min-h-0 lg:overflow-y-auto lg:scrollbar-thin lg:scroll-fade-b lg:pr-1">
-          <Button asChild variant="ghost" size="icon" className="-ml-2" aria-label="Back">
-            <Link to="/characters">
-              <ArrowLeft className="size-4" />
-            </Link>
-          </Button>
-
+        <div className="min-w-0">
           <div className="space-y-10">
             <header className="space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 space-y-2">
-                  <h1 className="text-display">{character.name}</h1>
-                  <p className="text-2 text-sm">
-                    {creator ? <>@{creator} · </> : null}
-                    Updated <RelativeTime date={character.updatedAt} /> · Created{" "}
-                    {character.createdAt.toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </p>
-                  {character.tagline ? (
-                    <p className="text-title text-2">{character.tagline}</p>
-                  ) : null}
-                </div>
-                <div className="shrink-0">
-                  <RowActionsMenu
-                    label="Character actions"
-                    items={[
-                      {
-                        label: "Edit",
-                        onSelect: () =>
-                          void navigate({ to: "/characters/$id/edit", params: { id } }),
-                      },
-                      { label: "Rename", onSelect: () => setRenameOpen(true) },
-                      { label: "Delete", destructive: true, onSelect: () => setDelOpen(true) },
-                    ]}
-                  />
-                </div>
-              </div>
+              <p className="text-2 text-sm">
+                {creator ? <>@{creator} · </> : null}
+                Updated <RelativeTime date={character.updatedAt} /> · Created{" "}
+                {character.createdAt.toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </p>
+              {character.tagline ? <p className="text-title text-2">{character.tagline}</p> : null}
 
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary" className="text-xs font-normal">
@@ -213,36 +225,6 @@ export function CharacterDetailPage() {
             {creator ? <MoreByCreator creator={creator} currentId={character.id} /> : null}
           </div>
         </div>
-      </div>
-
-      {/* Mobile sticky */}
-      <div className="fixed bottom-16 left-0 right-0 z-30 border-t bg-popover/95 px-4 py-3 backdrop-blur-sm md:hidden">
-        {characterChats && characterChats.length > 0 ? (
-          <div className="flex gap-2">
-            <Button asChild className="flex-1">
-              <Link to="/chat/$id" params={{ id: characterChats[0].id }}>
-                <MessageCircle className="size-4" data-icon="inline-start" />
-                Continue
-              </Link>
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={handleStartChat}
-              disabled={createChatMutation.isPending}
-            >
-              New
-            </Button>
-          </div>
-        ) : (
-          <Button
-            onClick={handleStartChat}
-            disabled={createChatMutation.isPending}
-            className="w-full"
-          >
-            <MessageCircle className="size-4" data-icon="inline-start" />
-            Start Chat
-          </Button>
-        )}
       </div>
 
       <RenameDialog character={character} open={renameOpen} onClose={() => setRenameOpen(false)} />

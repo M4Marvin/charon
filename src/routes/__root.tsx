@@ -19,6 +19,7 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { TriangleAlert, Compass } from "lucide-react";
 import { MobileTabBar } from "@/components/common/MobileTabBar";
 import { CommandMenu } from "@/components/common/CommandMenu";
+import { PageTransition, RouteProgress } from "@/components/common/PageTransition";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import appCss from "@/styles.css?url";
@@ -222,10 +223,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               >
                 <RichTextSettingsProvider>
                   <TanstackQueryProvider queryClient={queryClient}>
-                    {children}
+                    <PageTransition>{children}</PageTransition>
                   </TanstackQueryProvider>
                 </RichTextSettingsProvider>
               </div>
+              <RouteProgress />
               {isAuthed && !hideGlobalHeader && <MobileTabBar />}
               {isAuthed && <CommandMenu />}
               <Toaster />

@@ -46,10 +46,10 @@ describe("CharacterPoster", () => {
 
     const initial = screen.getByText("Z");
     expect(initial.parentElement?.classList.contains("hidden")).toBe(false);
-    expect(screen.getByText("Chat with Zephyr")).toBeTruthy();
+    expect(screen.getByText("Start chat")).toBeTruthy();
   });
 
-  it("reveals the hidden fallback sibling when the portrait image errors", () => {
+  it("swaps to the initial fallback when the portrait image errors", () => {
     render(
       <CharacterPoster
         character={makeCharacter("uploads/avatars/abc.png")}
@@ -60,16 +60,12 @@ describe("CharacterPoster", () => {
     );
 
     const img = screen.getByAltText("Zephyr") as HTMLImageElement;
-    const fallback = img.nextElementSibling as HTMLElement | null;
-
     expect(img.getAttribute("srcset")).toContain("v=abc.png");
     expect(img.getAttribute("srcset")).toContain("w=320&q=80");
-    expect(fallback).not.toBeNull();
-    expect(fallback?.classList.contains("hidden")).toBe(true);
-    expect(fallback?.textContent).toBe("Z");
 
     fireEvent.error(img);
 
-    expect(fallback?.classList.contains("hidden")).toBe(false);
+    expect(screen.queryByAltText("Zephyr")).toBeNull();
+    expect(screen.getByText("Z")).toBeTruthy();
   });
 });

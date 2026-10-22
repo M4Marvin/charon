@@ -216,7 +216,7 @@ export function MessageList({
           onScroll={handleScroll}
         >
           <MessageScrollerContent
-            className="mx-auto max-w-3xl flex-col justify-end gap-3 pb-6"
+            className="mx-auto max-w-3xl flex-col justify-end gap-3 pb-6 max-md:pb-20 max-md:pr-12"
             aria-relevant="additions text"
           >
             {isEmpty ? (

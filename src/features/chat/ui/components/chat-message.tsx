@@ -1,5 +1,7 @@
 import { memo, useState, useLayoutEffect, useRef, useCallback } from "react";
 import {
+  Ellipsis,
+  Sparkles,
   ChevronLeft,
   ChevronRight,
   RotateCw,
@@ -9,8 +11,14 @@ import {
   Copy,
   ListChecks,
 } from "lucide-react";
-import { MessageRewriteButton } from "./message-rewrite-button";
+import { MessageRewriteButton, RewriteDialog } from "./message-rewrite-button";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -80,6 +88,7 @@ export const ChatMessage = memo(function ChatMessage({
   const [editContent, setEditContent] = useState(message.content);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [rewriteOpen, setRewriteOpen] = useState(false);
 
   const editRef = useRef<HTMLTextAreaElement>(null);
 
@@ -180,8 +189,9 @@ export const ChatMessage = memo(function ChatMessage({
                 <span
                   className={cn(
                     "ml-auto flex shrink-0 items-center gap-0.5 transition-opacity",
-                    "group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100",
-                    selected ? "opacity-100" : "opacity-40",
+                    "group-hover:opacity-100 group-focus-within:opacity-100",
+                    "max-md:opacity-100",
+                    selected ? "opacity-100" : "opacity-40 md:opacity-40",
                     "motion-reduce:transition-none",
                     disabled && "pointer-events-none",
                   )}
@@ -189,7 +199,7 @@ export const ChatMessage = memo(function ChatMessage({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-9 text-2 hover:text-1"
+                    className="size-10 text-2 hover:text-1"
                     onClick={() => {
                       void navigator.clipboard.writeText(displayContent).then(() => {
                         setCopied(true);
@@ -198,47 +208,98 @@ export const ChatMessage = memo(function ChatMessage({
                     }}
                     aria-label={copied ? "Copied" : "Copy message"}
                   >
-                    {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                    {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
                   </Button>
-                  {onToggleSelect ? (
+
+                  {/* Secondary actions collapse into one menu on phones so the
+                      speaker name keeps its width. */}
+                  <span className="hidden items-center gap-0.5 md:flex">
+                    {onToggleSelect ? (
+                      <Button
+                        variant={selected ? "secondary" : "ghost"}
+                        size="icon"
+                        className={cn(
+                          "size-9",
+                          selected ? "text-brand" : "text-2 hover:text-brand",
+                        )}
+                        onClick={() => onToggleSelect(message.localId)}
+                        aria-pressed={selected}
+                        aria-label={selected ? "Deselect message" : "Select message for prompt"}
+                      >
+                        <ListChecks className="size-3.5" />
+                      </Button>
+                    ) : null}
+                    <MessageRewriteButton
+                      chatId={chatId}
+                      messageLocalId={message.localId}
+                      disabled={disabled}
+                      onApplied={onProposalApplied}
+                    />
                     <Button
-                      variant={selected ? "secondary" : "ghost"}
+                      variant="ghost"
                       size="icon"
-                      className={cn("size-9", selected ? "text-brand" : "text-2 hover:text-brand")}
-                      onClick={() => onToggleSelect(message.localId)}
-                      aria-pressed={selected}
-                      aria-label={selected ? "Deselect message" : "Select message for prompt"}
+                      className="size-9 text-2 hover:text-1"
+                      onClick={() => {
+                        setEditContent(message.content);
+                        setEditing(true);
+                      }}
+                      aria-label="Edit message"
                     >
-                      <ListChecks className="size-3.5" />
+                      <Pencil className="size-3.5" />
                     </Button>
-                  ) : null}
-                  <MessageRewriteButton
-                    chatId={chatId}
-                    messageLocalId={message.localId}
-                    disabled={disabled}
-                    onApplied={onProposalApplied}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-9 text-2 hover:text-1"
-                    onClick={() => {
-                      setEditContent(message.content);
-                      setEditing(true);
-                    }}
-                    aria-label="Edit message"
-                  >
-                    <Pencil className="size-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-9 text-2 hover:text-danger"
-                    onClick={() => setDeleteOpen(true)}
-                    aria-label="Delete message"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-9 text-2 hover:text-danger"
+                      onClick={() => setDeleteOpen(true)}
+                      aria-label="Delete message"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </span>
+
+                  <span className="md:hidden">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-10 text-2 hover:text-1"
+                          aria-label="Message actions"
+                        >
+                          <Ellipsis className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {onToggleSelect ? (
+                          <DropdownMenuItem onClick={() => onToggleSelect(message.localId)}>
+                            <ListChecks className="size-4" />
+                            {selected ? "Deselect message" : "Select for prompt"}
+                          </DropdownMenuItem>
+                        ) : null}
+                        <DropdownMenuItem disabled={disabled} onClick={() => setRewriteOpen(true)}>
+                          <Sparkles className="size-4" />
+                          Rewrite with AI
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEditContent(message.content);
+                            setEditing(true);
+                          }}
+                        >
+                          <Pencil className="size-4" />
+                          Edit message
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-danger focus:text-danger"
+                          onClick={() => setDeleteOpen(true)}
+                        >
+                          <Trash2 className="size-4" />
+                          Delete message
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </span>
                 </span>
               )}
             </div>
@@ -356,6 +417,15 @@ export const ChatMessage = memo(function ChatMessage({
           </div>
         ) : null}
       </div>
+
+      <RewriteDialog
+        open={rewriteOpen}
+        onOpenChange={setRewriteOpen}
+        chatId={chatId}
+        messageLocalId={message.localId}
+        disabled={disabled}
+        onApplied={onProposalApplied}
+      />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>

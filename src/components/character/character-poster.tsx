@@ -10,6 +10,7 @@ import type { CharacterDetail } from "@/db/repositories/characters";
 import type { ChatWithCharacter } from "@/db/repositories/chats.js";
 import { withImageVersion } from "@/lib/image-optimization";
 import { tokenBreakdown } from "@/routes/characters/detail-helpers";
+import { plainExcerpt } from "@/lib/plain-text";
 
 interface CharacterPosterProps {
   character: CharacterDetail;
@@ -23,6 +24,9 @@ export function CharacterPoster({ character, chats, onStartChat, starting }: Cha
   const avatarUrl = character.imagePath
     ? withImageVersion(`/api/characters/${character.id}/avatar`, character.imagePath)
     : null;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const showImage = avatarUrl !== null && failedSrc !== avatarUrl;
+  const hasChats = chats.length > 0;
 
   return (
     <div className="overflow-hidden rounded-xl border border-subtle bg-surface lg:flex lg:h-full lg:min-h-0 lg:flex-col">
@@ -33,29 +37,20 @@ export function CharacterPoster({ character, chats, onStartChat, starting }: Cha
         className="focus-ring relative block w-full lg:min-h-0 lg:flex-1 lg:overflow-hidden"
       >
         <div className="relative lg:h-full">
-          {avatarUrl ? (
+          {showImage && avatarUrl ? (
             <OptimizedImage
-              key={avatarUrl}
               src={avatarUrl}
               alt={character.name}
               preset="portrait"
               priority
-              className="aspect-[3/4] w-full object-cover lg:h-full lg:object-cover"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-                e.currentTarget.nextElementSibling?.classList.remove("hidden");
-              }}
+              className="aspect-[3/4] w-full object-cover lg:h-full"
+              onError={() => setFailedSrc(avatarUrl)}
             />
-          ) : null}
-          <div
-            className={
-              avatarUrl
-                ? "hidden flex aspect-[3/4] w-full items-center justify-center bg-raised lg:h-full"
-                : "flex aspect-[3/4] w-full items-center justify-center bg-raised lg:h-full"
-            }
-          >
-            <span className="font-heading text-6xl text-3">{character.name.charAt(0)}</span>
-          </div>
+          ) : (
+            <div className="flex aspect-[3/4] w-full items-center justify-center bg-raised lg:h-full">
+              <span className="font-heading text-6xl text-3">{character.name.charAt(0)}</span>
+            </div>
+          )}
 
           {character.chatCount > 0 ? (
             <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-(--bg-base)/70 px-2 py-0.5 text-xs text-1 backdrop-blur">
@@ -74,18 +69,19 @@ export function CharacterPoster({ character, chats, onStartChat, starting }: Cha
       </button>
 
       <div className="space-y-4 p-4 lg:shrink-0">
-        <Button className="w-full" onClick={onStartChat} disabled={starting}>
-          <MessageCircle className="size-4" data-icon="inline-start" />
-          Chat with {character.name}
-        </Button>
-
-        {chats[0] ? (
-          <Button asChild variant="secondary" className="w-full">
+        {hasChats && chats[0] ? (
+          <Button asChild className="h-11 w-full">
             <Link to="/chat/$id" params={{ id: chats[0].id }}>
+              <MessageCircle className="size-4" data-icon="inline-start" />
               Continue chat
             </Link>
           </Button>
-        ) : null}
+        ) : (
+          <Button className="h-11 w-full" onClick={onStartChat} disabled={starting}>
+            <MessageCircle className="size-4" data-icon="inline-start" />
+            Start chat
+          </Button>
+        )}
 
         <div className="flex flex-wrap gap-2">
           <span className="inline-flex items-center rounded-full border border-subtle bg-raised px-2.5 py-1">
@@ -125,7 +121,9 @@ export function CharacterPoster({ character, chats, onStartChat, starting }: Cha
                   <div className="min-w-0 flex-1">
                     <p className="text-headline truncate">{chat.title}</p>
                     {chat.lastMessagePreview ? (
-                      <p className="text-2 line-clamp-1 text-sm">{chat.lastMessagePreview}</p>
+                      <p className="text-2 line-clamp-1 text-sm">
+                        {plainExcerpt(chat.lastMessagePreview, { max: 120 })}
+                      </p>
                     ) : (
                       <p className="text-2 text-sm italic">No messages yet</p>
                     )}
@@ -166,34 +164,26 @@ function PortraitLightbox({
   avatarUrl: string | null;
   name: string;
 }) {
+  const [failed, setFailed] = useState(false);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl border-0 bg-transparent p-0 shadow-none">
         <DialogTitle className="sr-only">Portrait of {name}</DialogTitle>
-        {avatarUrl ? (
+        {avatarUrl && !failed ? (
           <OptimizedImage
-            key={avatarUrl}
             src={avatarUrl}
             alt={name}
             preset="lightbox"
             intrinsicSize={false}
             priority={open}
-            className="mx-auto max-h-[85vh] w-auto rounded-lg"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-              e.currentTarget.nextElementSibling?.classList.remove("hidden");
-            }}
+            className="mx-auto max-h-[calc(100dvh-2rem)] w-auto max-w-full rounded-lg object-contain"
+            onError={() => setFailed(true)}
           />
-        ) : null}
-        <div
-          className={
-            avatarUrl
-              ? "hidden mx-auto flex aspect-[3/4] w-1/2 max-w-sm items-center justify-center rounded-lg bg-raised"
-              : "mx-auto flex aspect-[3/4] w-1/2 max-w-sm items-center justify-center rounded-lg bg-raised"
-          }
-        >
-          <span className="font-heading text-6xl text-3">{name.charAt(0)}</span>
-        </div>
+        ) : (
+          <div className="mx-auto flex aspect-[3/4] w-1/2 max-w-sm items-center justify-center rounded-lg bg-raised">
+            <span className="font-heading text-6xl text-3">{name.charAt(0)}</span>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

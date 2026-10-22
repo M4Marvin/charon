@@ -134,7 +134,7 @@ describe("CharacterDetailPage", () => {
     render(<CharacterDetailPage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Zephyr" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Chat with Zephyr/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Start chat" })).toBeTruthy();
 
     const tagLink = screen.getByText("test").closest("a");
     expect(tagLink).toBeTruthy();

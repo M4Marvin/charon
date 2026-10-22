@@ -49,14 +49,14 @@ export function ChipInput({
 
   return (
     <div className="space-y-1.5">
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-input bg-input/20 px-2 py-1.5">
         {value.map((chip) => (
           <Badge key={chip} variant="secondary" className="gap-1 pr-1">
             {chip}
             <button
               type="button"
               onClick={() => onChange(value.filter((c) => c !== chip))}
-              className="inline-flex size-6 items-center justify-center rounded-sm hover:bg-muted-foreground/20"
+              className="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted-foreground/20"
               aria-label={`Remove ${chip}`}
             >
               <X className="size-3" />

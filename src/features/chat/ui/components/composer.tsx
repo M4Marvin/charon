@@ -168,12 +168,11 @@ export function Composer({
       ? "Press Enter to stop generating…  (Shift+Enter for a line break)"
       : disabled
         ? "Another generation is running — you can draft, but sending is locked"
-        : characterName
-          ? `Message ${characterName}…`
-          : "Write a message…";
+        : "Message…";
 
   return (
     <div
+      data-character={characterName}
       className="relative z-30 w-full shrink-0 px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] md:pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
@@ -189,7 +188,7 @@ export function Composer({
             placeholder={placeholder}
             aria-label="Message"
             rows={1}
-            className="min-h-10 max-h-[120px] resize-none overflow-y-auto border-0 bg-transparent px-1 py-1.5 text-sm leading-6 text-1 placeholder:text-3 focus-visible:ring-0"
+            className="min-h-10 max-h-[120px] resize-none overflow-y-auto border-0 bg-transparent px-1 py-1.5 text-sm leading-6 text-1 placeholder:text-2 focus-visible:ring-0"
           />
 
           <div className="flex items-center gap-1 pb-0.5 shrink-0">

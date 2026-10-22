@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 const tones = {
   success: "bg-success",
   muted: "bg-[var(--text-3)]",
@@ -7,13 +9,18 @@ const tones = {
 interface StatusDotProps {
   tone: keyof typeof tones;
   label: string;
+  className?: string;
+  labelClassName?: string;
 }
 
-export function StatusDot({ tone, label }: StatusDotProps) {
+export function StatusDot({ tone, label, className, labelClassName }: StatusDotProps) {
   return (
-    <span className="inline-flex items-center gap-2" role="status" aria-label={label}>
-      <span className={`inline-block size-2 rounded-full ${tones[tone]}`} />
-      <span className="text-xs">{label}</span>
+    <span className={cn("inline-flex min-w-0 items-center gap-2", className)}>
+      <span
+        aria-hidden="true"
+        className={`inline-block size-2 shrink-0 rounded-full ${tones[tone]}`}
+      />
+      <span className={cn("truncate text-xs", labelClassName)}>{label}</span>
     </span>
   );
 }

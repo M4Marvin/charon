@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { BookOpen, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,13 +10,14 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { ImportLorebookDialog } from "@/components/lorebook/ImportLorebookDialog";
 import { useLorebooks, useToggleLorebook } from "@/hooks/useLorebooks";
+import { SkeletonRows } from "@/components/common/Skeletons";
 
 export const Route = createFileRoute("/lorebooks/")({
   component: LorebooksPage,
 });
 
 function LorebooksPage() {
-  const { data, isLoading, error } = useLorebooks();
+  const { data, isLoading, error, refetch } = useLorebooks();
   const toggleMutation = useToggleLorebook();
   const [importOpen, setImportOpen] = useState(false);
 
@@ -26,11 +28,7 @@ function LorebooksPage() {
           title="Lorebooks"
           subtitle="Manage lorebooks and their keyword-triggered entries."
         />
-        <div className="space-y-1">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />
-          ))}
-        </div>
+        <SkeletonRows rows={3} />
       </main>
     );
   }
@@ -38,8 +36,18 @@ function LorebooksPage() {
   if (error) {
     return (
       <main className="mx-auto max-w-[1200px] px-4 py-8">
-        <PageHeader title="Lorebooks" />
-        <ErrorBanner message={(error as Error).message ?? "Failed to load lorebooks"} />
+        <PageHeader
+          title="Lorebooks"
+          subtitle="Manage lorebooks and their keyword-triggered entries."
+        />
+        <ErrorBanner
+          message={
+            error instanceof Error
+              ? `We couldn’t load your lorebooks. ${error.message}`
+              : "We couldn’t load your lorebooks."
+          }
+          onRetry={() => void refetch()}
+        />
       </main>
     );
   }
@@ -64,32 +72,44 @@ function LorebooksPage() {
       {data && data.length > 0 ? (
         <div className="space-y-1">
           {data.map((lb) => (
-            <Link
+            <div
               key={lb.id}
-              to="/lorebooks/$id"
-              params={{ id: lb.id }}
-              className="flex items-center gap-4 rounded-xl px-4 py-3 hover:bg-surface transition-colors no-underline group min-h-16"
+              className="group relative flex min-h-16 items-center gap-4 rounded-xl px-4 py-3 transition-colors hover:bg-surface"
             >
+              <Link
+                to="/lorebooks/$id"
+                params={{ id: lb.id }}
+                aria-label={`Open ${lb.name}`}
+                className="absolute inset-0 z-10 rounded-xl"
+              />
               <Switch
                 checked={lb.enabled}
                 disabled={toggleMutation.isPending}
                 onCheckedChange={(checked) =>
-                  toggleMutation.mutate({ lorebookId: lb.id, enabled: checked })
+                  toggleMutation.mutate(
+                    { lorebookId: lb.id, enabled: checked },
+                    {
+                      onError: (err) =>
+                        toast.error(
+                          `Couldn’t update this lorebook: ${err instanceof Error ? err.message : String(err)}`,
+                        ),
+                    },
+                  )
                 }
-                onClick={(e) => e.stopPropagation()}
+                className="relative z-20"
                 aria-label={`Toggle ${lb.name}`}
               />
-              <div className="flex-1 min-w-0">
+              <div className="pointer-events-none relative z-0 min-w-0 flex-1">
                 <p className="text-headline truncate">{lb.name}</p>
                 {lb.description ? (
                   <p className="text-2 text-sm line-clamp-1">{lb.description}</p>
                 ) : null}
               </div>
-              <Badge variant="secondary" className="shrink-0">
+              <Badge variant="secondary" className="pointer-events-none relative z-0 shrink-0">
                 {lb.entryCount} {lb.entryCount === 1 ? "entry" : "entries"}
               </Badge>
-              <ChevronRight className="size-4 text-3 shrink-0" />
-            </Link>
+              <ChevronRight className="pointer-events-none relative z-0 size-4 shrink-0 text-2" />
+            </div>
           ))}
         </div>
       ) : (

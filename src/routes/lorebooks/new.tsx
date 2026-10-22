@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PageHeader } from "@/components/common/PageHeader";
 import { useCreateLorebook } from "@/hooks/useLorebooks";
 
 export const Route = createFileRoute("/lorebooks/new")({
@@ -15,15 +16,17 @@ function NewLorebookPage() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const createMutation = useCreateLorebook();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError("Name is required.");
+      setNameError("Name is required.");
       return;
     }
+    setNameError(null);
     setError(null);
     try {
       const result = await createMutation.mutateAsync({
@@ -32,59 +35,71 @@ function NewLorebookPage() {
       });
       void navigate({ to: "/lorebooks/$id", params: { id: result.id } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create lorebook");
+      setError(
+        err instanceof Error
+          ? `We couldn’t create the lorebook. ${err.message}`
+          : "We couldn’t create the lorebook.",
+      );
     }
   };
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
-      <div className="mb-6">
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/lorebooks">← Back</Link>
-        </Button>
-      </div>
+    <main className="mx-auto max-w-[768px] px-4 py-8">
+      <PageHeader
+        title="New Lorebook"
+        backTo="/lorebooks"
+        subtitle="A lorebook groups keyword-triggered entries that inject context into chats."
+      />
 
       <Card>
         <CardHeader>
-          <CardTitle>New Lorebook</CardTitle>
-          <CardDescription>
-            A lorebook groups keyword-triggered entries that inject context into chats.
-          </CardDescription>
+          <CardDescription>Name it now; you can add entries after creating it.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            <Field data-invalid={Boolean(nameError)}>
+              <FieldLabel htmlFor="name">Name</FieldLabel>
               <Input
                 id="name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (nameError) setNameError(null);
+                }}
                 placeholder="World Guide"
                 disabled={createMutation.isPending}
-                required
-                minLength={1}
+                aria-invalid={Boolean(nameError)}
+                aria-describedby={nameError ? "name-error" : undefined}
+                autoComplete="off"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
+              {nameError ? <FieldError id="name-error">{nameError}</FieldError> : null}
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="description">Description (optional)</FieldLabel>
               <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="What this lorebook covers..."
+                placeholder="What this lorebook covers…"
                 disabled={createMutation.isPending}
                 rows={3}
               />
-            </div>
+            </Field>
 
-            {error ? <p className="text-destructive text-sm">{error}</p> : null}
+            {error ? (
+              <p role="alert" className="text-danger text-sm">
+                {error}
+              </p>
+            ) : null}
 
-            <div className="flex justify-end gap-2">
-              <Button asChild variant="ghost" type="button">
-                <Link to="/lorebooks">Cancel</Link>
-              </Button>
-              <Button type="submit" disabled={createMutation.isPending} aria-live="polite">
-                {createMutation.isPending ? "Creating..." : "Create"}
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                disabled={createMutation.isPending}
+                className="h-10 max-sm:h-11"
+                aria-live="polite"
+              >
+                {createMutation.isPending ? "Creating…" : "Create"}
               </Button>
             </div>
           </form>

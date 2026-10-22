@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useNavigate } from "@tanstack/react-router";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { type } from "arktype";
-import { MessagesSquare, Plus, Search, UserRoundCog, X } from "lucide-react";
+import { LoaderCircle, MessagesSquare, Plus, Search, UserRoundCog, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,9 @@ import {
 import { RelativeTime } from "@/components/common/RelativeTime";
 import type { CharacterListItem } from "@/server/fns/characters";
 import { withImageVersion } from "@/lib/image-optimization";
+import { plainExcerpt } from "@/lib/plain-text";
+import { cn } from "@/lib/utils";
+import { friendlyLoadError } from "@/lib/error-copy";
 
 const searchSchema = type({
   "q?": "string",
@@ -52,21 +55,26 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "chats-desc", label: "Most chats" },
 ];
 
-const CARD_BODY_HEIGHT = 88;
+/** Fixed card body so every lane aligns: title, excerpt, creator, tags, meta. */
+const CARD_BODY_HEIGHT = 132;
 const GAP = 12;
 
 function getLaneCount(vw: number): number {
   const cw = Math.min(vw - 32, 1200);
-  if (cw >= 1280) return 5;
-  if (cw >= 1024) return 4;
-  if (cw >= 640) return 3;
+  if (cw >= 1100) return 5;
+  if (cw >= 860) return 4;
+  if (cw >= 600) return 3;
   return 2;
 }
 
-function getCardHeight(lanes: number, vw: number): number {
-  const cw = Math.min(vw - 32, 1200);
-  const laneW = (cw - (lanes - 1) * GAP) / lanes;
-  return Math.ceil(laneW * (4 / 3) + CARD_BODY_HEIGHT);
+function getCardMetrics(lanes: number, vw: number) {
+  const contentWidth = Math.min(vw - 32, 1200);
+  // Every lane reserves the same gutter; the list container is widened by one
+  // gutter so the last column still ends flush with the page.
+  const itemWidth = (contentWidth + GAP) / lanes;
+  const cardWidth = itemWidth - GAP;
+  const cardHeight = Math.ceil(cardWidth * (4 / 3) + CARD_BODY_HEIGHT);
+  return { contentWidth, cardWidth, cardHeight };
 }
 
 function CharactersPage() {
@@ -163,11 +171,8 @@ function CharactersPage() {
   }, []);
 
   const lanes = getLaneCount(viewportWidth);
-  const cardHeight = getCardHeight(lanes, viewportWidth);
+  const { contentWidth, cardHeight } = getCardMetrics(lanes, viewportWidth);
   const lanePct = 100 / lanes;
-  const cw = Math.min(viewportWidth - 32, 1200);
-  const laneW = Math.ceil((cw - (lanes - 1) * GAP) / lanes);
-  const bodyHeight = cardHeight - laneW;
 
   const items = useMemo(() => searchData?.pages.flatMap((p) => p.items) ?? [], [searchData]);
   const total = searchData?.pages[0]?.total ?? 0;
@@ -192,9 +197,11 @@ function CharactersPage() {
   }, [shouldFetch, hasNextPage, isFetching, fetchNextPage]);
 
   const isInitialLoading = isLoading && !searchData;
-  const isEmpty = !isLoading && total === 0 && !q && tags.length === 0;
-  const isNoMatches = !isLoading && total === 0 && (Boolean(q) || tags.length > 0);
+  const hasFilters = Boolean(q) || tags.length > 0;
+  const isEmpty = !isLoading && !error && total === 0 && !hasFilters;
+  const isNoMatches = !isLoading && !error && total === 0 && hasFilters;
   const isRefiltering = isFetching && !isFetchingNextPage && Boolean(searchData);
+  const deletingCharacter = items.find((character) => character.id === deletingId) ?? null;
 
   return (
     <main className="mx-auto max-w-[1200px] px-4 py-8 pb-24">
@@ -202,30 +209,32 @@ function CharactersPage() {
         title="Characters"
         subtitle={
           isInitialLoading
-            ? "Loading..."
+            ? "Loading your library…"
             : total > 0
               ? `${total.toLocaleString()} character${total !== 1 ? "s" : ""}`
               : "Import and manage your character cards."
         }
         actions={
-          <Button asChild>
+          <Button asChild className="gap-1.5">
             <Link to="/characters/new">
-              <Plus className="size-4 md:hidden" data-icon="inline-start" />
-              <span className="hidden md:inline">Import PNG</span>
+              <Plus className="size-4" data-icon="inline-start" aria-hidden="true" />
+              Import PNG
             </Link>
           </Button>
         }
       />
 
-      {error && !isLoading ? (
-        <ErrorBanner
-          message={(error as Error).message ?? "Failed to load characters"}
-          onRetry={() => refetch()}
-        />
+      {error ? (
+        <div className="mb-6">
+          <ErrorBanner
+            message={friendlyLoadError(error, "We couldn’t load your characters.")}
+            onRetry={() => void refetch()}
+          />
+        </div>
       ) : null}
 
       {isInitialLoading ? (
-        <SkeletonCardGrid count={15} lanes={lanes} />
+        <SkeletonCardGrid count={10} lanes={lanes} aspect="aspect-[3/4]" />
       ) : isEmpty ? (
         <EmptyState
           icon={UserRoundCog}
@@ -238,31 +247,32 @@ function CharactersPage() {
         </EmptyState>
       ) : (
         <>
-          <div className="sticky top-0 z-30 -mx-4 px-4 py-3 bg-(--bg-base)/85 backdrop-blur-sm space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  ref={searchRef}
-                  className="pl-9 pr-12"
-                  placeholder="Search name, creator, notes..."
-                  aria-label="Search characters"
-                  value={searchInput}
-                  onChange={(e) => updateSearch(e.target.value)}
-                />
-                <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-3 sm:inline-flex">
-                  /
-                </kbd>
-              </div>
+          <div className="sticky top-14 z-20 -mx-4 space-y-3 bg-(--bg-base)/95 px-4 py-3 backdrop-blur-sm">
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                ref={searchRef}
+                className="h-10 pl-9 pr-12"
+                placeholder="Search characters…"
+                aria-label="Search characters"
+                value={searchInput}
+                onChange={(e) => updateSearch(e.target.value)}
+              />
+              <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-2 sm:inline-flex">
+                /
+              </kbd>
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-fade-x">
+            <div className="no-scrollbar flex items-center gap-2 overflow-x-auto">
               {tagCounts && tagCounts.length > 0 ? (
                 <TagFilterPopover tags={tagCounts} selected={tags} onChange={updateTags} />
               ) : null}
               <Select value={sort} onValueChange={(v) => updateSort(v as SortKey)}>
                 <SelectTrigger
-                  className="w-auto min-w-[140px] gap-1.5 shrink-0"
+                  className="h-10 w-auto min-w-[140px] shrink-0 gap-1.5"
                   aria-label="Sort characters"
                 >
                   <SelectValue />
@@ -287,10 +297,10 @@ function CharactersPage() {
                   <button
                     type="button"
                     onClick={() => updateTags(tags.filter((t) => t !== tag))}
-                    className="size-6 -m-1 p-1 inline-flex items-center justify-center rounded-sm hover:bg-muted-foreground/20"
+                    className="inline-flex size-7 items-center justify-center rounded-md hover:bg-muted-foreground/20"
                     aria-label={`Remove ${tag}`}
                   >
-                    <X className="size-3" />
+                    <X className="size-3" aria-hidden="true" />
                   </button>
                 </Badge>
               ))}
@@ -298,7 +308,7 @@ function CharactersPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-xs shrink-0"
+                  className="h-9 shrink-0 text-xs"
                   onClick={() => updateTags([])}
                 >
                   Clear all
@@ -307,10 +317,11 @@ function CharactersPage() {
             </div>
           </div>
 
-          <div role="status" aria-live="polite" className="py-3 text-xs text-3 tabular-nums">
-            {total.toLocaleString()} character{total !== 1 ? "s" : ""}
-            {isRefiltering ? " …" : ""}
-          </div>
+          <p role="status" aria-live="polite" className="py-3 text-xs text-2 tabular-nums">
+            {isRefiltering
+              ? `Searching ${total.toLocaleString()} character${total !== 1 ? "s" : ""}…`
+              : `${total.toLocaleString()} character${total !== 1 ? "s" : ""}`}
+          </p>
 
           {isNoMatches ? (
             <EmptyState
@@ -332,42 +343,60 @@ function CharactersPage() {
             <div
               className={isRefiltering ? "opacity-60 transition-opacity duration-150" : ""}
               role="list"
-              style={{ height: virtualizer.getTotalSize(), position: "relative" }}
+              style={{
+                width: contentWidth + GAP,
+                height: virtualizer.getTotalSize(),
+                position: "relative",
+              }}
             >
               {virtualItems.map((item) => {
-                const char = items[item.index];
-                if (!char) return null;
+                const character = items[item.index];
+                if (!character) return null;
                 return (
                   <div
-                    key={char.id}
+                    key={character.id}
                     role="listitem"
                     style={{
                       position: "absolute",
                       top: item.start,
                       left: `${(item.lane / lanes) * 100}%`,
                       width: `${lanePct}%`,
-                      paddingRight: item.lane < lanes - 1 ? GAP : undefined,
+                      paddingRight: GAP,
                       boxSizing: "border-box",
                     }}
                   >
                     <CharacterCard
-                      character={char}
-                      bodyHeight={bodyHeight}
-                      onDelete={() => setDeletingId(char.id)}
+                      character={character}
+                      cardHeight={cardHeight}
+                      onDelete={() => setDeletingId(character.id)}
                     />
                   </div>
                 );
               })}
             </div>
           )}
+
+          {isFetchingNextPage ? (
+            <div
+              role="status"
+              className="flex items-center justify-center gap-2 py-6 text-xs text-2"
+            >
+              <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />
+              Loading more characters…
+            </div>
+          ) : !hasNextPage && items.length > 0 ? (
+            <p className="py-6 text-center text-xs text-2">
+              All {total.toLocaleString()} character{total !== 1 ? "s" : ""} shown
+            </p>
+          ) : null}
         </>
       )}
 
       <ConfirmDialog
         open={deletingId !== null}
         onOpenChange={(o) => !o && setDeletingId(null)}
-        title="Delete character"
-        description="This will permanently delete the character and all associated chats and messages. This action cannot be undone."
+        title={deletingCharacter ? `Delete “${deletingCharacter.name}”?` : "Delete this character?"}
+        description="This permanently deletes the character and every chat and message attached to it. This cannot be undone."
         destructive
         loading={deleteMutation.isPending}
         onConfirm={() => {
@@ -380,7 +409,9 @@ function CharactersPage() {
                 setDeletingId(null);
               },
               onError: (err) =>
-                toast.error(`Delete failed: ${err instanceof Error ? err.message : String(err)}`),
+                toast.error(
+                  `Couldn’t delete this character: ${err instanceof Error ? err.message : String(err)}`,
+                ),
             },
           );
         }}
@@ -391,101 +422,88 @@ function CharactersPage() {
 
 function CharacterCard({
   character,
-  bodyHeight,
+  cardHeight,
   onDelete,
 }: {
   character: CharacterListItem;
-  bodyHeight: number;
+  cardHeight: number;
   onDelete: () => void;
 }) {
   const navigate = useNavigate();
-  const imgRef = useRef<HTMLImageElement>(null);
   const avatarUrl = character.imagePath
     ? withImageVersion(`/api/characters/${character.id}/avatar`, character.imagePath)
     : null;
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const showImage = avatarUrl !== null && failedSrc !== avatarUrl;
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    const img = imgRef.current;
-    if (!img) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    img.style.transform = `scale(1.08) translate(${x * -8}px, ${y * -8}px)`;
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    if (imgRef.current) imgRef.current.style.transform = "";
-  }, []);
-
-  const excerpt = character.tagline || character.creatorNotes;
+  const excerpt = plainExcerpt(character.tagline || character.creatorNotes, { max: 140 });
 
   return (
     <div
-      className="group relative rounded-xl border border-subtle overflow-hidden transition-shadow hover:shadow-lg hover:border-brand/40"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      className="group relative overflow-hidden rounded-xl border border-subtle transition-colors hover:border-brand/40"
+      style={{ height: cardHeight }}
     >
       <Link
         to="/characters/$id"
         params={{ id: character.id }}
-        className="block focus-ring rounded-xl"
+        aria-label={`Open ${character.name}`}
+        className="focus-ring flex h-full flex-col rounded-xl"
       >
-        <div className="relative aspect-square bg-muted overflow-hidden">
+        <div className="relative aspect-[3/4] w-full overflow-hidden bg-muted">
           {showImage && avatarUrl ? (
             <OptimizedImage
-              ref={imgRef}
               src={avatarUrl}
-              alt={character.name}
+              alt=""
               preset="card"
-              className="size-full object-cover motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out"
+              className="size-full object-cover motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out motion-safe:group-hover:scale-[1.02]"
               onError={() => setFailedSrc(avatarUrl)}
             />
           ) : (
             <div className="flex size-full items-center justify-center bg-raised">
-              <span className="text-4xl font-heading text-3">{character.name.charAt(0)}</span>
+              <span className="font-heading text-4xl text-3">{character.name.charAt(0)}</span>
             </div>
           )}
         </div>
-        <div className="p-2 flex flex-col" style={{ height: bodyHeight }}>
-          <h3 className="text-sm font-semibold truncate">{character.name}</h3>
+        <div className="flex min-h-0 flex-1 flex-col p-2.5">
+          <h3 className="truncate text-sm font-semibold" title={character.name}>
+            {character.name}
+          </h3>
           {excerpt ? (
-            <p className="text-2 text-xs line-clamp-2 leading-snug mt-0.5">{excerpt}</p>
+            <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-2">{excerpt}</p>
           ) : (
-            <p className="text-2 text-xs">&nbsp;</p>
+            <p className="mt-0.5 text-xs text-2">&nbsp;</p>
           )}
           {character.creator ? (
-            <p className="text-3 text-[11px] truncate mt-0.5">by {character.creator}</p>
+            <p className="mt-0.5 truncate text-[11px] text-2">by {character.creator}</p>
           ) : null}
           <div className="mt-auto">
             <div className="flex items-center gap-1.5 overflow-hidden">
-              {character.tags.slice(0, 3).map((tag) => (
+              {character.tags.slice(0, 3).map((tag, index) => (
                 <Badge
                   key={tag}
                   variant="secondary"
-                  className="text-[10px] px-1.5 py-0 leading-tight shrink-0"
+                  className={cn(
+                    "max-w-[70px] shrink-0 truncate px-1.5 py-0 text-[11px] leading-tight",
+                    index === 2 && "hidden sm:inline-flex",
+                  )}
                 >
                   {tag}
                 </Badge>
               ))}
               {character.tags.length > 3 ? (
-                <span className="text-2 text-[10px] shrink-0">+{character.tags.length - 3}</span>
+                <span className="shrink-0 text-[11px] text-2">+{character.tags.length - 3}</span>
               ) : null}
             </div>
-            <div className="flex items-center gap-1 text-3 text-[10px] tabular-nums mt-1">
-              <MessagesSquare className="size-3" />
-              {character.chatCount}
-              <span aria-hidden className="mx-0.5">
-                ·
+            <div className="mt-1 flex items-center gap-1 whitespace-nowrap text-[11px] text-2 tabular-nums">
+              <MessagesSquare className="size-3 shrink-0" aria-hidden="true" />
+              <span className="truncate">
+                {character.chatCount} · <RelativeTime date={character.updatedAt} compact />
               </span>
-              <RelativeTime date={character.updatedAt} />
             </div>
           </div>
         </div>
       </Link>
 
-      <div className="absolute top-2 right-2">
+      <div className="absolute right-2 top-2 z-10">
         <RowActionsMenu
           label={`Actions for ${character.name}`}
           items={[

@@ -111,7 +111,7 @@ export function EntryEditorSheet(props: Props) {
         side="right"
         className="data-[side=right]:sm:max-w-2xl w-full data-[side=right]:w-full"
       >
-        <SheetHeader>
+        <SheetHeader className="pr-14">
           <SheetTitle>{mode === "create" ? "New Entry" : "Edit Entry"}</SheetTitle>
           <SheetDescription>
             Keywords activate the entry. Content is injected into the prompt when matched.
@@ -199,7 +199,7 @@ export function EntryEditorSheet(props: Props) {
                       aria-describedby="entry-content-error"
                       minLength={1}
                     />
-                    <p className="text-3 text-xs text-right">
+                    <p className="text-2 text-xs text-right">
                       ~{counter.count(field.state.value)} tokens
                     </p>
                     {isInvalid && (
@@ -287,11 +287,17 @@ export function EntryEditorSheet(props: Props) {
               </p>
             ) : null}
           </div>
-          <SheetFooter>
-            <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
+          <SheetFooter className="flex-row justify-end gap-2 border-t border-subtle bg-popover/95 p-4">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onClose}
+              disabled={isPending}
+              className="h-10 max-sm:h-11"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending} className="h-10 max-sm:h-11">
               {isPending ? "Saving…" : mode === "create" ? "Create" : "Save"}
             </Button>
           </SheetFooter>

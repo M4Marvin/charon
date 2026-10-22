@@ -19,18 +19,27 @@ import {
 
 type Phase = "idle" | "running" | "accepting" | "denying";
 
-export function MessageRewriteButton({
-  chatId,
-  messageLocalId,
-  disabled,
-  onApplied,
-}: {
+export interface RewriteDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   chatId: string;
   messageLocalId: number;
   disabled?: boolean;
   onApplied?: () => void;
-}) {
-  const [open, setOpen] = useState(false);
+}
+
+/**
+ * Rewrite flow as a controlled dialog. Kept separate from the trigger so the
+ * message action menu can open it from a menu item on mobile.
+ */
+export function RewriteDialog({
+  open,
+  onOpenChange,
+  chatId,
+  messageLocalId,
+  disabled,
+  onApplied,
+}: RewriteDialogProps) {
   const [instruction, setInstruction] = useState("");
   const [proposal, setProposal] = useState<{ proposalId: string; text: string } | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -70,7 +79,7 @@ export function MessageRewriteButton({
     try {
       await acceptProposalFn({ data: { proposalId: proposal.proposalId } });
       onApplied?.();
-      setOpen(false);
+      onOpenChange(false);
       reset();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not apply rewrite");
@@ -83,7 +92,7 @@ export function MessageRewriteButton({
     setPhase("denying");
     try {
       await denyProposalFn({ data: { proposalId: proposal.proposalId } });
-      setOpen(false);
+      onOpenChange(false);
       reset();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not deny rewrite");
@@ -92,6 +101,80 @@ export function MessageRewriteButton({
   };
 
   const busy = phase !== "idle";
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (busy) return;
+        onOpenChange(next);
+        if (!next) reset();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Rewrite with AI</DialogTitle>
+          <DialogDescription>
+            The rewrite is a proposal until you accept it. Nothing is written before then.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <Textarea
+            value={instruction}
+            onChange={(event) => setInstruction(event.target.value)}
+            placeholder="Optional instruction: make it shorter, more formal, fix tense…"
+            rows={3}
+          />
+          {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {proposal ? (
+            <div className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-(--border-subtle) bg-raised p-3 text-sm leading-6">
+              {proposal.text}
+            </div>
+          ) : null}
+        </div>
+
+        <DialogFooter>
+          {proposal ? (
+            <>
+              <Button variant="ghost" onClick={() => void deny()} disabled={busy}>
+                {phase === "denying" ? <Spinner className="size-4" /> : null}
+                Discard
+              </Button>
+              <Button onClick={() => void accept()} disabled={busy || disabled}>
+                {phase === "accepting" ? <Spinner className="size-4" /> : null}
+                Use this rewrite
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
+                Cancel
+              </Button>
+              <Button onClick={() => void generate()} disabled={busy || disabled}>
+                {phase === "running" ? <Spinner className="size-4" /> : null}
+                Generate
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function MessageRewriteButton({
+  chatId,
+  messageLocalId,
+  disabled,
+  onApplied,
+}: {
+  chatId: string;
+  messageLocalId: number;
+  disabled?: boolean;
+  onApplied?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
 
   return (
     <>
@@ -105,55 +188,14 @@ export function MessageRewriteButton({
       >
         <Sparkles className="size-3.5" />
       </Button>
-
-      <Dialog
+      <RewriteDialog
         open={open}
-        onOpenChange={(next) => {
-          setOpen(next);
-          if (!next) reset();
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rewrite with AI</DialogTitle>
-            <DialogDescription>
-              The rewrite is a proposal until you accept it. Nothing is written before then.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3">
-            <Textarea
-              value={instruction}
-              onChange={(event) => setInstruction(event.target.value)}
-              placeholder="Optional instruction: make it shorter, more formal, fix tense…"
-              rows={3}
-            />
-            {error ? <p className="text-sm text-danger">{error}</p> : null}
-            {proposal ? (
-              <div className="max-h-72 overflow-auto rounded-lg border border-(--border-subtle) bg-raised p-3 text-sm leading-6 whitespace-pre-wrap">
-                {proposal.text}
-              </div>
-            ) : null}
-          </div>
-
-          <DialogFooter>
-            {proposal ? (
-              <>
-                <Button variant="ghost" onClick={() => void deny()} disabled={busy}>
-                  {phase === "denying" ? <Spinner /> : "Deny"}
-                </Button>
-                <Button onClick={() => void accept()} disabled={busy}>
-                  {phase === "accepting" ? <Spinner /> : "Accept rewrite"}
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => void generate()} disabled={busy}>
-                {phase === "running" ? <Spinner /> : "Generate rewrite"}
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onOpenChange={setOpen}
+        chatId={chatId}
+        messageLocalId={messageLocalId}
+        disabled={disabled}
+        onApplied={onApplied}
+      />
     </>
   );
 }

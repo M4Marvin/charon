@@ -18,14 +18,22 @@ interface RowAction {
 interface RowActionsMenuProps {
   items: RowAction[];
   label: string;
+  /** Optional visible trigger text. Icon-only triggers stay the default. */
+  text?: string;
 }
 
-export function RowActionsMenu({ items, label }: RowActionsMenuProps) {
+export function RowActionsMenu({ items, label, text }: RowActionsMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="size-10" aria-label={label}>
-          <Ellipsis className="size-4" />
+        <Button
+          variant="ghost"
+          size={text ? "sm" : "icon"}
+          className={text ? "h-10 gap-1.5 px-3" : "size-10"}
+          aria-label={label}
+        >
+          <Ellipsis className="size-4" aria-hidden="true" />
+          {text ? <span className="text-sm">{text}</span> : null}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
