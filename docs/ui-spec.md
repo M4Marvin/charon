@@ -92,9 +92,9 @@ The palette is dark-first and token-driven. Raw hex values, `text-white`, `bg-wh
 
 - Inter: 400, 500, 600, 700 — latin and latin-ext.
 - Fraunces: 500, 600, 700 — latin and latin-ext.
-- JetBrains Mono: 400, 500 — latin and latin-ext.
+- JetBrains Mono: 400, 500, 600 — latin and latin-ext.
 
-All `@font-face` URLs must resolve. `font-display: swap` is used; the display face is preloaded; `document.fonts.check()` returns true for every used weight. There are no Google Fonts or other CDN requests. CI must fail if any declared font URL is missing from `static/fonts/`.
+All `@font-face` URLs must resolve. `font-display: swap` is used; the 500 display face is preloaded; every weight the UI asks for has a real file, so no synthetic weights are rendered. There are no Google Fonts or other CDN requests. `pnpm check:fonts` fails if any declared font URL is missing from `static/fonts/`; CI runs it.
 
 **Type scale**
 

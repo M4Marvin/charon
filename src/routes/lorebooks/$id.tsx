@@ -7,6 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -20,9 +30,12 @@ import {
   useLorebook,
   useLorebookEntries,
   useToggleLoreEntry,
+  useUpdateLorebook,
 } from "@/hooks/useLorebooks";
 import { EntryEditorSheet } from "@/components/lorebook/EntryEditorSheet";
 import type { LoreEntryListItem } from "@/server/fns/lorebooks";
+import type { Lorebook } from "@/db/schema";
+import type { LoreConfig } from "@/lib/st-core/lorebook/types";
 
 type DialogState =
   | { kind: "closed" }
@@ -45,9 +58,11 @@ function LorebookDetailPage() {
     refetch: refetchEntries,
   } = useLorebookEntries(id);
   const deleteLb = useDeleteLorebook();
+  const updateLb = useUpdateLorebook();
   const deleteEntry = useDeleteLorebookEntry(id);
   const [dialog, setDialog] = useState<DialogState>({ kind: "closed" });
   const [delOpen, setDelOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [delEntryId, setDelEntryId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [showFilter, setShowFilter] = useState<"all" | "on" | "off">("all");
@@ -186,6 +201,7 @@ function LorebookDetailPage() {
           <RowActionsMenu
             label="Lorebook actions"
             items={[
+              { label: "Edit lorebook", onSelect: () => setEditOpen(true) },
               { label: "Delete lorebook", destructive: true, onSelect: () => setDelOpen(true) },
             ]}
           />
@@ -259,6 +275,28 @@ function LorebookDetailPage() {
         />
       ) : null}
 
+      <EditLorebookDialog
+        lorebook={lorebook}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        pending={updateLb.isPending}
+        onSave={(patch) =>
+          updateLb.mutate(
+            { id: lorebook.id, ...patch },
+            {
+              onSuccess: () => {
+                toast.success("Lorebook updated");
+                setEditOpen(false);
+              },
+              onError: (err) =>
+                toast.error(
+                  `Couldn’t update the lorebook: ${err instanceof Error ? err.message : String(err)}`,
+                ),
+            },
+          )
+        }
+      />
+
       <ConfirmDialog
         open={delOpen}
         onOpenChange={(o) => !o && setDelOpen(false)}
@@ -308,6 +346,121 @@ function LorebookDetailPage() {
         }}
       />
     </main>
+  );
+}
+
+function EditLorebookDialog({
+  lorebook,
+  open,
+  onClose,
+  pending,
+  onSave,
+}: {
+  lorebook: Lorebook;
+  open: boolean;
+  onClose: () => void;
+  pending: boolean;
+  onSave: (patch: { name: string; description: string | null; config: LoreConfig }) => void;
+}) {
+  const [name, setName] = useState(lorebook.name);
+  const [description, setDescription] = useState(lorebook.description ?? "");
+  const [depth, setDepth] = useState(String(lorebook.config.depth));
+  const [scanDepth, setScanDepth] = useState(String(lorebook.config.scanDepth));
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit lorebook</DialogTitle>
+          <DialogDescription>
+            Name, description, and how entries are injected into the prompt.
+          </DialogDescription>
+        </DialogHeader>
+        <form
+          className="space-y-4"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            const trimmed = name.trim();
+            if (!trimmed) {
+              setError("Name is required.");
+              return;
+            }
+            const depthNum = Number(depth);
+            const scanNum = Number(scanDepth);
+            if (!Number.isFinite(depthNum) || depthNum < 0) {
+              setError("Depth must be zero or a positive number.");
+              return;
+            }
+            if (!Number.isFinite(scanNum) || scanNum < 0) {
+              setError("Scan depth must be zero or a positive number.");
+              return;
+            }
+            setError(null);
+            onSave({
+              name: trimmed,
+              description: description.trim() || null,
+              config: { ...lorebook.config, depth: depthNum, scanDepth: scanNum },
+            });
+          }}
+        >
+          <Field>
+            <FieldLabel htmlFor="lb-name">Name</FieldLabel>
+            <Input
+              id="lb-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              aria-invalid={Boolean(error)}
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="lb-description">Description (optional)</FieldLabel>
+            <Textarea
+              id="lb-description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              rows={3}
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field>
+              <FieldLabel htmlFor="lb-depth">Depth</FieldLabel>
+              <Input
+                id="lb-depth"
+                type="number"
+                min={0}
+                value={depth}
+                onChange={(event) => setDepth(event.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="lb-scan">Scan depth</FieldLabel>
+              <Input
+                id="lb-scan"
+                type="number"
+                min={0}
+                value={scanDepth}
+                onChange={(event) => setScanDepth(event.target.value)}
+              />
+            </Field>
+          </div>
+          {error ? (
+            <p role="alert" className="text-danger text-sm">
+              {error}
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={pending}>
+              {pending ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
