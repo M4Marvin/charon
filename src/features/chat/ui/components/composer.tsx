@@ -68,8 +68,14 @@ export function Composer({
   useLayoutEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
+    if (!value.trim()) {
+      el.style.height = "";
+      el.style.overflowY = "hidden";
+      return;
+    }
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
+    el.style.overflowY = el.scrollHeight > TEXTAREA_MAX_HEIGHT ? "auto" : "hidden";
   }, [value]);
 
   // Platforms whose layout viewport does not shrink with the keyboard (iOS
@@ -163,8 +169,8 @@ export function Composer({
       : disabled
         ? "Another generation is running — you can draft, but sending is locked"
         : characterName
-          ? `Message ${characterName}…  (Enter to send, Shift+Enter for a line break)`
-          : "Enter to send, Shift+Enter for a line break";
+          ? `Message ${characterName}…`
+          : "Write a message…";
 
   return (
     <div
