@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useEffect, useRef, useState } from "react";
 import { withImageVersion } from "@/lib/image-optimization";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import {
@@ -36,9 +36,55 @@ import { SettingsPanel } from "../settings/settings-panel";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { EmptyState } from "@/components/common/EmptyState";
 import { SkeletonRows } from "@/components/common/Skeletons";
-import { MessageSquareX, X } from "lucide-react";
+import { ArrowLeft, MessageSquareX, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { friendlyLoadError } from "@/lib/error-copy";
 import { SelectionPromptDialog } from "../components/selection-prompt-dialog";
+
+function ChatStateHeader({ title }: { title?: string }) {
+  return (
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-subtle bg-(--header-bg) px-3 backdrop-blur-xl md:px-5">
+      <Button
+        asChild
+        variant="ghost"
+        size="icon"
+        className="size-10 rounded-full glass text-2 hover:text-1"
+      >
+        <Link to="/chat" aria-label="Back to chats">
+          <ArrowLeft className="size-4" aria-hidden="true" />
+        </Link>
+      </Button>
+      <span className="truncate text-sm font-semibold text-1">{title ?? "Chat"}</span>
+    </header>
+  );
+}
+
+function ChatStatePage({ title, children }: { title?: string; children: React.ReactNode }) {
+  return (
+    <main className="flex h-dvh w-full flex-col bg-base">
+      <ChatStateHeader title={title} />
+      <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+        <div className="w-full max-w-md">{children}</div>
+      </div>
+    </main>
+  );
+}
+
+function ChatNotFoundState() {
+  return (
+    <ChatStatePage title="Chat not found">
+      <EmptyState
+        icon={MessageSquareX}
+        title="Chat not found"
+        description="This chat may have been deleted, or the link is wrong."
+      >
+        <Button asChild variant="outline">
+          <Link to="/chat">Back to chats</Link>
+        </Button>
+      </EmptyState>
+    </ChatStatePage>
+  );
+}
 
 export function ChatPage() {
   const { id: chatId } = useParams({ from: "/chat/$id" });
@@ -380,20 +426,14 @@ export function ChatPage() {
 
   if (configLoading || messagesLoading) {
     return (
-      <main
-        role="status"
-        aria-busy="true"
-        className="flex h-dvh w-full flex-col overflow-hidden bg-base [&_[data-slot=skeleton]]:motion-reduce:animate-none"
-      >
-        <span className="sr-only">Loading chat</span>
+      <main className="flex h-dvh w-full flex-col overflow-hidden bg-base">
+        <ChatStateHeader title="Chat" />
         <div
-          aria-hidden="true"
-          className="flex h-12 shrink-0 items-center gap-3 border-b border-subtle px-3 md:px-5"
+          role="status"
+          aria-busy="true"
+          className="mx-auto w-full max-w-3xl flex-1 px-3 pt-12 md:px-6 [&_[data-slot=skeleton]]:motion-reduce:animate-none"
         >
-          <span className="size-7 rounded-full bg-raised" />
-          <span className="h-4 w-32 rounded bg-raised" />
-        </div>
-        <div aria-hidden="true" className="mx-auto w-full max-w-3xl flex-1 px-3 pt-12 md:px-6">
+          <span className="sr-only">Loading chat</span>
           <SkeletonRows rows={5} />
         </div>
       </main>
@@ -407,33 +447,30 @@ export function ChatPage() {
   const messagesFailed = messagesError && messages === undefined;
   if (configFailed || messagesFailed) {
     const errorObj = configFailed ? configErrorObj : messagesErrorObj;
+    const rawMessage = errorObj instanceof Error ? errorObj.message : String(errorObj ?? "");
+    if (/not found/i.test(rawMessage)) {
+      return <ChatNotFoundState />;
+    }
     return (
-      <main className="flex h-dvh w-full flex-col items-center justify-center bg-base p-6">
-        <div className="w-full max-w-md">
+      <ChatStatePage title="Chat">
+        <div className="space-y-3" role="alert">
           <ErrorBanner
-            message={errorObj instanceof Error ? errorObj.message : "Failed to load chat"}
+            message={friendlyLoadError(errorObj, "We couldn’t load this chat.")}
             onRetry={() => {
               void refetchConfig();
               void refetchMessages();
             }}
           />
+          <Button asChild variant="outline" className="w-full">
+            <Link to="/chat">Back to chats</Link>
+          </Button>
         </div>
-      </main>
+      </ChatStatePage>
     );
   }
 
   if (!config) {
-    return (
-      <main className="flex h-dvh w-full flex-col items-center justify-center bg-base p-6">
-        <div role="alert" className="w-full max-w-md">
-          <EmptyState
-            icon={MessageSquareX}
-            title="Chat not found"
-            description="This chat may have been deleted, or the link is wrong."
-          />
-        </div>
-      </main>
-    );
+    return <ChatNotFoundState />;
   }
 
   return (
