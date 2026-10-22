@@ -64,13 +64,15 @@ export function CharacterPortraitPanel({
       aria-hidden={!open}
       inert={!open}
       className={cn(
-        "fixed left-4 top-1/2 -translate-y-1/2 z-20 hidden xl:flex flex-col gap-2 transition-[transform,opacity] duration-300",
-        open ? "translate-x-0 opacity-100" : "-translate-x-[calc(100%_+_2rem)] opacity-0",
+        "fixed z-30 flex flex-col gap-2 transition-[transform,opacity] duration-200 max-xl:inset-x-3 max-xl:bottom-20 max-xl:top-auto xl:top-1/2 xl:-translate-y-1/2 xl:left-4",
+        open
+          ? "pointer-events-auto translate-x-0 translate-y-0 opacity-100"
+          : "pointer-events-none opacity-0 max-xl:translate-y-4 xl:-translate-x-[calc(100%_+_2rem)]",
       )}
     >
       <div
         className={cn(
-          "glass-strong rounded-2xl overflow-hidden shadow-xl ring-1 ring-(--border-subtle) w-[min(24rem,max(12rem,calc((100vw_-_48rem)/2_-_2rem)))]",
+          "glass-strong rounded-2xl overflow-hidden shadow-xl ring-1 ring-(--border-subtle) w-full xl:w-[min(24rem,max(12rem,calc((100vw_-_48rem)/2_-_2rem)))]",
           canOpen && "cursor-pointer group focus-ring",
         )}
         onClick={canOpen ? onImageClick : undefined}

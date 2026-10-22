@@ -71,7 +71,7 @@ export function ChatHeader({
           variant="ghost"
           size="icon"
           className={cn(
-            "hidden size-10 rounded-full glass shrink-0 text-2 hover:text-1 xl:inline-flex",
+            "inline-flex size-10 rounded-full glass shrink-0 text-2 hover:text-1",
             portraitOpen && "text-brand ring-1 ring-brand/30",
           )}
           onClick={onTogglePortrait}
@@ -85,7 +85,7 @@ export function ChatHeader({
           variant="ghost"
           size="icon"
           className={cn(
-            "hidden size-10 rounded-full glass shrink-0 text-2 hover:text-1 xl:inline-flex",
+            "inline-flex size-10 rounded-full glass shrink-0 text-2 hover:text-1",
             sceneOpen && "text-brand ring-1 ring-brand/30",
           )}
           onClick={onToggleScene}
