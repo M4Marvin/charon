@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useForm } from "@tanstack/react-form";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createFileRoute, useNavigate, useBlocker } from "@tanstack/react-router";
+import { useForm, useStore } from "@tanstack/react-form";
 import { z } from "zod";
 import { toast } from "sonner";
 
@@ -16,8 +16,10 @@ import { SaveBar } from "@/components/common/SaveBar";
 import { ChipInput } from "@/components/common/ChipInput";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { EmptyState } from "@/components/common/EmptyState";
 import { SkeletonForm } from "@/components/common/Skeletons";
 import { useCharacter, useUpdateCharacterData } from "@/hooks/useCharacters";
+import { UserRoundX } from "lucide-react";
 
 const editSchema = z.object({
   name: z.string().min(1).max(64),
@@ -54,7 +56,7 @@ export const Route = createFileRoute("/characters/$id_/edit")({
 function CharacterEditPage() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const { data: character, isLoading, error } = useCharacter(id);
+  const { data: character, isLoading, error, refetch } = useCharacter(id);
   const updateMutation = useUpdateCharacterData();
   const [discardOpen, setDiscardOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -110,6 +112,7 @@ function CharacterEditPage() {
           },
           tagline: value.tagline || null,
         });
+        allowLeaveRef.current = true;
         toast.success("Character saved");
         void navigate({ to: "/characters/$id", params: { id } });
       } catch (err) {
@@ -118,6 +121,16 @@ function CharacterEditPage() {
         toast.error(`Save failed: ${msg}`);
       }
     },
+  });
+
+  const isDirty = useStore(form.store, (state) => state.isDirty);
+  const allowLeaveRef = useRef(false);
+
+  const blocker = useBlocker({
+    shouldBlockFn: () => isDirty && !allowLeaveRef.current,
+    enableBeforeUnload: () => isDirty,
+    disabled: !isDirty,
+    withResolver: true,
   });
 
   useEffect(() => {
@@ -162,21 +175,64 @@ function CharacterEditPage() {
     return (
       <main className="mx-auto max-w-[1200px] px-4 py-8">
         <PageHeader title="Edit Character" backTo={`/characters/${id}`} />
-        <ErrorBanner message={(error as Error).message ?? "Failed to load"} />
+        <ErrorBanner
+          message={
+            error instanceof Error
+              ? `We couldn’t load this character. ${error.message}`
+              : "We couldn’t load this character."
+          }
+          onRetry={() => void refetch()}
+        />
       </main>
     );
   if (!character)
     return (
       <main className="mx-auto max-w-[1200px] px-4 py-8">
         <PageHeader title="Edit Character" backTo={`/characters/${id}`} />
-        <ErrorBanner message="Character not found." />
+        <EmptyState
+          icon={UserRoundX}
+          title="Character not found"
+          description="It may have been deleted, or the link may be wrong."
+        >
+          <Button asChild variant="outline">
+            <a href="/characters">Back to characters</a>
+          </Button>
+        </EmptyState>
       </main>
     );
 
   return (
-    <main className="mx-auto max-w-[1200px] px-4 py-8 pb-24">
-      <PageHeader title={`Editing ${character.name}`} backTo={`/characters/${id}`} />
-      {saveError ? <ErrorBanner message={saveError} /> : null}
+    <main className="mx-auto max-w-[1200px] px-4 py-8 pb-28 md:pb-8">
+      <PageHeader
+        title={`Edit ${character.name}`}
+        backTo={`/characters/${id}`}
+        actions={
+          <div className="hidden items-center gap-2 md:flex">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDiscardOpen(true)}
+              disabled={!isDirty || updateMutation.isPending}
+            >
+              Discard
+            </Button>
+            <Button
+              type="button"
+              className="h-10 px-4"
+              onClick={() => void form.handleSubmit()}
+              disabled={!isDirty || updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        }
+      />
+      {saveError ? (
+        <ErrorBanner
+          message={`Couldn’t save this character. ${saveError}`}
+          onRetry={() => void form.handleSubmit()}
+        />
+      ) : null}
       <form onSubmit={handleSubmit}>
         <div className="lg:grid lg:grid-cols-[200px_1fr] lg:gap-10">
           <SectionNav sections={SECTIONS} />
@@ -485,10 +541,24 @@ function CharacterEditPage() {
           navigation. Browser back/forward still loses unsaved changes without a
           native beforeunload listener, which is acceptable for now. */}
       <SaveBar
-        dirty={form.state.isDirty}
+        dirty={isDirty}
         saving={updateMutation.isPending}
         onSave={() => void form.handleSubmit()}
         onDiscard={() => setDiscardOpen(true)}
+      />
+      <ConfirmDialog
+        open={blocker.status === "blocked"}
+        onOpenChange={(open) => {
+          if (!open) blocker.reset?.();
+        }}
+        title="Leave without saving?"
+        description="You have unsaved changes. Leaving now will discard them."
+        confirmLabel="Leave"
+        destructive
+        onConfirm={() => {
+          allowLeaveRef.current = true;
+          blocker.proceed?.();
+        }}
       />
       <ConfirmDialog
         open={discardOpen}
@@ -498,6 +568,7 @@ function CharacterEditPage() {
         confirmLabel="Discard"
         destructive
         onConfirm={() => {
+          allowLeaveRef.current = true;
           form.reset();
           setDiscardOpen(false);
           void navigate({ to: `/characters/${id}` });
