@@ -73,11 +73,6 @@ export function PersonaStep() {
 
   return (
     <div className="grid gap-4">
-      <p className="text-2 text-sm leading-relaxed">
-        This is you in the story. Characters will use this name, and the model will write around the
-        details you give it. You can change everything later.
-      </p>
-
       <div className="grid gap-1.5">
         <Label htmlFor="persona-name">Your name</Label>
         <Input
@@ -106,7 +101,7 @@ export function PersonaStep() {
           placeholder="A traveler with a dry sense of humor, here for the story."
           rows={4}
         />
-        <p className="text-3 text-xs">
+        <p className="text-2 text-xs">
           A sentence or two is enough. This is not shown to the character as narration; it is the
           context the model uses when writing for you.
         </p>
@@ -122,7 +117,11 @@ export function PersonaStep() {
           {saving ? "Saving..." : "Save persona"}
         </Button>
         {saved ? <StatusDot tone="success" label="Saved" /> : null}
-        {!saved ? <span className="text-2 text-xs">Optional. Next works too.</span> : null}
+        {!saved ? (
+          <span className="text-2 text-xs">
+            Save persona to keep these details; Next continues without saving.
+          </span>
+        ) : null}
       </div>
     </div>
   );

@@ -6,7 +6,6 @@ import {
   Questionnaire,
   QuestionnaireActions,
   QuestionnaireChoice,
-  QuestionnaireChoiceDescription,
   QuestionnaireChoices,
   QuestionnaireDescription,
   QuestionnaireError,
@@ -17,6 +16,8 @@ import {
   QuestionnaireTitle,
 } from "@/components/ui/questionnaire";
 import { onboardingKeys, useCompleteOnboarding, useOnboardingStatus } from "@/hooks/useOnboarding";
+import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { SkeletonForm } from "@/components/common/Skeletons";
 import { ProviderStep } from "./provider-step";
 import { PersonaStep } from "./persona-step";
 import { CharacterStep } from "./character-step";
@@ -24,7 +25,7 @@ import { CharacterStep } from "./character-step";
 export function OnboardingWizard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: status, isLoading } = useOnboardingStatus();
+  const { data: status, isLoading, isError, error, refetch } = useOnboardingStatus();
   const completeOnboarding = useCompleteOnboarding();
 
   const [item, setItem] = useState<string | null>(null);
@@ -34,7 +35,7 @@ export function OnboardingWizard() {
     if (!status) return [];
     return [
       ...(status.hasConfiguredProvider ? [] : [{ name: "provider", required: true }]),
-      { name: "persona", required: true },
+      { name: "persona" },
       ...(status.hasCharacter ? [] : [{ name: "character", required: true }]),
       { name: "ready", required: true },
     ];
@@ -88,8 +89,23 @@ export function OnboardingWizard() {
     });
   };
 
+  if (isError) {
+    return (
+      <div className="py-16">
+        <ErrorBanner
+          message={
+            error instanceof Error
+              ? `We couldn’t check your setup. ${error.message}`
+              : "We couldn’t check your setup."
+          }
+          onRetry={() => void refetch()}
+        />
+      </div>
+    );
+  }
+
   if (isLoading || !status) {
-    return <div className="py-16 text-center text-sm text-2">Loading your setup...</div>;
+    return <SkeletonForm />;
   }
 
   const providerPending = activeItem === "provider" && !status.hasConfiguredProvider;
@@ -123,19 +139,19 @@ export function OnboardingWizard() {
         </QuestionnaireItem>
       ) : null}
 
-      <QuestionnaireItem name="persona" required>
+      <QuestionnaireItem name="persona">
         <QuestionnaireTitle>Who are you?</QuestionnaireTitle>
         <QuestionnaireDescription>
           Characters will use this name. A sentence about the part you play helps the model write
           for you. You can change it later in Settings.
         </QuestionnaireDescription>
         <PersonaStep />
-        <QuestionnaireChoices>
-          <QuestionnaireChoice value="continue">
-            Continue to characters
-            <QuestionnaireChoiceDescription>
-              Save the persona first if you want it stored now.
-            </QuestionnaireChoiceDescription>
+        {/* This step has no required choice of its own. Register an implicit
+            answer so the questionnaire’s Next action can advance; the visible
+            action is the Save persona button. */}
+        <QuestionnaireChoices className="hidden" aria-hidden="true">
+          <QuestionnaireChoice value="continue" defaultChecked>
+            Continue
           </QuestionnaireChoice>
         </QuestionnaireChoices>
       </QuestionnaireItem>
@@ -167,7 +183,7 @@ export function OnboardingWizard() {
         </QuestionnaireChoices>
       </QuestionnaireItem>
 
-      <QuestionnaireActions>
+      <QuestionnaireActions className="sticky bottom-0 z-10 -mx-4 border-t border-subtle bg-base/95 px-4 py-3 backdrop-blur-sm">
         <QuestionnairePrevious>Back</QuestionnairePrevious>
         <QuestionnaireNext disabled={providerPending}>Next</QuestionnaireNext>
         <QuestionnaireSubmit>Start chatting</QuestionnaireSubmit>

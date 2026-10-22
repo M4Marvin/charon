@@ -88,6 +88,14 @@ describe("OnboardingWizard", () => {
     expect(screen.queryByTestId("character-step")).toBeNull();
   });
 
+  it("advances past the persona step without a hidden required choice", () => {
+    mockStatus = baseStatus({ hasConfiguredProvider: true, hasCharacter: true });
+    render(<OnboardingWizard />);
+    expect(screen.getByText("Who are you?")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("You're all set")).toBeTruthy();
+  });
+
   it("submits and navigates to /chat on success", async () => {
     mockStatus = baseStatus({
       hasConfiguredProvider: true,
@@ -97,7 +105,6 @@ describe("OnboardingWizard", () => {
       opts.onSuccess();
     });
     render(<OnboardingWizard />);
-    fireEvent.click(screen.getByRole("radio", { name: /Continue to characters/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(screen.getByRole("radio", { name: /Start chatting/ }));
     fireEvent.click(screen.getByRole("button", { name: "Start chatting" }));
@@ -116,7 +123,6 @@ describe("OnboardingWizard", () => {
       },
     );
     render(<OnboardingWizard />);
-    fireEvent.click(screen.getByRole("radio", { name: /Continue to characters/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(screen.getByRole("radio", { name: /Continue without importing/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
