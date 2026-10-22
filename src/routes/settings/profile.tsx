@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ function ProfilePage() {
   const [confirmPw, setConfirmPw] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -65,13 +67,14 @@ function ProfilePage() {
       </div>
       <div className="rounded-lg border p-4 space-y-4">
         <h3 className="text-headline">Change Password</h3>
+        <p className="text-2 text-sm">Changing your password signs you out of all other devices.</p>
         {error ? <ErrorBanner message={error} /> : null}
         <form onSubmit={handleSubmit} className="space-y-3" noValidate>
           <div className="space-y-1.5">
             <Label htmlFor="cpw">Current password</Label>
             <Input
               id="cpw"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={currentPw}
               onChange={(e) => setCurrentPw(e.target.value)}
               autoComplete="current-password"
@@ -82,7 +85,7 @@ function ProfilePage() {
             <Label htmlFor="npw">New password</Label>
             <Input
               id="npw"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={newPw}
               onChange={(e) => setNewPw(e.target.value)}
               autoComplete="new-password"
@@ -93,16 +96,32 @@ function ProfilePage() {
             <Label htmlFor="cpw2">Confirm new password</Label>
             <Input
               id="cpw2"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={confirmPw}
               onChange={(e) => setConfirmPw(e.target.value)}
               autoComplete="new-password"
               minLength={8}
             />
           </div>
-          <Button type="submit" disabled={saving}>
-            {saving ? "Saving…" : "Change Password"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-10 gap-1.5"
+              onClick={() => setShowPassword((value) => !value)}
+            >
+              {showPassword ? (
+                <EyeOff className="size-4" aria-hidden="true" />
+              ) : (
+                <Eye className="size-4" aria-hidden="true" />
+              )}
+              {showPassword ? "Hide passwords" : "Show passwords"}
+            </Button>
+            <Button type="submit" disabled={saving} className="h-10">
+              {saving ? "Saving…" : "Change Password"}
+            </Button>
+          </div>
         </form>
       </div>
     </div>

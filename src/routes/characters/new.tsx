@@ -92,7 +92,19 @@ export function NewCharacterPage() {
 
   const handleImport = async () => {
     if (!previewB64) return;
-    const res = await importMutation.mutateAsync({ pngBase64: previewB64 });
+    setPreviewErr(null);
+    setFieldErrors(null);
+    let res: Awaited<ReturnType<typeof importMutation.mutateAsync>>;
+    try {
+      res = await importMutation.mutateAsync({ pngBase64: previewB64 });
+    } catch (err) {
+      setPreviewErr(
+        err instanceof Error
+          ? `We couldn’t import this card. ${err.message}`
+          : "We couldn’t import this card.",
+      );
+      return;
+    }
     if (res.ok) {
       const parts = [`Imported "${res.character.name}"`];
       if (res.lorebook) {

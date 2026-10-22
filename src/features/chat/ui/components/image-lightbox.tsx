@@ -54,7 +54,7 @@ export function ImageLightbox({ src, alt, open, onOpenChange }: ImageLightboxPro
                 className={cn(
                   "m-auto block select-none",
                   zoomed
-                    ? "max-h-none max-w-none"
+                    ? "max-h-none max-w-none scale-150 transition-transform duration-150"
                     : "max-h-[calc(100dvh_-_2rem)] max-w-[calc(100vw_-_2rem)] object-contain",
                 )}
                 onError={() => setFailedSrc(src)}
