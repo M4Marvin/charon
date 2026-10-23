@@ -1,26 +1,5 @@
 # NOTICE
 
-Charon includes source code derived from **SillyTavern**
-(<https://github.com/SillyTavern/SillyTavern>), which is licensed under the
-**GNU Affero General Public License, version 3 (AGPL-3.0)**.
-
-Derived portions include:
-
-- `src/lib/st-core/**` — shared types, character-card parsing and validation,
-  chat-tree structures, lorebook buffer and context assembly, STscript
-  parser/runtime, text-transform macros, and story-string rendering.
-- `src/lib/character/**` where it adapts those primitives for Charon.
-
-The upstream license is available at
-<https://github.com/SillyTavern/SillyTavern/blob/release/LICENSE>.
-
-The AGPL requires derivative works to be distributed under the same license.
-These portions — and any distribution that includes them — must therefore be
-treated as AGPL-3.0. The repository's top-level MIT `LICENSE` does not override
-that obligation. The project owner is resolving the license for the combined
-work before the first public release; until then, do not describe the whole
-repository as MIT-only.
-
 ## Fonts
 
 The interface self-hosts **Inter**, **Fraunces**, and **JetBrains Mono** from
