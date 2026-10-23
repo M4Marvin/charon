@@ -232,12 +232,11 @@ describe("normalizeV3ToV2", () => {
     expect(stash.modificationDate).toBe(1700000001);
   });
 
-  it("tolerates a missing groupOnlyGreetings (lenient, matches SillyTavern/Chub)", () => {
+  it("tolerates a missing groupOnlyGreetings (lenient, matches the wider ecosystem)", () => {
     // The V3 spec marks `group_only_greetings` as MUST be present, but
-    // real-world cards (including ones exported by SillyTavern and Chub)
-    // frequently omit it. We accept the card and round-trip the missing
-    // value as missing — no defaulting, no error. This matches how
-    // SillyTavern and Chub read these cards.
+    // real-world cards frequently omit it. We accept the card and
+    // round-trip the missing value as missing — no defaulting, no error.
+    // This matches how the wider ecosystem reads these cards.
     const card = makeValidV3Card();
     const out = normalizeV3ToV2(card) as Record<string, unknown>;
     const outData = out.data as Record<string, unknown>;
@@ -300,11 +299,11 @@ describe("normalizeV3ToV2", () => {
     expect(validateCharacterCardV3(out).ok).toBe(true);
   });
 
-  it("defaults lorebook entry use_regex to false when missing (lenient, matches SillyTavern/Chub)", () => {
+  it("defaults lorebook entry use_regex to false when missing (lenient, matches the wider ecosystem)", () => {
     // The V3 spec marks `use_regex` as MUST be present on every entry,
-    // but real-world V3 cards (SillyTavern, Chub) often omit it. We
-    // accept the entry and default to false so the V2 strict arktype
-    // gate doesn't reject the lorebook.
+    // but real-world V3 cards often omit it. We accept the entry and
+    // default to false so the V2 strict arktype gate doesn't reject the
+    // lorebook.
     const card = makeValidV3Card();
     (card.data as Record<string, unknown>).character_book = {
       extensions: {},

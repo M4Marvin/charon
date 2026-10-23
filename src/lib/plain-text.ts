@@ -1,8 +1,8 @@
 /**
  * Presentation helpers for user-authored card and chat text.
  *
- * Character cards routinely contain HTML, CSS, Markdown, and SillyTavern
- * template macros. Lists and previews must render a readable sentence, never
+ * Character cards routinely contain HTML, CSS, Markdown, and template
+ * macros. Lists and previews must render a readable sentence, never
  * markup. Keep this module pure and dependency-free so both the client and the
  * server can call it.
  */

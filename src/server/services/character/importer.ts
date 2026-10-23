@@ -14,7 +14,7 @@ import {
   validateCharacterCardV3,
 } from "@/lib/st-core/character";
 import { normalizeCardData, normalizeV3ToV2 } from "@/lib/character/normalize";
-import { deriveDisplayName } from "@/lib/character/chub-name";
+import { deriveDisplayName } from "@/lib/character/display-name";
 import { convertCharacterBookToStandalone } from "@/lib/lorebook/embedded-book";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import {

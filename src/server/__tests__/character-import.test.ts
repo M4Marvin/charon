@@ -357,18 +357,18 @@ describe("importCharacterCard with embedded lorebook", () => {
     expect(res.lorebook).toBeNull();
   });
 
-  it("uses the Chub-slug-derived name", async () => {
+  it("uses the source-slug-derived name", async () => {
     const b64 = cardWithData({
-      name: "Mom",
-      extensions: { chub: { full_path: "Anonymous/emme-freehold-your-pet-mom-656d8b705cfb" } },
+      name: "Generic Name",
+      extensions: { source: { full_path: "Anonymous/example-character-656d8b705cfb" } },
     });
     const res = await importCharacterCard(b64, db);
     expect(res.ok).toBe(true);
     if (!res.ok) return;
-    expect(res.character.name).toBe("Emme Freehold Your Pet Mom");
+    expect(res.character.name).toBe("Example Character");
     const stored = getCharacter(res.character.id, db);
-    expect(stored.name).toBe("Emme Freehold Your Pet Mom");
-    expect(stored.data.name).toBe("Mom");
+    expect(stored.name).toBe("Example Character");
+    expect(stored.data.name).toBe("Generic Name");
   });
 
   it("survives a lorebook insert failure without failing the character import", async () => {

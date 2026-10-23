@@ -76,7 +76,7 @@
   }
 }
 
-/* ── Message text (parity with SillyTavern .mes_text) ── */
+/* ── Message text parity ── */
 
 .rt-mes-text {
   overflow-wrap: anywhere;

@@ -6,7 +6,7 @@ import {
   type LoreEntry,
 } from "@/lib/st-core/lorebook";
 
-// Parse a SillyTavern world-info JSON file into a shape ready for insertion
+// Parse a world-info JSON file into a shape ready for insertion
 // into the lorebooks + lore_entries tables.
 //
 // World file shape (loose — the wild is messy):

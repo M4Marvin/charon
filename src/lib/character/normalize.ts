@@ -1,6 +1,6 @@
-// Card normalization (legacy ST data + benign real-world V2 violations)
+// Card normalization (legacy imported data + benign real-world V2 violations)
 //
-// Real-world SillyTavern cards frequently violate the V2 spec in benign ways:
+// Real-world cards frequently violate the V2 spec in benign ways:
 //   - extensions.talkativeness is the string "0.5" instead of a number
 //   - extensions.depth_prompt.role is missing or empty
 //   - character_book is null instead of omitted
@@ -159,7 +159,7 @@ export function normalizeCardData(raw: unknown): unknown {
 //   3. Returning the V2-shaped object, which then passes through
 //      `normalizeCardData` and the V2 strict arktype gate.
 //
-// The `_v3` stash is namespaced so it never collides with ST's
+// The `_v3` stash is namespaced so it never collides with the upstream
 // `extensions` namespace. Callers that need to re-emit the V3 JSON read
 // it back and build a V3-shaped object.
 //
@@ -217,7 +217,7 @@ export function normalizeV3ToV2(raw: unknown): unknown {
   }
 
   // Walk lorebook entries to default `use_regex` and coerce string `id`s.
-  // We match SillyTavern/Chub on read: missing `use_regex` is silently
+  // We match the wider ecosystem on read: missing `use_regex` is silently
   // defaulted to `false` (the V3 spec marks it as required, but real-world
   // cards omit it), and string ids are coerced to numbers when the string
   // is a clean integer (the st-core lorebook engine uses numeric uids).
