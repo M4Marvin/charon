@@ -27,7 +27,7 @@ Full-stack React framework: TanStack Router + Vite.
 - API routes: catch and return `new Response("...", { status })` directly. Don't throw.
 
 # st-core (`src/lib/st-core/`)
-Extracted core libraries from SillyTavern, copied from `sillytavern-dev/st-core/src/`. **Do not edit without user permission.**
+Core libraries for the app. **Do not edit without user permission.**
 
 ## Modules
 

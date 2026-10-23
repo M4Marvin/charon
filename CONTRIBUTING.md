@@ -51,11 +51,11 @@ src/
   components/ui/          # shadcn/ui components
   hooks/                  # TanStack Query hooks
   lib/
-    st-core/              # SillyTavern core libs (DO NOT EDIT — see below)
+    st-core/              # Core libraries (shared types, cards, tree, lorebook)
     markdown.ts           # Showdown + DOMPurify render pipeline
   features/logging/       # Structured logger
 scripts/
-  migrate-data.ts         # Legacy SillyTavern importer
+  migrate-data.ts         # Legacy data importer
 migrate-to-single-user.ts  # Single-user migration operator (pnpm migrate:single-user)
 ```
 
@@ -74,7 +74,7 @@ UI (presentation) → Generation (AI calls) → Tree (structure) → Data (persi
 
 ## st-core (`src/lib/st-core/`)
 
-Copied from SillyTavern. **Do not edit without explicit permission.**
+Core libraries for the app. **Do not edit without explicit permission.**
 
 | Module | Contents |
 |---|---|

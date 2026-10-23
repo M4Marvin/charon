@@ -1,6 +1,6 @@
 # Markdown Rendering System
 
-Full-stack markdown + HTML rendering pipeline for chat messages and character content. Uses showdown + DOMPurify with pre-showdown `<q>` quote wrapping (ported from SillyTavern), `fixMarkdown` auto-repair, CSS sandboxing with `custom-` class namespacing, streaming-safe DOM patching via morphdom, code copy buttons, and a per-user settings panel.
+Full-stack markdown + HTML rendering pipeline for chat messages and character content. Uses showdown + DOMPurify with pre-showdown `<q>` quote wrapping (ported from the original renderer), `fixMarkdown` auto-repair, CSS sandboxing with `custom-` class namespacing, streaming-safe DOM patching via morphdom, code copy buttons, and a per-user settings panel.
 
 ---
 
@@ -38,7 +38,7 @@ addCopyToCodeBlocks()         — injects hover-reveal "Copy" button on <pre><co
 RichText — morphdom patch     — childrenOnly, fade-in, isEqualNode skip
   │
   ▼
-DOM in bubble / detail page   — .rt-mes-text class provides ST-parity styling
+DOM in bubble / detail page   — .rt-mes-text class provides message-text parity styling
 ```
 
 ---
@@ -51,7 +51,7 @@ DOM in bubble / detail page   — .rt-mes-text class provides ST-parity styling
 | `src/components/RichText.tsx` | React shell: mount guard, morphdom effect, fade-in, settings consumption, `rt-mes-text` class |
 | `src/components/MarkdownContent.tsx` | Thin wrapper: `RichText` inside Tailwind prose (character detail) |
 | `src/lib/richtext-settings.tsx` | React context + localStorage persistence for blockExternalMedia, highlightDialogue, autoFixMarkdown |
-| `src/styles.css` | `.rt-mes-text` stylesheet (ST message-text parity), `.code-copy-wrapper`/`.code-copy-button`, theme tokens `--rt-em-color` / `--rt-underline-color` / `--dialogue` |
+| `src/styles.css` | `.rt-mes-text` stylesheet (message-text parity), `.code-copy-wrapper`/`.code-copy-button`, theme tokens `--rt-em-color` / `--rt-underline-color` / `--dialogue` |
 
 ---
 
@@ -160,7 +160,7 @@ All registered once at module load (`registerDOHooks()`), guarded by `_hooksRegi
 
 ## Quote Wrapping (Pre-Showdown `<q>`)
 
-Runs on raw markdown text **before** showdown, ported from SillyTavern's `messageFormatting` (`script.js:1854-1886`).
+Runs on raw markdown text **before** showdown, ported from the original `messageFormatting` implementation.
 
 ### Detection
 
@@ -199,7 +199,7 @@ By wrapping before showdown, the `<q>` tag is treated as raw inline HTML passthr
 /* .rt-mes-text q i, .rt-mes-text q em { color: inherit; } */
 ```
 
-The `color: inherit` override on `<q>` descendants ensures inline formatting inside dialogue uses the quote color — a key SillyTavern visual convention.
+The `color: inherit` override on `<q>` descendants ensures inline formatting inside dialogue uses the quote color — a key dialogue convention.
 
 ---
 
@@ -366,7 +366,7 @@ import { MarkdownContent } from "@/components/MarkdownContent";
 
 | Package | Version | Purpose |
 |---|---|---|
-| `showdown` | ^2.1.0 | Markdown → HTML converter (mirrors SillyTavern config) |
+| `showdown` | ^2.1.0 | Markdown → HTML converter |
 | `dompurify` | ^3.4.11 | HTML sanitizer, XSS prevention |
 | `@adobe/css-tools` | ^4.5.0 | CSS AST parser + stringifier for `<style>` scoping |
 | `morphdom` | ^2.7.8 | DOM diff + patch for streaming-safe updates |
@@ -383,7 +383,7 @@ Smoke tests (run with `nub run dev`):
 1. **Links** — send `[test](https://example.com)` → inspect DOM for `target="_blank" rel="noopener noreferrer nofollow"`.
 2. **CSS scoping** — send `<style>body{background:red}</style><p>hi</p>` → red background only inside the bubble, not the page. Class selectors inside the `<style>` should be namespaced to `custom-` (e.g. `.foo` → `.custom-foo`).
 3. **Multiple `<style>` blocks** — send `<style>p{color:red}</style><style>em{color:blue}</style>` → both are scoped and applied.
-4. **Dialogue highlighting (ST parity)** — send `Mei: "Come sit, come sit~"` → `"Come sit, come sit~"` renders as `<q>` tag in dialogue cream-gold. `"this *bold* text"` → entire quote wrapped in `<q>`, bold NOT processed (verbatim dialogue).
+4. **Dialogue highlighting** — send `Mei: "Come sit, come sit~"` → `"Come sit, come sit~"` renders as `<q>` tag in dialogue cream-gold. `"this *bold* text"` → entire quote wrapped in `<q>`, bold NOT processed (verbatim dialogue).
 5. **Smart / curly quotes** — send `""Bonsoir, monsieur""` or `「こんにちは」` → wrapped in `<q>` with dialogue color.
 6. **Code blocks protected from quotes** — send `` `"hello"` `` → no `<q>` wrapping inside inline code. Send a fenced code block containing `"` → protected.
 7. **External media toggle** — place `<img src="https://example.com/a.png">` in a message, toggle on → entire `<img>` node removed. `data:` images preserved. `<img src="local.png">` preserved.

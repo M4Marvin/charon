@@ -270,9 +270,9 @@ turn a successful install into a first reply. Ordered by impact per day.
    texts ship beside the files.
 
 7. **Resolve the license before saying "open source" in public.** (decision)
-   `src/lib/st-core` is copied from SillyTavern (AGPL-3.0) into an MIT repo.
-   The honest options are: relicense the combined work to AGPL-3.0 (one day,
-   recommended), replace the copied modules (weeks), or obtain permission.
+   `src/lib/st-core` is part of this repository and follows the repository
+   license. The options are: keep it under the current license, or replace
+   the modules.
    Do not print "MIT" on the landing page or README until this is decided.
 
 8. **Persona and default prompts. — DONE**
@@ -361,8 +361,8 @@ do.
 | Lead with "stories and roleplay", "characters", "your own model" | Lead with "unfiltered", "no restrictions", "uncensored" |
 | Ship SFW starter characters with portraits | Screenshot a real library that contains adult cards |
 | Say "you choose the model" | Imply the app has no moderation layer as a feature |
-| Answer "Is this NSFW?" with a plain no | Ignore the question and let the Chub association answer it |
-| Market on r/LocalLLaMA, r/SillyTavernAI, Show HN, Product Hunt | Post in adult-oriented communities to seed growth |
+| Answer "Is this NSFW?" with a plain no | Ignore the question and let the character-import feature imply an adult app |
+| Market on r/LocalLLaMA, Show HN, Product Hunt | Post in adult-oriented communities to seed growth |
 | Keep character import agnostic | Curate or host a character marketplace |
 
 Important honesty constraint: because the app is local and the user brings
@@ -441,7 +441,7 @@ build. No further action unless this is distributed commercially.
 
 1. **License:** deprioritized by the owner — not selling; obfuscate if it ever
    becomes a problem. No action needed now.
-2. **Audience:** is the primary persona the SillyTavern refugee (technical, but
+2. **Audience:** is the primary persona the roleplay power user (technical, but
    tired) or the never-touched-a-terminal user? The ladder serves both, but
    the landing copy and the desktop-app priority depend on the answer.
 3. **Domain:** register `get.charon.app` / `charon.chat`? The one-liner is much
@@ -451,9 +451,8 @@ build. No further action unless this is distributed commercially.
    proves demand.
 5. **Windows signing:** do you qualify for Azure Trusted Signing at the
    individual rate? If not, budget an OV certificate.
-6. **Marketing channels:** are you willing to post on r/SillyTavernAI given its
-   NSFW-adjacent reputation, or do you want to stay on r/LocalLLaMA and
-   Show HN?
+6. **Marketing channels:** keep the launch on local-model and self-hosting
+   communities, or broaden to general roleplay communities?
 
 ## 12. Sources
 
@@ -464,5 +463,4 @@ build. No further action unless this is distributed commercially.
 - `.review/packaging/packaging-research.md` — competitor install flows,
   native-module constraints, image math, costs, SFW channel research.
 - `CONTRIBUTING.md` — architecture and conventions.
-- `docs/marketing-campaign.md` — the earlier campaign brief; its "zero API key"
-  claim and "no filtering" positioning are superseded by sections 5 and 7 here.
+- The earlier campaign brief is superseded by sections 5 and 7 here.
