@@ -84,7 +84,7 @@ export class PromptAssembler {
       messages.push(msg);
     };
 
-    // Build in the standard SillyTavern order
+    // Build in the standard context order
     addSection("worldInfoBefore", params.worldInfoBefore);
     addSection("main", params.mainPrompt);
     addSection("worldInfoAfter", params.worldInfoAfter);

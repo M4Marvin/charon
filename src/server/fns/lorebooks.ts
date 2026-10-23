@@ -284,7 +284,7 @@ export const deleteLorebookEntry = createServerFn({ method: "POST" })
     return { id: data.entryId };
   });
 
-// Import a SillyTavern world-info JSON file. Creates the lorebook (disabled
+// Import a world-info JSON file. Creates the lorebook (disabled
 // by default per the opt-in design) and inserts all valid entries. Returns
 // counts so the client can report skipped entries.
 export const importLorebook = createServerFn({ method: "POST" })

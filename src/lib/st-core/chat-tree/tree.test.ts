@@ -733,7 +733,7 @@ describe("integration: swipe / regenerate workflow", () => {
     return tree;
   }
 
-  it("supports the full SillyTavern swipe flow and stays valid at every step", () => {
+  it("supports the full swipe flow and stays valid at every step", () => {
     const tree = freshTree();
     expect(validateTree(tree).valid).toBe(true);
 

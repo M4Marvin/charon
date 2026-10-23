@@ -1,3 +1,3 @@
-// @st/core — extracted core libraries from SillyTavern
+// @st/core — core libraries for Charon
 
 export * from "./shared/index.js";

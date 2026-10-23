@@ -1,7 +1,7 @@
 import type { StoryStringParams } from "./types.js";
 
 /**
- * Minimal template engine for the SillyTavern story string.
+ * Minimal template engine for the story string.
  * Supports:
  *   - {{varName}}           Direct substitution (HTML-unsafe)
  *   - {{#if varName}}...{{/if}}  Conditional block (truthy check)
@@ -40,7 +40,7 @@ function processIfBlocks(template: string, params: StoryStringParams): string {
 }
 
 /**
- * Default story string template used by SillyTavern.
+ * Default story string template.
  */
 export const DEFAULT_STORY_STRING_TEMPLATE = [
   "{{#if system}}{{system}}",

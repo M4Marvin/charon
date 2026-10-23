@@ -3,7 +3,7 @@ import { ScanState as SS, SelectiveLogic as SL } from "./types.js";
 
 /**
  * Builds and queries a searchable text buffer from chat message history
- * for lore entry key matching. Extracted from SillyTavern's WorldInfoBuffer.
+ * for lore entry key matching.
  */
 export class LoreBuffer {
   static MAX_SCAN_DEPTH = 100;

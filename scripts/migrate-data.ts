@@ -1,4 +1,4 @@
-// Migrate existing SillyTavern data from data/import/ into the SQLite database and private uploads.
+// Migrate existing data from data/import/ into the SQLite database and private uploads.
 // Run with: pnpm run prepare:migration && pnpm run migrate
 //
 // Migrates: characters (PNG + embedded books), standalone lorebooks (worlds/*.json),
@@ -620,7 +620,7 @@ async function main() {
   const account = db.select({ id: user.id }).from(user).limit(1).get();
   if (!account) {
     console.error(
-      "No account found — open the app and complete the first-run setup before importing SillyTavern data.",
+      "No account found — open the app and complete the first-run setup before importing legacy data.",
     );
     process.exit(1);
   }

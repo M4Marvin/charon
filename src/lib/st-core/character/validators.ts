@@ -170,14 +170,13 @@ export const CharacterDataV3 = type({
 // future minor versions (3.1, 3.2, ...) without code changes. The
 // validateCharacterCardV3 function below parses the string as a float and
 // rejects anything outside the [3.0, 4.0) range, matching the spec's
-// forward-compat guidance. SillyTavern and Chub both accept any 3.x
+// forward-compat guidance. Real-world readers accept any 3.x
 // version string on read.
 //
 // `data.group_only_greetings` is per spec a required field, but we make
 // it optional in the arktype and let the normalizer default missing
-// values to []. Real-world V3 cards (including ones exported by
-// SillyTavern and Chub) frequently omit this field, and SillyTavern
-// itself does not enforce its presence on read.
+// values to []. Real-world V3 cards frequently omit this field, and
+// real-world readers do not enforce its presence on read.
 export const CharacterCardV3 = type({
   spec: "'chara_card_v3'",
   spec_version: "string",
@@ -266,14 +265,14 @@ export function validateCharacterCard(
  * Attempt to parse and validate a V3 character card from unknown data.
  * V3 spec: https://github.com/kwaroran/character-card-spec-v3
  *
- * Leniency (matches SillyTavern and Chub on read):
+ * Leniency (matches the wider ecosystem on read):
  *   - `spec_version` accepts any 3.x string ("3.0", "3.1", ...). We
  *     parse as float and require [3.0, 4.0). Future spec versions are
  *     accepted; major-version jumps are not.
  *   - `data.group_only_greetings` is treated as optional. Real-world
  *     cards frequently omit it; the normalizer defaults it to [].
- *   - `use_regex` on lorebook entries is treated as optional. SillyTavern
- *     and Chub do not require it; the normalizer defaults to false.
+ *   - `use_regex` on lorebook entries is treated as optional. Real-world
+ *     readers do not require it; the normalizer defaults to false.
  *
  * The strict spec says these are required; we relax to match the
  * practical behavior of the wider ecosystem.

@@ -28,7 +28,7 @@ function makeValidV3(overrides: Record<string, unknown> = {}): Record<string, un
 
 describe("validateCharacterCardV3", () => {
   it("accepts a minimal V3 card with only V2 required fields", () => {
-    // Lenient: real-world V3 cards (SillyTavern, Chub) often omit
+    // Lenient: real-world V3 cards often omit
     // `group_only_greetings`. We treat it as optional and let the
     // normalizer default missing values to []. The strict V3 spec says
     // it's required, but matching the wider ecosystem wins.
@@ -102,7 +102,7 @@ describe("validateCharacterCardV3", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("accepts a 3.1 spec_version (forward compat, matches SillyTavern/Chub)", () => {
+  it("accepts a 3.1 spec_version (forward compat, matches the wider ecosystem)", () => {
     const card = makeValidV3();
     (card as { spec_version: string }).spec_version = "3.1";
     expect(validateCharacterCardV3(card).ok).toBe(true);
