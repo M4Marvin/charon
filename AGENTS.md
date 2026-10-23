@@ -38,7 +38,7 @@ Core libraries for the app. **Do not edit without user permission.**
 | chat-tree | `chat-tree/` | Branching chat tree data structures + I/O |
 | lorebook | `lorebook/` | Lorebook buffer, context builder, entry types/validators |
 | context | `context/` | Prompt assembly, collection management, story string rendering |
-| script | `script/` | STscript parser, runtime executor, scope management |
+| script | `script/` | Script parser, runtime executor, scope management |
 | transform | `transform/` | Text transformation macros, regex utilities |
 
 ## Import convention

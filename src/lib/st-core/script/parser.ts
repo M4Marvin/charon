@@ -9,7 +9,7 @@ import type {
 import { createScope } from "./scope.js";
 
 /**
- * Minimal STscript parser.
+ * Minimal script parser.
  * Parses text into a chain of SlashCommandExecutors wrapped in a SlashCommandClosure.
  *
  * Supports:

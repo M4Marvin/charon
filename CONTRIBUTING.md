@@ -83,7 +83,7 @@ Core libraries for the app. **Do not edit without explicit permission.**
 | `chat-tree/` | Branching chat tree data structures |
 | `lorebook/` | Lorebook buffer, context builder, entry types |
 | `context/` | Prompt assembly, collection management |
-| `script/` | STscript parser/runtime |
+| `script/` | Script parser/runtime |
 | `transform/` | Text transformation macros, regex utilities |
 
 Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
@@ -162,7 +162,6 @@ Don't fix unless asked:
 - [ ] Provider preset cards and keyless Ollama onboarding (see `docs/packaging.md` §5).
 - [ ] Test the provider connection before saving it, so onboarding cannot finish broken.
 - [ ] Self-host the UI fonts; the app currently requests them from Google.
-- [ ] Decide the license for the AGPL-derived `src/lib/st-core` (see `NOTICE`).
 
 ## Image rendering
 

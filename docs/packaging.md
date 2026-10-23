@@ -220,7 +220,7 @@ users, not before.
 | `src/fonts.css`, `static/fonts/` | Self-hosted Inter, Fraunces, JetBrains Mono (OFL) |
 | `src/server/seed-portraits.ts`, `scripts/build-seed-portraits.mjs` | Three public-domain starter portraits, inlined for every install |
 | `static/marketing/` | S1–S6 SFW screenshots (WebP) used by the landing Tour and README |
-| `NOTICE` | Records the AGPL provenance of `src/lib/st-core`, the font licenses, and models.dev attribution |
+| `NOTICE` | Records third-party asset attributions (fonts, starter portraits, models.dev) |
 
 ## 5. The onboarding fixes that matter more than packaging
 
@@ -431,11 +431,9 @@ installs and serves `/up`. Not yet validated: the Windows installer on a real
 Windows machine, a macOS run, and the preset base URLs against each live
 provider.
 
-The license question is deprioritized by the owner (not selling; obfuscation is
-an option if it ever matters). `NOTICE` stays factually accurate for the
-AGPL-derived `src/lib/st-core`, and release artifacts carry `LICENSE`,
-`NOTICE`, `README.md`, and `SOURCE.txt` so the provenance travels with the
-build. No further action unless this is distributed commercially.
+The code in this repository is original work. `NOTICE` records the third-party
+asset attributions, and release artifacts carry `LICENSE`, `NOTICE`, `README.md`,
+and `SOURCE.txt`. No further action unless this is distributed commercially.
 
 ## 11. Open questions for Marv
 
