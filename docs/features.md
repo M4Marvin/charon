@@ -83,7 +83,7 @@ Lorebooks are collections of keyword-triggered lore entries — when the convers
 
 ### Library
 
-Browse all lorebooks on the server. Each shows its name, description, entry count, and an on/off toggle. Import lorebooks from SillyTavern world-info JSON files, or create your own from scratch.
+Browse all lorebooks on the server. Each shows its name, description, entry count, and an on/off toggle. Import world-info JSON files, or create your own from scratch.
 
 ### Lorebook detail
 

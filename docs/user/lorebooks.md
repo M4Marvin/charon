@@ -18,10 +18,10 @@ The new book appears in the list, disabled by default. Turn it on with the switc
 
 ## Import a book
 
-Already using SillyTavern? You can bring its lorebooks over.
+Bring your existing lorebooks over.
 
 1. Click **Import**.
-2. Choose a SillyTavern **world-info** JSON file from your computer. This is a file picker only; there is no text box to paste into.
+2. Choose a **world-info** JSON file from your computer. This is a file picker only; there is no text box to paste into.
 
 Imported books start **disabled**. Turn them on with the switch.
 

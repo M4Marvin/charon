@@ -26,7 +26,7 @@ If the card fails validation, Charon lists what's wrong so you can fix the file 
 
 4. Click **Import**. A toast says Imported "{name}" and you land on the character's page.
 
-When a card comes from Chub, the imported character's name is derived from the Chub page slug instead of the card's sometimes-generic internal name. If the card carries an embedded lorebook, Charon also creates a standalone copy in the Lorebooks library, disabled by default, named after the book (or "{Character} [embedded]" when it has no name). Re-importing the same card does not create a duplicate.
+When a card carries a source slug, the imported character's name is derived from that slug instead of the card's sometimes-generic internal name. If the card carries an embedded lorebook, Charon also creates a standalone copy in the Lorebooks library, disabled by default, named after the book (or "{Character} [embedded]" when it has no name). Re-importing the same card does not create a duplicate.
 
 ## The character page
 

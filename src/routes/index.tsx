@@ -107,7 +107,7 @@ const FEATURES = [
   {
     icon: BookOpen,
     title: "Lorebooks that remember your world",
-    body: "Keyword-triggered entries give the model the right history at the right moment. Import a SillyTavern world-info file or write your own.",
+    body: "Keyword-triggered entries give the model the right history at the right moment. Import a world-info JSON file or write your own.",
   },
   {
     icon: Plug,
@@ -149,7 +149,7 @@ const FAQ = [
     a: "Anything that speaks the OpenAI chat-completions API: OpenAI, OpenRouter, vLLM, LM Studio, Ollama, and Anthropic through a proxy. If it has a base URL, Charon can probably talk to it.",
   },
   {
-    q: "Can I import my SillyTavern or Chub characters?",
+    q: "Can I import my existing characters?",
     a: "Yes. Charon reads V2 and V3 PNG cards, keeps the portrait and greetings, and extracts an embedded lorebook into one you can edit.",
   },
   {

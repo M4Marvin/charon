@@ -14,7 +14,7 @@ No cloud account. No subscription. No telemetry. One SQLite file you can copy.
 
 **Every reply is a branch.** Swipe to see another version of a reply and the one you had stays where it was. Regenerate, edit, or continue, and each choice becomes a path you can come back to. Nothing is overwritten.
 
-**Your library comes with you.** Charon reads V2 and V3 PNG character cards from SillyTavern, Chub, and anywhere else that follows the card spec. Portraits, greetings, tags, and embedded lorebooks come across. You can also import SillyTavern world-info JSON.
+**Your library comes with you.** Charon reads V2 and V3 PNG character cards from other apps and anywhere else that follows the card spec. Portraits, greetings, tags, and embedded lorebooks come across. You can also import world-info JSON.
 
 **You choose the model.** OpenAI, OpenRouter, Anthropic through a proxy, vLLM, LM Studio, Ollama, or any other OpenAI-compatible endpoint. Your key is encrypted before it is stored, and it only travels to the provider you configured.
 
@@ -133,9 +133,9 @@ model lists work offline. Most cloud providers need a key; local servers do not.
 
 Drag a PNG card onto the Characters page, or use **Import PNG**. V2 and V3 cards work. The import preview shows the portrait, description, tags, greetings, and a warning if a character with the same name already exists.
 
-Embedded lorebooks are extracted into editable standalone lorebooks. SillyTavern world-info JSON can be imported from the Lorebooks page.
+Embedded lorebooks are extracted into editable standalone lorebooks. World-info JSON can be imported from the Lorebooks page.
 
-If you are bringing a whole SillyTavern install, see [Import from SillyTavern](#import-from-sillytavern).
+If you are bringing data from a whole existing install, see [Import existing data](#import-existing-data).
 
 ---
 
@@ -174,8 +174,8 @@ For real replies, yes — Charon connects to a provider rather than bundling a m
 **Does it work on my phone?**
 Yes. Run Charon on a computer, publish the port, and open the computer's address from your phone's browser on the same network. One library, one account.
 
-**Can I import my SillyTavern or Chub characters?**
-Yes. V2 and V3 PNG cards, including embedded lorebooks. SillyTavern world-info JSON imports too.
+**Can I import my existing characters?**
+Yes. V2 and V3 PNG cards, including embedded lorebooks. World-info JSON imports too.
 
 **Which models work?**
 Anything that speaks the OpenAI chat-completions API. If it has a base URL, Charon can probably talk to it.
@@ -194,11 +194,11 @@ Run `charon doctor`. It checks Node, the app bundle, the data directory, and `/u
 
 ---
 
-## Import from SillyTavern
+## Import existing data
 
 ```bash
 # Copy your old data into private migration storage
-cp -r /path/to/SillyTavern/public/* data/import/
+cp -r /path/to/old-install/public/* data/import/
 
 # Import into the database and private uploads
 pnpm run migrate
@@ -279,6 +279,6 @@ If you hit friction — a confusing error, a missing doc, a command that failed 
 
 ## License
 
-See [LICENSE](./LICENSE) and [NOTICE](./NOTICE). Charon includes code derived from SillyTavern, which is licensed under AGPL-3.0; the NOTICE file records the provenance.
+See [LICENSE](./LICENSE) and [NOTICE](./NOTICE). NOTICE records third-party asset attributions.
 
 Character-card parsing follows the [Character Card V2/V3 specification](https://github.com/kwaroran/character-card-spec-v3). Provider and model metadata comes from [models.dev](https://models.dev). Inter, Fraunces, and JetBrains Mono are self-hosted under the SIL Open Font License. See [NOTICE](./NOTICE) for the full attributions.
