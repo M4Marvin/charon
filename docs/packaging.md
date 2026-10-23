@@ -439,8 +439,8 @@ build. No further action unless this is distributed commercially.
 
 ## 11. Open questions for Marv
 
-1. **License:** deprioritized by the owner — not selling; obfuscate if it ever
-   becomes a problem. No action needed now.
+1. **License:** original code, licensed under the repository `LICENSE`. No
+   action needed when not selling.
 2. **Audience:** is the primary persona the roleplay power user (technical, but
    tired) or the never-touched-a-terminal user? The ladder serves both, but
    the landing copy and the desktop-app priority depend on the answer.
