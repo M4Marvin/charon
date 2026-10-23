@@ -83,8 +83,8 @@ export function ImportLorebookDialog({
         <DialogHeader>
           <DialogTitle>Import Lorebook</DialogTitle>
           <DialogDescription>
-            Upload a world-info JSON file. The lorebook is created disabled — toggle it
-            on from the list to activate.
+            Upload a world-info JSON file. The lorebook is created disabled — toggle it on from the
+            list to activate.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
