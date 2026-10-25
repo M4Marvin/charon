@@ -87,10 +87,10 @@ const INSTALL_METHODS = [
     id: "docker",
     label: "Docker",
     terminal: "Open a terminal",
-    prerequisite: "Docker Desktop or Docker Engine. Pulls the public image.",
+    prerequisite: "Docker Desktop or Docker Engine. Builds locally.",
     command:
-      "docker run -d --name charon --restart unless-stopped -p 127.0.0.1:3000:3000 -v charon-data:/app/data ghcr.io/m4marvin/charon:latest",
-    note: "The published image is linux/amd64. Secrets and data are generated in the charon-data volume.",
+      "git clone https://github.com/M4Marvin/charon.git charon && cd charon && docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build",
+    note: "Builds the current release from source. The prebuilt image is one release behind.",
     installer: false,
     script: null,
   },

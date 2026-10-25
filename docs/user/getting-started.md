@@ -20,7 +20,7 @@ irm https://github.com/M4Marvin/charon/releases/latest/download/install.ps1 | ie
 
 The installer puts Charon in your user folder, downloads a private copy of Node.js if you do not have one, verifies the download, and opens the browser for you. It does not need an administrator password.
 
-If you prefer Docker, the README has a one-line `docker run`. Migrations run automatically on first start, so there is nothing else to do. When Charon is ready, open http://localhost:3000 in your browser.
+If you prefer Docker, the README has the build steps. Migrations run automatically on first start, so there is nothing else to do. When Charon is ready, open http://localhost:3000 in your browser.
 
 ## Create your account (first run)
 
