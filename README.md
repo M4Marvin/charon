@@ -55,22 +55,25 @@ It installs under `%LOCALAPPDATA%\Charon`, needs no administrator prompt, downlo
 
 ### Docker
 
-The GHCR image is built from this release but is not published yet (it needs a
-package-write token). Until then, build it locally:
+The prebuilt image is public on GHCR:
 
 ```bash
-git clone https://github.com/M4Marvin/charon.git charon
-cd charon
-docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+docker run -d --name charon --restart unless-stopped \
+  -p 127.0.0.1:3000:3000 \
+  -v charon-data:/app/data \
+  ghcr.io/m4marvin/charon:latest
 ```
 
 Open [http://localhost:3000](http://localhost:3000). Everything persists in the
 `charon-data` volume. Secrets are generated inside the volume on first start;
 you do not need to create any.
 
-To reach it from your phone on the same network, change the port mapping in
-`docker-compose.yml` to `3000:3000` and set `APP_URL` in the service
-environment to the address you will open.
+The published image is `linux/amd64`. On ARM, use the installer, or build the
+image locally with `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`.
+
+To reach it from your phone on the same network, change the port mapping to
+`3000:3000` and set `APP_URL` in the service environment to the address you
+will open.
 
 ### From source (contributors)
 
@@ -257,9 +260,8 @@ Shipped in the latest release:
 - a persona step, self-hosted fonts, and three portrait'd SFW starters;
 - a landing page with an SFW screenshot tour.
 
-The GHCR image is built from the same release commit; publishing it requires a
-token with `write:packages`. Until then, use the installer or the local Docker
-build above.
+The GHCR image is published from the same release commit. Pull
+`ghcr.io/m4marvin/charon:latest`, or use the installer above.
 
 Still planned:
 

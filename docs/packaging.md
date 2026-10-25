@@ -136,7 +136,7 @@ commit and pushed to GHCR manually.
 The container image is built from the same tag as the release archives and pushed to GHCR by hand. `scripts/release-local.sh` does not touch Docker.
 
 ```bash
-export VERSION=v0.1.2
+export VERSION=v0.1.3
 export IMAGE=ghcr.io/m4marvin/charon
 
 gh auth token | docker login ghcr.io -u M4Marvin --password-stdin
@@ -171,7 +171,7 @@ export DOCKER_CONFIG=/tmp/charon-docker
 mkdir -p "$DOCKER_CONFIG"
 ```
 
-The v0.1.2 release image is `linux/amd64`. To publish a multi-arch image as well:
+Release images are published as `linux/amd64`. To publish a multi-arch image as well:
 
 ```bash
 docker run --privileged --rm tonistiigi/binfmt --install arm64

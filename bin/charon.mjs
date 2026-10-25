@@ -41,7 +41,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = resolve(HERE, "..");
-const VERSION = "0.1.0";
+const VERSION = "0.1.3";
 const REPO = "M4Marvin/charon";
 
 function env(name, fallback) {
