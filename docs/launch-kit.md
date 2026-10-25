@@ -3,6 +3,9 @@
 Drafts for the first public posts. Adjust the voice, keep the claims true, and
 do not post the same text to every platform on the same day.
 
+> Do not post the `chat.m4marvin.com` link until that deployment is rebuilt
+> from the current `main`. The live build predates the latest copy changes.
+
 ---
 
 ## One-line description
@@ -159,6 +162,6 @@ GitHub: https://github.com/M4Marvin/charon
 - [ ] The 60-second video and a 15-second GIF exist.
 - [ ] X and LinkedIn previews show the OG image and the right title.
 - [ ] `SECURITY.md` and the bug template are live.
-- [ ] CI runs somewhere you control (GitHub Actions is currently blocked by billing).
+- [ ] CI runs somewhere you control.
 - [ ] The repo description, topics, and pinned post are current.
 - [ ] You have 5–10 people who agreed to try it before the public post.
