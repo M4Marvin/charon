@@ -187,7 +187,7 @@ Anything that speaks the OpenAI chat-completions API. If it has a base URL, Char
 In one SQLite file plus an uploads folder, in the data directory listed above. Nothing is stored anywhere else.
 
 **How do I update?**
-`charon update` on macOS/Linux. On Windows, run `charon update` from a new terminal. Docker: `docker pull ghcr.io/m4marvin/charon:latest` and recreate the container. Your data is untouched.
+`charon update` on macOS/Linux. On Windows, run `charon update` from a new terminal. Docker: rebuild from source for `v0.1.3` until the published image catches up. Your data is untouched.
 
 **How do I uninstall?**
 macOS/Linux: run the installer with `--uninstall` to remove the app and keep your data, or delete `~/.charon`. Windows: run `install.ps1 -Uninstall` or remove `%LOCALAPPDATA%\Charon`. Docker: `docker rm -f charon && docker volume rm charon-data` (the second command deletes your chats).

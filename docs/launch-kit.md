@@ -101,16 +101,8 @@ Install:
 curl -fsSL https://github.com/M4Marvin/charon/releases/latest/download/install.sh | sh
 ```
 
-or:
-
-```bash
-docker run -d --name charon --restart unless-stopped \
-  -p 127.0.0.1:3000:3000 \
-  -v charon-data:/app/data \
-  ghcr.io/m4marvin/charon:latest
-```
-
-Windows has a PowerShell installer. The Docker image is linux/amd64.
+Windows has a PowerShell installer. Docker users can build from the repo; the
+prebuilt image is one release behind.
 
 Honest tradeoffs:
 
@@ -163,10 +155,10 @@ GitHub: https://github.com/M4Marvin/charon
 
 - [ ] `v0.1.3` is the latest release, and the one-liner installs it.
 - [ ] `chat.m4marvin.com` is rebuilt from the same commit.
-- [ ] Docker one-liner pulls and starts on a clean machine.
+- [ ] Docker path is current: either push the `v0.1.3` image or link the local build.
 - [ ] The 60-second video and a 15-second GIF exist.
 - [ ] X and LinkedIn previews show the OG image and the right title.
 - [ ] `SECURITY.md` and the bug template are live.
-- [ ] CI is green on `main`.
+- [ ] CI runs somewhere you control (GitHub Actions is currently blocked by billing).
 - [ ] The repo description, topics, and pinned post are current.
 - [ ] You have 5–10 people who agreed to try it before the public post.
