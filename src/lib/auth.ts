@@ -42,7 +42,13 @@ export const auth = betterAuth({
           }
         },
         after: async (userData) => {
-          await seedSampleData(userData.id);
+          const name =
+            typeof userData.name === "string"
+              ? userData.name
+              : typeof userData.username === "string"
+                ? userData.username
+                : undefined;
+          await seedSampleData(userData.id, name);
         },
       },
     },

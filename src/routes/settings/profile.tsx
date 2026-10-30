@@ -21,6 +21,8 @@ function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const canSubmit = currentPw.length > 0 && newPw.length >= 8 && confirmPw.length > 0;
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!currentPw || !newPw || !confirmPw) {
@@ -90,7 +92,11 @@ function ProfilePage() {
               onChange={(e) => setNewPw(e.target.value)}
               autoComplete="new-password"
               minLength={8}
+              aria-describedby="npw-hint"
             />
+            <p id="npw-hint" className="text-xs text-2">
+              At least 8 characters.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="cpw2">Confirm new password</Label>
@@ -118,8 +124,8 @@ function ProfilePage() {
               )}
               {showPassword ? "Hide passwords" : "Show passwords"}
             </Button>
-            <Button type="submit" disabled={saving} className="h-10">
-              {saving ? "Saving…" : "Change Password"}
+            <Button type="submit" disabled={saving || !canSubmit} className="h-10">
+              {saving ? "Saving…" : "Change password"}
             </Button>
           </div>
         </form>

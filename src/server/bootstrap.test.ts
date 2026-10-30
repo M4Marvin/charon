@@ -116,11 +116,11 @@ describe("seedSampleData", () => {
   });
 
   it("seeds the persona, three portrait-ready starters, Harborlight lore, Creative preset, and settings", async () => {
-    await seedSampleData(userId);
+    await seedSampleData(userId, "Marv");
 
     const personas = listPersonas(holder.db);
     expect(personas).toHaveLength(1);
-    expect(personas[0]!.name).toBe("Default");
+    expect(personas[0]!.name).toBe("Marv");
 
     const chars = listCharacters(holder.db);
     expect(chars).toHaveLength(3);

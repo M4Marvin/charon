@@ -25,6 +25,7 @@ import { CommandMenu } from "@/components/common/CommandMenu";
 import { NewSheet } from "@/components/common/NewSheet";
 import { PageTransition, RouteProgress } from "@/components/common/PageTransition";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SkipLink } from "@/components/common/SkipLink";
 import { Toaster } from "@/components/ui/sonner";
 import appCss from "@/styles.css?url";
 
@@ -262,8 +263,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         >
           <TooltipProvider>
             <ErrorBoundary>
+              {isAuthed && !hideGlobalHeader ? <SkipLink /> : null}
               {!hideGlobalHeader && <Header />}
               <div
+                id={isAuthed && !hideGlobalHeader ? "main" : undefined}
+                tabIndex={isAuthed && !hideGlobalHeader ? -1 : undefined}
                 className={
                   isAuthed && !hideGlobalHeader
                     ? "pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0"

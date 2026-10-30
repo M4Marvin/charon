@@ -317,6 +317,7 @@ function CharactersPage() {
             </div>
           </div>
 
+          <h2 className="sr-only">Character library</h2>
           <p role="status" aria-live="polite" className="py-3 text-xs text-2 tabular-nums">
             {isRefiltering
               ? `Searching ${total.toLocaleString()} character${total !== 1 ? "s" : ""}…`

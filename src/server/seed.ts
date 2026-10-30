@@ -397,13 +397,13 @@ export async function seedDefaultBackgrounds(): Promise<void> {
   }
 }
 
-export async function seedSampleData(userId: string): Promise<void> {
+export async function seedSampleData(userId: string, ownerName?: string): Promise<void> {
   await ensureUploadsDirs();
 
   const personaId = randomUUID();
   createPersona({
     id: personaId,
-    name: "Default",
+    name: ownerName?.trim() || "You",
     description: "Your default persona. Customize this to describe yourself.",
     iconPath: null,
   });
