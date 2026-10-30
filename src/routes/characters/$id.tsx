@@ -220,7 +220,7 @@ export function CharacterDetailPage() {
       <ConfirmDialog
         open={delOpen}
         onOpenChange={(o) => !o && setDelOpen(false)}
-        title="Delete character"
+        title={`Delete “${character.name}”?`}
         description={characterDeleteDescription(
           character.name,
           character.chatCount,

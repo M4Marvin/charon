@@ -143,7 +143,7 @@ export function NewCharacterPage() {
               processFile(e.dataTransfer.files?.[0] ?? null);
             }}
             disabled={processing || importMutation.isPending}
-            className={`flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-transparent p-12 text-center hover:bg-surface transition-colors disabled:pointer-events-none disabled:opacity-50 ${
+            className={`flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-transparent p-12 text-center hover:border-brand/40 hover:bg-brand/5 transition-colors disabled:pointer-events-none disabled:opacity-50 ${
               dragOver ? "border-brand bg-brand/5" : ""
             }`}
           >

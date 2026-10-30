@@ -4,7 +4,7 @@ import { characterDeleteDescription } from "./delete-stats";
 describe("characterDeleteDescription", () => {
   it("renders the exact full string for plural counts", () => {
     expect(characterDeleteDescription("Zephyr", 2, 5)).toBe(
-      'This will permanently delete "Zephyr", 2 chats, and 5 messages. This action cannot be undone.',
+      "This permanently deletes “Zephyr”, 2 chats, and 5 messages. This cannot be undone.",
     );
   });
 

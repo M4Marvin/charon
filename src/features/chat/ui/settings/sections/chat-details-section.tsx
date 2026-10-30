@@ -199,8 +199,8 @@ function ChatDetailsForm({
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Delete chat?"
-        description={`This permanently deletes “${title}” and its ${messageLabel}. This cannot be undone.`}
+        title={`Delete “${title}”?`}
+        description={`This permanently deletes this chat and its ${messageLabel}. This cannot be undone.`}
         destructive
         loading={deleteChat.isPending}
         returnFocusTo={deleteButtonRef}

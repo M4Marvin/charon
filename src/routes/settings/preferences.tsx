@@ -13,10 +13,7 @@ function PreferencesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-title">Display preferences</h2>
-        <p className="text-2 text-sm">These appearance options are saved in this browser.</p>
-      </div>
+      <h2 className="text-title">Preferences</h2>
       <DisplayPreferences onChanged={() => setSavedAt(Date.now())} />
     </div>
   );

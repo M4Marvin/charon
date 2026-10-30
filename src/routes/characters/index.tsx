@@ -207,13 +207,6 @@ function CharactersPage() {
     <main className="mx-auto max-w-[1200px] px-4 py-8 pb-24">
       <PageHeader
         title="Characters"
-        subtitle={
-          isInitialLoading
-            ? "Loading your library…"
-            : total > 0
-              ? `${total.toLocaleString()} character${total !== 1 ? "s" : ""}`
-              : "Import and manage your character cards."
-        }
         actions={
           <Button asChild className="gap-1.5">
             <Link to="/characters/new">
@@ -318,7 +311,11 @@ function CharactersPage() {
           </div>
 
           <h2 className="sr-only">Character library</h2>
-          <p role="status" aria-live="polite" className="py-3 text-xs text-2 tabular-nums">
+          <p
+            role="status"
+            aria-live="polite"
+            className={cn("py-3 text-xs text-2 tabular-nums", isNoMatches && "sr-only")}
+          >
             {isRefiltering
               ? `Searching ${total.toLocaleString()} character${total !== 1 ? "s" : ""}…`
               : `${total.toLocaleString()} character${total !== 1 ? "s" : ""}`}
@@ -397,7 +394,15 @@ function CharactersPage() {
         open={deletingId !== null}
         onOpenChange={(o) => !o && setDeletingId(null)}
         title={deletingCharacter ? `Delete “${deletingCharacter.name}”?` : "Delete this character?"}
-        description="This permanently deletes the character and every chat and message attached to it. This cannot be undone."
+        description={
+          deletingCharacter
+            ? `This permanently deletes “${deletingCharacter.name}” and its ${
+                deletingCharacter.chatCount === 1
+                  ? "1 chat"
+                  : `${deletingCharacter.chatCount} chats`
+              }, including every message. This cannot be undone.`
+            : "This permanently deletes the character and every chat and message attached to it. This cannot be undone."
+        }
         destructive
         loading={deleteMutation.isPending}
         onConfirm={() => {
@@ -440,7 +445,7 @@ function CharacterCard({
 
   return (
     <div
-      className="group relative overflow-hidden rounded-xl border border-subtle transition-colors hover:border-brand/40"
+      className="group relative overflow-hidden rounded-xl border border-subtle transition-colors hover:border-brand/60 hover:bg-surface/40"
       style={{ height: cardHeight }}
     >
       <Link
