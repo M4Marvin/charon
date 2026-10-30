@@ -4,14 +4,15 @@ import { Button } from "@/components/ui/button";
 
 interface ErrorBannerProps {
   message: string;
+  title?: string;
   onRetry?: () => void;
 }
 
-export function ErrorBanner({ message, onRetry }: ErrorBannerProps) {
+export function ErrorBanner({ message, title = "Error", onRetry }: ErrorBannerProps) {
   return (
     <Alert variant="destructive">
       <TriangleAlert className="size-4" />
-      <AlertTitle>Error</AlertTitle>
+      <AlertTitle>{title}</AlertTitle>
       <AlertDescription>
         <p className="mb-2">{message}</p>
         {onRetry ? (

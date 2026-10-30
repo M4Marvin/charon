@@ -10,3 +10,15 @@ export function friendlyLoadError(error: unknown, fallback: string): string {
   }
   return fallback;
 }
+
+/**
+ * Import failures come out of the PNG parser as card-spec jargon ("No PNG
+ * metadata."). Translate them into something a person can act on.
+ */
+export function friendlyImportError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  if (/no png metadata|no character data|not a character card|\b(chara|ccv3)\b/i.test(raw)) {
+    return "That PNG doesn't contain a character card. Export the card from its source, or try another file.";
+  }
+  return friendlyLoadError(error, "Couldn't read that file. Try a character card PNG.");
+}

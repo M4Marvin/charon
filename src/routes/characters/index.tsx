@@ -218,7 +218,7 @@ function CharactersPage() {
           <Button asChild className="gap-1.5">
             <Link to="/characters/new">
               <Plus className="size-4" data-icon="inline-start" aria-hidden="true" />
-              Import PNG
+              Import character
             </Link>
           </Button>
         }
@@ -242,7 +242,7 @@ function CharactersPage() {
           description="Import a PNG character card to get started."
         >
           <Button asChild>
-            <Link to="/characters/new">Import PNG</Link>
+            <Link to="/characters/new">Import character</Link>
           </Button>
         </EmptyState>
       ) : (

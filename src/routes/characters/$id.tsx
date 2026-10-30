@@ -178,17 +178,6 @@ export function CharacterDetailPage() {
               {character.tagline ? <p className="text-title text-2">{character.tagline}</p> : null}
 
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary" className="text-xs font-normal">
-                  {character.spec}
-                </Badge>
-                <Badge variant="outline" className="text-xs font-normal">
-                  v{character.specVersion}
-                </Badge>
-                {data.character_version ? (
-                  <Badge variant="outline" className="text-xs font-normal">
-                    card v{data.character_version}
-                  </Badge>
-                ) : null}
                 {data.tags.map((tag) => (
                   <Link key={tag} to="/characters" search={{ tags: tag }} className="focus-ring">
                     <Badge variant="secondary" className="text-[11px] font-normal">

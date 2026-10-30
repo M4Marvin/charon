@@ -9,6 +9,7 @@ import { OptimizedImage } from "@/components/ui/optimized-image";
 import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/image-optimization";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { friendlyImportError } from "@/lib/error-copy";
 import { fileToBase64, useImportCharacter } from "@/hooks/useCharacters";
 import { previewCharacter } from "@/server/fns/characters";
 import type { PreviewResult } from "@/server/fns/characters";
@@ -53,11 +54,11 @@ export function NewCharacterPage() {
     setFieldErrors(null);
     if (!f) return;
     if (f.type !== "" && f.type !== "image/png") {
-      setPreviewErr("Only PNG files are supported.");
+      setPreviewErr("That file isn't a PNG. Choose a character card PNG.");
       return;
     }
     if (f.size > MAX_IMAGE_UPLOAD_BYTES) {
-      setPreviewErr("File too large (max 50 MB).");
+      setPreviewErr("That file is larger than 50 MB.");
       return;
     }
     processingRef.current = true;
@@ -70,14 +71,14 @@ export function NewCharacterPage() {
         if (res.error.kind === "validation") {
           setFieldErrors(res.error.errors);
         } else {
-          setPreviewErr(res.error.message);
+          setPreviewErr(friendlyImportError(res.error.message));
         }
         return;
       }
       setPreview(res.data);
       setStep("preview");
     } catch (err) {
-      setPreviewErr(err instanceof Error ? err.message : "Failed to read file");
+      setPreviewErr(friendlyImportError(err));
     } finally {
       processingRef.current = false;
       setProcessing(false);
@@ -98,11 +99,7 @@ export function NewCharacterPage() {
     try {
       res = await importMutation.mutateAsync({ pngBase64: previewB64 });
     } catch (err) {
-      setPreviewErr(
-        err instanceof Error
-          ? `We couldn’t import this card. ${err.message}`
-          : "We couldn’t import this card.",
-      );
+      setPreviewErr(friendlyImportError(err));
       return;
     }
     if (res.ok) {
@@ -120,14 +117,14 @@ export function NewCharacterPage() {
       if (res.error.kind === "validation") {
         setFieldErrors(res.error.errors);
       } else {
-        setPreviewErr(res.error.message);
+        setPreviewErr(friendlyImportError(res.error.message));
       }
     }
   };
 
   return (
     <main className="mx-auto max-w-[768px] px-4 py-8">
-      <PageHeader title="Import Character" backTo="/characters" />
+      <PageHeader title="Import character" backTo="/characters" />
 
       {step === "pick" ? (
         <div className="space-y-4">
@@ -157,10 +154,10 @@ export function NewCharacterPage() {
             )}
             <div>
               <p className="text-headline">
-                {processing ? "Processing…" : "Choose a PNG character card"}
+                {processing ? "Processing…" : "Choose a character card PNG"}
               </p>
               <p className="text-2 text-sm mt-1">
-                V2 or V3 card. Max 50 MB. Drag &amp; drop or click to browse.
+                V2 or V3 · up to 50 MB · drag &amp; drop or click to browse
               </p>
             </div>
           </button>
@@ -171,10 +168,10 @@ export function NewCharacterPage() {
             onChange={handleFileChange}
             disabled={processing || importMutation.isPending}
             className="hidden"
-            aria-label="Choose a PNG character card"
+            aria-label="Choose a character card PNG"
           />
           {fieldErrors ? <FieldErrorList errors={fieldErrors} /> : null}
-          {previewErr ? <ErrorBanner message={previewErr} /> : null}
+          {previewErr ? <ErrorBanner title="Couldn’t read that card" message={previewErr} /> : null}
         </div>
       ) : null}
 
@@ -254,7 +251,7 @@ export function NewCharacterPage() {
             </div>
           ) : null}
           {fieldErrors ? <FieldErrorList errors={fieldErrors} /> : null}
-          {previewErr ? <ErrorBanner message={previewErr} /> : null}
+          {previewErr ? <ErrorBanner title="Couldn’t read that card" message={previewErr} /> : null}
           <div className="flex justify-end gap-2">
             <Button
               variant="ghost"

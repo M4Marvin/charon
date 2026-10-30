@@ -79,7 +79,7 @@ describe("NewCharacterPage import loading state", () => {
     mockPreviewCharacter.mockReturnValue(new Promise<PreviewResponse>(() => {}));
 
     const { container } = render(<NewCharacterPage />);
-    fireEvent.change(screen.getByLabelText("Choose a PNG character card"), {
+    fireEvent.change(screen.getByLabelText("Choose a character card PNG"), {
       target: { files: [makePngFile()] },
     });
     // Flush the fileToBase64 microtask so previewCharacter is actually invoked and the
@@ -100,7 +100,7 @@ describe("NewCharacterPage import loading state", () => {
     );
 
     const view = render(<NewCharacterPage />);
-    fireEvent.change(screen.getByLabelText("Choose a PNG character card"), {
+    fireEvent.change(screen.getByLabelText("Choose a character card PNG"), {
       target: { files: [makePngFile()] },
     });
     await act(async () => {});
@@ -110,7 +110,7 @@ describe("NewCharacterPage import loading state", () => {
     await act(async () => {});
 
     expect(screen.getByText("Ada Lovelace")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /choose a png character card/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /choose a character card png/i })).toBeNull();
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
 
     view.unmount();
@@ -119,13 +119,13 @@ describe("NewCharacterPage import loading state", () => {
 
   it("keeps the upload card enabled when validation fails (regression)", () => {
     render(<NewCharacterPage />);
-    fireEvent.change(screen.getByLabelText("Choose a PNG character card"), {
+    fireEvent.change(screen.getByLabelText("Choose a character card PNG"), {
       target: { files: [new File(["x"], "t.txt", { type: "text/plain" })] },
     });
 
-    expect(screen.getByText("Only PNG files are supported.")).toBeTruthy();
+    expect(screen.getByText("That file isn't a PNG. Choose a character card PNG.")).toBeTruthy();
     const card = screen.getByRole("button", {
-      name: /choose a png character card/i,
+      name: /choose a character card png/i,
     }) as HTMLButtonElement;
     expect(card.disabled).toBe(false);
   });
@@ -147,7 +147,7 @@ describe("NewCharacterPage import loading state", () => {
     });
 
     render(<NewCharacterPage />);
-    fireEvent.change(screen.getByLabelText("Choose a PNG character card"), {
+    fireEvent.change(screen.getByLabelText("Choose a character card PNG"), {
       target: { files: [makePngFile()] },
     });
     await act(async () => {});
