@@ -35,6 +35,7 @@ import { withImageVersion } from "@/lib/image-optimization";
 import { plainExcerpt } from "@/lib/plain-text";
 import { cn } from "@/lib/utils";
 import { friendlyLoadError } from "@/lib/error-copy";
+import { characterDeleteDescription } from "./delete-stats";
 
 const searchSchema = type({
   "q?": "string",
@@ -396,11 +397,7 @@ function CharactersPage() {
         title={deletingCharacter ? `Delete “${deletingCharacter.name}”?` : "Delete this character?"}
         description={
           deletingCharacter
-            ? `This permanently deletes “${deletingCharacter.name}” and its ${
-                deletingCharacter.chatCount === 1
-                  ? "1 chat"
-                  : `${deletingCharacter.chatCount} chats`
-              }, including every message. This cannot be undone.`
+            ? characterDeleteDescription(deletingCharacter.chatCount)
             : "This permanently deletes the character and every chat and message attached to it. This cannot be undone."
         }
         destructive

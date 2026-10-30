@@ -221,11 +221,7 @@ export function CharacterDetailPage() {
         open={delOpen}
         onOpenChange={(o) => !o && setDelOpen(false)}
         title={`Delete “${character.name}”?`}
-        description={characterDeleteDescription(
-          character.name,
-          character.chatCount,
-          character.messageCount,
-        )}
+        description={characterDeleteDescription(character.chatCount, character.messageCount)}
         destructive
         loading={deleteMutation.isPending}
         onConfirm={() => {
