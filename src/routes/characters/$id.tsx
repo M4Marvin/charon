@@ -180,7 +180,7 @@ export function CharacterDetailPage() {
               <div className="flex flex-wrap items-center gap-2">
                 {data.tags.map((tag) => (
                   <Link key={tag} to="/characters" search={{ tags: tag }} className="focus-ring">
-                    <Badge variant="secondary" className="text-[11px] font-normal">
+                    <Badge variant="secondary" className="text-xs font-normal">
                       {tag}
                     </Badge>
                   </Link>

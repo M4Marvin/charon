@@ -261,7 +261,7 @@ function CharactersPage() {
                 value={searchInput}
                 onChange={(e) => updateSearch(e.target.value)}
               />
-              <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-2 sm:inline-flex">
+              <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs text-2 sm:inline-flex">
                 /
               </kbd>
             </div>
@@ -474,7 +474,7 @@ function CharacterCard({
             <p className="mt-0.5 text-xs text-2">&nbsp;</p>
           )}
           {character.creator ? (
-            <p className="mt-0.5 truncate text-[11px] text-2">by {character.creator}</p>
+            <p className="mt-0.5 truncate text-xs text-2">by {character.creator}</p>
           ) : null}
           <div className="mt-auto">
             <div className="flex items-center gap-1.5 overflow-hidden">
@@ -483,7 +483,7 @@ function CharacterCard({
                   key={tag}
                   variant="secondary"
                   className={cn(
-                    "max-w-[70px] shrink-0 truncate px-1.5 py-0 text-[11px] leading-tight",
+                    "max-w-[76px] shrink-0 truncate px-1.5 py-0 text-xs leading-tight",
                     index === 2 && "hidden sm:inline-flex",
                   )}
                 >
@@ -491,10 +491,10 @@ function CharacterCard({
                 </Badge>
               ))}
               {character.tags.length > 3 ? (
-                <span className="shrink-0 text-[11px] text-2">+{character.tags.length - 3}</span>
+                <span className="shrink-0 text-xs text-2">+{character.tags.length - 3}</span>
               ) : null}
             </div>
-            <div className="mt-1 flex items-center gap-1 whitespace-nowrap text-[11px] text-2 tabular-nums">
+            <div className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-2 tabular-nums">
               <MessagesSquare className="size-3 shrink-0" aria-hidden="true" />
               <span className="truncate">
                 {character.chatCount} · <RelativeTime date={character.updatedAt} compact />
