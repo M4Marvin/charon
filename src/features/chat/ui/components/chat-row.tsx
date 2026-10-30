@@ -110,11 +110,11 @@ export function ChatRow({ chat, now, onRename, onDelete }: ChatRowProps) {
           </p>
 
           <div className="mt-3 flex items-center justify-between gap-3">
-            <p className="min-w-0 truncate text-xs text-2">
-              {!sameName ? chat.characterName : null}
-              {!sameName && chat.userMessageCount > 0 ? " · " : null}
+            <p className="flex min-w-0 items-center gap-1 text-xs text-2">
+              {!sameName ? <span className="truncate">{chat.characterName}</span> : null}
+              {!sameName && chat.userMessageCount > 0 ? <span className="shrink-0">·</span> : null}
               {chat.userMessageCount > 0 ? (
-                <span className="tabular-nums">
+                <span className="shrink-0 tabular-nums">
                   {chat.userMessageCount} {chat.userMessageCount === 1 ? "turn" : "turns"}
                 </span>
               ) : null}

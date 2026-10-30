@@ -129,15 +129,15 @@ export function ProviderManager() {
                     </div>
                     <div className="flex min-w-0 items-center gap-2 text-xs text-2">
                       {testingId === p.id ? (
-                        <StatusDot tone="muted" label="Testing…" />
+                        <StatusDot tone="muted" label="Testing…" className="shrink-0" />
                       ) : testResult ? (
                         testResult.ok ? (
-                          <StatusDot tone="success" label="Connected" />
+                          <StatusDot tone="success" label="Connected" className="shrink-0" />
                         ) : (
-                          <StatusDot tone="danger" label="Error" />
+                          <StatusDot tone="danger" label="Error" className="shrink-0" />
                         )
                       ) : (
-                        <StatusDot tone="muted" label="Untested" />
+                        <StatusDot tone="muted" label="Untested" className="shrink-0" />
                       )}
                       <span className="truncate font-mono">{p.baseUrl}</span>
                     </div>
