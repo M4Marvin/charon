@@ -519,7 +519,8 @@ One overlay contract, whether centered dialog or side sheet:
 - Full-bleed `100dvh`; no global header/tab bar. ChatHeader 56px: back 44, avatar, visible name 14/600 (H1 visually hidden “Conversation with {name}”), typing dots, settings 44. On `≥ xl`, portrait and scene toggles; below `xl`, a single “View” menu opens portrait/scene/lightbox as dialogs.
 - Background: selected scene, then character avatar, then gradient. A failed image falls back in that chain.
 - Transcript: max 48rem centered, 12px gutters; message bubbles use `message-glass`/`message-glass-strong`; role differentiation by border/name, not color alone. Body text `text-1`; assistant name brand; user name `text-2`.
-- Message header: avatar + full/ellipsized name with a guaranteed min width; actions behind a single overflow menu on `< md` (Copy, Select for prompt, Rewrite, Edit, Delete) at 44px. On desktop, show the menu trigger and reveal secondary actions on hover/focus; no five permanent icons.
+- Message header: avatar + full/ellipsized name with a guaranteed min width; actions behind a single overflow menu at every breakpoint (Copy stays visible; the menu holds Select for prompt, Rewrite, Edit, Branch from here on older replies, Delete) at 44px. No five permanent icons.
+- Branching: a reply with alternates shows “Alternate {i} of {n}” with both chevrons always present and disabled at the ends; “Branch from here” in the message menu regenerates an older assistant reply as a sibling branch.
 - Long content: code blocks and tables scroll inside the bubble with a visible scrollbar/fade; images are max-width 100%; the page itself never scrolls horizontally. `pre`/table text uses the mono/body scale and remains readable at 320.
 - Message actions: Delete uses the shared destructive confirm and explains branch deletion; Copy announces “Copied”; edit is inline and Ctrl/Cmd+Enter saves, Escape cancels; swipe/regenerate controls remain.
 - Message navigation: no floating controls over prose. Prev/next live in the header or a dedicated gutter; the jump-to-end button is 44px and hidden when at the bottom.
@@ -546,9 +547,9 @@ One overlay contract, whether centered dialog or side sheet:
 
 #### 6.5.1 Library (`/characters`)
 
-- PageShell `wide`; PageHeader “Characters” + primary “Import PNG” (text always visible, 44px) + subtitle count.
+- PageShell `wide`; PageHeader “Characters” + primary “Import character” (text always visible, 44px); the result count sits above the grid in one polite live region (hidden visually when nothing matches, so the empty state is the only “no results” message).
 - Sticky search/filter block below the header (`top-14`, z below header) with search, tag filter, sort, selected tags, clear all; `/` focuses search, Escape clears; 44px controls.
-- Grid: 2 columns at 320/390, 3 at 640, 4 at 1024, 5 at 1440; max 1200 content. 3:4 portraits; equal lane widths; body 96px; title 16/600 truncated to one line with title tooltip; excerpt `plainExcerpt` 2 lines; creator 11px `text-2`; tags max 3 + `+N`; meta one line (chats · updated). Row actions 40/44. Card link label “Open {name}”.
+- Grid: 2 columns at 320/390, 3 at 640, 4 at 1024, 5 at 1440; max 1200 content. 3:4 portraits; equal lane widths; body 96px; title 16/600 truncated to one line with title tooltip; excerpt `plainExcerpt` 2 lines; creator 12px `text-2`; tags max 3 + `+N` at 12px; meta one line (chats · updated). Row actions 40/44. Card link label “Open {name}”.
 - Hover: border/brand tint + image scale 1.02 only on fine pointers; reduced motion disables.
 - Infinite scroll: loading-more skeleton/spinner at the end; end marker “All {N} characters” when exhausted.
 - States: `SkeletonCardGrid`, true empty `EmptyState` + Import, filtered-empty naming query + Clear filters, query error + Retry (never also render “No characters yet”).
@@ -558,8 +559,8 @@ One overlay contract, whether centered dialog or side sheet:
 
 #### 6.5.2 Import (`/characters/new`)
 
-- PageShell `form`; PageHeader “Import Character” back to Characters.
-- Dropzone: real `<button>`, 44px minimum, dashed border, upload icon, “Choose a PNG character card”, “V2 or V3 card. Max 50 MB. Drag & drop or click to browse.”; drag-over state; keyboard focus.
+- PageShell `form`; PageHeader “Import character” back to Characters.
+- Dropzone: real `<button>`, 44px minimum, dashed border, upload icon, “Choose a character card PNG”, “V2 or V3 · up to 50 MB · drag & drop or click to browse”; drag-over state; keyboard focus.
 - File input hidden but labelled; PNG only; size/pixel limits; processing state with spinner and disabled dropzone; errors inline.
 - Preview: stack vertically at `< sm` (image 3:4 thumbnail above metadata), two columns at `≥ sm`; image, name, creator, spec badges, description excerpt, tags (cap 3 + N), greetings/lorebook counts, warnings, duplicate notice.
 - Actions: “Choose different file” (back to picker), “Cancel” (returns to Characters), “Import” (primary, pending, disabled while pending). Catch transport errors and show inline ErrorBanner + toast; preserve preview.
@@ -735,7 +736,7 @@ One overlay contract, whether centered dialog or side sheet:
 
 - Chats: “No chats yet” / “Choose a character to start a conversation.” / “Choose a character.”
 - Chat search: “No chats found” / “No chats match ‘{query}’.” / “Clear search.”
-- Characters: “No characters yet” / “Import a PNG character card to get started.” / “Import PNG.”
+- Characters: “No characters yet” / “Import a PNG character card to get started.” / “Import character.”
 - Character search: “Nothing matches your search” / “Try adjusting your search or filters.” / “Clear filters.”
 - Lorebooks: “No lorebooks yet” / “Create one to start adding keyword-triggered entries.” / “New Lorebook.”
 - Lorebook entries: “No entries yet” / “Add a keyword-triggered entry to this lorebook.” / “New Entry.”

@@ -74,7 +74,7 @@ export function ChatHeader({
 
       <div className="flex items-center gap-1">
         {/* Two view toggles cost the character name its width on phones. */}
-        <span className="hidden items-center gap-1 md:flex">
+        <span className="hidden items-center gap-1 xl:flex">
           <Button
             variant="ghost"
             size="icon"
@@ -110,7 +110,7 @@ export function ChatHeader({
             <Button
               variant="ghost"
               size="icon"
-              className="inline-flex size-10 rounded-full glass shrink-0 text-2 hover:text-1 md:hidden"
+              className="inline-flex size-10 rounded-full glass shrink-0 text-2 hover:text-1 xl:hidden"
               aria-label="View options"
             >
               <Ellipsis className="size-4" />
