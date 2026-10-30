@@ -173,8 +173,21 @@ describe("assistant message actions", () => {
         entries={[entry(1, "a branched reply", { siblingIndex: 0, siblingTotal: 3 })]}
       />,
     );
-    expect(screen.queryByLabelText("Next response")).not.toBeNull();
+    expect(screen.queryByLabelText("Next alternate")).not.toBeNull();
     expect(screen.queryByLabelText("Regenerate response")).not.toBeNull();
+    expect(screen.getByText("Alternate 1 of 3")).not.toBeNull();
+  });
+
+  it("keeps both alternates on the last variant, with forward disabled", () => {
+    render(
+      <MessageList
+        {...baseProps}
+        entries={[entry(1, "the last variant", { siblingIndex: 2, siblingTotal: 3 })]}
+      />,
+    );
+    expect(screen.getByText("Alternate 3 of 3")).not.toBeNull();
+    expect((screen.getByLabelText("Next alternate") as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByLabelText("Previous alternate") as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("keeps swiping but drops regenerate on a mid-history assistant", () => {
@@ -192,7 +205,7 @@ describe("assistant message actions", () => {
       .getByText("an older reply")
       .closest('[data-slot="message-scroller-item"]') as HTMLElement | null;
     expect(item).not.toBeNull();
-    expect(within(item as HTMLElement).queryByLabelText("Next response")).not.toBeNull();
+    expect(within(item as HTMLElement).queryByLabelText("Next alternate")).not.toBeNull();
     expect(within(item as HTMLElement).queryByLabelText("Regenerate response")).toBeNull();
   });
 });

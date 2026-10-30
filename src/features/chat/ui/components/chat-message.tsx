@@ -10,13 +10,15 @@ import {
   Check,
   Copy,
   ListChecks,
+  GitBranch,
 } from "lucide-react";
-import { MessageRewriteButton, RewriteDialog } from "./message-rewrite-button";
+import { RewriteDialog } from "./message-rewrite-button";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -124,7 +126,6 @@ export const ChatMessage = memo(function ChatMessage({
   );
 
   const canSwipe = siblingTotal > 1;
-  const canNext = siblingIndex < siblingTotal - 1;
   // Only the newest message may regenerate: an older assistant message would
   // branch and hide the rest of the conversation.
   const isNewestAssistant = isAssistant && isNewest;
@@ -211,95 +212,56 @@ export const ChatMessage = memo(function ChatMessage({
                     {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
                   </Button>
 
-                  {/* Secondary actions collapse into one menu on phones so the
-                      speaker name keeps its width. */}
-                  <span className="hidden items-center gap-0.5 md:flex">
-                    {onToggleSelect ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <Button
-                        variant={selected ? "secondary" : "ghost"}
+                        variant="ghost"
                         size="icon"
-                        className={cn(
-                          "size-9",
-                          selected ? "text-brand" : "text-2 hover:text-brand",
-                        )}
-                        onClick={() => onToggleSelect(message.localId)}
-                        aria-pressed={selected}
-                        aria-label={selected ? "Deselect message" : "Select message for prompt"}
+                        className="size-10 text-2 hover:text-1"
+                        aria-label="Message actions"
                       >
-                        <ListChecks className="size-3.5" />
+                        <Ellipsis className="size-4" />
                       </Button>
-                    ) : null}
-                    <MessageRewriteButton
-                      chatId={chatId}
-                      messageLocalId={message.localId}
-                      disabled={disabled}
-                      onApplied={onProposalApplied}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-9 text-2 hover:text-1"
-                      onClick={() => {
-                        setEditContent(message.content);
-                        setEditing(true);
-                      }}
-                      aria-label="Edit message"
-                    >
-                      <Pencil className="size-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-9 text-2 hover:text-danger"
-                      onClick={() => setDeleteOpen(true)}
-                      aria-label="Delete message"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </span>
-
-                  <span className="md:hidden">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-10 text-2 hover:text-1"
-                          aria-label="Message actions"
-                        >
-                          <Ellipsis className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {onToggleSelect ? (
-                          <DropdownMenuItem onClick={() => onToggleSelect(message.localId)}>
-                            <ListChecks className="size-4" />
-                            {selected ? "Deselect message" : "Select for prompt"}
-                          </DropdownMenuItem>
-                        ) : null}
-                        <DropdownMenuItem disabled={disabled} onClick={() => setRewriteOpen(true)}>
-                          <Sparkles className="size-4" />
-                          Rewrite with AI
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      {onToggleSelect ? (
+                        <DropdownMenuItem onClick={() => onToggleSelect(message.localId)}>
+                          <ListChecks className="size-4" />
+                          {selected ? "Deselect message" : "Select for prompt"}
                         </DropdownMenuItem>
+                      ) : null}
+                      <DropdownMenuItem disabled={disabled} onClick={() => setRewriteOpen(true)}>
+                        <Sparkles className="size-4" />
+                        Rewrite with AI
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setEditContent(message.content);
+                          setEditing(true);
+                        }}
+                      >
+                        <Pencil className="size-4" />
+                        Edit message
+                      </DropdownMenuItem>
+                      {isAssistant && !isNewestAssistant ? (
                         <DropdownMenuItem
-                          onClick={() => {
-                            setEditContent(message.content);
-                            setEditing(true);
-                          }}
+                          disabled={disabled || isStreaming}
+                          onClick={() => onRegenerate(message.localId)}
                         >
-                          <Pencil className="size-4" />
-                          Edit message
+                          <GitBranch className="size-4" />
+                          Branch from here
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-danger focus:text-danger"
-                          onClick={() => setDeleteOpen(true)}
-                        >
-                          <Trash2 className="size-4" />
-                          Delete message
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </span>
+                      ) : null}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-danger focus:text-danger"
+                        onClick={() => setDeleteOpen(true)}
+                      >
+                        <Trash2 className="size-4" />
+                        Delete message
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </span>
               )}
             </div>
@@ -374,34 +336,33 @@ export const ChatMessage = memo(function ChatMessage({
               disabled && "pointer-events-none opacity-40",
             )}
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-9 text-2 hover:text-1 disabled:opacity-20"
-              disabled={siblingIndex <= 0}
-              onClick={() => onSwipe(message.localId, "prev")}
-              aria-label="Previous response"
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-
-            {canSwipe && (
-              <span className="min-w-[2.5rem] text-center text-xs tabular-nums text-2 select-none">
-                {siblingIndex + 1}/{siblingTotal}
-              </span>
-            )}
-
-            {canNext && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-9 text-2 hover:text-1 disabled:opacity-20"
-                onClick={() => onSwipe(message.localId, "next")}
-                aria-label="Next response"
-              >
-                <ChevronRight className="size-4" />
-              </Button>
-            )}
+            {canSwipe ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-9 text-2 hover:text-1 disabled:opacity-20"
+                  disabled={siblingIndex <= 0}
+                  onClick={() => onSwipe(message.localId, "prev")}
+                  aria-label="Previous alternate"
+                >
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <span className="min-w-28 text-center text-xs tabular-nums text-2 select-none">
+                  Alternate {siblingIndex + 1} of {siblingTotal}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-9 text-2 hover:text-1 disabled:opacity-20"
+                  disabled={siblingIndex >= siblingTotal - 1}
+                  onClick={() => onSwipe(message.localId, "next")}
+                  aria-label="Next alternate"
+                >
+                  <ChevronRight className="size-4" />
+                </Button>
+              </>
+            ) : null}
 
             {isNewestAssistant && (
               <Button

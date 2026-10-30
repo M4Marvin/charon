@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -160,42 +159,5 @@ export function RewriteDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-export function MessageRewriteButton({
-  chatId,
-  messageLocalId,
-  disabled,
-  onApplied,
-}: {
-  chatId: string;
-  messageLocalId: number;
-  disabled?: boolean;
-  onApplied?: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-9 text-2 hover:text-brand"
-        onClick={() => setOpen(true)}
-        disabled={disabled}
-        aria-label="Rewrite message with AI"
-      >
-        <Sparkles className="size-3.5" />
-      </Button>
-      <RewriteDialog
-        open={open}
-        onOpenChange={setOpen}
-        chatId={chatId}
-        messageLocalId={messageLocalId}
-        disabled={disabled}
-        onApplied={onApplied}
-      />
-    </>
   );
 }
