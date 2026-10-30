@@ -168,9 +168,7 @@ export function Composer({
       ? "Press Enter to stop generating…  (Shift+Enter for a line break)"
       : disabled
         ? "Another generation is running — you can draft, but sending is locked"
-        : characterName
-          ? `Message ${characterName}…  (Enter to send, Shift+Enter for a line break)`
-          : "Message…  (Enter to send, Shift+Enter for a line break)";
+        : "Message…";
 
   return (
     <div
