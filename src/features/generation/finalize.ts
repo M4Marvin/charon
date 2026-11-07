@@ -1,7 +1,7 @@
 import type { TokenUsage } from "@tanstack/ai";
 import { db as defaultDb, type DB } from "@/db";
 import { finalizeJob, getJob } from "@/db/repositories/generation";
-import { updateMessage } from "@/db/repositories/chats";
+import { getMessage, updateMessage } from "@/db/repositories/chats";
 import { EmptyResponseError, GenerationValidationError, LeaseLostError } from "./errors";
 
 export interface FinalizeChatInput {
@@ -36,6 +36,19 @@ export function finalizeChat(input: FinalizeChatInput, db: DB = defaultDb): void
       });
     }
     if (job.placeholderLocalId && job.placeholderLocalId > 0) {
+      const placeholder = getMessage(job.chatId, job.placeholderLocalId, txDb);
+      const extra = (placeholder?.extra ?? {}) as Record<string, unknown>;
+      // localIds are reused after deletion; never write a reply into a row
+      // that now belongs to another job or message.
+      if (
+        !placeholder ||
+        placeholder.role !== "assistant" ||
+        extra.generationJobId !== input.jobId
+      ) {
+        throw new GenerationValidationError({
+          message: "The assistant placeholder was replaced before finalize.",
+        });
+      }
       updateMessage(
         job.chatId,
         job.placeholderLocalId,

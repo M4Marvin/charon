@@ -1,20 +1,22 @@
 # Generation engine v2
 
-The chat generation path uses **TanStack AI 0.69** for streaming and tools, and
-**Effect 4** for schema validation and tagged errors. There is no managed Effect
-runtime and no TanStack state-persistence layer: `chat_messages` remains the
-canonical transcript, and resumable delivery is handled separately by the SSE
-durability adapter.
+The chat generation path uses **TanStack AI 1.2** and **`@tanstack/ai-effect`
+0.1** for an Effect-native provider stream and tools, and **Effect 4.1** for
+schema validation, services, Layers, and tagged errors. There is no managed
+Effect runtime and no TanStack state-persistence layer: `chat_messages` remains
+the canonical transcript, and resumable delivery is handled separately by the
+SSE durability adapter.
 
 ## Boundaries
 
 | Layer | Path | Responsibility |
 |---|---|---|
-| Contracts | `src/features/generation/contract.ts` | Prompt modes, snapshot, tool context, proposal view |
+| Contracts | `src/features/generation/contract.ts` | Prompt modes, snapshot, proposal view |
 | Errors | `src/features/generation/errors.ts` | Tagged errors + HTTP/code mapping |
 | Prompt compiler | `src/features/generation/prompt.ts` | One compiler for chat, impersonate, image, rewrite, transform |
 | Provider | `src/features/generation/provider.ts` | OpenAI-compatible adapter + Chat Completions options |
-| Tools | `src/features/generation/tools.ts` | `read_lore`, `read_character`, `read_scene` |
+| Tools | `src/features/generation/tools.ts` | `AI.serverTool` Effects for `read_lore`, `read_character`, `read_scene` |
+| Effect provider stream | `src/features/generation/chat-stream.ts` | `AI.chat` + `Stream.provide(ReadToolRuntime)` → async iterable |
 | Jobs | `src/db/repositories/generation.ts` | Active-job gate, lease, proposals |
 | Finalize | `src/features/generation/finalize.ts` | Transactional message + job finalization |
 | Chat stream | `src/routes/api/generation/chat.ts` | SSE stream + server-side finalize + delivery resume |
@@ -28,10 +30,51 @@ durability adapter.
    streaming assistant placeholder in one SQLite transaction.
 3. The browser calls `POST /api/generation/chat` with the job id. A resume
    request is replayed from the durability log before any job side effects.
-4. The route recompiles the prompt from the database and starts a TanStack
-   `chat()` stream. Heartbeats extend the job lease while it streams.
+4. The route recompiles the prompt from the database and starts an `AI.chat`
+   Effect stream through `makeGenerationStream`. The read-tool Layer supplies
+   the request's DB, user, and chat. Heartbeats extend the job lease while the
+   async iterable streams.
 5. On `RUN_FINISHED` the server writes the final text and marks the job
    succeeded in one transaction. The client never owns finalization.
+
+## Effect runtime and tools
+
+`makeGenerationStream` is the only place that builds the provider stream:
+
+```ts
+AI.chat({
+  adapter,
+  messages: compiled.messages,
+  systemPrompts: compiled.systemPrompts,
+  modelOptions: { ...compiled.modelOptions, ...(compiled.stop ? { stop: compiled.stop } : {}) },
+  tools: readTools,
+  threadId: chatId,
+  runId: job.id,
+}).pipe(Stream.provide(makeReadToolLayer({ db, userId, chatId })))
+```
+
+- `AI.chat` returns `Stream<StreamChunk, AIError>`. `Stream.toAsyncIterable`
+  feeds the existing `finalizeOnTerminal` wrapper, so job transitions and
+  durable finalization are unchanged. A thrown `AIError` is recorded as
+  `provider_error`, not as a finalize failure.
+- Tools are `AI.serverTool` values and return Effects. `ReadToolRuntime`
+  carries the request DB/user/chat; the Layer is built per request. The old
+  lazy server-module imports are gone.
+- Tool schemas use `AI.toolSchema`, which closes every object
+  (`additionalProperties: false`). `Schema.toStandardJSONSchemaV1` left objects
+  open, so OpenAI silently downgraded the tools to `strict: false`. The
+  integration test in `src/features/generation/tool-call.integration.test.ts`
+  asserts `strict: true` and executes a real `read_scene` tool call through
+  `AI.chat`.
+- A tool failure is a tool result for the model; it does not fail the stream.
+  The read tools use `GenerationValidationError` for input/chat validation.
+- Interruption: `AI.chat` aborts the provider when the consumer finalizes the
+  stream. The app's SSE encoder deliberately detaches on browser disconnect and
+  keeps consuming, so a dropped client does not cancel a run that the server
+  can still finalize. The Stop RPC remains the explicit cancel path. This is
+  why the route does not copy the tutorial's bare `POST` handler.
+- `chatParamsFromRequest` is not used: the app compiles the prompt from its own
+  messages and sends a prepared `jobId`, not a client-supplied message list.
 
 System text is passed through `systemPrompts`. `messages` contains the
 conversation plus user/assistant depth inserts; TanStack's `ModelMessage` has no
@@ -102,8 +145,20 @@ node_modules/.bin/vitest run --reporter=dot
 node_modules/.bin/vite build
 ```
 
-The integration test `src/features/generation/proposal.integration.test.ts`
-starts a local OpenAI-compatible SSE server and verifies streaming, the
-impersonation sanitizer, `max_tokens` (not `max_output_tokens`), proposal
-acceptance, and that a pre-stream setup failure fails the job instead of wedging
-the chat.
+The integration tests start a local OpenAI-compatible SSE server:
+
+- `src/features/generation/proposal.integration.test.ts` verifies streaming,
+  the impersonation sanitizer, `max_tokens` (not `max_output_tokens`), proposal
+  acceptance, and that a pre-stream setup failure fails the job instead of
+  wedging the chat.
+- `src/features/generation/tool-call.integration.test.ts` verifies strict tool
+  schemas, the Effect `read_scene` tool through `AI.chat`, and the tool result
+  being sent back to the model.
+
+
+## Dependencies
+
+Pinned for this path: `@tanstack/ai` 1.2.0, `@tanstack/ai-effect` 0.1.0,
+`@tanstack/ai-react` 1.0.2, `@tanstack/ai-openai` 1.1.1, `effect` 4.1.2.
+`@tanstack/ai-effect` requires Effect 4.1+ and TanStack AI 1.2+, so these move
+together.

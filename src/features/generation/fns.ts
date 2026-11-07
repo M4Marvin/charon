@@ -40,22 +40,11 @@ export const prepareGenerationFn = createServerFn({ method: "POST", strict: { ou
 export const cancelGenerationFn = createServerFn({ method: "POST", strict: { output: false } })
   .validator((data) => Schema.decodeUnknownSync(CancelSchema)(data))
   .handler(async ({ data }) => {
-    const [{ getSession }, { getJob, cancelJob }, { deleteBranch }] = await Promise.all([
+    const [{ getSession }, { cancelGeneration }] = await Promise.all([
       import("@/server/session"),
-      import("@/db/repositories/generation"),
-      import("@/features/chat/tree/service"),
+      import("./cleanup"),
     ]);
     await getSession();
-    const job = getJob(data.jobId);
-    const cancelled = cancelJob(data.jobId);
-    // A finalized run is no longer cancellable; deleting its placeholder now
-    // would delete the completed reply.
-    if (cancelled && job?.placeholderLocalId && job.placeholderLocalId > 0) {
-      try {
-        deleteBranch(job.chatId, job.placeholderLocalId);
-      } catch {
-        // The branch may already be gone; the job is still cancelled.
-      }
-    }
+    cancelGeneration(data.jobId);
     return { ok: true };
   });

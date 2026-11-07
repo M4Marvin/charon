@@ -12,6 +12,7 @@ import { loadChatConfig } from "@/features/chat/config/service";
 import { substituteMessageMacros } from "@/lib/chat/substitute-message-macros";
 import { contentHash } from "@/lib/chat/content-hash";
 import { ConfigError, GenerationValidationError } from "./errors";
+import { discardUnfinishedPlaceholder } from "./cleanup";
 import type { Trigger, InsertionTarget } from "./contract";
 
 export interface PrepareGenerationInput {
@@ -122,7 +123,7 @@ export async function prepareGeneration(
 
   return db.transaction((tx) => {
     const txDb = tx as unknown as DB;
-    const job = createJobInTransaction(
+    const { job, expiredJob } = createJobInTransaction(
       {
         chatId: input.chatId,
         trigger: input.trigger,
@@ -137,6 +138,10 @@ export async function prepareGeneration(
       },
       txDb,
     );
+
+    // Drop the old placeholder before appending, otherwise the new turn would
+    // be parented under the empty row instead of the real active leaf.
+    if (expiredJob) discardUnfinishedPlaceholder(expiredJob.id, txDb);
 
     if (input.trigger === "send") {
       const { userMessage, replyMessage } = appendUserAndReply(

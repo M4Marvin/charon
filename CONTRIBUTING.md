@@ -6,7 +6,7 @@
 - **State:** TanStack Query, TanStack Store, zustand
 - **Database:** Drizzle ORM + better-sqlite3 (SQLite)
 - **Auth:** better-auth (email+password)
-- **AI:** `@tanstack/ai*` — Anthropic, OpenAI, Gemini, Ollama adapters
+- **AI:** `@tanstack/ai*` + `@tanstack/ai-effect` — OpenAI-compatible adapter, Effect streams/tools, Effect 4.1
 - **UI:** shadcn/ui, Tailwind CSS v4
 - **Package manager:** pnpm
 
@@ -111,6 +111,7 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 | `docs/user/troubleshooting.md` | End-user FAQ for common local problems |
 | `docs/markdown.md` | Full rendering pipeline (showdown, DOMPurify, CSS scoping, morphdom streaming) |
 | `docs/generation-engine.md` | Generation jobs, lease/finalize, prompt compiler, tools, side paths |
+| `docs/state-machines.md` | State machines, invariants, transition tables, and generation/tree race fixes |
 | `docs/packaging.md` | Packaging ladder, installer/CLI design, onboarding fixes, SFW positioning |
 | `docs/ui-spec.md` | Target-state UI/UX spec: design system, page contracts, states, accessibility, acceptance tests |
 

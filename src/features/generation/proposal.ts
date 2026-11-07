@@ -1,4 +1,5 @@
-import { chat as aiChat, type StreamChunk, type TokenUsage } from "@tanstack/ai";
+import type { StreamChunk, TokenUsage } from "@tanstack/ai";
+import { AIError } from "@tanstack/ai-effect";
 import { db as defaultDb, type DB } from "@/db";
 import {
   beginJob,
@@ -12,12 +13,11 @@ import {
 import { getMessages } from "@/features/chat/tree/service";
 import { loadGenerationSnapshot } from "./context";
 import { compilePrompt } from "./prompt";
-import { makeAdapter } from "./provider";
-import { readTools } from "./tools";
+import { makeGenerationStream } from "./chat-stream";
 import { prepareGeneration } from "./prepare";
 import { EmptyResponseError, LeaseLostError, type GenerationError } from "./errors";
 import { assembleImagePrompt, sanitizeImpersonation } from "./image";
-import type { ToolContext, Trigger } from "./contract";
+import type { Trigger } from "./contract";
 
 export interface RunProposalInput {
   chatId: string;
@@ -75,7 +75,6 @@ export async function runProposal(
       typeof job.input?.instruction === "string" ? job.input.instruction : input.instruction;
     const snapshot = await loadGenerationSnapshot(userId, input.chatId, 0, selection, db);
     const compiled = compilePrompt(snapshot, job.promptMode, { instruction });
-    const adapter = makeAdapter(snapshot.provider);
     owner = crypto.randomUUID();
     const leaseOwner = owner;
     const lease = beginJob({ jobId: job.id, owner: leaseOwner }, db);
@@ -89,23 +88,13 @@ export async function runProposal(
         leaseLost = true;
       }
     }, 30_000);
-    const toolContext: ToolContext = {
+    const stream = makeGenerationStream({
+      provider: snapshot.provider,
+      compiled,
       userId,
       chatId: input.chatId,
-    };
-
-    const stream = aiChat({
-      adapter,
-      messages: compiled.messages,
-      systemPrompts: compiled.systemPrompts,
-      modelOptions: {
-        ...compiled.modelOptions,
-        ...(compiled.stop ? { stop: compiled.stop } : {}),
-      },
-      tools: readTools,
-      context: toolContext,
-      threadId: input.chatId,
-      runId: job.id,
+      jobId: job.id,
+      db,
     });
 
     for await (const chunk of stream) {
@@ -216,7 +205,7 @@ export async function runProposal(
       {
         jobId: prepared.jobId,
         owner: leaseAcquired ? owner : undefined,
-        code: "proposal_failed",
+        code: error instanceof AIError ? "provider_error" : "proposal_failed",
         message: error instanceof Error ? error.message : String(error),
         usage: usage as unknown as Record<string, unknown> | undefined,
         finishReason,

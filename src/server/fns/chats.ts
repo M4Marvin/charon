@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { Schema } from "effect";
 import { createServerFn } from "@tanstack/react-start";
 import { getSession } from "@/server/session";
@@ -11,16 +10,15 @@ import {
 } from "@/server/schemas/chat";
 import type { ChatMessageRow, Character } from "@/db/schema";
 import {
-  createChat as repoCreateChat,
   deleteChat as repoDeleteChat,
   getChat as repoGetChat,
-  insertMessage as repoInsertMessage,
   listChats as repoListChats,
   listChatsByCharacter as repoListChatsByCharacter,
   listMessages as repoListMessages,
   updateChat as repoUpdateChat,
   type ChatWithCharacter,
 } from "@/db/repositories/chats";
+import { createChat as createChatInTree } from "@/features/chat/tree/service";
 import { getCharacter as repoGetChar } from "@/db/repositories/characters";
 import { getBackground as repoGetBackground } from "@/db/repositories/backgrounds";
 import { getPersona as repoGetPersona } from "@/db/repositories/personas";
@@ -121,17 +119,6 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
     const { user } = await getSession();
     const char: Character = repoGetChar(data.characterId);
 
-    const chatId = randomUUID();
-    const chat = repoCreateChat({
-      id: chatId,
-      characterId: data.characterId,
-      title: char.data.name,
-      characterDescription: char.data.description,
-      characterPersonality: char.data.personality,
-      characterScenario: char.data.scenario,
-      characterSystemPrompt: char.data.system_prompt,
-    });
-
     // Collect all greetings: first_mes + every alternate_greeting.
     // Use != null so an empty-string first_mes is still included (some cards
     // have a present-but-empty first_mes and rely on alternates as the actual
@@ -140,52 +127,27 @@ export const createChat = createServerFn({ method: "POST", strict: { output: fal
     if (char.data.first_mes != null) greetingTexts.push(char.data.first_mes);
     if (char.data.alternate_greetings) greetingTexts.push(...char.data.alternate_greetings);
     if (greetingTexts.length === 0) greetingTexts.push("Hello!");
-
-    // Insert hidden system root (localId=0). It is never rendered, swiped,
-    // edited, or deleted — all other server fns reject messageLocalId === 0.
-    repoInsertMessage(chatId, {
-      chatId,
-      localId: 0,
-      parentLocalId: null,
-      children: greetingTexts.map((_, i) => i + 1),
-      selectedChildLocalId: 1, // first_mes is the default greeting
-      role: "system",
-      content: "",
-      extra: null,
-    });
-
-    // Insert every greeting as a child of the hidden root.
     const macroEnv = { char: char.data.name, user: resolveUserName(user) };
-    greetingTexts.forEach((text, i) => {
-      const localId = i + 1;
-      repoInsertMessage(chatId, {
-        chatId,
-        localId,
-        parentLocalId: 0,
-        children: [],
-        selectedChildLocalId: null,
-        role: "assistant",
-        content: substituteMessageMacros(text, macroEnv),
-        extra: null,
-      });
+
+    // One transaction: chat, hidden root and every greeting either all commit
+    // or none do, so a failure cannot leave a chat with a dangling tree.
+    const chat = createChatInTree({
+      characterId: data.characterId,
+      title: char.data.name,
+      greetings: greetingTexts.map((text) => substituteMessageMacros(text, macroEnv)),
+      characterDescription: char.data.description,
+      characterPersonality: char.data.personality,
+      characterScenario: char.data.scenario,
+      characterSystemPrompt: char.data.system_prompt,
     });
 
     return {
-      id: chat.id,
-      characterId: chat.characterId,
+      ...chat,
       characterName: char.name,
       characterImagePath: char.imagePath,
-      title: chat.title,
-      characterDescription: chat.characterDescription,
-      characterPersonality: chat.characterPersonality,
-      characterScenario: chat.characterScenario,
-      characterSystemPrompt: chat.characterSystemPrompt,
-      backgroundId: chat.backgroundId ?? null,
       backgroundPath: chat.backgroundId
         ? (repoGetBackground(chat.backgroundId).path ?? null)
         : null,
-      createdAt: chat.createdAt,
-      updatedAt: chat.updatedAt,
     };
   });
 

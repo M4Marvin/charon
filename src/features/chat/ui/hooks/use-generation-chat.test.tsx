@@ -119,6 +119,40 @@ describe("useGenerationChat", () => {
     expect(useChatUiStore.getState().activePlaceholderId).toBeNull();
   });
 
+  it("ignores a second start while the first prepare is in flight", async () => {
+    let resolvePrepare!: (value: {
+      jobId: string;
+      placeholderLocalId: number;
+      userLocalId: number;
+    }) => void;
+    mocks.prepare.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePrepare = resolve;
+      }),
+    );
+
+    const { result } = renderHook(() => useGenerationChat("chat-1"), {
+      wrapper: createWrapper(),
+    });
+
+    let first: Promise<void> | undefined;
+    let second: Promise<void> | undefined;
+    act(() => {
+      first = result.current.start("send", { content: "first" });
+      second = result.current.start("send", { content: "second" });
+    });
+
+    expect(mocks.prepare).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolvePrepare({ jobId: "job-3", placeholderLocalId: 9, userLocalId: 3 });
+      await first;
+      await second;
+    });
+
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+  });
+
   it("clears run state and cancels on error", async () => {
     const { result } = renderHook(() => useGenerationChat("chat-1"), {
       wrapper: createWrapper(),

@@ -1,8 +1,11 @@
-import { Schema } from "effect";
+import { Context, Effect, Layer, Schema } from "effect";
 import { toolDefinition } from "@tanstack/ai";
+import * as AI from "@tanstack/ai-effect";
 import { GenerationValidationError } from "./errors";
-import type { ToolContext } from "./contract";
-import type { DB } from "@/db";
+import { db as defaultDb, type DB } from "@/db";
+import { getChat, getMessages } from "@/features/chat/tree/service";
+import { loadChatConfig } from "@/features/chat/config/service";
+import { getEnabledLoreEntries } from "@/features/chat/config/lorebook";
 import type { LoreEntry } from "@/lib/st-core/lorebook/types";
 import type { ChatMessage } from "@/lib/st-core/shared/types";
 import type { CharacterDataV2 } from "@/lib/st-core/character/types";
@@ -262,181 +265,142 @@ const ReadSceneOutput = Schema.Struct({
   messages: Schema.Array(SceneMessageSchema),
 });
 
-const decodeReadLoreInput = Schema.decodeUnknownSync(ReadLoreInput);
-const decodeReadCharacterInput = Schema.decodeUnknownSync(ReadCharacterInput);
-const decodeReadSceneInput = Schema.decodeUnknownSync(ReadSceneInput);
-
 // ── Tool definitions ────────────────────────────────────────────────────────
 
+// AI.toolSchema closes every object (`additionalProperties: false`), which is
+// what lets OpenAI run these tools in strict mode. Schema.toStandardJSONSchemaV1
+// leaves objects open and silently downgrades the tool to strict: false.
 export const readLoreDefinition = toolDefinition({
   name: "read_lore",
   description:
     "Search enabled lorebook entries by keyword. Matches entry keys, secondary keys, comments, and content. Returns at most `limit` entries (default 5, max 20), each with its uid, matched keys, and content capped at 2,000 characters. Read-only.",
-  inputSchema: Schema.toStandardJSONSchemaV1(ReadLoreInput),
-  outputSchema: Schema.toStandardJSONSchemaV1(ReadLoreOutput),
+  inputSchema: AI.toolSchema(ReadLoreInput),
+  outputSchema: AI.toolSchema(ReadLoreOutput),
 });
 
 export const readCharacterDefinition = toolDefinition({
   name: "read_character",
   description:
     "Read the active chat's character card: name, description, personality, scenario, system prompt, and tags. Per-chat overrides win over card fields. Pass `fields` to select a subset; omit it for all fields. Read-only.",
-  inputSchema: Schema.toStandardJSONSchemaV1(ReadCharacterInput),
-  outputSchema: Schema.toStandardJSONSchemaV1(CharacterViewSchema),
+  inputSchema: AI.toolSchema(ReadCharacterInput),
+  outputSchema: AI.toolSchema(CharacterViewSchema),
 });
 
 export const readSceneDefinition = toolDefinition({
   name: "read_scene",
   description:
     "Read recent messages from the chat's active branch, oldest first, excluding the hidden root. Returns at most `limit` messages (default 12, max 50) with content capped at 4,000 characters each. Read-only.",
-  inputSchema: Schema.toStandardJSONSchemaV1(ReadSceneInput),
-  outputSchema: Schema.toStandardJSONSchemaV1(ReadSceneOutput),
+  inputSchema: AI.toolSchema(ReadSceneInput),
+  outputSchema: AI.toolSchema(ReadSceneOutput),
 });
 
-// ── Server runtime ──────────────────────────────────────────────────────────
-
-export interface ReadToolDeps {
-  /** Database handle. Defaults to the app singleton via a lazy import. */
-  readonly db?: DB;
-}
-
-interface ServerModules {
-  readonly db: DB;
-  readonly getChat: typeof import("@/features/chat/tree/service").getChat;
-  readonly getMessages: typeof import("@/features/chat/tree/service").getMessages;
-  readonly loadChatConfig: typeof import("@/features/chat/config/service").loadChatConfig;
-  readonly getEnabledLoreEntries: typeof import("@/features/chat/config/lorebook").getEnabledLoreEntries;
-}
-
-let modulesPromise: Promise<ServerModules> | undefined;
+// ── Effect runtime ──────────────────────────────────────────────────────────
 
 /**
- * Server modules are loaded lazily so this file stays importable from the
- * client for the shared tool definitions (useChat only needs the client
- * versions); the database is never touched until a server tool executes.
+ * Per-request services for the read tools. The route/proposal builds this with
+ * the request's DB, user, and chat; `AI.chat` provides the Layer to the stream.
  */
-function loadServerModules(): Promise<ServerModules> {
-  modulesPromise ??= (async () => {
-    const [dbModule, treeService, configService, lorebookConfig] = await Promise.all([
-      import("@/db"),
-      import("@/features/chat/tree/service"),
-      import("@/features/chat/config/service"),
-      import("@/features/chat/config/lorebook"),
-    ]);
-    return {
-      db: dbModule.db,
-      getChat: treeService.getChat,
-      getMessages: treeService.getMessages,
-      loadChatConfig: configService.loadChatConfig,
-      getEnabledLoreEntries: lorebookConfig.getEnabledLoreEntries,
-    };
-  })();
-  return modulesPromise;
-}
-
-async function resolveServerModules(deps: ReadToolDeps): Promise<ServerModules> {
-  const modules = await loadServerModules();
-  if (!deps.db) return modules;
-  return { ...modules, db: deps.db };
-}
-
-function decodeArgs<T>(decode: (value: unknown) => T, value: unknown, toolName: string): T {
-  try {
-    return decode(value);
-  } catch (cause) {
-    const detail = cause instanceof Error ? cause.message : String(cause);
-    throw new GenerationValidationError({
-      message: `Invalid ${toolName} arguments: ${detail}`,
-    });
+export class ReadToolRuntime extends Context.Service<
+  ReadToolRuntime,
+  {
+    readonly db: DB;
+    readonly userId: string;
+    readonly chatId: string;
   }
+>()("ReadToolRuntime") {}
+
+export function makeReadToolLayer(input: {
+  db?: DB;
+  userId: string;
+  chatId: string;
+}): Layer.Layer<ReadToolRuntime> {
+  return Layer.succeed(ReadToolRuntime, {
+    db: input.db ?? defaultDb,
+    userId: input.userId,
+    chatId: input.chatId,
+  });
 }
 
-function requireToolContext(
-  runtime: { context?: ToolContext } | undefined,
+function decodeToolInput<S extends Schema.ConstraintDecoder<unknown, never>>(
+  schema: S,
+  value: unknown,
   toolName: string,
-): ToolContext {
-  const context = runtime?.context;
-  if (!context || typeof context.userId !== "string" || context.userId.length === 0) {
-    throw new GenerationValidationError({
-      message: `${toolName} requires an authenticated user context.`,
-      field: "userId",
-    });
-  }
-  if (typeof context.chatId !== "string" || context.chatId.length === 0) {
-    throw new GenerationValidationError({
-      message: `${toolName} requires a chat context.`,
-      field: "chatId",
-    });
-  }
-  return context;
+): Effect.Effect<S["Type"], GenerationValidationError> {
+  return Effect.try({
+    try: () => Schema.decodeUnknownSync(schema)(value) as S["Type"],
+    catch: (cause) =>
+      new GenerationValidationError({
+        message: `Invalid ${toolName} arguments: ${
+          cause instanceof Error ? cause.message : String(cause)
+        }`,
+      }),
+  });
 }
 
-function requireChat(chatId: string, db: DB, getChat: ServerModules["getChat"]): ChatDetail {
-  try {
-    return getChat(chatId, db);
-  } catch {
-    throw new GenerationValidationError({
-      message: `Chat not found: ${chatId}`,
-      field: "chatId",
-    });
-  }
+function requireChat(runtime: {
+  readonly db: DB;
+  readonly chatId: string;
+}): Effect.Effect<void, GenerationValidationError> {
+  return Effect.try({
+    try: () => getChat(runtime.chatId, runtime.db),
+    catch: () =>
+      new GenerationValidationError({
+        message: `Chat not found: ${runtime.chatId}`,
+        field: "chatId",
+      }),
+  }).pipe(Effect.asVoid);
 }
 
 /**
- * Build the read-only server tools bound to a runtime context. Every tool:
- * - decodes its arguments with the same Effect schema advertised to the
- *   model,
- * - validates that the runtime chat exists,
- * - only reads from the database.
+ * Read-only server tools as Effects. Each tool reads `ReadToolRuntime`, so the
+ * route/proposal supplies the request context and DB as a Layer. A tool failure
+ * is returned to the model as a tool error and does not fail the run.
  */
-export function createReadTools(deps: ReadToolDeps = {}) {
-  const readLore = readLoreDefinition.server<ToolContext>(async (args, runtime) => {
-    const context = requireToolContext(runtime, "read_lore");
-    const input = decodeArgs(decodeReadLoreInput, args, "read_lore");
+export const readLore = AI.serverTool(readLoreDefinition, (args) =>
+  Effect.gen(function* () {
+    const runtime = yield* ReadToolRuntime;
+    const input = yield* decodeToolInput(ReadLoreInput, args, "read_lore");
     if (input.query.trim().length === 0) {
-      throw new GenerationValidationError({
-        message: "read_lore requires a non-empty query.",
-        field: "query",
-      });
+      return yield* Effect.fail(
+        new GenerationValidationError({
+          message: "read_lore requires a non-empty query.",
+          field: "query",
+        }),
+      );
     }
-    const modules = await resolveServerModules(deps);
-    requireChat(context.chatId, modules.db, modules.getChat);
+    yield* requireChat(runtime);
     return {
-      entries: filterLoreEntries(
-        modules.getEnabledLoreEntries(modules.db),
-        input.query,
-        input.limit,
-      ),
+      entries: filterLoreEntries(getEnabledLoreEntries(runtime.db), input.query, input.limit),
     };
-  });
+  }),
+);
 
-  const readCharacter = readCharacterDefinition.server<ToolContext>(async (args, runtime) => {
-    const context = requireToolContext(runtime, "read_character");
-    const input = decodeArgs(decodeReadCharacterInput, args, "read_character");
-    const modules = await resolveServerModules(deps);
-    requireChat(context.chatId, modules.db, modules.getChat);
-    const config = await modules.loadChatConfig(context.userId, context.chatId, "User", modules.db);
+export const readCharacter = AI.serverTool(readCharacterDefinition, (args) =>
+  Effect.gen(function* () {
+    const runtime = yield* ReadToolRuntime;
+    const input = yield* decodeToolInput(ReadCharacterInput, args, "read_character");
+    yield* requireChat(runtime);
+    const config = yield* Effect.tryPromise({
+      try: () => loadChatConfig(runtime.userId, runtime.chatId, "User", runtime.db),
+      catch: (cause) =>
+        new GenerationValidationError({
+          message: cause instanceof Error ? cause.message : String(cause),
+        }),
+    });
     return buildCharacterView(config, input.fields);
-  });
+  }),
+);
 
-  const readScene = readSceneDefinition.server<ToolContext>(async (args, runtime) => {
-    const context = requireToolContext(runtime, "read_scene");
-    const input = decodeArgs(decodeReadSceneInput, args, "read_scene");
-    const modules = await resolveServerModules(deps);
-    requireChat(context.chatId, modules.db, modules.getChat);
+export const readScene = AI.serverTool(readSceneDefinition, (args) =>
+  Effect.gen(function* () {
+    const runtime = yield* ReadToolRuntime;
+    const input = yield* decodeToolInput(ReadSceneInput, args, "read_scene");
+    yield* requireChat(runtime);
     return {
-      messages: buildScene(modules.getMessages(context.chatId, modules.db), input.limit),
+      messages: buildScene(getMessages(runtime.chatId, runtime.db), input.limit),
     };
-  });
+  }),
+);
 
-  return { readLore, readCharacter, readScene } as const;
-}
-
-/** Default-bound server tools, keyed by name (app database). */
-export const readToolSet = createReadTools();
-
-/** Array form for passing directly to `chat({ tools })`. */
-export const readTools = [
-  readToolSet.readLore,
-  readToolSet.readCharacter,
-  readToolSet.readScene,
-] as const;
+/** Array form for passing directly to `AI.chat({ tools })`. */
+export const readTools = [readLore, readCharacter, readScene] as const;

@@ -21,11 +21,6 @@ export type InsertionTarget =
   | { kind: "replace"; messageLocalId: number; baseRev: number; baseHash: string }
   | { kind: "insertAfter"; messageLocalId: number; role: "user" | "assistant" };
 
-export interface ToolContext {
-  userId: string;
-  chatId: string;
-}
-
 export interface EffectiveCharacter {
   name: string;
   description: string;

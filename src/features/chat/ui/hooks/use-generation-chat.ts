@@ -34,6 +34,8 @@ export function useGenerationChat(chatId: string): GenerationChat {
   const streamTextRef = useRef("");
   /** Bumped by stop(), unmount, or a chat change; a stale prepare cannot start. */
   const runTokenRef = useRef(0);
+  /** Synchronous guard: state updates cannot stop a same-tick second start(). */
+  const runActiveRef = useRef(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -41,6 +43,7 @@ export function useGenerationChat(chatId: string): GenerationChat {
   }, [chatId]);
 
   const resetRunState = useCallback(() => {
+    runActiveRef.current = false;
     streamTextRef.current = "";
     setStatus("idle");
     setStreamingText("");
@@ -124,6 +127,8 @@ export function useGenerationChat(chatId: string): GenerationChat {
 
   const start = useCallback(
     async (mode: "send" | "regenerate" | "continue", opts?: StartOpts) => {
+      if (runActiveRef.current) return;
+      runActiveRef.current = true;
       const token = ++runTokenRef.current;
       const activeChatId = chatIdRef.current;
       runChatIdRef.current = activeChatId;

@@ -6,6 +6,7 @@ import { characters, chatMessages, aiProviders, userSettings, generationJobs } f
 import {
   appendUserAndReply,
   createChat,
+  deleteBranch,
   editMessage,
   getMessages,
 } from "@/features/chat/tree/service";
@@ -134,6 +135,16 @@ describe("generation prepare and proposals", () => {
 
     expect(second.jobId).not.toBe(first.jobId);
     expect(getJob(first.jobId, db)?.status).toBe("expired");
+    // The dead placeholder must not stay in the tree, or the new turn is
+    // parented under it and the chat shows a permanent empty assistant row.
+    // localIds are reused, so match the dead job's id, not the row number.
+    const active = getMessages(chatId, db);
+    expect(active.some((m) => m.content === "Again")).toBe(true);
+    expect(
+      active.some(
+        (m) => (m.extra as Record<string, unknown> | undefined)?.generationJobId === first.jobId,
+      ),
+    ).toBe(false);
   });
 
   it("finalizes the placeholder and job together and rolls back on a lost lease", async () => {
@@ -180,6 +191,31 @@ describe("generation prepare and proposals", () => {
       .get();
     expect(finalized?.content).toBe("reply");
     expect(getJob(prepared.jobId, db)?.status).toBe("succeeded");
+  });
+
+  it("refuses to finalize into a placeholder that was deleted", async () => {
+    const prepared = await prepareGeneration(
+      userId,
+      { chatId, trigger: "send", content: "Hi" },
+      "User",
+      db,
+    );
+    const lease = beginJob({ jobId: prepared.jobId, owner: "owner-1" }, db);
+    deleteBranch(chatId, prepared.placeholderLocalId, db);
+
+    expect(() =>
+      finalizeChat(
+        {
+          jobId: prepared.jobId,
+          owner: "owner-1",
+          epoch: lease.leaseEpoch,
+          text: "reply",
+        },
+        db,
+      ),
+    ).toThrow(/placeholder/);
+    // The job is not marked succeeded without a message to hold the reply.
+    expect(getJob(prepared.jobId, db)?.status).toBe("running");
   });
 
   it("does not cancel an already finalized job", async () => {

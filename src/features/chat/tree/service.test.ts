@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { makeTestDb, type TestDb } from "@/db/__tests__/helpers";
 import { makeCharacterData } from "@/db/__tests__/character-data";
-import { characters, chatMessages } from "@/db/schema";
+import { characters, chatMessages, chats } from "@/db/schema";
 import {
   createChat,
   getChat,
@@ -80,6 +80,26 @@ describe("tree service", () => {
       expect(g2.role).toBe("assistant");
       expect(g2.content).toBe("Hey there!");
       expect(g2.parentLocalId).toBe(0);
+    });
+
+    it("rolls back a partially written chat when a greeting insert fails", () => {
+      ctx.sqlite.exec(
+        "CREATE TRIGGER block_greeting_two BEFORE INSERT ON chat_messages WHEN NEW.local_id = 2 BEGIN SELECT RAISE(ABORT, 'blocked'); END;",
+      );
+
+      expect(() =>
+        createChat(
+          {
+            characterId: charId,
+            title: "Broken",
+            greetings: ["One", "Two"],
+          },
+          db,
+        ),
+      ).toThrow(/blocked/);
+
+      expect(db.select().from(chats).all()).toHaveLength(0);
+      expect(db.select().from(chatMessages).all()).toHaveLength(0);
     });
 
     it("throws when greetings is empty", () => {
@@ -269,6 +289,30 @@ describe("tree service", () => {
   });
 
   describe("swipe", () => {
+    it("rolls back parent selection when the new sibling cannot be inserted", () => {
+      const chat = createChat({ characterId: charId, title: "Test", greetings: ["Hi"] }, db);
+      appendUserAndReply(chat.id, "One", "First", undefined, db);
+      const { replyMessage } = appendUserAndReply(chat.id, "Two", "Second", undefined, db);
+      ctx.sqlite.exec(
+        "CREATE TRIGGER block_six BEFORE INSERT ON chat_messages WHEN NEW.local_id = 6 BEGIN SELECT RAISE(ABORT, 'blocked'); END;",
+      );
+
+      expect(() =>
+        swipe(chat.id, replyMessage.localId, "next", { role: "assistant", content: "Sibling" }, db),
+      ).toThrow(/blocked/);
+
+      const parent = db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.localId, replyMessage.parentLocalId!))
+        .get()!;
+      expect(parent.children).toEqual([replyMessage.localId]);
+      expect(parent.selectedChildLocalId).toBe(replyMessage.localId);
+      expect(
+        db.select().from(chatMessages).where(eq(chatMessages.localId, 6)).get(),
+      ).toBeUndefined();
+    });
+
     it("navigates to next sibling", () => {
       const chat = createChat(
         {
@@ -368,6 +412,33 @@ describe("tree service", () => {
   });
 
   describe("deleteBranch", () => {
+    it("rolls back parent selection when message deletion fails", () => {
+      const chat = createChat({ characterId: charId, title: "Test", greetings: ["Hi"] }, db);
+      const { userMessage, replyMessage } = appendUserAndReply(
+        chat.id,
+        "Hello",
+        "Reply",
+        undefined,
+        db,
+      );
+      ctx.sqlite.exec(
+        "CREATE TRIGGER block_reply_delete BEFORE DELETE ON chat_messages WHEN OLD.local_id = 3 BEGIN SELECT RAISE(ABORT, 'blocked'); END;",
+      );
+
+      expect(() => deleteBranch(chat.id, userMessage.localId, db)).toThrow(/blocked/);
+
+      const parent = db
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.localId, replyMessage.parentLocalId!))
+        .get()!;
+      expect(parent.children).toEqual([replyMessage.localId]);
+      expect(parent.selectedChildLocalId).toBe(replyMessage.localId);
+      expect(
+        db.select().from(chatMessages).where(eq(chatMessages.localId, userMessage.localId)).get(),
+      ).toBeDefined();
+    });
+
     it("deletes a leaf node and re-points parent selection", () => {
       const chat = createChat(
         {
@@ -407,6 +478,16 @@ describe("tree service", () => {
       const greeting = db.select().from(chatMessages).where(eq(chatMessages.localId, 1)).get()!;
       expect(greeting.children).toEqual([]);
       expect(greeting.selectedChildLocalId).toBeNull();
+    });
+
+    it("leaves the hidden root active after the last greeting is deleted", () => {
+      const chat = createChat({ characterId: charId, title: "Test", greetings: ["Hi"] }, db);
+
+      deleteBranch(chat.id, 1, db);
+
+      const user = appendMessage(chat.id, { role: "user", content: "Hello" }, db);
+      expect(user.parentLocalId).toBe(0);
+      expect(getActivePath(chat.id, db).map((entry) => entry.message.content)).toEqual(["Hello"]);
     });
 
     it("throws on localId 0", () => {

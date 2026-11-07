@@ -125,7 +125,11 @@ export function createChat(input: CreateChatInput, db: DB = defaultDb): ChatDeta
   if (input.greetings.length === 0) {
     throw new Error("createChat: at least one greeting is required");
   }
+  // Chat + root + greetings must appear together or not at all.
+  return db.transaction((tx) => createChatInTransaction(input, tx as unknown as DB));
+}
 
+function createChatInTransaction(input: CreateChatInput, db: DB): ChatDetail {
   const chatId = randomUUID();
 
   try {
@@ -211,6 +215,10 @@ export function deleteChat(chatId: string, db: DB = defaultDb): void {
 // ── Message operations ──
 
 export function appendMessage(chatId: string, msg: NewMessage, db: DB = defaultDb): ChatMessage {
+  return db.transaction((tx) => appendMessageInTransaction(chatId, msg, tx as unknown as DB));
+}
+
+function appendMessageInTransaction(chatId: string, msg: NewMessage, db: DB): ChatMessage {
   log.debug("appendMessage start", { chatId, role: msg.role });
   try {
     const rows = repoListMessages(chatId, db);
@@ -241,6 +249,24 @@ export function appendUserAndReply(
   if (userContent.length === 0) {
     throw new Error("User content cannot be empty");
   }
+  return db.transaction((tx) =>
+    appendUserAndReplyInTransaction(
+      chatId,
+      userContent,
+      replyContent,
+      replyExtra,
+      tx as unknown as DB,
+    ),
+  );
+}
+
+function appendUserAndReplyInTransaction(
+  chatId: string,
+  userContent: string,
+  replyContent: string,
+  replyExtra: Record<string, unknown> | undefined,
+  db: DB,
+): { userMessage: ChatMessage; replyMessage: ChatMessage } {
   log.debug("appendUserAndReply start", { chatId, userContentLength: userContent.length });
 
   try {
@@ -285,6 +311,18 @@ export function swipe(
   direction: "next" | "prev",
   createIfMissing?: SiblingContent,
   db: DB = defaultDb,
+): SwipeResult {
+  return db.transaction((tx) =>
+    swipeInTransaction(chatId, messageLocalId, direction, createIfMissing, tx as unknown as DB),
+  );
+}
+
+function swipeInTransaction(
+  chatId: string,
+  messageLocalId: number,
+  direction: "next" | "prev",
+  createIfMissing: SiblingContent | undefined,
+  db: DB,
 ): SwipeResult {
   log.debug("swipe start", { chatId, messageLocalId, direction });
   try {
@@ -348,6 +386,17 @@ export function appendSibling(
   msg: SiblingContent,
   db: DB = defaultDb,
 ): ChatMessage {
+  return db.transaction((tx) =>
+    appendSiblingInTransaction(chatId, targetLocalId, msg, tx as unknown as DB),
+  );
+}
+
+function appendSiblingInTransaction(
+  chatId: string,
+  targetLocalId: number,
+  msg: SiblingContent,
+  db: DB,
+): ChatMessage {
   log.debug("appendSibling start", { chatId, targetLocalId });
   try {
     const rows = repoListMessages(chatId, db);
@@ -381,6 +430,17 @@ export function deleteBranch(
   if (messageLocalId === 0) {
     throw new Error("Cannot delete the hidden root (localId 0)");
   }
+  // Parent reselection and row deletion must commit together.
+  return db.transaction((tx) =>
+    deleteBranchInTransaction(chatId, messageLocalId, tx as unknown as DB),
+  );
+}
+
+function deleteBranchInTransaction(
+  chatId: string,
+  messageLocalId: number,
+  db: DB,
+): { deletedIds: number[] } {
   log.debug("deleteBranch start", { chatId, messageLocalId });
   try {
     const rows = repoListMessages(chatId, db);

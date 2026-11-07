@@ -1,25 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  chat as aiChat,
   memoryStream,
   toServerSentEventsResponse,
   type StreamChunk,
   type TokenUsage,
 } from "@tanstack/ai";
+import { AIError } from "@tanstack/ai-effect";
 import { tryGetSession } from "@/server/session";
-import { beginJob, failJob, getJob, heartbeatJob } from "@/db/repositories/generation";
+import { beginJob, getJob, heartbeatJob } from "@/db/repositories/generation";
 import { loadGenerationSnapshot } from "@/features/generation/context";
 import { compilePrompt } from "@/features/generation/prompt";
-import { makeAdapter } from "@/features/generation/provider";
-import { readTools } from "@/features/generation/tools";
 import { finalizeChat } from "@/features/generation/finalize";
+import { makeGenerationStream } from "@/features/generation/chat-stream";
+import { failJobAndDiscardPlaceholder } from "@/features/generation/cleanup";
 import {
   httpStatusFor,
   isGenerationError,
   LeaseLostError,
   toErrorBody,
 } from "@/features/generation/errors";
-import type { ToolContext } from "@/features/generation/contract";
 import { createLogger } from "@/features/logging";
 
 const log = createLogger("api:generation:chat");
@@ -81,7 +80,7 @@ async function* finalizeOnTerminal(
 
       if (chunk.type === "RUN_ERROR") {
         terminal = true;
-        failJob({
+        failJobAndDiscardPlaceholder({
           jobId,
           owner,
           code: "provider_error",
@@ -104,7 +103,7 @@ async function* finalizeOnTerminal(
     }
 
     if (!terminal) {
-      failJob({
+      failJobAndDiscardPlaceholder({
         jobId,
         owner,
         code: "incomplete_stream",
@@ -115,10 +114,10 @@ async function* finalizeOnTerminal(
     }
   } catch (error) {
     try {
-      failJob({
+      failJobAndDiscardPlaceholder({
         jobId,
         owner,
-        code: "finalize_failed",
+        code: error instanceof AIError ? "provider_error" : "finalize_failed",
         message: error instanceof Error ? error.message : String(error),
         usage: usage as unknown as Record<string, unknown> | undefined,
         finishReason,
@@ -137,6 +136,7 @@ export const Route = createFileRoute("/api/generation/chat")({
     handlers: {
       POST: async ({ request }) => {
         let activeJobId: string | null = null;
+        let leaseOwner: string | undefined;
         try {
           const session = await tryGetSession();
           if (!session) {
@@ -193,28 +193,16 @@ export const Route = createFileRoute("/api/generation/chat")({
           const instruction =
             typeof job.input?.instruction === "string" ? job.input.instruction : undefined;
           const compiled = compilePrompt(snapshot, job.promptMode, { instruction });
-          const adapter = makeAdapter(snapshot.provider);
-          const tools = readTools;
           const owner = crypto.randomUUID();
           const lease = beginJob({ jobId: job.id, owner });
+          leaseOwner = owner;
 
-          const toolContext: ToolContext = {
+          const stream = makeGenerationStream({
+            provider: snapshot.provider,
+            compiled,
             userId: user.id,
             chatId: job.chatId,
-          };
-
-          const stream = aiChat({
-            adapter,
-            messages: compiled.messages,
-            systemPrompts: compiled.systemPrompts,
-            modelOptions: {
-              ...compiled.modelOptions,
-              ...(compiled.stop ? { stop: compiled.stop } : {}),
-            },
-            tools,
-            context: toolContext,
-            threadId: job.chatId,
-            runId: job.id,
+            jobId: job.id,
           });
 
           const finalized = finalizeOnTerminal(job.id, owner, lease.leaseEpoch, stream);
@@ -239,7 +227,12 @@ export const Route = createFileRoute("/api/generation/chat")({
           });
           if (activeJobId) {
             try {
-              failJob({ jobId: activeJobId, code: body.code, message });
+              failJobAndDiscardPlaceholder({
+                jobId: activeJobId,
+                owner: leaseOwner,
+                code: body.code,
+                message,
+              });
             } catch {
               // Best effort: the job may already be terminal.
             }

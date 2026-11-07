@@ -23,6 +23,12 @@ export interface CreateGenerationJobInput {
   placeholderLocalId?: number | null;
 }
 
+export interface CreateGenerationJobResult {
+  job: GenerationJob;
+  /** A stale active job this call expired; its placeholder must be discarded. */
+  expiredJob?: GenerationJob;
+}
+
 export function getJob(jobId: string, db: DB = defaultDb): GenerationJob | undefined {
   return db.select().from(generationJobs).where(eq(generationJobs.id, jobId)).get();
 }
@@ -37,7 +43,10 @@ function isStaleActiveJob(job: GenerationJob, now: number): boolean {
  * transaction so the job and its messages commit or roll back together; the
  * partial unique index is the final guard.
  */
-export function createJobInTransaction(input: CreateGenerationJobInput, db: DB): GenerationJob {
+export function createJobInTransaction(
+  input: CreateGenerationJobInput,
+  db: DB,
+): CreateGenerationJobResult {
   let active = db
     .select()
     .from(generationJobs)
@@ -48,8 +57,10 @@ export function createJobInTransaction(input: CreateGenerationJobInput, db: DB):
       ),
     )
     .get();
+  let expiredJob: GenerationJob | undefined;
   if (active && isStaleActiveJob(active, Date.now())) {
-    db.update(generationJobs)
+    expiredJob = db
+      .update(generationJobs)
       .set({
         status: "expired",
         error: {
@@ -61,7 +72,8 @@ export function createJobInTransaction(input: CreateGenerationJobInput, db: DB):
         leaseExpiresAt: null,
       })
       .where(eq(generationJobs.id, active.id))
-      .run();
+      .returning()
+      .get();
     active = undefined;
   }
   if (active) {
@@ -87,7 +99,7 @@ export function createJobInTransaction(input: CreateGenerationJobInput, db: DB):
     .returning()
     .get();
   if (!row) throw new Error("Failed to create generation job");
-  return row;
+  return { job: row, expiredJob };
 }
 
 export function setJobPlaceholder(
@@ -194,16 +206,15 @@ export interface FailJobInput {
 }
 
 export function failJob(input: FailJobInput, db: DB = defaultDb): boolean {
+  // Without a lease this may only fail a job that never started; otherwise a
+  // duplicate setup request could kill the run another request now owns.
   const where = input.owner
     ? and(
         eq(generationJobs.id, input.jobId),
         eq(generationJobs.leaseOwner, input.owner),
         inArray(generationJobs.status, ["queued", "running", "finalizing"]),
       )
-    : and(
-        eq(generationJobs.id, input.jobId),
-        inArray(generationJobs.status, ["queued", "running", "finalizing"]),
-      );
+    : and(eq(generationJobs.id, input.jobId), eq(generationJobs.status, "queued"));
   const row = db
     .update(generationJobs)
     .set({

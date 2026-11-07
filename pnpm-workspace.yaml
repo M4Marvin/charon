@@ -22,3 +22,4 @@ minimumReleaseAgeExclude:
   - postcss
   - react-resizable-panels
   - shadcn
+  - '@tanstack/ai-effect@0.1.0'

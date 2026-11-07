@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Effect } from "effect";
+import type { ToolExecutionContext } from "@tanstack/ai";
 import type { CharacterDataV2 } from "@/lib/st-core/character/types";
 import type { LoreEntry } from "@/lib/st-core/lorebook/types";
 import { makeCharacterData } from "@/db/__tests__/character-data";
@@ -6,26 +8,37 @@ import { makeLorebookConfig, makeLoreEntry } from "@/db/__tests__/lorebook-data"
 import { makeTestDb, type TestDb } from "@/db/__tests__/helpers";
 import { characters, chatMessages, chats, lorebooks, loreEntries } from "@/db/schema";
 import { appendUserAndReply, createChat, swipe } from "@/features/chat/tree/service";
-import type { ToolContext } from "./contract";
 import {
   CHARACTER_TEXT_CAP,
   LORE_CONTENT_CAP,
   SCENE_CONTENT_CAP,
+  type ReadToolRuntime,
   buildCharacterView,
   buildScene,
-  createReadTools,
   filterLoreEntries,
+  makeReadToolLayer,
   normalizeQueryTerms,
+  readCharacter,
+  readLore,
+  readScene,
   readTools,
 } from "./tools";
 
-function runtime(chatId: string, overrides: Partial<ToolContext> = {}) {
-  const context: ToolContext = {
-    userId: "user-1",
-    chatId,
-    ...overrides,
+function runtime(chatId: string): ToolExecutionContext {
+  return {
+    context: { userId: "user-1", chatId },
+    emitCustomEvent: () => {},
   };
-  return { context, emitCustomEvent: () => {} };
+}
+
+function runTool<T>(
+  effect: Effect.Effect<T, unknown, ReadToolRuntime>,
+  chatId: string,
+  db: TestDb,
+): Promise<T> {
+  return Effect.runPromise(
+    effect.pipe(Effect.provide(makeReadToolLayer({ db, userId: "user-1", chatId }))),
+  );
 }
 
 function seedCharacter(db: TestDb, overrides: Partial<CharacterDataV2> = {}) {
@@ -127,29 +140,33 @@ describe("generation read tools", () => {
 
   describe("tool definitions", () => {
     it("exposes the three server tools with JSON Schemas", () => {
-      expect(readTools.map((tool) => tool.name)).toEqual([
+      expect(readTools.map((tool) => tool.def.name)).toEqual([
         "read_lore",
         "read_character",
         "read_scene",
       ]);
 
-      const input = jsonSchema(readTools[0].inputSchema, "input");
+      const input = jsonSchema(readTools[0].def.inputSchema, "input");
       expect(input.type).toBe("object");
       expect(input.required).toEqual(["query"]);
       expect(input.properties).toMatchObject({ query: { type: "string" } });
+      // AI.toolSchema closes objects so OpenAI can keep strict mode on.
+      expect(input.additionalProperties).toBe(false);
 
-      const output = jsonSchema(readTools[0].outputSchema, "output");
+      const output = jsonSchema(readTools[0].def.outputSchema, "output");
       expect(output.type).toBe("object");
       expect(output.properties).toHaveProperty("entries");
+      expect(output.additionalProperties).toBe(false);
     });
 
     it("converts the character schema to an optional-field object", () => {
-      const output = jsonSchema(readTools[1].outputSchema, "output");
+      const output = jsonSchema(readTools[1].def.outputSchema, "output");
       expect(output.properties).toMatchObject({
         name: { type: "string" },
         tags: { type: "array" },
       });
       expect(output.required ?? []).toEqual([]);
+      expect(output.additionalProperties).toBe(false);
     });
   });
 
@@ -201,8 +218,11 @@ describe("generation read tools", () => {
         entries: [makeLoreEntry({ uid: 3, key: ["dragon"], content: "Disabled book." })],
       });
 
-      const tools = createReadTools({ db });
-      const result = await tools.readLore.execute!({ query: "dragon" }, runtime(chat.id));
+      const result = await runTool(
+        readLore.execute({ query: "dragon" }, runtime(chat.id)),
+        chat.id,
+        db,
+      );
 
       expect(result.entries).toEqual([
         { id: 1, keys: ["dragon"], content: "Dragons breathe fire." },
@@ -211,7 +231,6 @@ describe("generation read tools", () => {
 
     it("validates the chat and query without writing", async () => {
       const { chat } = seedChat(db);
-      const tools = createReadTools({ db });
       const before = {
         chats: db.select().from(chats).all().length,
         messages: db.select().from(chatMessages).all().length,
@@ -219,11 +238,11 @@ describe("generation read tools", () => {
       };
 
       await expect(
-        tools.readLore.execute!({ query: "  " }, runtime(chat.id)),
+        runTool(readLore.execute({ query: "  " }, runtime(chat.id)), chat.id, db),
       ).rejects.toMatchObject({ _tag: "GenerationValidationError" });
 
       await expect(
-        tools.readLore.execute!({ query: "dragon" }, runtime("missing-chat")),
+        runTool(readLore.execute({ query: "dragon" }, runtime("missing-chat")), "missing-chat", db),
       ).rejects.toMatchObject({ _tag: "GenerationValidationError", field: "chatId" });
 
       expect({
@@ -253,9 +272,7 @@ describe("generation read tools", () => {
           tags: ["tag-a", "tag-b"],
         },
       );
-      const tools = createReadTools({ db });
-
-      const all = await tools.readCharacter.execute!({}, runtime(chat.id));
+      const all = await runTool(readCharacter.execute({}, runtime(chat.id)), chat.id, db);
       expect(all).toEqual({
         name: "Card Name",
         description: "Chat description",
@@ -265,31 +282,35 @@ describe("generation read tools", () => {
         tags: ["tag-a", "tag-b"],
       });
 
-      const subset = await tools.readCharacter.execute!(
-        { fields: ["name", "tags"] },
-        runtime(chat.id),
+      const subset = await runTool(
+        readCharacter.execute({ fields: ["name", "tags"] }, runtime(chat.id)),
+        chat.id,
+        db,
       );
       expect(subset).toEqual({ name: "Card Name", tags: ["tag-a", "tag-b"] });
       expect(Object.keys(subset).sort()).toEqual(["name", "tags"]);
 
-      const empty = await tools.readCharacter.execute!({ fields: [] }, runtime(chat.id));
+      const empty = await runTool(
+        readCharacter.execute({ fields: [] }, runtime(chat.id)),
+        chat.id,
+        db,
+      );
       expect(empty).toEqual(all);
     });
 
     it("caps long fields and rejects a missing chat", async () => {
       const { chat } = seedChat(db, {}, { description: "d".repeat(CHARACTER_TEXT_CAP + 300) });
-      const tools = createReadTools({ db });
-
-      const result = await tools.readCharacter.execute!(
-        { fields: ["description"] },
-        runtime(chat.id),
+      const result = await runTool(
+        readCharacter.execute({ fields: ["description"] }, runtime(chat.id)),
+        chat.id,
+        db,
       );
       expect(result.description!.length).toBeLessThanOrEqual(CHARACTER_TEXT_CAP);
       expect(result.description!.endsWith("…")).toBe(true);
 
-      await expect(tools.readCharacter.execute!({}, runtime("missing-chat"))).rejects.toMatchObject(
-        { _tag: "GenerationValidationError", field: "chatId" },
-      );
+      await expect(
+        runTool(readCharacter.execute({}, runtime("missing-chat")), "missing-chat", db),
+      ).rejects.toMatchObject({ _tag: "GenerationValidationError", field: "chatId" });
     });
   });
 
@@ -297,9 +318,7 @@ describe("generation read tools", () => {
     it("reads the newest messages on the active path, excluding the root", async () => {
       const { chat } = seedChat(db);
       appendUserAndReply(chat.id, "Hi", "Hey there", undefined, db);
-      const tools = createReadTools({ db });
-
-      const result = await tools.readScene.execute!({ limit: 2 }, runtime(chat.id));
+      const result = await runTool(readScene.execute({ limit: 2 }, runtime(chat.id)), chat.id, db);
 
       expect(result.messages.map((message) => message.localId)).toEqual([2, 3]);
       expect(result.messages.map((message) => message.role)).toEqual(["user", "assistant"]);
@@ -310,9 +329,7 @@ describe("generation read tools", () => {
       const { chat } = seedChat(db);
       swipe(chat.id, 1, "next", { role: "assistant", content: "Alt greeting" }, db);
       appendUserAndReply(chat.id, "x".repeat(SCENE_CONTENT_CAP + 500), "Done", undefined, db);
-      const tools = createReadTools({ db });
-
-      const result = await tools.readScene.execute!({ limit: 2 }, runtime(chat.id));
+      const result = await runTool(readScene.execute({ limit: 2 }, runtime(chat.id)), chat.id, db);
       expect(result.messages).toHaveLength(2);
       expect(result.messages[0].content.length).toBeLessThanOrEqual(SCENE_CONTENT_CAP);
       expect(result.messages[0].content.endsWith("…")).toBe(true);
@@ -320,10 +337,9 @@ describe("generation read tools", () => {
     });
 
     it("rejects a missing chat without writing", async () => {
-      const tools = createReadTools({ db });
-      await expect(tools.readScene.execute!({}, runtime("missing-chat"))).rejects.toMatchObject({
-        _tag: "GenerationValidationError",
-      });
+      await expect(
+        runTool(readScene.execute({}, runtime("missing-chat")), "missing-chat", db),
+      ).rejects.toMatchObject({ _tag: "GenerationValidationError" });
       expect(db.select().from(chatMessages).all()).toEqual([]);
     });
   });
