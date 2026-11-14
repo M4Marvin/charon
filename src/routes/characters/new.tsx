@@ -54,6 +54,9 @@ export function NewCharacterPage() {
   // Selected target for "update existing" when the card name matches one or
   // more characters; null means the user chose import-as-new.
   const [targetId, setTargetId] = useState<string | null>(null);
+  // Set when the update target disappeared between preview and confirm and
+  // cannot be re-picked (update mode). Disables the primary action.
+  const [deadTarget, setDeadTarget] = useState(false);
   // `processing` drives the UI; `processingRef` guards re-entrancy (a state
   // snapshot is per-render and cannot stop a same-tick re-entry).
   const [processing, setProcessing] = useState(false);
@@ -76,6 +79,7 @@ export function NewCharacterPage() {
     setFile(f);
     setPreviewErr(null);
     setFieldErrors(null);
+    setDeadTarget(false);
     if (!f) return;
     if (f.type !== "" && f.type !== "image/png") {
       setPreviewErr("That file isn't a PNG. Choose a character card PNG.");
@@ -137,13 +141,20 @@ export function NewCharacterPage() {
       } else {
         if (res.error.kind === "validation") {
           setFieldErrors(res.error.errors);
+        } else if (res.error.kind === "target_missing") {
+          // The service already provides user-ready copy.
+          setPreviewErr(res.error.message);
+          if (updateTargetId) {
+            // Update mode: the target comes from the URL and cannot be
+            // re-picked — lock the action instead of retrying a dead id.
+            setDeadTarget(true);
+          } else {
+            // Duplicate-picker flow: drop the stale selection so the panel
+            // shows nothing selected and the primary falls back to Import.
+            setTargetId(null);
+          }
         } else {
           setPreviewErr(friendlyImportError(res.error.message));
-        }
-        if (res.error.kind === "target_missing") {
-          // The target vanished between preview and confirm; drop the stale
-          // selection so the user can re-pick (or the panel re-renders).
-          setTargetId(null);
         }
       }
       return;
@@ -370,7 +381,7 @@ export function NewCharacterPage() {
             ) : null}
             <Button
               onClick={() => void handleImport(updateTargetId ? true : Boolean(targetId))}
-              disabled={importMutation.isPending || updateMutation.isPending}
+              disabled={deadTarget || importMutation.isPending || updateMutation.isPending}
             >
               {updateMutation.isPending
                 ? "Updating…"

@@ -332,4 +332,21 @@ describe("NewCharacterPage update mode (?update=<id>)", () => {
     expect(screen.getByText(/no longer exists/i)).toBeTruthy();
     expect(screen.queryByLabelText("Choose a character card PNG")).toBeNull();
   });
+
+  it("locks the update action after a target_missing failure", async () => {
+    enterUpdateMode({ id: "char-9", name: "Old Name" });
+    await renderThroughPreview();
+    mockUpdateCharacterFromCard.mockResolvedValue({
+      ok: false,
+      error: { kind: "target_missing", message: "The character to update no longer exists." },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /update character/i }));
+    await act(async () => {});
+
+    expect(screen.getByText(/no longer exists/i)).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: /update character/i }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
 });
