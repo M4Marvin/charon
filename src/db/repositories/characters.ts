@@ -42,6 +42,20 @@ export function listCharacters(db: DB = defaultDb): Character[] {
   return db.select().from(characters).all();
 }
 
+export type CharacterNameSummary = Pick<Character, "id" | "name" | "updatedAt">;
+
+/**
+ * Scalar-only rows for name matching (duplicate detection). Unlike
+ * listCharacters this does not deserialize the card data blob, which is pure
+ * waste when only names are compared.
+ */
+export function listCharacterNameSummaries(db: DB = defaultDb): CharacterNameSummary[] {
+  return db
+    .select({ id: characters.id, name: characters.name, updatedAt: characters.updatedAt })
+    .from(characters)
+    .all();
+}
+
 function escapeLike(pattern: string): string {
   return pattern.replace(/[%_\\]/g, "\\$&");
 }

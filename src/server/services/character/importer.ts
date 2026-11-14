@@ -3,7 +3,7 @@ import {
   createCharacter as repoCreate,
   getCharacter as repoGet,
   isCharacterNotFound,
-  listCharacters as repoList,
+  listCharacterNameSummaries as repoListNameSummaries,
 } from "@/db/repositories/characters";
 import { updateCharacterWithRevision as repoUpdateWithRevision } from "@/db/repositories/character-revisions";
 import {
@@ -172,9 +172,9 @@ export async function previewCharacterCard(
   const descriptionExcerpt = (cardData.description || "").slice(0, 280);
 
   const name = deriveDisplayName(cardData);
-  const duplicates = repoList(db)
+  const duplicates = repoListNameSummaries(db)
     .filter((c) => c.name.toLowerCase() === name.toLowerCase())
-    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime() || a.id.localeCompare(b.id))
     .map((c) => ({ id: c.id, name: c.name, updatedAt: c.updatedAt.toISOString() }));
 
   return {

@@ -4,6 +4,7 @@ import {
   deleteCharacter,
   getCharacter,
   getCharacterDetail,
+  listCharacterNameSummaries,
   listCharacters,
   searchCharacterCards,
   characterTagCounts,
@@ -350,6 +351,18 @@ describe("characters repository", () => {
       const after = getCharacter("char-1", db);
       expect(after.name).toBe("NewName");
       expect(after.creator).toBe(before.creator);
+    });
+  });
+
+  describe("listCharacterNameSummaries", () => {
+    it("returns scalar rows without the card data blob", () => {
+      createCharacter({ id: "char-1", name: "A", data: makeCharacterData() }, db);
+      createCharacter({ id: "char-2", name: "B", data: makeCharacterData() }, db);
+
+      const summaries = listCharacterNameSummaries(db);
+      expect(summaries.map((s) => s.name).sort()).toEqual(["A", "B"]);
+      expect(summaries[0]?.updatedAt).toBeInstanceOf(Date);
+      expect("data" in (summaries[0] ?? {})).toBe(false);
     });
   });
 
