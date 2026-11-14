@@ -18,7 +18,7 @@ import { randomUUID } from "node:crypto";
 
 import { db } from "@/db";
 import { user, characters, lorebooks, loreEntries, personas } from "@/db/schema";
-import { derivedColumns } from "@/db/repositories/characters";
+import { createCharacter } from "@/db/repositories/characters";
 import { MAX_IMAGE_BYTES, validateUploadedImage } from "@/server/image-limits";
 import { readMigrationFile, resolveMigrationDirectory, resolveMigrationFile } from "./migration-io";
 import {
@@ -331,21 +331,8 @@ async function migrateCharacters(
       continue;
     }
 
-    const now = new Date();
     try {
-      db.insert(characters)
-        .values({
-          id,
-          name,
-          data,
-          imagePath: avatarPath,
-          spec,
-          specVersion,
-          ...derivedColumns(data),
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
+      createCharacter({ id, name, data, imagePath: avatarPath, spec, specVersion }, db);
     } catch (e) {
       await removePrivatePath(writePath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
       console.log(`  ✗ ${fileBase}: insert (${(e as Error).message})`);

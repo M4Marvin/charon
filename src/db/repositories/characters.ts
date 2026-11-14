@@ -183,24 +183,39 @@ export function derivedColumns(data: CharacterDataV2) {
 
 export function createCharacter(input: CreateCharacterInput, db: DB = defaultDb): Character {
   const now = new Date();
-  const row = db
-    .insert(characters)
-    .values({
-      id: input.id,
-      name: input.name,
-      data: input.data,
-      imagePath: input.imagePath ?? null,
-      tagline: input.tagline ?? null,
-      spec: input.spec ?? "chara_card_v2",
-      specVersion: input.specVersion ?? "2.0",
-      ...derivedColumns(input.data),
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning()
-    .get();
-  if (!row) throw new Error("Failed to create character");
-  return row;
+  // The baseline revision 1 is created atomically with the row so every
+  // character enters the world satisfying "latest revision equals the
+  // current card".
+  return db.transaction((tx) => {
+    const row = tx
+      .insert(characters)
+      .values({
+        id: input.id,
+        name: input.name,
+        data: input.data,
+        imagePath: input.imagePath ?? null,
+        tagline: input.tagline ?? null,
+        spec: input.spec ?? "chara_card_v2",
+        specVersion: input.specVersion ?? "2.0",
+        ...derivedColumns(input.data),
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+      .get();
+    if (!row) throw new Error("Failed to create character");
+    tx.insert(characterRevisions)
+      .values({
+        characterId: row.id,
+        rev: 1,
+        name: row.name,
+        tagline: row.tagline,
+        data: row.data,
+        createdAt: now,
+      })
+      .run();
+    return row;
+  });
 }
 
 export function updateCharacter(

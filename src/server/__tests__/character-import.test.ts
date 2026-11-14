@@ -8,6 +8,7 @@ import {
   previewCharacterCard,
 } from "@/server/services/character/importer";
 import { createCharacter, getCharacter } from "@/db/repositories/characters";
+import { getRevision, listRevisions } from "@/db/repositories/character-revisions";
 import {
   createLorebook,
   getLorebook,
@@ -315,6 +316,16 @@ describe("importCharacterCard with embedded lorebook", () => {
     expect(lb.name).toBe("Zephyr [embedded]");
     const imported = listLorebooks(db).find((b) => b.id === res.lorebook!.id);
     expect(imported?.enabled).toBe(false);
+  });
+
+  it("seeds revision 1 from the imported card", async () => {
+    const res = await importCharacterCard(makeCard("Zephyr"), db);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const revisions = listRevisions(res.character.id, db);
+    expect(revisions.map((r) => r.rev)).toEqual([1]);
+    expect(revisions[0]?.name).toBe("Zephyr");
+    expect(getRevision(res.character.id, 1, db).data.name).toBe("Zephyr");
   });
 
   it("preserves a Yume-style book with empty keys", async () => {

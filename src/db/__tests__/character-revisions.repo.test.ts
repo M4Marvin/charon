@@ -40,8 +40,8 @@ describe("character revisions repository", () => {
         { name: "Alice v2", tagline: "hi", data: makeCharacterData() },
         db,
       );
-      expect(r1.rev).toBe(1);
-      expect(r2.rev).toBe(2);
+      expect(r1.rev).toBe(2);
+      expect(r2.rev).toBe(3);
       expect(r2.name).toBe("Alice v2");
       expect(r2.tagline).toBe("hi");
     });
@@ -55,7 +55,7 @@ describe("character revisions repository", () => {
         { name: "B", tagline: null, data: makeCharacterData() },
         db,
       );
-      expect(other.rev).toBe(1);
+      expect(other.rev).toBe(2);
     });
 
     it("round-trips the data blob including extensions", () => {
@@ -72,7 +72,8 @@ describe("character revisions repository", () => {
       createRevision("char-1", { name: "v1", tagline: null, data: makeCharacterData() }, db);
       createRevision("char-1", { name: "v2", tagline: "t", data: makeCharacterData() }, db);
       const list = listRevisions("char-1", db);
-      expect(list.map((r) => r.rev)).toEqual([2, 1]);
+      // Plus the rev 1 baseline seeded by createCharacter.
+      expect(list.map((r) => r.rev)).toEqual([3, 2, 1]);
       expect(list[1]?.name).toBe("v1");
       expect(list[0]?.tagline).toBe("t");
       expect("data" in (list[0] ?? {})).toBe(false);
@@ -88,14 +89,29 @@ describe("character revisions repository", () => {
       seedCharacter();
       const data = makeCharacterData({ description: "snapshot" });
       createRevision("char-1", { name: "v1", tagline: null, data }, db);
-      const rev = getRevision("char-1", 1, db);
-      expect(rev.rev).toBe(1);
+      const rev = getRevision("char-1", 2, db);
+      expect(rev.rev).toBe(2);
       expect(rev.data).toEqual(data);
     });
 
     it("throws when the rev does not exist", () => {
       seedCharacter();
       expect(() => getRevision("char-1", 99, db)).toThrow("Revision not found");
+    });
+  });
+
+  describe("createCharacter baseline", () => {
+    it("seeds revision 1 from the created row", () => {
+      const data = makeCharacterData({ name: "Alice" });
+      createCharacter({ id: "char-1", name: "Alice", data, tagline: "hello" }, db);
+
+      const revisions = listRevisions("char-1", db);
+      expect(revisions.map((r) => r.rev)).toEqual([1]);
+      expect(revisions[0]?.name).toBe("Alice");
+      expect(revisions[0]?.tagline).toBe("hello");
+
+      const rev = getRevision("char-1", 1, db);
+      expect(rev.data).toEqual(data);
     });
   });
 
@@ -114,10 +130,10 @@ describe("character revisions repository", () => {
       expect(char.tagline).toBe("new tag");
 
       const revisions = listRevisions("char-1", db);
-      expect(revisions).toHaveLength(1);
-      expect(revisions[0]?.rev).toBe(1);
+      expect(revisions).toHaveLength(2);
+      expect(revisions[0]?.rev).toBe(2);
       expect(revisions[0]?.tagline).toBe("new tag");
-      expect(getRevision("char-1", 1, db).data).toEqual(newData);
+      expect(getRevision("char-1", 2, db).data).toEqual(newData);
     });
 
     it("snapshots the full row for scalar-only patches (rename)", () => {
@@ -126,7 +142,7 @@ describe("character revisions repository", () => {
 
       const char = getCharacter("char-1", db);
       expect(char.name).toBe("Alice Renamed");
-      const rev = getRevision("char-1", 1, db);
+      const rev = getRevision("char-1", 2, db);
       expect(rev.name).toBe("Alice Renamed");
       expect(rev.data).toEqual(char.data);
     });
@@ -147,16 +163,17 @@ describe("character revisions repository", () => {
       createRevision("char-1", { name: "Alice", tagline: null, data: v1 }, db);
       updateCharacterWithRevision("char-1", { data: v2 }, db);
 
-      const char = restoreCharacterRevision("char-1", 1, db);
+      const char = restoreCharacterRevision("char-1", 2, db);
 
       expect(char.data).toEqual(v1);
       const revisions = listRevisions("char-1", db);
-      // v1 seeded, save snapshotted v2 as rev 2, restore appended rev 3.
-      expect(revisions.map((r) => r.rev)).toEqual([3, 2, 1]);
+      // rev 1 baseline, v1 as rev 2, save snapshotted v2 as rev 3, restore
+      // appended rev 4.
+      expect(revisions.map((r) => r.rev)).toEqual([4, 3, 2, 1]);
       // Restoring appends; history is not rewritten.
-      expect(getRevision("char-1", 1, db).data).toEqual(v1);
-      expect(getRevision("char-1", 2, db).data).toEqual(v2);
-      expect(getRevision("char-1", 3, db).data).toEqual(v1);
+      expect(getRevision("char-1", 2, db).data).toEqual(v1);
+      expect(getRevision("char-1", 3, db).data).toEqual(v2);
+      expect(getRevision("char-1", 4, db).data).toEqual(v1);
     });
 
     it("restores name and tagline from the snapshot", () => {
@@ -168,7 +185,7 @@ describe("character revisions repository", () => {
       );
       updateCharacterWithRevision("char-1", { name: "New Name", tagline: "new tag" }, db);
 
-      const char = restoreCharacterRevision("char-1", 1, db);
+      const char = restoreCharacterRevision("char-1", 2, db);
       expect(char.name).toBe("Old Name");
       expect(char.tagline).toBe("old tag");
     });
@@ -183,7 +200,7 @@ describe("character revisions repository", () => {
         db,
       );
 
-      const char = restoreCharacterRevision("char-1", 1, db);
+      const char = restoreCharacterRevision("char-1", 2, db);
       expect(char.creator).toBe("original-author");
       expect(char.tags).toEqual(["elf"]);
     });
