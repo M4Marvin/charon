@@ -32,6 +32,7 @@ import { Route as SettingsProvidersRouteImport } from './routes/settings/provide
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiGenerationChatRouteImport } from './routes/api/generation/chat'
 import { Route as CharactersIdEditRouteImport } from './routes/characters/$id_.edit'
+import { Route as CharactersIdRevisionsRouteImport } from './routes/characters/$id_.revisions'
 import { Route as ApiBackgroundsIdImageRouteImport } from './routes/api/backgrounds/$id/image'
 import { Route as ApiCharactersIdAvatarRouteImport } from './routes/api/characters/$id/avatar'
 import { Route as ApiPersonasIdIconRouteImport } from './routes/api/personas/$id/icon'
@@ -151,6 +152,11 @@ const CharactersIdEditRoute = CharactersIdEditRouteImport.update({
   path: '/characters/$id/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CharactersIdRevisionsRoute = CharactersIdRevisionsRouteImport.update({
+  id: '/characters/$id_/revisions',
+  path: '/characters/$id/revisions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiBackgroundsIdImageRoute = ApiBackgroundsIdImageRouteImport.update({
   id: '/api/backgrounds/$id/image',
   path: '/api/backgrounds/$id/image',
@@ -191,6 +197,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/generation/chat': typeof ApiGenerationChatRoute
   '/characters/$id/edit': typeof CharactersIdEditRoute
+  '/characters/$id/revisions': typeof CharactersIdRevisionsRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
   '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
   '/api/personas/$id/icon': typeof ApiPersonasIdIconRoute
@@ -218,6 +225,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/generation/chat': typeof ApiGenerationChatRoute
   '/characters/$id/edit': typeof CharactersIdEditRoute
+  '/characters/$id/revisions': typeof CharactersIdRevisionsRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
   '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
   '/api/personas/$id/icon': typeof ApiPersonasIdIconRoute
@@ -247,6 +255,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/generation/chat': typeof ApiGenerationChatRoute
   '/characters/$id_/edit': typeof CharactersIdEditRoute
+  '/characters/$id_/revisions': typeof CharactersIdRevisionsRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
   '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
   '/api/personas/$id/icon': typeof ApiPersonasIdIconRoute
@@ -277,6 +286,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/generation/chat'
     | '/characters/$id/edit'
+    | '/characters/$id/revisions'
     | '/api/backgrounds/$id/image'
     | '/api/characters/$id/avatar'
     | '/api/personas/$id/icon'
@@ -304,6 +314,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/generation/chat'
     | '/characters/$id/edit'
+    | '/characters/$id/revisions'
     | '/api/backgrounds/$id/image'
     | '/api/characters/$id/avatar'
     | '/api/personas/$id/icon'
@@ -332,6 +343,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/generation/chat'
     | '/characters/$id_/edit'
+    | '/characters/$id_/revisions'
     | '/api/backgrounds/$id/image'
     | '/api/characters/$id/avatar'
     | '/api/personas/$id/icon'
@@ -355,6 +367,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiGenerationChatRoute: typeof ApiGenerationChatRoute
   CharactersIdEditRoute: typeof CharactersIdEditRoute
+  CharactersIdRevisionsRoute: typeof CharactersIdRevisionsRoute
   ApiBackgroundsIdImageRoute: typeof ApiBackgroundsIdImageRoute
   ApiCharactersIdAvatarRoute: typeof ApiCharactersIdAvatarRoute
   ApiPersonasIdIconRoute: typeof ApiPersonasIdIconRoute
@@ -523,6 +536,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CharactersIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/characters/$id_/revisions': {
+      id: '/characters/$id_/revisions'
+      path: '/characters/$id/revisions'
+      fullPath: '/characters/$id/revisions'
+      preLoaderRoute: typeof CharactersIdRevisionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/backgrounds/$id/image': {
       id: '/api/backgrounds/$id/image'
       path: '/api/backgrounds/$id/image'
@@ -587,6 +607,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiGenerationChatRoute: ApiGenerationChatRoute,
   CharactersIdEditRoute: CharactersIdEditRoute,
+  CharactersIdRevisionsRoute: CharactersIdRevisionsRoute,
   ApiBackgroundsIdImageRoute: ApiBackgroundsIdImageRoute,
   ApiCharactersIdAvatarRoute: ApiCharactersIdAvatarRoute,
   ApiPersonasIdIconRoute: ApiPersonasIdIconRoute,
@@ -594,12 +615,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

@@ -146,6 +146,10 @@ export function CharacterDetailPage() {
                 label: "Edit",
                 onSelect: () => void navigate({ to: "/characters/$id/edit", params: { id } }),
               },
+              {
+                label: "History",
+                onSelect: () => void navigate({ to: "/characters/$id/revisions", params: { id } }),
+              },
               { label: "Rename", onSelect: () => setRenameOpen(true) },
               { label: "Delete", destructive: true, onSelect: () => setDelOpen(true) },
             ]}

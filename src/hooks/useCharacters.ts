@@ -15,8 +15,12 @@ import {
   characterTagCounts,
   updateCharacter,
   updateCharacterData,
+  listCharacterRevisions,
+  getCharacterRevision,
+  restoreCharacterRevision,
   type ImportResult,
 } from "@/server/fns/characters";
+import type { RevisionSummary } from "@/db/repositories/character-revisions";
 import { chatKeys } from "@/hooks/useChats";
 
 export const characterKeys = {
@@ -25,6 +29,8 @@ export const characterKeys = {
     [...characterKeys.all, "search", params] as const,
   tagCounts: () => [...characterKeys.all, "tagCounts"] as const,
   detail: (id: string) => [...characterKeys.all, "detail", id] as const,
+  revisions: (id: string) => [...characterKeys.all, "revisions", id] as const,
+  revision: (id: string, rev: number) => [...characterKeys.all, "revision", id, rev] as const,
 };
 
 const PAGE_SIZE = 60;
@@ -128,6 +134,34 @@ export function useDeleteCharacter() {
       // already-mounted chat keeps its cached config until it reloads.
       void queryClient.invalidateQueries({ queryKey: chatKeys.list() });
       void queryClient.invalidateQueries({ queryKey: ["chatConfig"] });
+    },
+  });
+}
+
+export function useCharacterRevisions(id: string) {
+  return useQuery({
+    queryKey: characterKeys.revisions(id),
+    queryFn: (): Promise<RevisionSummary[]> => listCharacterRevisions({ data: { id } }),
+    enabled: id.length > 0,
+  });
+}
+
+export function useCharacterRevision(id: string, rev: number | null) {
+  return useQuery({
+    queryKey: characterKeys.revision(id, rev ?? 0),
+    queryFn: () => getCharacterRevision({ data: { id, rev: rev as number } }),
+    enabled: id.length > 0 && rev !== null,
+  });
+}
+
+export function useRestoreCharacterRevision() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; rev: number }): Promise<Character> =>
+      restoreCharacterRevision({ data: input }),
+    onSuccess: (_result, variables) => {
+      void queryClient.invalidateQueries({ queryKey: characterKeys.all });
+      void queryClient.invalidateQueries({ queryKey: characterKeys.detail(variables.id) });
     },
   });
 }
