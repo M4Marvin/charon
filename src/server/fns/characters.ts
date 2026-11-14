@@ -7,11 +7,17 @@ import {
   getCharacterDetail as repoGetDetail,
   searchCharacterCards as repoSearchCards,
   characterTagCounts as repoTagCounts,
-  updateCharacter as repoUpdate,
   type CharacterCardItem,
   type CharacterDetail,
   type SearchParams,
 } from "@/db/repositories/characters";
+import {
+  listRevisions as repoListRevisions,
+  getRevision as repoGetRevision,
+  updateCharacterWithRevision as repoUpdateWithRevision,
+  restoreCharacterRevision as repoRestoreRevision,
+  type RevisionSummary,
+} from "@/db/repositories/character-revisions";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 import { getSession } from "@/server/session";
 import { validateId } from "@/server/validators";
@@ -41,6 +47,9 @@ const UpdateDataInput = type({
   data: "unknown",
   tagline: "string | null | undefined",
 });
+
+// rev may arrive as a string when parsed from GET query params
+const RevisionInput = type({ id: "string > 0", rev: "number > 0 | string > 0" });
 
 const SearchInput = type({
   "q?": "string",
@@ -76,6 +85,14 @@ function validateUpdateDataInput(data: unknown): {
     throw new Error("Invalid update data input");
   }
   return result as { id: string; data: CharacterDataV2; tagline?: string | null };
+}
+
+function validateRevisionInput(data: unknown): { id: string; rev: number } {
+  const result = RevisionInput(data);
+  if (result instanceof type.errors) {
+    throw new Error("Invalid revision input");
+  }
+  return { id: result.id, rev: Number(result.rev) };
 }
 
 function validateSearchInput(data: unknown): SearchParams {
@@ -123,14 +140,15 @@ export const updateCharacter = createServerFn({ method: "POST", strict: { output
   .validator(validateUpdateInput)
   .handler(async ({ data }): Promise<Character> => {
     await getSession();
-    return repoUpdate(data.id, { name: data.name });
+    // Revisioned so the latest snapshot keeps matching the card after a rename.
+    return repoUpdateWithRevision(data.id, { name: data.name });
   });
 
 export const updateCharacterData = createServerFn({ method: "POST", strict: { output: false } })
   .validator(validateUpdateDataInput)
   .handler(async ({ data }): Promise<Character> => {
     await getSession();
-    return repoUpdate(data.id, {
+    return repoUpdateWithRevision(data.id, {
       name: data.data.name,
       data: data.data,
       tagline: data.tagline ?? null,
@@ -175,3 +193,30 @@ export const characterTagCounts = createServerFn({ method: "GET" }).handler(asyn
   await getSession();
   return repoTagCounts();
 });
+
+export const listCharacterRevisions = createServerFn({ method: "GET" })
+  .validator(validateId)
+  .handler(async ({ data }): Promise<RevisionSummary[]> => {
+    await getSession();
+    return repoListRevisions(data.id);
+  });
+
+export const getCharacterRevision = createServerFn({
+  method: "GET",
+  strict: { output: false },
+})
+  .validator(validateRevisionInput)
+  .handler(async ({ data }) => {
+    await getSession();
+    return repoGetRevision(data.id, data.rev);
+  });
+
+export const restoreCharacterRevision = createServerFn({
+  method: "POST",
+  strict: { output: false },
+})
+  .validator(validateRevisionInput)
+  .handler(async ({ data }): Promise<Character> => {
+    await getSession();
+    return repoRestoreRevision(data.id, data.rev);
+  });
