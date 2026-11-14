@@ -6,13 +6,19 @@ import type { ImportError, PreviewResult } from "@/server/fns/characters";
 
 // vi.hoisted is required: vitest hoists vi.mock factories above top-level const
 // declarations, so a factory referencing a plain const hits a TDZ at import time.
-const { mockFileToBase64, mockPreviewCharacter, mockToastSuccess, mockImportCharacter } =
-  vi.hoisted(() => ({
-    mockFileToBase64: vi.fn(),
-    mockPreviewCharacter: vi.fn(),
-    mockToastSuccess: vi.fn(),
-    mockImportCharacter: vi.fn(),
-  }));
+const {
+  mockFileToBase64,
+  mockPreviewCharacter,
+  mockToastSuccess,
+  mockImportCharacter,
+  mockUpdateCharacterFromCard,
+} = vi.hoisted(() => ({
+  mockFileToBase64: vi.fn(),
+  mockPreviewCharacter: vi.fn(),
+  mockToastSuccess: vi.fn(),
+  mockImportCharacter: vi.fn(),
+  mockUpdateCharacterFromCard: vi.fn(),
+}));
 
 vi.mock("sonner", () => ({ toast: { success: mockToastSuccess } }));
 
@@ -20,6 +26,10 @@ vi.mock("@/hooks/useCharacters", () => ({
   fileToBase64: mockFileToBase64,
   // Kills the QueryClientProvider dependency AND the server-fn import chain in one shot.
   useImportCharacter: () => ({ isPending: false, mutateAsync: mockImportCharacter }),
+  useUpdateCharacterFromCard: () => ({
+    isPending: false,
+    mutateAsync: mockUpdateCharacterFromCard,
+  }),
 }));
 
 vi.mock("@/server/fns/characters", () => ({
@@ -161,5 +171,82 @@ describe("NewCharacterPage import loading state", () => {
 
     expect(mockToastSuccess).toHaveBeenCalledWith(expect.stringContaining("Yume"));
     expect(mockToastSuccess).toHaveBeenCalledWith(expect.stringContaining("8"));
+  });
+});
+
+describe("NewCharacterPage duplicate choice", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    URL.createObjectURL = vi.fn(() => "blob:mock");
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  async function renderWithDuplicates() {
+    mockFileToBase64.mockResolvedValue("fake-png-base64");
+    let resolvePreview!: (v: PreviewResponse) => void;
+    mockPreviewCharacter.mockReturnValue(
+      new Promise<PreviewResponse>((resolve) => {
+        resolvePreview = resolve;
+      }),
+    );
+    render(<NewCharacterPage />);
+    fireEvent.change(screen.getByLabelText("Choose a character card PNG"), {
+      target: { files: [makePngFile()] },
+    });
+    await act(async () => {});
+    await act(async () => {
+      resolvePreview({
+        ok: true,
+        data: {
+          ...minimalOkPreview,
+          duplicates: [
+            { id: "char-2", name: "Ada Lovelace", updatedAt: new Date().toISOString() },
+            { id: "char-1", name: "Ada Lovelace", updatedAt: new Date().toISOString() },
+          ],
+        },
+      });
+    });
+    await act(async () => {});
+  }
+
+  it("offers update and import-as-new with a target picker", async () => {
+    await renderWithDuplicates();
+
+    expect(screen.getByRole("radiogroup", { name: /existing character/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /import as new/i })).toBeTruthy();
+    // Default target is the first (most recently updated) duplicate.
+    expect(screen.getByRole("button", { name: /update “ada lovelace”/i })).toBeTruthy();
+  });
+
+  it("updates the selected duplicate instead of importing", async () => {
+    await renderWithDuplicates();
+    mockUpdateCharacterFromCard.mockResolvedValue({
+      ok: true,
+      character: { id: "char-2", name: "Ada Lovelace", imagePath: null },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /update “ada lovelace”/i }));
+    await act(async () => {});
+
+    expect(mockUpdateCharacterFromCard).toHaveBeenCalledWith({
+      pngBase64: "fake-png-base64",
+      targetId: "char-2",
+    });
+    expect(mockImportCharacter).not.toHaveBeenCalled();
+    expect(mockToastSuccess).toHaveBeenCalledWith(expect.stringContaining("Updated"));
+  });
+
+  it("imports as a new character when the user picks that action", async () => {
+    await renderWithDuplicates();
+    mockImportCharacter.mockResolvedValue({
+      ok: true,
+      character: { id: "c1", name: "Ada Lovelace", imagePath: null },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /import as new/i }));
+    await act(async () => {});
+
+    expect(mockImportCharacter).toHaveBeenCalledWith({ pngBase64: "fake-png-base64" });
+    expect(mockUpdateCharacterFromCard).not.toHaveBeenCalled();
   });
 });

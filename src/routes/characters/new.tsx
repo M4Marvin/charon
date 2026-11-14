@@ -4,13 +4,20 @@ import { Upload, ArrowLeft, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/image-optimization";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
+import { RelativeTime } from "@/components/common/RelativeTime";
 import { friendlyImportError } from "@/lib/error-copy";
-import { fileToBase64, useImportCharacter } from "@/hooks/useCharacters";
+import {
+  fileToBase64,
+  useImportCharacter,
+  useUpdateCharacterFromCard,
+} from "@/hooks/useCharacters";
 import { previewCharacter } from "@/server/fns/characters";
 import type { PreviewResult } from "@/server/fns/characters";
 
@@ -30,6 +37,10 @@ export function NewCharacterPage() {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importMutation = useImportCharacter();
+  const updateMutation = useUpdateCharacterFromCard();
+  // Selected target for "update existing" when the card name matches one or
+  // more characters; null means the user chose import-as-new.
+  const [targetId, setTargetId] = useState<string | null>(null);
   // `processing` drives the UI; `processingRef` guards re-entrancy (a state
   // snapshot is per-render and cannot stop a same-tick re-entry).
   const [processing, setProcessing] = useState(false);
@@ -76,6 +87,7 @@ export function NewCharacterPage() {
         return;
       }
       setPreview(res.data);
+      setTargetId(res.data.duplicates[0]?.id ?? null);
       setStep("preview");
     } catch (err) {
       setPreviewErr(friendlyImportError(err));
@@ -91,10 +103,37 @@ export function NewCharacterPage() {
     processFile(e.target.files?.[0] ?? null);
   };
 
-  const handleImport = async () => {
+  const handleImport = async (asUpdate: boolean) => {
     if (!previewB64) return;
     setPreviewErr(null);
     setFieldErrors(null);
+
+    if (asUpdate && targetId) {
+      let res: Awaited<ReturnType<typeof updateMutation.mutateAsync>>;
+      try {
+        res = await updateMutation.mutateAsync({ pngBase64: previewB64, targetId });
+      } catch (err) {
+        setPreviewErr(friendlyImportError(err));
+        return;
+      }
+      if (res.ok) {
+        toast.success(`Updated "${res.character.name}"`);
+        void navigate({ to: "/characters/$id", params: { id: res.character.id } });
+      } else {
+        if (res.error.kind === "validation") {
+          setFieldErrors(res.error.errors);
+        } else {
+          setPreviewErr(friendlyImportError(res.error.message));
+        }
+        if (res.error.kind === "target_missing") {
+          // The target vanished between preview and confirm; drop the stale
+          // selection so the user can re-pick (or the panel re-renders).
+          setTargetId(null);
+        }
+      }
+      return;
+    }
+
     let res: Awaited<ReturnType<typeof importMutation.mutateAsync>>;
     try {
       res = await importMutation.mutateAsync({ pngBase64: previewB64 });
@@ -243,14 +282,34 @@ export function NewCharacterPage() {
           ) : null}
           {preview.duplicates.length > 0 ? (
             <div className="rounded-lg border bg-warning/10 p-3 text-sm">
-              <p>
+              <p className="mb-2">
                 <strong className="text-warning">Duplicate detected:</strong> You already have{" "}
                 {preview.duplicates.length === 1
                   ? "a character named"
                   : `${preview.duplicates.length} characters named`}{" "}
-                <strong>{preview.duplicates[0]!.name}</strong>. Importing will create a separate
-                copy.
+                <strong>{preview.duplicates[0]!.name}</strong>. Update it from this card, or import
+                it as a separate copy.
               </p>
+              <RadioGroup
+                value={targetId ?? ""}
+                onValueChange={(v) => setTargetId(v || null)}
+                className="gap-2"
+                aria-label="Existing character to update"
+              >
+                {preview.duplicates.map((dup) => (
+                  <Label
+                    key={dup.id}
+                    htmlFor={`dup-${dup.id}`}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg border bg-surface px-3 py-2 font-normal hover:bg-raised"
+                  >
+                    <RadioGroupItem value={dup.id} id={`dup-${dup.id}`} />
+                    <span className="min-w-0 flex-1 truncate">{dup.name}</span>
+                    <span className="text-3 shrink-0 text-xs">
+                      updated <RelativeTime date={new Date(dup.updatedAt)} />
+                    </span>
+                  </Label>
+                ))}
+              </RadioGroup>
             </div>
           ) : null}
           {fieldErrors ? <FieldErrorList errors={fieldErrors} /> : null}
@@ -265,8 +324,26 @@ export function NewCharacterPage() {
             >
               Cancel
             </Button>
-            <Button onClick={handleImport} disabled={importMutation.isPending}>
-              {importMutation.isPending ? "Importing…" : "Import"}
+            {preview.duplicates.length > 0 ? (
+              <Button
+                variant="outline"
+                onClick={() => void handleImport(false)}
+                disabled={importMutation.isPending || updateMutation.isPending}
+              >
+                Import as new
+              </Button>
+            ) : null}
+            <Button
+              onClick={() => void handleImport(Boolean(targetId))}
+              disabled={importMutation.isPending || updateMutation.isPending}
+            >
+              {updateMutation.isPending
+                ? "Updating…"
+                : importMutation.isPending
+                  ? "Importing…"
+                  : targetId && preview.duplicates.length > 0
+                    ? `Update “${preview.duplicates.find((d) => d.id === targetId)?.name ?? ""}”`
+                    : "Import"}
             </Button>
           </div>
         </div>

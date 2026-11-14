@@ -150,7 +150,7 @@ export type PreviewResult = {
     warnings: string[];
   };
   /** Existing characters with the same name, most recently updated first. */
-  duplicates: { id: string; name: string }[];
+  duplicates: { id: string; name: string; updatedAt: string }[];
 };
 
 export async function previewCharacterCard(
@@ -174,7 +174,7 @@ export async function previewCharacterCard(
   const duplicates = repoList(db)
     .filter((c) => c.name.toLowerCase() === name.toLowerCase())
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-    .map((c) => ({ id: c.id, name: c.name }));
+    .map((c) => ({ id: c.id, name: c.name, updatedAt: c.updatedAt.toISOString() }));
 
   return {
     ok: true,
