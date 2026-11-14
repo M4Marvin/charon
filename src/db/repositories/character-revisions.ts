@@ -86,7 +86,9 @@ export function getRevision(
  */
 export function updateCharacterWithRevision(
   id: string,
-  patch: Partial<Pick<NewCharacter, "name" | "data" | "tagline">>,
+  patch: Partial<
+    Pick<NewCharacter, "name" | "data" | "spec" | "specVersion" | "imagePath" | "tagline">
+  >,
   db: DB = defaultDb,
 ): Character {
   return db.transaction((tx) => {

@@ -147,6 +147,24 @@ describe("character revisions repository", () => {
       expect(rev.data).toEqual(char.data);
     });
 
+    it("accepts spec, specVersion, and imagePath patches (card update)", () => {
+      seedCharacter();
+      updateCharacterWithRevision(
+        "char-1",
+        {
+          spec: "chara_card_v3",
+          specVersion: "3.0",
+          imagePath: "uploads/avatars/new.png",
+        },
+        db,
+      );
+
+      const char = getCharacter("char-1", db);
+      expect(char.spec).toBe("chara_card_v3");
+      expect(char.specVersion).toBe("3.0");
+      expect(char.imagePath).toBe("uploads/avatars/new.png");
+    });
+
     it("throws when the character does not exist", () => {
       expect(() => updateCharacterWithRevision("missing", { name: "x" }, db)).toThrow(
         "Character not found",
