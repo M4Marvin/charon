@@ -361,7 +361,7 @@ export function NewCharacterPage() {
           ) : null}
           {fieldErrors ? <FieldErrorList errors={fieldErrors} /> : null}
           {previewErr ? <ErrorBanner title="Couldn’t read that card" message={previewErr} /> : null}
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button
               variant="ghost"
               disabled={importMutation.isPending || updateMutation.isPending}
@@ -392,7 +392,9 @@ export function NewCharacterPage() {
                   : updateTargetId
                     ? "Update character"
                     : targetId && preview.duplicates.length > 0
-                      ? `Update “${preview.duplicates.find((d) => d.id === targetId)?.name ?? ""}”`
+                      ? `Update “${clampName(
+                          preview.duplicates.find((d) => d.id === targetId)?.name ?? "",
+                        )}”`
                       : "Import"}
             </Button>
           </div>
@@ -400,6 +402,11 @@ export function NewCharacterPage() {
       ) : null}
     </main>
   );
+}
+
+/** Buttons are whitespace-nowrap; clamp user data so the footer can't overflow. */
+function clampName(name: string, max = 24): string {
+  return name.length > max ? `${name.slice(0, max)}…` : name;
 }
 
 function FieldErrorList({ errors }: { errors: { field: string; message: string }[] }) {

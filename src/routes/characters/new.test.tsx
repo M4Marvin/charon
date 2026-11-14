@@ -208,7 +208,7 @@ describe("NewCharacterPage duplicate choice", () => {
     URL.revokeObjectURL = vi.fn();
   });
 
-  async function renderWithDuplicates() {
+  async function renderWithDuplicates(duplicateName = "Ada Lovelace") {
     mockFileToBase64.mockResolvedValue("fake-png-base64");
     let resolvePreview!: (v: PreviewResponse) => void;
     mockPreviewCharacter.mockReturnValue(
@@ -226,9 +226,10 @@ describe("NewCharacterPage duplicate choice", () => {
         ok: true,
         data: {
           ...minimalOkPreview,
+          preview: { ...minimalOkPreview.preview, name: duplicateName },
           duplicates: [
-            { id: "char-2", name: "Ada Lovelace", updatedAt: new Date().toISOString() },
-            { id: "char-1", name: "Ada Lovelace", updatedAt: new Date().toISOString() },
+            { id: "char-2", name: duplicateName, updatedAt: new Date().toISOString() },
+            { id: "char-1", name: duplicateName, updatedAt: new Date().toISOString() },
           ],
         },
       });
@@ -261,6 +262,17 @@ describe("NewCharacterPage duplicate choice", () => {
     });
     expect(mockImportCharacter).not.toHaveBeenCalled();
     expect(mockToastSuccess).toHaveBeenCalledWith(expect.stringContaining("Updated"));
+  });
+
+  it("clamps long duplicate names in the primary button label", async () => {
+    await renderWithDuplicates("A very long character name that overflows buttons");
+    mockImportCharacter.mockResolvedValue({
+      ok: true,
+      character: { id: "c1", name: "x", imagePath: null },
+    });
+
+    const button = screen.getByRole("button", { name: /update “a very long charac/i });
+    expect(button.textContent).not.toContain("that overflows");
   });
 
   it("imports as a new character when the user picks that action", async () => {
