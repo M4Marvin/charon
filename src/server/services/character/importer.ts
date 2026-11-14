@@ -3,6 +3,7 @@ import {
   createCharacter as repoCreate,
   listCharacters as repoList,
 } from "@/db/repositories/characters";
+import { createRevision as repoCreateRevision } from "@/db/repositories/character-revisions";
 import {
   createLorebook as repoCreateLorebook,
   createEntry as repoCreateLoreEntry,
@@ -237,6 +238,14 @@ export async function importCharacterCard(pngBase64: string, db?: DB): Promise<I
     }
     throw e;
   }
+
+  // Seed revision 1 so the "latest revision equals the current card"
+  // invariant holds for freshly imported characters too.
+  repoCreateRevision(
+    character.id,
+    { name: character.name, tagline: character.tagline, data: character.data },
+    db,
+  );
 
   let lorebook: ImportedLorebook | null = null;
   try {

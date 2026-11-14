@@ -124,6 +124,32 @@ export const characters = sqliteTable(
   ],
 );
 
+// Full card snapshot taken after every successful save. The latest revision
+// always equals the current card; restoring an old revision copies it forward
+// as a new one, so history is append-only.
+export const characterRevisions = sqliteTable(
+  "character_revisions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    characterId: text("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    rev: integer("rev").notNull(),
+    name: text("name").notNull(),
+    tagline: text("tagline"),
+    data: text("data", { mode: "json" }).$type<CharacterDataV2>().notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => [
+    index("character_revisions_character_idx").on(table.characterId),
+    uniqueIndex("character_revisions_character_rev_uq").on(table.characterId, table.rev),
+  ],
+);
+
 export const lorebooks = sqliteTable("lorebooks", {
   id: text("id")
     .primaryKey()
@@ -412,6 +438,14 @@ export const accountsRelations = relations(account, ({ one }) => ({
 
 export const charactersRelations = relations(characters, ({ many }) => ({
   chats: many(chats),
+  revisions: many(characterRevisions),
+}));
+
+export const characterRevisionsRelations = relations(characterRevisions, ({ one }) => ({
+  character: one(characters, {
+    fields: [characterRevisions.characterId],
+    references: [characters.id],
+  }),
 }));
 
 export const lorebooksRelations = relations(lorebooks, ({ many }) => ({
@@ -473,6 +507,8 @@ export type NewVerification = typeof verification.$inferInsert;
 
 export type Character = typeof characters.$inferSelect;
 export type NewCharacter = typeof characters.$inferInsert;
+export type CharacterRevision = typeof characterRevisions.$inferSelect;
+export type NewCharacterRevision = typeof characterRevisions.$inferInsert;
 export type Lorebook = typeof lorebooks.$inferSelect;
 export type NewLorebook = typeof lorebooks.$inferInsert;
 export type LoreEntry = typeof loreEntries.$inferSelect;

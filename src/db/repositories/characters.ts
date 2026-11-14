@@ -1,6 +1,13 @@
 import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { db as defaultDb, type DB } from "@/db";
-import { characters, chatMessages, chats, type Character, type NewCharacter } from "@/db/schema";
+import {
+  characters,
+  chatMessages,
+  chats,
+  characterRevisions,
+  type Character,
+  type NewCharacter,
+} from "@/db/schema";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 
 export type CharacterCardItem = Pick<
@@ -227,6 +234,7 @@ export function deleteCharacter(id: string, db: DB = defaultDb): void {
     db.delete(chatMessages).where(inArray(chatMessages.chatId, chatIds)).run();
     db.delete(chats).where(inArray(chats.id, chatIds)).run();
   }
+  db.delete(characterRevisions).where(eq(characterRevisions.characterId, id)).run();
   const result = db.delete(characters).where(eq(characters.id, id)).run();
   if (result.changes === 0) throw new Error("Character not found");
 }
