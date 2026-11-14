@@ -48,8 +48,8 @@ const UpdateDataInput = type({
   tagline: "string | null | undefined",
 });
 
-// rev may arrive as a string when parsed from GET query params
-const RevisionInput = type({ id: "string > 0", rev: "number > 0 | string > 0" });
+// rev is a revision number (max+1 integers from the repo layer)
+const RevisionInput = type({ id: "string > 0", rev: "number.integer > 0" });
 
 const SearchInput = type({
   "q?": "string",
@@ -92,7 +92,7 @@ function validateRevisionInput(data: unknown): { id: string; rev: number } {
   if (result instanceof type.errors) {
     throw new Error("Invalid revision input");
   }
-  return { id: result.id, rev: Number(result.rev) };
+  return result;
 }
 
 function validateSearchInput(data: unknown): SearchParams {
