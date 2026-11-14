@@ -510,6 +510,12 @@ describe("updateCharacterCard", () => {
     expect(mockInvalidateCache).not.toHaveBeenCalled();
   });
 
+  it("rethrows real database errors instead of mislabeling them target_missing", async () => {
+    seedTarget();
+    ctx.sqlite.close();
+    await expect(updateCharacterCard(makeCard("Zephyr"), "char-target", db)).rejects.toThrow();
+  });
+
   it("extracts the embedded lorebook like a fresh import does", async () => {
     const targetId = seedTarget();
     const res = await updateCharacterCard(makeCard("Zephyr"), targetId, db);

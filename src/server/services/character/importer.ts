@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   createCharacter as repoCreate,
   getCharacter as repoGet,
+  isCharacterNotFound,
   listCharacters as repoList,
 } from "@/db/repositories/characters";
 import { updateCharacterWithRevision as repoUpdateWithRevision } from "@/db/repositories/character-revisions";
@@ -342,7 +343,10 @@ export async function updateCharacterCard(
   let oldImagePath: string | null;
   try {
     oldImagePath = repoGet(targetId, db).imagePath;
-  } catch {
+  } catch (e) {
+    // Only a genuinely missing row is target_missing; real DB errors rethrow
+    // instead of masquerading as "no longer exists".
+    if (!isCharacterNotFound(e)) throw e;
     return {
       ok: false,
       error: { kind: "target_missing", message: "The character to update no longer exists." },
@@ -365,7 +369,7 @@ export async function updateCharacterCard(
     );
   } catch (e) {
     await removeAvatar(avatar.storedPath);
-    if (e instanceof Error && e.message === "Character not found") {
+    if (isCharacterNotFound(e)) {
       return {
         ok: false,
         error: { kind: "target_missing", message: "The character to update no longer exists." },

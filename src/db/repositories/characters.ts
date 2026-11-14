@@ -137,6 +137,15 @@ export function characterTagCounts(db: DB = defaultDb): { name: string; count: n
   );
 }
 
+/**
+ * The repos in this file signal a missing row with `new Error("Character not
+ * found")`. Consumers must use this predicate instead of matching the message
+ * themselves, so the wording stays owned in one place.
+ */
+export function isCharacterNotFound(error: unknown): boolean {
+  return error instanceof Error && error.message === "Character not found";
+}
+
 export function getCharacter(id: string, db: DB = defaultDb): Character {
   const row = db.select().from(characters).where(eq(characters.id, id)).get();
   if (!row) throw new Error("Character not found");
