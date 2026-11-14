@@ -139,6 +139,12 @@ export const characterRevisions = sqliteTable(
     rev: integer("rev").notNull(),
     name: text("name").notNull(),
     tagline: text("tagline"),
+    // Spec identification rides along with the card data so restoring an
+    // older revision also restores which spec that data was written under.
+    // The avatar (imagePath) intentionally follows the row — art is not
+    // snapshotted, so restores keep the current portrait.
+    spec: text("spec").notNull().default("chara_card_v2"),
+    specVersion: text("spec_version").notNull().default("2.0"),
     data: text("data", { mode: "json" }).$type<CharacterDataV2>().notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" })
       .notNull()

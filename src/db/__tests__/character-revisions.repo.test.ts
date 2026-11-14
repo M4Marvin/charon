@@ -5,10 +5,12 @@ import {
   listRevisions,
   restoreCharacterRevision,
   updateCharacterWithRevision,
+  type RevisionSnapshot,
 } from "@/db/repositories/character-revisions";
 import { createCharacter, deleteCharacter, getCharacter } from "@/db/repositories/characters";
 import { makeCharacterData } from "@/db/__tests__/character-data";
 import { makeTestDb, type TestDb } from "@/db/__tests__/helpers";
+import type { CharacterDataV2 } from "@/lib/st-core/character";
 
 describe("character revisions repository", () => {
   let db: TestDb;
@@ -27,19 +29,23 @@ describe("character revisions repository", () => {
     createCharacter({ id, name: "Alice", data: makeCharacterData({ name: "Alice" }) }, db);
   }
 
+  function snap(
+    overrides: Partial<RevisionSnapshot> & { name?: string; data?: CharacterDataV2 } = {},
+  ): RevisionSnapshot {
+    return {
+      name: overrides.name ?? "Alice",
+      tagline: overrides.tagline ?? null,
+      spec: overrides.spec ?? "chara_card_v2",
+      specVersion: overrides.specVersion ?? "2.0",
+      data: overrides.data ?? makeCharacterData({ name: overrides.name ?? "Alice" }),
+    };
+  }
+
   describe("createRevision", () => {
     it("assigns monotonically increasing rev per character", () => {
       seedCharacter();
-      const r1 = createRevision(
-        "char-1",
-        { name: "Alice", tagline: null, data: makeCharacterData() },
-        db,
-      );
-      const r2 = createRevision(
-        "char-1",
-        { name: "Alice v2", tagline: "hi", data: makeCharacterData() },
-        db,
-      );
+      const r1 = createRevision("char-1", snap({ name: "Alice" }), db);
+      const r2 = createRevision("char-1", snap({ name: "Alice v2", tagline: "hi" }), db);
       expect(r1.rev).toBe(2);
       expect(r2.rev).toBe(3);
       expect(r2.name).toBe("Alice v2");
@@ -49,28 +55,31 @@ describe("character revisions repository", () => {
     it("keeps separate rev counters per character", () => {
       seedCharacter("char-1");
       seedCharacter("char-2");
-      createRevision("char-1", { name: "A", tagline: null, data: makeCharacterData() }, db);
-      const other = createRevision(
-        "char-2",
-        { name: "B", tagline: null, data: makeCharacterData() },
-        db,
-      );
+      createRevision("char-1", snap({ name: "A" }), db);
+      const other = createRevision("char-2", snap({ name: "B" }), db);
       expect(other.rev).toBe(2);
     });
 
     it("round-trips the data blob including extensions", () => {
       seedCharacter();
       const data = makeCharacterData({ extensions: { talkativeness: 0.7 } });
-      const rev = createRevision("char-1", { name: "Alice", tagline: null, data }, db);
+      const rev = createRevision("char-1", snap({ data }), db);
       expect(rev.data).toEqual(data);
+    });
+
+    it("round-trips spec identification", () => {
+      seedCharacter();
+      const rev = createRevision("char-1", snap({ spec: "chara_card_v3", specVersion: "3.0" }), db);
+      expect(rev.spec).toBe("chara_card_v3");
+      expect(rev.specVersion).toBe("3.0");
     });
   });
 
   describe("listRevisions", () => {
     it("returns summaries newest-first without the data blob", () => {
       seedCharacter();
-      createRevision("char-1", { name: "v1", tagline: null, data: makeCharacterData() }, db);
-      createRevision("char-1", { name: "v2", tagline: "t", data: makeCharacterData() }, db);
+      createRevision("char-1", snap({ name: "v1" }), db);
+      createRevision("char-1", snap({ name: "v2", tagline: "t" }), db);
       const list = listRevisions("char-1", db);
       // Plus the rev 1 baseline seeded by createCharacter.
       expect(list.map((r) => r.rev)).toEqual([3, 2, 1]);
@@ -88,7 +97,7 @@ describe("character revisions repository", () => {
     it("returns the full snapshot for a rev", () => {
       seedCharacter();
       const data = makeCharacterData({ description: "snapshot" });
-      createRevision("char-1", { name: "v1", tagline: null, data }, db);
+      createRevision("char-1", snap({ name: "v1", data }), db);
       const rev = getRevision("char-1", 2, db);
       expect(rev.rev).toBe(2);
       expect(rev.data).toEqual(data);
@@ -103,7 +112,17 @@ describe("character revisions repository", () => {
   describe("createCharacter baseline", () => {
     it("seeds revision 1 from the created row", () => {
       const data = makeCharacterData({ name: "Alice" });
-      createCharacter({ id: "char-1", name: "Alice", data, tagline: "hello" }, db);
+      createCharacter(
+        {
+          id: "char-1",
+          name: "Alice",
+          data,
+          tagline: "hello",
+          spec: "chara_card_v3",
+          specVersion: "3.0",
+        },
+        db,
+      );
 
       const revisions = listRevisions("char-1", db);
       expect(revisions.map((r) => r.rev)).toEqual([1]);
@@ -112,6 +131,8 @@ describe("character revisions repository", () => {
 
       const rev = getRevision("char-1", 1, db);
       expect(rev.data).toEqual(data);
+      expect(rev.spec).toBe("chara_card_v3");
+      expect(rev.specVersion).toBe("3.0");
     });
   });
 
@@ -163,6 +184,8 @@ describe("character revisions repository", () => {
       expect(char.spec).toBe("chara_card_v3");
       expect(char.specVersion).toBe("3.0");
       expect(char.imagePath).toBe("uploads/avatars/new.png");
+      // The post-save snapshot carries the new spec identification.
+      expect(getRevision("char-1", 2, db).spec).toBe("chara_card_v3");
     });
 
     it("throws when the character does not exist", () => {
@@ -178,7 +201,7 @@ describe("character revisions repository", () => {
       seedCharacter();
       const v1 = makeCharacterData({ name: "Alice", description: "original" });
       const v2 = makeCharacterData({ name: "Alice", description: "changed" });
-      createRevision("char-1", { name: "Alice", tagline: null, data: v1 }, db);
+      createRevision("char-1", snap({ data: v1 }), db);
       updateCharacterWithRevision("char-1", { data: v2 }, db);
 
       const char = restoreCharacterRevision("char-1", 2, db);
@@ -196,11 +219,7 @@ describe("character revisions repository", () => {
 
     it("restores name and tagline from the snapshot", () => {
       seedCharacter();
-      createRevision(
-        "char-1",
-        { name: "Old Name", tagline: "old tag", data: makeCharacterData() },
-        db,
-      );
+      createRevision("char-1", snap({ name: "Old Name", tagline: "old tag" }), db);
       updateCharacterWithRevision("char-1", { name: "New Name", tagline: "new tag" }, db);
 
       const char = restoreCharacterRevision("char-1", 2, db);
@@ -208,10 +227,22 @@ describe("character revisions repository", () => {
       expect(char.tagline).toBe("old tag");
     });
 
+    it("restores spec identification, keeping spec coherent with the data", () => {
+      seedCharacter();
+      // Simulate a V2→V3 card update: baseline (v2) is rev 1, the update
+      // flips spec to v3 and appends rev 2.
+      updateCharacterWithRevision("char-1", { spec: "chara_card_v3", specVersion: "3.0" }, db);
+      expect(getCharacter("char-1", db).spec).toBe("chara_card_v3");
+
+      const char = restoreCharacterRevision("char-1", 1, db);
+      expect(char.spec).toBe("chara_card_v2");
+      expect(char.specVersion).toBe("2.0");
+    });
+
     it("re-derives the denormalized columns from restored data", () => {
       seedCharacter();
       const v1 = makeCharacterData({ creator: "original-author", tags: ["elf"] });
-      createRevision("char-1", { name: "Alice", tagline: null, data: v1 }, db);
+      createRevision("char-1", snap({ data: v1 }), db);
       updateCharacterWithRevision(
         "char-1",
         { data: makeCharacterData({ creator: "new-author", tags: ["orc"] }) },
@@ -232,7 +263,7 @@ describe("character revisions repository", () => {
   describe("deleteCharacter cascade", () => {
     it("removes revisions with the character (FK enforcement off)", () => {
       seedCharacter();
-      createRevision("char-1", { name: "Alice", tagline: null, data: makeCharacterData() }, db);
+      createRevision("char-1", snap(), db);
       ctx.sqlite.pragma("foreign_keys = OFF");
 
       deleteCharacter("char-1", db);

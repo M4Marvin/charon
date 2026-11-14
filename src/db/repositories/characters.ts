@@ -210,6 +210,8 @@ export function createCharacter(input: CreateCharacterInput, db: DB = defaultDb)
         rev: 1,
         name: row.name,
         tagline: row.tagline,
+        spec: row.spec,
+        specVersion: row.specVersion,
         data: row.data,
         createdAt: now,
       })

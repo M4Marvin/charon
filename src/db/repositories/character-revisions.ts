@@ -17,6 +17,8 @@ export type RevisionSummary = Pick<
 export type RevisionSnapshot = {
   name: string;
   tagline: string | null;
+  spec: string;
+  specVersion: string;
   data: CharacterDataV2;
 };
 
@@ -39,6 +41,8 @@ export function createRevision(
       rev: nextRev,
       name: snapshot.name,
       tagline: snapshot.tagline,
+      spec: snapshot.spec,
+      specVersion: snapshot.specVersion,
       data: snapshot.data,
     })
     .returning()
@@ -93,24 +97,52 @@ export function updateCharacterWithRevision(
 ): Character {
   return db.transaction((tx) => {
     const row = updateCharacter(id, patch, tx);
-    createRevision(row.id, { name: row.name, tagline: row.tagline, data: row.data }, tx);
+    createRevision(
+      row.id,
+      {
+        name: row.name,
+        tagline: row.tagline,
+        spec: row.spec,
+        specVersion: row.specVersion,
+        data: row.data,
+      },
+      tx,
+    );
     return row;
   });
 }
 
 /**
- * Restore an old revision: copy its snapshot onto the character and append a
- * new revision with the restored state. History is append-only.
+ * Restore an old revision: copy its snapshot (name, tagline, data, and the
+ * spec the data was written under) onto the character and append a new
+ * revision with the restored state. History is append-only. The avatar is not
+ * part of the snapshot and follows the row.
  */
 export function restoreCharacterRevision(id: string, rev: number, db: DB = defaultDb): Character {
   return db.transaction((tx) => {
     const snapshot = getRevision(id, rev, tx);
     const row = updateCharacter(
       id,
-      { name: snapshot.name, data: snapshot.data, tagline: snapshot.tagline },
+      {
+        name: snapshot.name,
+        data: snapshot.data,
+        tagline: snapshot.tagline,
+        spec: snapshot.spec,
+        specVersion: snapshot.specVersion,
+      },
       tx,
     );
-    createRevision(row.id, { name: row.name, tagline: row.tagline, data: row.data }, tx);
+    createRevision(
+      row.id,
+      {
+        name: row.name,
+        tagline: row.tagline,
+        spec: row.spec,
+        specVersion: row.specVersion,
+        data: row.data,
+      },
+      tx,
+    );
     return row;
   });
 }

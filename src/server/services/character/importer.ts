@@ -324,9 +324,10 @@ export async function importCharacterCard(pngBase64: string, db?: DB): Promise<I
 
 /**
  * Replace an existing character's card with a newly imported one: data, name,
- * spec, and avatar are swapped; the local tagline is preserved; the pre-update
- * state stays restorable as the previous revision. Chats follow the character
- * because only the row content changes.
+ * spec, and avatar are swapped; the local tagline is preserved. The pre-update
+ * name/tagline/data/spec are restorable via the appended revision; the avatar
+ * is not snapshotted and follows the row (old art is replaced). Chats follow
+ * the character because only the row content changes.
  */
 export async function updateCharacterCard(
   pngBase64: string,
