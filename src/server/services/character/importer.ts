@@ -145,7 +145,8 @@ export type PreviewResult = {
     lorebookEntryCount: number;
     warnings: string[];
   };
-  duplicateOf: { id: string; name: string } | null;
+  /** Existing characters with the same name, most recently updated first. */
+  duplicates: { id: string; name: string }[];
 };
 
 export async function previewCharacterCard(
@@ -166,7 +167,10 @@ export async function previewCharacterCard(
   const descriptionExcerpt = (cardData.description || "").slice(0, 280);
 
   const name = deriveDisplayName(cardData);
-  const duplicate = repoList(db).find((c) => c.name.toLowerCase() === name.toLowerCase());
+  const duplicates = repoList(db)
+    .filter((c) => c.name.toLowerCase() === name.toLowerCase())
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+    .map((c) => ({ id: c.id, name: c.name }));
 
   return {
     ok: true,
@@ -182,7 +186,7 @@ export async function previewCharacterCard(
         lorebookEntryCount: cardData.character_book?.entries?.length ?? 0,
         warnings,
       },
-      duplicateOf: duplicate ? { id: duplicate.id, name: duplicate.name } : null,
+      duplicates,
     },
   };
 }

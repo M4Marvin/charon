@@ -59,7 +59,7 @@ const minimalOkPreview: PreviewResult = {
     lorebookEntryCount: 0,
     warnings: [],
   },
-  duplicateOf: null,
+  duplicates: [],
 };
 
 function makePngFile(): File {

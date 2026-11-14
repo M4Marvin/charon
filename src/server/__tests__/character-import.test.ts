@@ -191,30 +191,30 @@ describe("previewCharacterCard", () => {
     }
   });
 
-  it("returns duplicateOf when name matches an existing character", async () => {
+  it("returns duplicates when name matches existing characters, newest first", async () => {
+    const emptyCard = {
+      name: "Zephyr",
+      description: "",
+      personality: "",
+      scenario: "",
+      first_mes: "",
+      mes_example: "",
+      creator_notes: "",
+      system_prompt: "",
+      post_history_instructions: "",
+      alternate_greetings: [],
+      tags: [],
+      creator: "",
+      character_version: "",
+      extensions: {},
+    };
     createCharacter(
-      {
-        id: "char-1",
-        name: "Zephyr",
-        data: {
-          name: "Zephyr",
-          description: "",
-          personality: "",
-          scenario: "",
-          first_mes: "",
-          mes_example: "",
-          creator_notes: "",
-          system_prompt: "",
-          post_history_instructions: "",
-          alternate_greetings: [],
-          tags: [],
-          creator: "",
-          character_version: "",
-          extensions: {},
-        },
-        spec: "chara_card_v2",
-        specVersion: "2.0",
-      },
+      { id: "char-1", name: "Zephyr", data: emptyCard, spec: "chara_card_v2", specVersion: "2.0" },
+      db,
+    );
+    await new Promise((r) => setTimeout(r, 10));
+    createCharacter(
+      { id: "char-2", name: "zephyr", data: emptyCard, spec: "chara_card_v2", specVersion: "2.0" },
       db,
     );
 
@@ -222,9 +222,17 @@ describe("previewCharacterCard", () => {
     const result = await previewCharacterCard(b64, db);
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.data.duplicateOf).not.toBeNull();
-      expect(result.data.duplicateOf!.name).toBe("Zephyr");
-      expect(result.data.duplicateOf!.id).toBe("char-1");
+      // Case-insensitive match, ordered most recently updated first.
+      expect(result.data.duplicates.map((d) => d.id)).toEqual(["char-2", "char-1"]);
+    }
+  });
+
+  it("returns no duplicates when the name is new", async () => {
+    const b64 = makeCard("Brand New");
+    const result = await previewCharacterCard(b64, db);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.duplicates).toEqual([]);
     }
   });
 
@@ -257,7 +265,7 @@ describe("previewCharacterCard", () => {
       expect(result.data.preview.name).toBe("Echo");
       expect(result.data.preview.greetingCount).toBe(0);
       expect(result.data.preview.lorebookEntryCount).toBe(0);
-      expect(result.data.duplicateOf).toBeNull();
+      expect(result.data.duplicates).toEqual([]);
     }
   });
 });

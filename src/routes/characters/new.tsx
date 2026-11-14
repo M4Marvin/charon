@@ -241,12 +241,15 @@ export function NewCharacterPage() {
               ))}
             </div>
           ) : null}
-          {preview.duplicateOf ? (
+          {preview.duplicates.length > 0 ? (
             <div className="rounded-lg border bg-warning/10 p-3 text-sm">
               <p>
-                <strong className="text-warning">Duplicate detected:</strong> You already have a
-                character named <strong>{preview.duplicateOf.name}</strong>. Importing will create a
-                separate copy.
+                <strong className="text-warning">Duplicate detected:</strong> You already have{" "}
+                {preview.duplicates.length === 1
+                  ? "a character named"
+                  : `${preview.duplicates.length} characters named`}{" "}
+                <strong>{preview.duplicates[0]!.name}</strong>. Importing will create a separate
+                copy.
               </p>
             </div>
           ) : null}
