@@ -525,4 +525,64 @@ describe("updateCharacterCard", () => {
     expect(res.lorebook!.name).toBe("Zephyr [embedded]");
     expect(listEntries(res.lorebook!.id, db)).toHaveLength(2);
   });
+
+  it("skips lorebook extraction when a same-named lorebook already exists", async () => {
+    const targetId = seedTarget();
+    // The original import of "Zephyr" would have created this lorebook.
+    createLorebook(
+      {
+        id: "lb-existing",
+        name: "Zephyr [embedded]",
+        description: null,
+        config: DEFAULT_LORE_CONFIG,
+      },
+      db,
+    );
+
+    const res = await updateCharacterCard(makeCard("Zephyr"), targetId, db);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.lorebook).toBeNull();
+    expect(listLorebooks(db)).toHaveLength(1);
+  });
+
+  it("skips old-avatar cleanup when the character had no image", async () => {
+    createCharacter(
+      {
+        id: "char-target",
+        name: "Old Name",
+        data: {
+          name: "Old Name",
+          description: "",
+          personality: "",
+          scenario: "",
+          first_mes: "",
+          mes_example: "",
+          creator_notes: "",
+          system_prompt: "",
+          post_history_instructions: "",
+          alternate_greetings: [],
+          tags: [],
+          creator: "",
+          character_version: "",
+          extensions: {},
+        },
+        imagePath: null,
+        spec: "chara_card_v2",
+        specVersion: "2.0",
+      },
+      db,
+    );
+    vi.clearAllMocks();
+
+    const res = await updateCharacterCard(makeCard("Zephyr"), "char-target", db);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+
+    const removedPaths = (removePrivatePath as ReturnType<typeof vi.fn>).mock.calls.map(
+      (c) => c[0],
+    );
+    expect(removedPaths).not.toContain("/tmp/charon-test/uploads/avatars/old.png");
+    expect(mockInvalidateCache).not.toHaveBeenCalled();
+  });
 });
