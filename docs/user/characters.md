@@ -54,6 +54,17 @@ From the detail page, open the **⋯** menu and choose **Edit**. You can change:
 
 A save bar appears at the bottom only when you have unsaved changes. Click **Save** to keep them or **Discard** to throw them away.
 
+## Version history
+
+Every save creates a version — a full snapshot of the character card at that moment. Renaming a character also creates a version, so the newest version always matches the character as it is now.
+
+From the detail page, open the **⋯** menu and choose **History**. The list shows each version with its number, name, and when it was saved; the newest one is labelled **Current**. For any older version you can:
+
+- **Changes** — show which fields differ from the version before it (a field-level summary, like "Description · old text → new text").
+- **Restore** — copy that version onto the character. Restoring is itself a save, so it appears as a new version at the top of the list; older versions are never modified or deleted. Use it as an undo: restore the previous version to back out a bad edit.
+
+Versions live as long as the character does — deleting the character deletes its versions too.
+
 ## Related pages
 
 - [Chatting](./chatting.md)

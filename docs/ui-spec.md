@@ -592,6 +592,17 @@ One overlay contract, whether centered dialog or side sheet:
 - Document title: `Edit {name} · Charon`.
 - Acceptance: type → Save appears; click → mutation fires and persists after reload; Back while dirty prompts; no control hidden behind the tab bar.
 
+#### 6.5.5 Version history (`/characters/<id>/revisions`)
+
+- PageShell `form`; PageHeader “Version history” back to detail, subtitle character name. Explainer line: every save snapshots the card; restoring copies forward, history is never rewritten.
+- Rows (newest first): name, `Current` badge on the newest, “Version {n} · saved {relative time} · {tagline}”. Actions per row: **Changes** (toggle, hidden on the oldest version) and **Restore** (disabled on Current).
+- Changes expands a field-level diff vs. the previous version — label · before → after, whitespace-collapsed and truncated; empty values shown as “(empty)”; empty diff shows “Only metadata changed”. Diff data is fetched per row on expand.
+- Restore opens a ConfirmDialog (“…will replace the current character data. This save is itself recorded as a new version.”); success toast “Restored version {n}”, failure toast; detail + revisions refetch after restore.
+- States: loading `SkeletonRows`; empty `EmptyState` (History icon, “No versions yet”); query error + Retry.
+- Revisions cascade with the character on delete. Saves, edits, and renames each append one revision; revision numbering is per character, monotonic, append-only.
+- Document title: `Version history · Charon`.
+- Acceptance: newest row marked Current; Restore on an older version appends a new top row instead of rewriting history; Changes toggle shows the field diff.
+
 ### 6.6 Lorebooks
 
 #### 6.6.1 Library (`/lorebooks`)
@@ -1018,7 +1029,7 @@ This map is guidance, not a mandate to use these exact files; it shows where the
 | Design tokens/typography/motion | `src/styles.css`, `src/fonts.css`, `static/fonts/`, new font asset check |
 | States | `src/components/common/{Skeletons,EmptyState,ErrorBanner,ConfirmDialog}.tsx` |
 | Overlays/forms | `src/components/ui/{dialog,sheet,field,input,textarea,switch}.tsx`, new shared overlay header/footer |
-| Characters | `src/routes/characters/{index,new,$id,$id_.edit}.tsx`, `src/components/character/**`, `SaveBar.tsx` |
+| Characters | `src/routes/characters/{index,new,$id,$id_.edit,$id_.revisions}.tsx`, `src/components/character/**`, `src/db/repositories/character-revisions.ts`, `SaveBar.tsx` |
 | Lorebooks | `src/routes/lorebooks/{index,new,$id}.tsx`, `src/components/lorebook/**`, `src/hooks/useLorebooks.ts` |
 | Chats | `src/features/chat/ui/pages/**`, `components/**`, `settings/**`, `src/routes/chat/**` |
 | Settings | `src/routes/settings/**`, `src/components/{ai,preset,settings}/**` |
