@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import {
   createCharacter as repoCreate,
+  getCharacter as repoGet,
   listCharacters as repoList,
 } from "@/db/repositories/characters";
+import { updateCharacterWithRevision as repoUpdateWithRevision } from "@/db/repositories/character-revisions";
 import {
   createLorebook as repoCreateLorebook,
   createEntry as repoCreateLoreEntry,
@@ -30,12 +32,14 @@ import {
   validatePngDimensions,
   validateUploadedImage,
 } from "@/server/image-limits";
+import { invalidateStoredImageCache } from "@/server/image-optimizer";
 import type { DB } from "@/db";
 
 export type ImportError =
   | { kind: "invalid_png"; message: string }
   | { kind: "validation"; errors: { field: string; message: string }[] }
-  | { kind: "save_failed"; message: string };
+  | { kind: "save_failed"; message: string }
+  | { kind: "target_missing"; message: string };
 
 export type ImportedLorebook = {
   id: string;
@@ -191,99 +195,112 @@ export async function previewCharacterCard(
   };
 }
 
-export async function importCharacterCard(pngBase64: string, db?: DB): Promise<ImportResult> {
-  const parsed = parseAndValidateCard(pngBase64);
-  if (!parsed.ok) return parsed;
-  const pixelError = await validateCharacterPngPixels(parsed.parsed.pngBytes);
-  if (pixelError) return { ok: false, error: pixelError };
-
-  const { cardData, spec, specVersion, pngBytes } = parsed.parsed;
-
-  const name = deriveDisplayName(cardData);
-
-  const id = randomUUID();
-  const filename = `${id}.png`;
-  const storedPath = storedPathFromDiskComponents("avatars", filename);
+/** Write a card PNG to private storage; removes the file on failure. */
+async function writeAvatar(
+  pngBytes: Uint8Array,
+): Promise<{ ok: true; storedPath: string } | { ok: false; message: string }> {
+  const storedPath = storedPathFromDiskComponents("avatars", `${randomUUID()}.png`);
   const writePath = diskPathFromStored(storedPath);
-
   try {
     await ensureUploadsDirs();
     await writePrivateFileAtomic(writePath, pngBytes, { rootDir: UPLOADS_DISK_ROOT });
+    return { ok: true, storedPath };
   } catch (e) {
     await removePrivatePath(writePath, { rootDir: UPLOADS_DISK_ROOT }).catch(() => {});
     return {
       ok: false,
-      error: {
-        kind: "save_failed",
-        message: e instanceof Error ? e.message : "Failed to write avatar",
-      },
+      message: e instanceof Error ? e.message : "Failed to write avatar",
     };
+  }
+}
+
+async function removeAvatar(storedPath: string): Promise<void> {
+  try {
+    await removePrivatePath(diskPathFromStored(storedPath), { rootDir: UPLOADS_DISK_ROOT });
+  } catch {
+    // best-effort
+  }
+}
+
+/**
+ * Extract a card's embedded book into a standalone lorebook unless one with
+ * the same name already exists. Best-effort: failures are swallowed because
+ * the character row is already committed.
+ */
+function extractEmbeddedLorebook(
+  cardData: CharacterDataV2,
+  characterName: string,
+  db?: DB,
+): ImportedLorebook | null {
+  try {
+    if (!cardData.character_book?.entries?.length) return null;
+    const standalone = convertCharacterBookToStandalone(cardData.character_book, characterName);
+    if (standalone.entries.length === 0) return null;
+    const exists = repoListLorebooks(db).some((lb) => lb.name === standalone.name);
+    if (exists) return null;
+
+    const lbId = randomUUID();
+    repoCreateLorebook(
+      {
+        id: lbId,
+        name: standalone.name,
+        description: standalone.description,
+        config: standalone.config,
+      },
+      db,
+    );
+    let entriesInserted = 0;
+    for (const entry of standalone.entries) {
+      try {
+        repoCreateLoreEntry(
+          { id: randomUUID(), lorebookId: lbId, uid: entry.uid, data: entry },
+          db,
+        );
+        entriesInserted++;
+      } catch {
+        /* (lorebookId, uid) collision — skip this entry */
+      }
+    }
+    return {
+      id: lbId,
+      name: standalone.name,
+      entriesInserted,
+      entriesSkipped: standalone.entriesSkipped + (standalone.entries.length - entriesInserted),
+    };
+  } catch {
+    // Embedded lorebooks are optional; the character row and avatar are already committed.
+    return null;
+  }
+}
+
+async function importParsedCard(card: ParsedCard, db?: DB): Promise<ImportResult> {
+  const { cardData, spec, specVersion, pngBytes } = card;
+
+  const name = deriveDisplayName(cardData);
+  const avatar = await writeAvatar(pngBytes);
+  if (!avatar.ok) {
+    return { ok: false, error: { kind: "save_failed", message: avatar.message } };
   }
 
   let character: ReturnType<typeof repoCreate>;
   try {
     character = repoCreate(
       {
-        id,
+        id: randomUUID(),
         name,
         data: cardData,
-        imagePath: storedPath,
+        imagePath: avatar.storedPath,
         spec,
         specVersion,
       },
       db,
     );
   } catch (e) {
-    try {
-      await removePrivatePath(writePath, { rootDir: UPLOADS_DISK_ROOT });
-    } catch {
-      // best-effort
-    }
+    await removeAvatar(avatar.storedPath);
     throw e;
   }
 
-  let lorebook: ImportedLorebook | null = null;
-  try {
-    if (cardData.character_book?.entries?.length) {
-      const standalone = convertCharacterBookToStandalone(cardData.character_book, name);
-      if (standalone.entries.length > 0) {
-        const exists = repoListLorebooks(db).some((lb) => lb.name === standalone.name);
-        if (!exists) {
-          const lbId = randomUUID();
-          repoCreateLorebook(
-            {
-              id: lbId,
-              name: standalone.name,
-              description: standalone.description,
-              config: standalone.config,
-            },
-            db,
-          );
-          let entriesInserted = 0;
-          for (const entry of standalone.entries) {
-            try {
-              repoCreateLoreEntry(
-                { id: randomUUID(), lorebookId: lbId, uid: entry.uid, data: entry },
-                db,
-              );
-              entriesInserted++;
-            } catch {
-              /* (lorebookId, uid) collision — skip this entry */
-            }
-          }
-          lorebook = {
-            id: lbId,
-            name: standalone.name,
-            entriesInserted,
-            entriesSkipped:
-              standalone.entriesSkipped + (standalone.entries.length - entriesInserted),
-          };
-        }
-      }
-    }
-  } catch {
-    // Embedded lorebooks are optional; the character row and avatar are already committed.
-  }
+  const lorebook = extractEmbeddedLorebook(cardData, character.name, db);
 
   return {
     ok: true,
@@ -292,6 +309,81 @@ export async function importCharacterCard(pngBase64: string, db?: DB): Promise<I
       name: character.name,
       imagePath: character.imagePath,
     },
+    lorebook,
+  };
+}
+
+export async function importCharacterCard(pngBase64: string, db?: DB): Promise<ImportResult> {
+  const parsed = parseAndValidateCard(pngBase64);
+  if (!parsed.ok) return parsed;
+  const pixelError = await validateCharacterPngPixels(parsed.parsed.pngBytes);
+  if (pixelError) return { ok: false, error: pixelError };
+
+  return importParsedCard(parsed.parsed, db);
+}
+
+/**
+ * Replace an existing character's card with a newly imported one: data, name,
+ * spec, and avatar are swapped; the local tagline is preserved; the pre-update
+ * state stays restorable as the previous revision. Chats follow the character
+ * because only the row content changes.
+ */
+export async function updateCharacterCard(
+  pngBase64: string,
+  targetId: string,
+  db?: DB,
+): Promise<ImportResult> {
+  const parsed = parseAndValidateCard(pngBase64);
+  if (!parsed.ok) return parsed;
+  const pixelError = await validateCharacterPngPixels(parsed.parsed.pngBytes);
+  if (pixelError) return { ok: false, error: pixelError };
+
+  let oldImagePath: string | null;
+  try {
+    oldImagePath = repoGet(targetId, db).imagePath;
+  } catch {
+    return {
+      ok: false,
+      error: { kind: "target_missing", message: "The character to update no longer exists." },
+    };
+  }
+
+  const { cardData, spec, specVersion, pngBytes } = parsed.parsed;
+  const name = deriveDisplayName(cardData);
+
+  const avatar = await writeAvatar(pngBytes);
+  if (!avatar.ok) {
+    return { ok: false, error: { kind: "save_failed", message: avatar.message } };
+  }
+
+  try {
+    repoUpdateWithRevision(
+      targetId,
+      { name, data: cardData, spec, specVersion, imagePath: avatar.storedPath },
+      db,
+    );
+  } catch (e) {
+    await removeAvatar(avatar.storedPath);
+    if (e instanceof Error && e.message === "Character not found") {
+      return {
+        ok: false,
+        error: { kind: "target_missing", message: "The character to update no longer exists." },
+      };
+    }
+    throw e;
+  }
+
+  // Committed: swap the avatar files (old file may already be gone; best-effort).
+  if (oldImagePath) {
+    await invalidateStoredImageCache(oldImagePath).catch(() => {});
+    await removeAvatar(oldImagePath);
+  }
+
+  const lorebook = extractEmbeddedLorebook(cardData, name, db);
+
+  return {
+    ok: true,
+    character: { id: targetId, name, imagePath: avatar.storedPath },
     lorebook,
   };
 }

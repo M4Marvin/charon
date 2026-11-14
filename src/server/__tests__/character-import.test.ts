@@ -6,9 +6,11 @@ import {
   importCharacterCard,
   parseAndValidateCard,
   previewCharacterCard,
+  updateCharacterCard,
 } from "@/server/services/character/importer";
 import { createCharacter, getCharacter } from "@/db/repositories/characters";
 import { getRevision, listRevisions } from "@/db/repositories/character-revisions";
+import { removePrivatePath } from "@/server/uploads";
 import {
   createLorebook,
   getLorebook,
@@ -25,6 +27,10 @@ vi.mock("@/server/uploads", () => ({
   writePrivateFileAtomic: vi.fn(async () => {}),
   removePrivatePath: vi.fn(async () => {}),
   UPLOADS_DISK_ROOT: "data",
+}));
+const mockInvalidateCache = vi.fn(async (..._args: unknown[]) => {});
+vi.mock("@/server/image-optimizer", () => ({
+  invalidateStoredImageCache: (path: string) => mockInvalidateCache(path),
 }));
 vi.mock("node:fs/promises", async (importOriginal) => ({
   ...(await importOriginal<typeof import("node:fs/promises")>()),
@@ -406,5 +412,111 @@ describe("importCharacterCard with embedded lorebook", () => {
     expect(res.lorebook!.entriesInserted).toBe(1);
     expect(res.lorebook!.entriesSkipped).toBe(1);
     expect(listEntries(res.lorebook!.id, db)).toHaveLength(1);
+  });
+});
+
+describe("updateCharacterCard", () => {
+  let db: TestDb;
+  let ctx: ReturnType<typeof makeTestDb>;
+
+  beforeEach(() => {
+    ctx = makeTestDb();
+    db = ctx.db;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    ctx.sqlite.close();
+  });
+
+  function seedTarget(name = "Old Name"): string {
+    createCharacter(
+      {
+        id: "char-target",
+        name,
+        data: {
+          name,
+          description: "original description",
+          personality: "",
+          scenario: "",
+          first_mes: "",
+          mes_example: "",
+          creator_notes: "",
+          system_prompt: "",
+          post_history_instructions: "",
+          alternate_greetings: [],
+          tags: [],
+          creator: "",
+          character_version: "",
+          extensions: {},
+        },
+        imagePath: "uploads/avatars/old.png",
+        tagline: "keep me",
+        spec: "chara_card_v2",
+        specVersion: "2.0",
+      },
+      db,
+    );
+    return "char-target";
+  }
+
+  it("replaces data, name, spec, and avatar; preserves tagline; appends a revision", async () => {
+    const targetId = seedTarget();
+
+    const v2Card = JSON.parse(validCardJson("Zephyr")) as Record<string, unknown>;
+    const v3Card = JSON.stringify({ ...v2Card, spec: "chara_card_v3", spec_version: "3.0" });
+    const b64 = Buffer.from(buildPng([{ keyword: "ccv3", text: v3Card }])).toString("base64");
+
+    const res = await updateCharacterCard(b64, targetId, db);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.character.id).toBe(targetId);
+    expect(res.character.name).toBe("Zephyr");
+
+    const stored = getCharacter(targetId, db);
+    expect(stored.name).toBe("Zephyr");
+    expect(stored.spec).toBe("chara_card_v3");
+    expect(stored.specVersion).toBe("3.0");
+    expect(stored.tagline).toBe("keep me");
+    expect(stored.imagePath).toBe(res.character.imagePath);
+    expect(stored.imagePath).not.toBe("uploads/avatars/old.png");
+    expect(stored.data.description).toBe("A test character");
+
+    // Baseline revision 1 + the update snapshot as revision 2.
+    const revisions = listRevisions(targetId, db);
+    expect(revisions.map((r) => r.rev)).toEqual([2, 1]);
+    expect(getRevision(targetId, 2, db).data.description).toBe("A test character");
+    expect(getRevision(targetId, 1, db).data.description).toBe("original description");
+  });
+
+  it("removes the old avatar file and invalidates its image cache", async () => {
+    const targetId = seedTarget();
+    const res = await updateCharacterCard(makeCard("Zephyr"), targetId, db);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+
+    expect(mockInvalidateCache).toHaveBeenCalledWith("uploads/avatars/old.png");
+    const removedPaths = (removePrivatePath as ReturnType<typeof vi.fn>).mock.calls.map(
+      (c) => c[0],
+    );
+    expect(removedPaths).toContain("/tmp/charon-test/uploads/avatars/old.png");
+  });
+
+  it("fails with target_missing when the character does not exist", async () => {
+    const res = await updateCharacterCard(makeCard("Zephyr"), "char-gone", db);
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error.kind).toBe("target_missing");
+    expect(mockInvalidateCache).not.toHaveBeenCalled();
+  });
+
+  it("extracts the embedded lorebook like a fresh import does", async () => {
+    const targetId = seedTarget();
+    const res = await updateCharacterCard(makeCard("Zephyr"), targetId, db);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.lorebook).not.toBeNull();
+    expect(res.lorebook!.name).toBe("Zephyr [embedded]");
+    expect(listEntries(res.lorebook!.id, db)).toHaveLength(2);
   });
 });
