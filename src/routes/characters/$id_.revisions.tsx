@@ -102,7 +102,10 @@ function RevisionRow({
     restoreMutation.mutate(
       { id: characterId, rev: revision.rev },
       {
-        onSuccess: () => toast.success(`Restored version ${revision.rev}`),
+        onSuccess: () => {
+          setRestoreOpen(false);
+          toast.success(`Restored version ${revision.rev}`);
+        },
         onError: (err) =>
           toast.error(`Restore failed: ${err instanceof Error ? err.message : String(err)}`),
       },
