@@ -222,7 +222,7 @@ export function NewCharacterPage() {
               if (processingRef.current) return;
               processFile(e.dataTransfer.files?.[0] ?? null);
             }}
-            disabled={processing || importMutation.isPending}
+            disabled={processing || importMutation.isPending || updateMutation.isPending}
             className={`flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-transparent p-12 text-center hover:border-brand/40 hover:bg-brand/5 transition-colors disabled:pointer-events-none disabled:opacity-50 ${
               dragOver ? "border-brand bg-brand/5" : ""
             }`}
@@ -246,7 +246,7 @@ export function NewCharacterPage() {
             type="file"
             accept="image/png"
             onChange={handleFileChange}
-            disabled={processing || importMutation.isPending}
+            disabled={processing || importMutation.isPending || updateMutation.isPending}
             className="hidden"
             aria-label="Choose a character card PNG"
           />
@@ -260,6 +260,7 @@ export function NewCharacterPage() {
           <Button
             variant="ghost"
             size="sm"
+            disabled={importMutation.isPending || updateMutation.isPending}
             onClick={() => {
               setStep("pick");
               setPreview(null);
@@ -363,6 +364,7 @@ export function NewCharacterPage() {
           <div className="flex justify-end gap-2">
             <Button
               variant="ghost"
+              disabled={importMutation.isPending || updateMutation.isPending}
               onClick={() => {
                 setStep("pick");
                 setPreview(null);

@@ -15,6 +15,7 @@ const {
   // Mutable test state read by the mock factories below.
   routerState,
   targetCharacterState,
+  pendingState,
 } = vi.hoisted(() => ({
   mockFileToBase64: vi.fn(),
   mockPreviewCharacter: vi.fn(),
@@ -26,6 +27,9 @@ const {
     character: undefined as { id: string; name: string } | undefined,
     error: null as Error | null,
   },
+  // Mirrors useMutation.isPending for the update mutation; tests set it and
+  // rerender manually because the mock has no React state of its own.
+  pendingState: { updating: false },
 }));
 
 vi.mock("sonner", () => ({ toast: { success: mockToastSuccess } }));
@@ -40,7 +44,7 @@ vi.mock("@/hooks/useCharacters", () => ({
   }),
   useImportCharacter: () => ({ isPending: false, mutateAsync: mockImportCharacter }),
   useUpdateCharacterFromCard: () => ({
-    isPending: false,
+    isPending: pendingState.updating,
     mutateAsync: mockUpdateCharacterFromCard,
   }),
 }));
@@ -280,6 +284,7 @@ describe("NewCharacterPage update mode (?update=<id>)", () => {
     routerState.search = {};
     targetCharacterState.character = undefined;
     targetCharacterState.error = null;
+    pendingState.updating = false;
     URL.createObjectURL = vi.fn(() => "blob:mock");
     URL.revokeObjectURL = vi.fn();
   });
@@ -299,12 +304,13 @@ describe("NewCharacterPage update mode (?update=<id>)", () => {
         preview: { ...minimalOkPreview.preview, ...previewOverrides },
       },
     });
-    render(<NewCharacterPage />);
+    const view = render(<NewCharacterPage />);
     fireEvent.change(screen.getByLabelText("Choose a character card PNG"), {
       target: { files: [makePngFile()] },
     });
     await act(async () => {});
     await act(async () => {});
+    return view;
   }
 
   it("hides the duplicate picker and import-as-new; shows the target name", async () => {
@@ -347,6 +353,27 @@ describe("NewCharacterPage update mode (?update=<id>)", () => {
     expect(screen.getByText(/no longer exists/i)).toBeTruthy();
     expect(
       (screen.getByRole("button", { name: /update character/i }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it("locks file picking and exit buttons while the update is in flight", async () => {
+    enterUpdateMode({ id: "char-9", name: "Old Name" });
+    const { rerender } = await renderThroughPreview();
+    // Emulate an in-flight mutation: the mock hook reads pendingState, which
+    // needs a manual rerender since it holds no React state.
+    pendingState.updating = true;
+    mockUpdateCharacterFromCard.mockReturnValue(new Promise<PreviewResponse>(() => {}));
+    rerender(<NewCharacterPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /updating/i }));
+    await act(async () => {});
+
+    expect((screen.getByRole("button", { name: /cancel/i }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+    expect(
+      (screen.getByRole("button", { name: /choose different file/i }) as HTMLButtonElement)
+        .disabled,
     ).toBe(true);
   });
 });
