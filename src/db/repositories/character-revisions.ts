@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db as defaultDb, type DB } from "@/db";
 import {
   characterRevisions,
@@ -31,7 +31,7 @@ export function createRevision(
     .from(characterRevisions)
     .where(eq(characterRevisions.characterId, characterId))
     .get();
-  const nextRev = Number(maxRow?.rev ?? 0) + 1;
+  const nextRev = (maxRow?.rev ?? 0) + 1;
   const row = db
     .insert(characterRevisions)
     .values({
@@ -72,9 +72,7 @@ export function getRevision(
   const row = db
     .select()
     .from(characterRevisions)
-    .where(
-      sql`${characterRevisions.characterId} = ${characterId} and ${characterRevisions.rev} = ${rev}`,
-    )
+    .where(and(eq(characterRevisions.characterId, characterId), eq(characterRevisions.rev, rev)))
     .get();
   if (!row) throw new Error("Revision not found");
   return row;
@@ -92,9 +90,8 @@ export function updateCharacterWithRevision(
   db: DB = defaultDb,
 ): Character {
   return db.transaction((tx) => {
-    const txRepoDb = tx as unknown as DB;
-    const row = updateCharacter(id, patch, txRepoDb);
-    createRevision(row.id, { name: row.name, tagline: row.tagline, data: row.data }, txRepoDb);
+    const row = updateCharacter(id, patch, tx);
+    createRevision(row.id, { name: row.name, tagline: row.tagline, data: row.data }, tx);
     return row;
   });
 }
@@ -105,14 +102,13 @@ export function updateCharacterWithRevision(
  */
 export function restoreCharacterRevision(id: string, rev: number, db: DB = defaultDb): Character {
   return db.transaction((tx) => {
-    const txRepoDb = tx as unknown as DB;
-    const snapshot = getRevision(id, rev, txRepoDb);
+    const snapshot = getRevision(id, rev, tx);
     const row = updateCharacter(
       id,
       { name: snapshot.name, data: snapshot.data, tagline: snapshot.tagline },
-      txRepoDb,
+      tx,
     );
-    createRevision(row.id, { name: row.name, tagline: row.tagline, data: row.data }, txRepoDb);
+    createRevision(row.id, { name: row.name, tagline: row.tagline, data: row.data }, tx);
     return row;
   });
 }

@@ -218,6 +218,14 @@ export function createCharacter(input: CreateCharacterInput, db: DB = defaultDb)
   });
 }
 
+/**
+ * Raw, revision-free row update. Do not call from feature code: it breaks the
+ * "latest revision equals the current card" invariant. Use
+ * `updateCharacterWithRevision` / `restoreCharacterRevision` from
+ * `@/db/repositories/character-revisions` instead — this exists only for those
+ * transactional helpers (and tests).
+ * @internal
+ */
 export function updateCharacter(
   id: string,
   patch: Partial<
