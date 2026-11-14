@@ -1,56 +1,40 @@
 # Characters
 
-Your characters live on the **Characters** page. This guide covers the library, importing cards, the character detail page, and editing.
+Your characters live on the **Characters** page. This guide covers the library, cards, editing, and version history.
 
 ## The library
 
-The **Characters** page shows a grid of cards. It keeps loading more as you scroll, so you never have to click through pages. Each card shows the character's avatar, name, tagline, creator, tags, and how many chats they've been in. A tagline is a short summary of the character, shown right under their name.
+The **Characters** page shows a grid of cards and keeps loading more as you scroll. Cards show the avatar, name, tagline, creator, tags, and chat count. Search matches the name, creator, and card notes (press **/** to jump into the box). Sort by **Recently updated** (default), **Name A–Z**, or **Most chats**, and filter by tag.
 
-Find a character with the search box. Search matches the name, the creator, and the notes on the card. Press **/** to jump straight into the search box. Sort by **Recently updated** (the default), **Name A–Z**, or **Most chats**. Use the tag filter to narrow things down.
-
-On each card, the **⋯** button opens a menu with **Edit** and **Delete**. Deleting warns that it will permanently delete the character and all associated chats and messages. There is no undo, so read the warning before confirming.
+On each card, the **⋯** button opens a menu with **Edit** and **Delete**. Deleting permanently removes the character and all its chats and messages — no undo, so read the warning before confirming.
 
 ## Import a character
 
-A character card is a PNG file that holds everything about a character: portrait, name, description, greeting, and more. A greeting is the opening message a character sends when a new chat starts. Cards come in two versions, V2 and V3, and Charon accepts both.
-
-To import:
+A character card is a PNG holding everything about a character: portrait, name, description, greeting, and more. Cards come in V2 and V3; Charon accepts both.
 
 1. Go to the **Characters** page and click **Import PNG**.
-2. Drag a PNG onto the import page, or click to choose a file. The file must be PNG and no larger than 50 MB.
-3. Review the preview. It shows the portrait, name, creator, a spec/version badge, a description excerpt, tags, and a line like "N greetings · M lorebook entries".
+2. Drag a PNG onto the import page, or click to choose a file (PNG, up to 50 MB).
+3. Review the preview: portrait, name, creator, spec badge, description excerpt, tags, and counts like "N greetings · M lorebook entries".
+4. Click **Import**. A toast confirms the result and you land on the character's page.
 
-Warnings may appear. **No description on card** means the card has no description to show. **V3 card — data normalized to V2 for compatibility** means a V3 card was converted to the older format so it works everywhere.
+Warnings may appear: **No description on card** and **V3 card — data normalized to V2 for compatibility** are the common ones. If the card fails validation, Charon lists what's wrong so you can fix the file or pick another.
 
-If the card's name matches a character you already have, the preview lists the matches and you choose: **Update "{name}"** applies the card to the existing character (name preselected, most recently updated first), or **Import as new** creates a separate copy.
-
-If the card fails validation, Charon lists what's wrong so you can fix the file or pick another.
-
-4. Click **Import** (or **Update**). A toast confirms the result and you land on the character's page.
-
-When a card carries a source slug, the imported character's name is derived from that slug instead of the card's sometimes-generic internal name. If the card carries an embedded lorebook, Charon also creates a standalone copy in the Lorebooks library, disabled by default, named after the book (or "{Character} [embedded]" when it has no name). Re-importing the same card does not create a duplicate.
+When a card carries a source slug, the imported name is derived from that slug instead of the card's sometimes-generic internal name. An embedded lorebook also gets a standalone, disabled copy in the Lorebooks library (named after the book, or "{Character} [embedded]").
 
 ## Update a character from a card
 
-There are two ways to replace a character's card with a newer version of it:
+To replace a character's card with a newer version of it:
 
-- **From the import page** — if the incoming card's name matches an existing character, choose **Update "{name}"**.
+- **From the import page** — if the incoming card's name matches an existing character, choose **Update "{name}"** (the match is preselected; use the picker if several share the name), or **Import as new** to make a separate copy.
 - **From the character's page** — open the **⋯** menu and choose **Update from card**, then pick the PNG. This works even if the new card has a different name.
 
-Updating replaces the card's description, personality, scenario, greetings, prompts, and portrait with the new card's contents, and keeps this character's chats — nothing is lost. Your locally set tagline is preserved, but everything the card defines comes from the new file. The previous version is saved to [Version history](#version-history) automatically, so you can undo a card update by restoring the previous version there.
+Updating swaps in the new card's contents and keeps this character's chats and your locally set tagline. The previous version is saved to version history automatically, so you can undo a card update by restoring it there.
 
 ## The character page
 
-The detail page opens with the portrait, name, creator, tags, and stats: chat count, turns, and last updated date. Click **Start Chat** to begin a new conversation. A **Continue chat** list shows your recent chats with this character, up to five, so you can pick up where you left off.
+The detail page opens with the portrait, name, creator, tags, and stats: chat count, turns, and last updated date. Click **Start Chat** to begin a new conversation. A **Continue chat** list shows your recent chats with this character, up to five.
 
-The page has these sections:
-
-- **Description**, **Personality**, and **Scenario** describe who the character is.
-- **Greetings** lists the opening messages, with copy buttons for alternate greetings.
-- **Example Messages** show how the character talks.
-- **Prompts** holds the system prompt and post-history instructions.
-- An embedded **Lorebook**, if the card carries one.
-- **Metadata** shows the card version, talkativeness, and dates.
+The page lists the card's **Description**, **Personality**, **Scenario**, **Greetings** (with copy buttons), **Example Messages**, **Prompts**, embedded **Lorebook** if present, and **Metadata** (card version, talkativeness, dates).
 
 ## Edit a character
 
@@ -63,18 +47,13 @@ From the detail page, open the **⋯** menu and choose **Edit**. You can change:
 - **System prompt**, **Post-history instructions**, and **Creator notes**
 - **Tags** and **Talkativeness** (a slider from 0 to 100)
 
-A save bar appears at the bottom only when you have unsaved changes. Click **Save** to keep them or **Discard** to throw them away.
+A save bar appears when you have unsaved changes: **Save** keeps them, **Discard** throws them away.
 
 ## Version history
 
-Every save creates a version — a full snapshot of the character card at that moment. Renaming a character also creates a version, so the newest version always matches the character as it is now.
+Every save creates a version — a full snapshot of the card at that moment. Renaming also creates a version, so the newest version always matches the character as it is now.
 
-From the detail page, open the **⋯** menu and choose **History**. The list shows each version with its number, name, and when it was saved; the newest one is labelled **Current**. For any older version you can:
-
-- **Changes** — show which fields differ from the version before it (a field-level summary, like "Description · old text → new text").
-- **Restore** — copy that version onto the character. Restoring is itself a save, so it appears as a new version at the top of the list; older versions are never modified or deleted. Use it as an undo: restore the previous version to back out a bad edit.
-
-Versions live as long as the character does — deleting the character deletes its versions too.
+From the detail page, open the **⋯** menu and choose **History**. The list shows each version with its number, name, and when it was saved; the newest is labelled **Current**. For any version you can view **Changes** (fields that differ from the version before it) or **Restore** it. Restoring is itself a save and appears as a new version; to undo a bad edit, restore the previous one. Versions live as long as the character does.
 
 ## Related pages
 
