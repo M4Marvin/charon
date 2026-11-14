@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { SkeletonRows } from "@/components/common/Skeletons";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { RelativeTime } from "@/components/common/RelativeTime";
+import { plainExcerpt } from "@/lib/plain-text";
 import {
   useCharacter,
   useCharacterRevision,
@@ -210,9 +211,13 @@ function RevisionDiff({
         <li key={diff.field} className="text-sm">
           <span className="text-2">{diff.label}</span>
           <span className="mx-2 text-3">·</span>
-          <span className="text-1">{diff.before === "" ? "(empty)" : truncate(diff.before)}</span>
+          <span className="text-1">
+            {diff.before === "" ? "(empty)" : plainExcerpt(diff.before, { max: 160 })}
+          </span>
           <span className="mx-2 text-3">→</span>
-          <span className="text-1">{diff.after === "" ? "(empty)" : truncate(diff.after)}</span>
+          <span className="text-1">
+            {diff.after === "" ? "(empty)" : plainExcerpt(diff.after, { max: 160 })}
+          </span>
         </li>
       ))}
     </ul>
@@ -225,9 +230,4 @@ function toSnapshot(row: {
   data: CharacterDataV2;
 }): CharacterSnapshot {
   return { name: row.name, tagline: row.tagline, data: row.data };
-}
-
-function truncate(text: string, max = 160): string {
-  const flat = text.replace(/\s+/g, " ").trim();
-  return flat.length > max ? `${flat.slice(0, max)}…` : flat;
 }
