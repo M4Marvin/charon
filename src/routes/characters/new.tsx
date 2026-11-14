@@ -16,6 +16,7 @@ import { RelativeTime } from "@/components/common/RelativeTime";
 import { friendlyImportError } from "@/lib/error-copy";
 import {
   fileToBase64,
+  useCharacter,
   useImportCharacter,
   useUpdateCharacterFromCard,
 } from "@/hooks/useCharacters";
@@ -47,6 +48,9 @@ export function NewCharacterPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importMutation = useImportCharacter();
   const updateMutation = useUpdateCharacterFromCard();
+  // The character being updated in update mode, for the subtitle, the
+  // rename notice, and an upfront "gone" guard.
+  const { data: updateTarget, error: updateTargetError } = useCharacter(updateTargetId ?? "");
   // Selected target for "update existing" when the card name matches one or
   // more characters; null means the user chose import-as-new.
   const [targetId, setTargetId] = useState<string | null>(null);
@@ -172,10 +176,22 @@ export function NewCharacterPage() {
     }
   };
 
+  // Dead update target: the character was deleted between opening the page
+  // and now. Block the flow upfront instead of failing after a full preview.
+  if (updateTargetId && updateTargetError) {
+    return (
+      <main className="mx-auto max-w-[768px] px-4 py-8">
+        <PageHeader title="Update character" backTo="/characters" />
+        <ErrorBanner message="The character you want to update no longer exists." />
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-[768px] px-4 py-8">
       <PageHeader
         title={updateTargetId ? "Update character" : "Import character"}
+        subtitle={updateTarget?.name ? `Updating “${updateTarget.name}”` : undefined}
         backTo={updateTargetId ? `/characters/${updateTargetId}` : "/characters"}
       />
 
@@ -325,6 +341,11 @@ export function NewCharacterPage() {
                 ))}
               </RadioGroup>
             </div>
+          ) : null}
+          {updateTargetId && updateTarget && preview.preview.name !== updateTarget.name ? (
+            <p className="text-2 text-sm">
+              This will rename “{updateTarget.name}” to “{preview.preview.name}”.
+            </p>
           ) : null}
           {fieldErrors ? <FieldErrorList errors={fieldErrors} /> : null}
           {previewErr ? <ErrorBanner title="Couldn’t read that card" message={previewErr} /> : null}

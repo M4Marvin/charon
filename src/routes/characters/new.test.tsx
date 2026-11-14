@@ -12,12 +12,20 @@ const {
   mockToastSuccess,
   mockImportCharacter,
   mockUpdateCharacterFromCard,
+  // Mutable test state read by the mock factories below.
+  routerState,
+  targetCharacterState,
 } = vi.hoisted(() => ({
   mockFileToBase64: vi.fn(),
   mockPreviewCharacter: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockImportCharacter: vi.fn(),
   mockUpdateCharacterFromCard: vi.fn(),
+  routerState: { search: {} as Record<string, string> },
+  targetCharacterState: {
+    character: undefined as { id: string; name: string } | undefined,
+    error: null as Error | null,
+  },
 }));
 
 vi.mock("sonner", () => ({ toast: { success: mockToastSuccess } }));
@@ -25,6 +33,11 @@ vi.mock("sonner", () => ({ toast: { success: mockToastSuccess } }));
 vi.mock("@/hooks/useCharacters", () => ({
   fileToBase64: mockFileToBase64,
   // Kills the QueryClientProvider dependency AND the server-fn import chain in one shot.
+  useCharacter: () => ({
+    data: targetCharacterState.character,
+    isLoading: false,
+    error: targetCharacterState.error,
+  }),
   useImportCharacter: () => ({ isPending: false, mutateAsync: mockImportCharacter }),
   useUpdateCharacterFromCard: () => ({
     isPending: false,
@@ -40,7 +53,7 @@ vi.mock("@tanstack/react-router", () => ({
   createFileRoute: () => (opts: { component: () => ReactNode }) => ({
     component: opts.component,
     // NewCharacterPage reads Route.useSearch() for the ?update=<id> mode.
-    useSearch: () => ({}),
+    useSearch: () => routerState.search,
   }),
   useNavigate: () => vi.fn(),
   // Required: PageHeader renders <Link to={backTo}> (PageHeader.tsx:17).
@@ -83,6 +96,9 @@ function makePngFile(): File {
 describe("NewCharacterPage import loading state", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    routerState.search = {};
+    targetCharacterState.character = undefined;
+    targetCharacterState.error = null;
     // jsdom does not implement object URLs; the settled preview owns one and revokes it on cleanup.
     URL.createObjectURL = vi.fn(() => "blob:mock");
     URL.revokeObjectURL = vi.fn();
@@ -181,6 +197,9 @@ describe("NewCharacterPage import loading state", () => {
 describe("NewCharacterPage duplicate choice", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    routerState.search = {};
+    targetCharacterState.character = undefined;
+    targetCharacterState.error = null;
     URL.createObjectURL = vi.fn(() => "blob:mock");
     URL.revokeObjectURL = vi.fn();
   });
@@ -252,5 +271,65 @@ describe("NewCharacterPage duplicate choice", () => {
 
     expect(mockImportCharacter).toHaveBeenCalledWith({ pngBase64: "fake-png-base64" });
     expect(mockUpdateCharacterFromCard).not.toHaveBeenCalled();
+  });
+});
+
+describe("NewCharacterPage update mode (?update=<id>)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    routerState.search = {};
+    targetCharacterState.character = undefined;
+    targetCharacterState.error = null;
+    URL.createObjectURL = vi.fn(() => "blob:mock");
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  function enterUpdateMode(target?: { id: string; name: string }, error: Error | null = null) {
+    routerState.search = { update: "char-9" };
+    targetCharacterState.character = target;
+    targetCharacterState.error = error;
+  }
+
+  async function renderThroughPreview(previewOverrides?: Partial<PreviewResult["preview"]>) {
+    mockFileToBase64.mockResolvedValue("fake-png-base64");
+    mockPreviewCharacter.mockResolvedValue({
+      ok: true,
+      data: {
+        ...minimalOkPreview,
+        preview: { ...minimalOkPreview.preview, ...previewOverrides },
+      },
+    });
+    render(<NewCharacterPage />);
+    fireEvent.change(screen.getByLabelText("Choose a character card PNG"), {
+      target: { files: [makePngFile()] },
+    });
+    await act(async () => {});
+    await act(async () => {});
+  }
+
+  it("hides the duplicate picker and import-as-new; shows the target name", async () => {
+    enterUpdateMode({ id: "char-9", name: "Old Name" });
+    await renderThroughPreview();
+
+    expect(screen.getByRole("heading", { name: "Update character" })).toBeTruthy();
+    expect(screen.getByText(/updating “old name”/i)).toBeTruthy();
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+    expect(screen.queryByRole("button", { name: /import as new/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /update character/i })).toBeTruthy();
+  });
+
+  it("warns when the incoming card renames the target", async () => {
+    enterUpdateMode({ id: "char-9", name: "Old Name" });
+    await renderThroughPreview({ name: "New Name" });
+
+    expect(screen.getByText(/will rename “old name” to “new name”/i)).toBeTruthy();
+  });
+
+  it("blocks the flow upfront when the update target no longer exists", async () => {
+    enterUpdateMode(undefined, new Error("Character not found"));
+    render(<NewCharacterPage />);
+
+    expect(screen.getByText(/no longer exists/i)).toBeTruthy();
+    expect(screen.queryByLabelText("Choose a character card PNG")).toBeNull();
   });
 });
