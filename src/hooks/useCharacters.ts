@@ -11,6 +11,7 @@ import {
   deleteCharacter,
   getCharacter,
   importCharacter,
+  updateCharacterFromCard,
   searchCharacters,
   characterTagCounts,
   updateCharacter,
@@ -85,6 +86,19 @@ export function useImportCharacter() {
   return useMutation({
     mutationFn: (input: { pngBase64: string }): Promise<ImportResult> =>
       importCharacter({ data: input }),
+    onSuccess: (result) => {
+      if (result.ok) {
+        void queryClient.invalidateQueries({ queryKey: characterKeys.all });
+      }
+    },
+  });
+}
+
+export function useUpdateCharacterFromCard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { pngBase64: string; targetId: string }): Promise<ImportResult> =>
+      updateCharacterFromCard({ data: input }),
     onSuccess: (result) => {
       if (result.ok) {
         void queryClient.invalidateQueries({ queryKey: characterKeys.all });

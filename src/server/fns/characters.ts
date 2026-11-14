@@ -27,6 +27,7 @@ import { MAX_IMAGE_BASE64_LENGTH } from "@/server/image-limits";
 import {
   importCharacterCard,
   previewCharacterCard,
+  updateCharacterCard,
   type ImportError,
   type ImportResult,
   type PreviewResult,
@@ -41,6 +42,10 @@ export type CharacterListItem = CharacterCardItem;
 // ── Validators (clean signatures, arktype under the hood) ───────────────────
 
 const ImportInput = type({ pngBase64: `string > 0 & string <= ${MAX_IMAGE_BASE64_LENGTH}` });
+const UpdateFromCardInput = type({
+  pngBase64: `string > 0 & string <= ${MAX_IMAGE_BASE64_LENGTH}`,
+  targetId: "string > 0",
+});
 const UpdateInput = type({ id: "string > 0", name: "string > 0" });
 const UpdateDataInput = type({
   id: "string > 0",
@@ -63,6 +68,17 @@ function validateImportInput(data: unknown): { pngBase64: string } {
   const result = ImportInput(data);
   if (result instanceof type.errors) {
     throw new Error("Invalid import input");
+  }
+  return result;
+}
+
+function validateUpdateFromCardInput(data: unknown): {
+  pngBase64: string;
+  targetId: string;
+} {
+  const result = UpdateFromCardInput(data);
+  if (result instanceof type.errors) {
+    throw new Error("Invalid card update input");
   }
   return result;
 }
@@ -122,6 +138,14 @@ export const importCharacter = createServerFn({ method: "POST" })
     await getSession();
 
     return importCharacterCard(data.pngBase64);
+  });
+
+export const updateCharacterFromCard = createServerFn({ method: "POST" })
+  .validator(validateUpdateFromCardInput)
+  .handler(async ({ data }): Promise<ImportResult> => {
+    await getSession();
+
+    return updateCharacterCard(data.pngBase64, data.targetId);
   });
 
 export const previewCharacter = createServerFn({ method: "POST" })
