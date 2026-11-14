@@ -163,6 +163,7 @@ function RevisionRow({
         title={`Restore version ${revision.rev}?`}
         description={`“${revision.name}” will replace the current character data. This save is itself recorded as a new version.`}
         confirmLabel="Restore"
+        loadingLabel="Restoring…"
         loading={restoreMutation.isPending}
         onConfirm={handleRestore}
       />
