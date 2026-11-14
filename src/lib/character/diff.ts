@@ -59,6 +59,19 @@ export function diffCharacterSnapshots(a: CharacterSnapshot, b: CharacterSnapsho
     if (row.before !== row.after) diffs.push(row);
   }
 
+  // Talkativeness is the one extensions field the edit form writes; cards may
+  // carry it as a string or number, so compare and render via text.
+  const aTalk = a.data.extensions?.talkativeness;
+  const bTalk = b.data.extensions?.talkativeness;
+  if (asText(aTalk) !== asText(bTalk)) {
+    diffs.push({
+      field: "extensions.talkativeness",
+      label: "Talkativeness",
+      before: asText(aTalk),
+      after: asText(bTalk),
+    });
+  }
+
   const aGreetings = (a.data.alternate_greetings ?? []).join("\n---\n");
   const bGreetings = (b.data.alternate_greetings ?? []).join("\n---\n");
   if (aGreetings !== bGreetings) {

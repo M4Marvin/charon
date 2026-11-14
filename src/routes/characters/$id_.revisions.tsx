@@ -199,7 +199,9 @@ function RevisionDiff({
 
   const diffs = diffCharacterSnapshots(toSnapshot(older), toSnapshot(newer));
   if (diffs.length === 0) {
-    return <p className="text-2 text-sm italic">Only metadata changed — no card fields differ.</p>;
+    return (
+      <p className="text-2 text-sm italic">No tracked fields differ between these versions.</p>
+    );
   }
 
   return (

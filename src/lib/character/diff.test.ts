@@ -104,6 +104,26 @@ describe("diffCharacterSnapshots", () => {
     });
   });
 
+  it("detects talkativeness changes in extensions (string or number)", () => {
+    const a = snapshot({ data: { extensions: { talkativeness: 0.5 } } });
+    const b = snapshot({ data: { extensions: { talkativeness: 0.8 } } });
+    let diffs = diffCharacterSnapshots(a, b);
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0]).toMatchObject({
+      field: "extensions.talkativeness",
+      label: "Talkativeness",
+      before: "0.5",
+      after: "0.8",
+    });
+
+    // Cards may carry talkativeness as a string (legacy) — same text, no diff.
+    const stringA = snapshot({
+      data: { extensions: { talkativeness: "0.5" as unknown as number } },
+    });
+    diffs = diffCharacterSnapshots(stringA, a);
+    expect(diffs).toEqual([]);
+  });
+
   it("returns multiple diffs in a stable order", () => {
     const a = snapshot({ name: "Old", data: { description: "d1", scenario: "s1" } });
     const b = snapshot({ name: "New", data: { description: "d2", scenario: "s2" } });
