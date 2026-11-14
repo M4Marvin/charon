@@ -150,6 +150,10 @@ export function CharacterDetailPage() {
                 label: "History",
                 onSelect: () => void navigate({ to: "/characters/$id/revisions", params: { id } }),
               },
+              {
+                label: "Update from card",
+                onSelect: () => void navigate({ to: "/characters/new", search: { update: id } }),
+              },
               { label: "Rename", onSelect: () => setRenameOpen(true) },
               { label: "Delete", destructive: true, onSelect: () => setDelOpen(true) },
             ]}

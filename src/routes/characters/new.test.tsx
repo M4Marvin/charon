@@ -37,7 +37,11 @@ vi.mock("@/server/fns/characters", () => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  createFileRoute: () => (opts: { component: () => ReactNode }) => ({ component: opts.component }),
+  createFileRoute: () => (opts: { component: () => ReactNode }) => ({
+    component: opts.component,
+    // NewCharacterPage reads Route.useSearch() for the ?update=<id> mode.
+    useSearch: () => ({}),
+  }),
   useNavigate: () => vi.fn(),
   // Required: PageHeader renders <Link to={backTo}> (PageHeader.tsx:17).
   Link: ({ children }: { children?: ReactNode }) => <a>{children}</a>,

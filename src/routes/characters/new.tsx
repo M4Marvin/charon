@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { type } from "arktype";
 import { Upload, ArrowLeft, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,12 +22,20 @@ import {
 import { previewCharacter } from "@/server/fns/characters";
 import type { PreviewResult } from "@/server/fns/characters";
 
+const searchSchema = type({
+  "update?": "string > 0",
+});
+
 export const Route = createFileRoute("/characters/new")({
+  validateSearch: searchSchema,
   component: NewCharacterPage,
 });
 
 export function NewCharacterPage() {
   const navigate = useNavigate();
+  // Update mode: applying the picked card to an existing character directly
+  // (from the detail page's ⋯ menu), bypassing the duplicate-choice flow.
+  const { update: updateTargetId } = Route.useSearch();
 
   const [step, setStep] = useState<"pick" | "preview">("pick");
   const [file, setFile] = useState<File | null>(null);
@@ -108,10 +117,12 @@ export function NewCharacterPage() {
     setPreviewErr(null);
     setFieldErrors(null);
 
-    if (asUpdate && targetId) {
+    if (asUpdate) {
+      const target = updateTargetId ?? targetId;
+      if (!target) return;
       let res: Awaited<ReturnType<typeof updateMutation.mutateAsync>>;
       try {
-        res = await updateMutation.mutateAsync({ pngBase64: previewB64, targetId });
+        res = await updateMutation.mutateAsync({ pngBase64: previewB64, targetId: target });
       } catch (err) {
         setPreviewErr(friendlyImportError(err));
         return;
@@ -163,7 +174,10 @@ export function NewCharacterPage() {
 
   return (
     <main className="mx-auto max-w-[768px] px-4 py-8">
-      <PageHeader title="Import character" backTo="/characters" />
+      <PageHeader
+        title={updateTargetId ? "Update character" : "Import character"}
+        backTo={updateTargetId ? `/characters/${updateTargetId}` : "/characters"}
+      />
 
       {step === "pick" ? (
         <div className="space-y-4">
@@ -280,7 +294,7 @@ export function NewCharacterPage() {
               ))}
             </div>
           ) : null}
-          {preview.duplicates.length > 0 ? (
+          {!updateTargetId && preview.duplicates.length > 0 ? (
             <div className="rounded-lg border bg-warning/10 p-3 text-sm">
               <p className="mb-2">
                 <strong className="text-warning">Duplicate detected:</strong> You already have{" "}
@@ -324,7 +338,7 @@ export function NewCharacterPage() {
             >
               Cancel
             </Button>
-            {preview.duplicates.length > 0 ? (
+            {!updateTargetId && preview.duplicates.length > 0 ? (
               <Button
                 variant="outline"
                 onClick={() => void handleImport(false)}
@@ -334,16 +348,18 @@ export function NewCharacterPage() {
               </Button>
             ) : null}
             <Button
-              onClick={() => void handleImport(Boolean(targetId))}
+              onClick={() => void handleImport(updateTargetId ? true : Boolean(targetId))}
               disabled={importMutation.isPending || updateMutation.isPending}
             >
               {updateMutation.isPending
                 ? "Updating…"
                 : importMutation.isPending
                   ? "Importing…"
-                  : targetId && preview.duplicates.length > 0
-                    ? `Update “${preview.duplicates.find((d) => d.id === targetId)?.name ?? ""}”`
-                    : "Import"}
+                  : updateTargetId
+                    ? "Update character"
+                    : targetId && preview.duplicates.length > 0
+                      ? `Update “${preview.duplicates.find((d) => d.id === targetId)?.name ?? ""}”`
+                      : "Import"}
             </Button>
           </div>
         </div>
