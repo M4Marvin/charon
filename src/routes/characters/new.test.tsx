@@ -10,6 +10,7 @@ const {
   mockFileToBase64,
   mockPreviewCharacter,
   mockToastSuccess,
+  mockToastError,
   mockImportCharacter,
   mockUpdateCharacterFromCard,
   // Mutable test state read by the mock factories below.
@@ -20,6 +21,7 @@ const {
   mockFileToBase64: vi.fn(),
   mockPreviewCharacter: vi.fn(),
   mockToastSuccess: vi.fn(),
+  mockToastError: vi.fn(),
   mockImportCharacter: vi.fn(),
   mockUpdateCharacterFromCard: vi.fn(),
   routerState: { search: {} as Record<string, string> },
@@ -32,7 +34,7 @@ const {
   pendingState: { updating: false },
 }));
 
-vi.mock("sonner", () => ({ toast: { success: mockToastSuccess } }));
+vi.mock("sonner", () => ({ toast: { success: mockToastSuccess, error: mockToastError } }));
 
 vi.mock("@/hooks/useCharacters", () => ({
   fileToBase64: mockFileToBase64,
@@ -366,6 +368,7 @@ describe("NewCharacterPage update mode (?update=<id>)", () => {
     expect(
       (screen.getByRole("button", { name: /update character/i }) as HTMLButtonElement).disabled,
     ).toBe(true);
+    expect(mockToastError).toHaveBeenCalledWith("Card update failed");
   });
 
   it("locks file picking and exit buttons while the update is in flight", async () => {

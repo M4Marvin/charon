@@ -136,7 +136,15 @@ export function NewCharacterPage() {
         return;
       }
       if (res.ok) {
-        toast.success(`Updated "${res.character.name}"`);
+        const parts = [`Updated "${res.character.name}"`];
+        if (res.lorebook) {
+          parts.push(
+            `lorebook "${res.lorebook.name}" · ${res.lorebook.entriesInserted} ${
+              res.lorebook.entriesInserted === 1 ? "entry" : "entries"
+            }`,
+          );
+        }
+        toast.success(parts.join(" · "));
         void navigate({ to: "/characters/$id", params: { id: res.character.id } });
       } else {
         if (res.error.kind === "validation") {
@@ -156,6 +164,7 @@ export function NewCharacterPage() {
         } else {
           setPreviewErr(friendlyImportError(res.error.message));
         }
+        toast.error("Card update failed");
       }
       return;
     }
@@ -165,6 +174,7 @@ export function NewCharacterPage() {
       res = await importMutation.mutateAsync({ pngBase64: previewB64 });
     } catch (err) {
       setPreviewErr(friendlyImportError(err));
+      toast.error("Import failed");
       return;
     }
     if (res.ok) {
@@ -184,6 +194,7 @@ export function NewCharacterPage() {
       } else {
         setPreviewErr(friendlyImportError(res.error.message));
       }
+      toast.error("Import failed");
     }
   };
 
@@ -197,6 +208,17 @@ export function NewCharacterPage() {
       </main>
     );
   }
+
+  const selectedDuplicate = preview?.duplicates.find((d) => d.id === targetId);
+  const primaryLabel = updateMutation.isPending
+    ? "Updating…"
+    : importMutation.isPending
+      ? "Importing…"
+      : updateTargetId
+        ? "Update character"
+        : selectedDuplicate
+          ? `Update “${clampName(selectedDuplicate.name)}”`
+          : "Import";
 
   return (
     <main className="mx-auto max-w-[768px] px-4 py-8">
@@ -334,7 +356,7 @@ export function NewCharacterPage() {
               </p>
               <RadioGroup
                 value={targetId ?? ""}
-                onValueChange={(v) => setTargetId(v || null)}
+                onValueChange={(v) => setTargetId(v)}
                 className="gap-2"
                 aria-label="Existing character to update"
               >
@@ -366,6 +388,12 @@ export function NewCharacterPage() {
               variant="ghost"
               disabled={importMutation.isPending || updateMutation.isPending}
               onClick={() => {
+                if (updateTargetId) {
+                  // In update mode the character is the task context; leave
+                  // the flow entirely instead of bouncing back to the picker.
+                  void navigate({ to: "/characters/$id", params: { id: updateTargetId } });
+                  return;
+                }
                 setStep("pick");
                 setPreview(null);
               }}
@@ -385,17 +413,7 @@ export function NewCharacterPage() {
               onClick={() => void handleImport(updateTargetId ? true : Boolean(targetId))}
               disabled={deadTarget || importMutation.isPending || updateMutation.isPending}
             >
-              {updateMutation.isPending
-                ? "Updating…"
-                : importMutation.isPending
-                  ? "Importing…"
-                  : updateTargetId
-                    ? "Update character"
-                    : targetId && preview.duplicates.length > 0
-                      ? `Update “${clampName(
-                          preview.duplicates.find((d) => d.id === targetId)?.name ?? "",
-                        )}”`
-                      : "Import"}
+              {primaryLabel}
             </Button>
           </div>
         </div>

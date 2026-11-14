@@ -217,6 +217,7 @@ const DOCUMENT_TITLES: Array<[RegExp, string]> = [
   [/^\/characters$/, "Characters · Charon"],
   [/^\/characters\/new$/, "Import character · Charon"],
   [/^\/characters\/[^/]+\/edit$/, "Edit character · Charon"],
+  [/^\/characters\/[^/]+\/revisions$/, "Version history · Charon"],
   [/^\/characters\/[^/]+$/, "Character · Charon"],
   [/^\/lorebooks$/, "Lorebooks · Charon"],
   [/^\/lorebooks\/new$/, "New lorebook · Charon"],

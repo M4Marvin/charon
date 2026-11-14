@@ -564,9 +564,9 @@ One overlay contract, whether centered dialog or side sheet:
 - File input hidden but labelled; PNG only; size/pixel limits; processing state with spinner and disabled dropzone; errors inline.
 - Preview: stack vertically at `< sm` (image 3:4 thumbnail above metadata), two columns at `≥ sm`; image, name, creator, spec badges, description excerpt, tags (cap 3 + N), greetings/lorebook counts, warnings, duplicate panel.
 - Duplicate panel (when same-name characters exist): radio picker over the matches (most recently updated first, preselected, relative updated times) and two actions — “Update “{name}”” (primary, applies the card to the selected character) and “Import as new” (outline, creates a separate copy). No matches: single “Import”.
-- Actions: “Choose different file” (back to picker), “Cancel” (returns to Characters), “Import”/“Update” (primary, pending labels “Importing…”/“Updating…”, disabled while pending). Catch transport errors and show inline ErrorBanner + toast; preserve preview. A `target_missing` failure (target deleted between preview and confirm) clears the stale selection and surfaces a friendly inline message.
+- Actions: “Choose different file” (back to picker), “Cancel” (returns to Characters; in update mode returns to the character), “Import”/“Update” (primary, pending labels “Importing…”/“Updating…”, disabled while pending). Catch transport errors and show inline ErrorBanner + toast; preserve preview. A `target_missing` failure (target deleted between preview and confirm) surfaces the service copy inline + toast, clears the stale selection in the picker flow, and locks the action in update mode.
 - Card update semantics (both entry points): data/name/spec/specVersion/avatar replaced from the new card, tagline preserved, one revision appended (previous version restorable via §6.5.5), old avatar file removed and its image cache invalidated after commit.
-- Document title: `Import character · Charon` (update mode: `Update character · Charon`).
+- Document title: `Import character · Charon` (shared by update mode; the page header distinguishes the modes).
 - Acceptance: preview readable at 320; errors handled; no duplicate cancel actions; duplicate picker defaults to the newest match.
 
 #### 6.5.3 Detail (`/characters/<id>`)
@@ -598,7 +598,7 @@ One overlay contract, whether centered dialog or side sheet:
 
 - PageShell `form`; PageHeader “Version history” back to detail, subtitle character name. Explainer line: every save snapshots the card; restoring copies forward, history is never rewritten.
 - Rows (newest first): name, `Current` badge on the newest, “Version {n} · saved {relative time} · {tagline}”. Actions per row: **Changes** (toggle, hidden on the oldest version) and **Restore** (disabled on Current).
-- Changes expands a field-level diff vs. the previous version — label · before → after, whitespace-collapsed and truncated; empty values shown as “(empty)”; empty diff shows “Only metadata changed”. Diff data is fetched per row on expand.
+- Changes expands a field-level diff vs. the previous version — label · before → after, whitespace-collapsed and truncated; empty values shown as “(empty)”; empty diff shows “No tracked fields differ”. Diff data is fetched per row on expand. Snapshots carry name, tagline, data, and spec identification; the avatar follows the row (art is not snapshotted).
 - Restore opens a ConfirmDialog (“…will replace the current character data. This save is itself recorded as a new version.”); success toast “Restored version {n}”, failure toast; detail + revisions refetch after restore.
 - States: loading `SkeletonRows`; empty `EmptyState` (History icon, “No versions yet”); query error + Retry.
 - Revisions cascade with the character on delete. Saves, edits, and renames each append one revision; revision numbering is per character, monotonic, append-only.
