@@ -20,13 +20,24 @@ To import:
 2. Drag a PNG onto the import page, or click to choose a file. The file must be PNG and no larger than 50 MB.
 3. Review the preview. It shows the portrait, name, creator, a spec/version badge, a description excerpt, tags, and a line like "N greetings · M lorebook entries".
 
-Warnings may appear. **No description on card** means the card has no description to show. **V3 card — data normalized to V2 for compatibility** means a V3 card was converted to the older format so it works everywhere. If the card's name matches one you already have, you get: "You already have a character named {name}. Importing will create a separate copy." Importing still works; it just makes a separate copy.
+Warnings may appear. **No description on card** means the card has no description to show. **V3 card — data normalized to V2 for compatibility** means a V3 card was converted to the older format so it works everywhere.
+
+If the card's name matches a character you already have, the preview lists the matches and you choose: **Update "{name}"** applies the card to the existing character (name preselected, most recently updated first), or **Import as new** creates a separate copy.
 
 If the card fails validation, Charon lists what's wrong so you can fix the file or pick another.
 
-4. Click **Import**. A toast says Imported "{name}" and you land on the character's page.
+4. Click **Import** (or **Update**). A toast confirms the result and you land on the character's page.
 
 When a card carries a source slug, the imported character's name is derived from that slug instead of the card's sometimes-generic internal name. If the card carries an embedded lorebook, Charon also creates a standalone copy in the Lorebooks library, disabled by default, named after the book (or "{Character} [embedded]" when it has no name). Re-importing the same card does not create a duplicate.
+
+## Update a character from a card
+
+There are two ways to replace a character's card with a newer version of it:
+
+- **From the import page** — if the incoming card's name matches an existing character, choose **Update "{name}"**.
+- **From the character's page** — open the **⋯** menu and choose **Update from card**, then pick the PNG. This works even if the new card has a different name.
+
+Updating replaces the card's description, personality, scenario, greetings, prompts, and portrait with the new card's contents, and keeps this character's chats — nothing is lost. Your locally set tagline is preserved, but everything the card defines comes from the new file. The previous version is saved to [Version history](#version-history) automatically, so you can undo a card update by restoring the previous version there.
 
 ## The character page
 

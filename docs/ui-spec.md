@@ -559,18 +559,20 @@ One overlay contract, whether centered dialog or side sheet:
 
 #### 6.5.2 Import (`/characters/new`)
 
-- PageShell `form`; PageHeader “Import character” back to Characters.
+- PageShell `form`; PageHeader “Import character” back to Characters. With `?update=<id>` the page is in update mode: PageHeader “Update character” back to the character, duplicate picker and “Import as new” hidden, primary action “Update character” applied to the fixed target.
 - Dropzone: real `<button>`, 44px minimum, dashed border, upload icon, “Choose a character card PNG”, “V2 or V3 · up to 50 MB · drag & drop or click to browse”; drag-over state; keyboard focus.
 - File input hidden but labelled; PNG only; size/pixel limits; processing state with spinner and disabled dropzone; errors inline.
-- Preview: stack vertically at `< sm` (image 3:4 thumbnail above metadata), two columns at `≥ sm`; image, name, creator, spec badges, description excerpt, tags (cap 3 + N), greetings/lorebook counts, warnings, duplicate notice.
-- Actions: “Choose different file” (back to picker), “Cancel” (returns to Characters), “Import” (primary, pending, disabled while pending). Catch transport errors and show inline ErrorBanner + toast; preserve preview.
-- Document title: `Import character · Charon`.
-- Acceptance: preview readable at 320; errors handled; no duplicate cancel actions.
+- Preview: stack vertically at `< sm` (image 3:4 thumbnail above metadata), two columns at `≥ sm`; image, name, creator, spec badges, description excerpt, tags (cap 3 + N), greetings/lorebook counts, warnings, duplicate panel.
+- Duplicate panel (when same-name characters exist): radio picker over the matches (most recently updated first, preselected, relative updated times) and two actions — “Update “{name}”” (primary, applies the card to the selected character) and “Import as new” (outline, creates a separate copy). No matches: single “Import”.
+- Actions: “Choose different file” (back to picker), “Cancel” (returns to Characters), “Import”/“Update” (primary, pending labels “Importing…”/“Updating…”, disabled while pending). Catch transport errors and show inline ErrorBanner + toast; preserve preview. A `target_missing` failure (target deleted between preview and confirm) clears the stale selection and surfaces a friendly inline message.
+- Card update semantics (both entry points): data/name/spec/specVersion/avatar replaced from the new card, tagline preserved, one revision appended (previous version restorable via §6.5.5), old avatar file removed and its image cache invalidated after commit.
+- Document title: `Import character · Charon` (update mode: `Update character · Charon`).
+- Acceptance: preview readable at 320; errors handled; no duplicate cancel actions; duplicate picker defaults to the newest match.
 
 #### 6.5.3 Detail (`/characters/<id>`)
 
 - PageShell `detail`; **page scroll** at all sizes (no independent right pane). Desktop: sticky poster column 340px + content. Mobile: compact PageHeader (back/title/actions) above poster; no fixed action bar.
-- PageHeader: back 44, H1 character name (display), subtitle creator/updated/created, actions menu (Edit/Rename/Delete). On mobile the H1 is visible before the poster.
+- PageHeader: back 44, H1 character name (display), subtitle creator/updated/created, actions menu (Edit/History/Update from card/Rename/Delete). On mobile the H1 is visible before the poster.
 - Poster: 3:4 image, expand lightbox 44, chat count; primary “Start chat” when there is no chat, or “Continue chat” when one exists; secondary “New chat” in the actions menu. Use stable labels (do not inject the full name into the button; the name is in the header/poster). Stats chips; recent chats (max 5) with plain previews.
 - Content: tags, Creator Notes (sanitized Markdown), Character Card accordions (Description/Personality/Scenario/Greetings/Example Messages) with token counts, embedded lorebook (stacked cards at `<sm`; table with scroll cue at `≥sm`), Details grid, More by creator.
 - Rename opens a dialog with a Name field, required validation, pending state, and focus return; Delete confirms with the character name, chat count, and message count, then navigates to `/characters` on success. Both use inline error + toast on failure.
