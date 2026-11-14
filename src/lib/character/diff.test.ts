@@ -63,6 +63,22 @@ describe("diffCharacterSnapshots", () => {
     expect(diffs[0]?.after).toBe("one, two");
   });
 
+  it("does not confuse a greeting containing the join separator with two greetings", () => {
+    const a = snapshot({ data: { alternate_greetings: ["a\n---\nb"] } });
+    const b = snapshot({ data: { alternate_greetings: ["a", "b"] } });
+    const diffs = diffCharacterSnapshots(a, b);
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0]?.field).toBe("alternate_greetings");
+  });
+
+  it("does not confuse a tag containing a comma with two tags", () => {
+    const a = snapshot({ data: { tags: ["a, b"] } });
+    const b = snapshot({ data: { tags: ["a", "b"] } });
+    const diffs = diffCharacterSnapshots(a, b);
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0]?.field).toBe("tags");
+  });
+
   it("detects tag changes as comma-joined text", () => {
     const a = snapshot({ data: { tags: ["elf", "mage"] } });
     const b = snapshot({ data: { tags: ["elf", "orc"] } });

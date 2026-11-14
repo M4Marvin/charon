@@ -72,8 +72,11 @@ export function diffCharacterSnapshots(a: CharacterSnapshot, b: CharacterSnapsho
     });
   }
 
-  const aGreetings = (a.data.alternate_greetings ?? []).join("\n---\n");
-  const bGreetings = (b.data.alternate_greetings ?? []).join("\n---\n");
+  // Lists compare structurally (JSON) so a greeting containing a literal
+  // "---" line, or a tag containing a comma, can never compare equal to a
+  // differently shaped list. Display stays human-readable via asText.
+  const aGreetings = JSON.stringify(a.data.alternate_greetings ?? []);
+  const bGreetings = JSON.stringify(b.data.alternate_greetings ?? []);
   if (aGreetings !== bGreetings) {
     diffs.push({
       field: "alternate_greetings",
@@ -83,10 +86,13 @@ export function diffCharacterSnapshots(a: CharacterSnapshot, b: CharacterSnapsho
     });
   }
 
-  const aTags = asText(a.data.tags);
-  const bTags = asText(b.data.tags);
-  if (aTags !== bTags) {
-    diffs.push({ field: "tags", label: "Tags", before: aTags, after: bTags });
+  if (JSON.stringify(a.data.tags ?? []) !== JSON.stringify(b.data.tags ?? [])) {
+    diffs.push({
+      field: "tags",
+      label: "Tags",
+      before: asText(a.data.tags),
+      after: asText(b.data.tags),
+    });
   }
 
   const aBookCount = a.data.character_book?.entries?.length ?? 0;
