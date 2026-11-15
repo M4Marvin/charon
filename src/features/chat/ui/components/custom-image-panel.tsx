@@ -112,22 +112,16 @@ export function CustomImagePanel({
           : "pointer-events-none opacity-0 max-xl:translate-y-4 xl:translate-x-[calc(100%_+_2rem)]",
       )}
     >
-      <div
+      {/* A real button: role, focus, and Enter/Space activation are native. */}
+      <button
+        type="button"
+        disabled={!canOpen}
+        onClick={onImageClick}
         className={cn(
-          "glass-strong rounded-2xl overflow-hidden shadow-xl ring-1 ring-(--border-subtle) w-full xl:w-[min(24rem,max(12rem,calc((100vw_-_48rem)/2_-_2rem)))]",
+          "block w-full text-left glass-strong rounded-2xl overflow-hidden shadow-xl ring-1 ring-(--border-subtle) xl:w-[min(24rem,max(12rem,calc((100vw_-_48rem)/2_-_2rem)))]",
           canOpen && "cursor-pointer group focus-ring",
         )}
-        onClick={canOpen ? onImageClick : undefined}
-        role={canOpen ? "button" : undefined}
-        tabIndex={canOpen ? 0 : -1}
         aria-label={canOpen ? `View ${label.toLowerCase()} image` : undefined}
-        onKeyDown={(e) => {
-          if (!canOpen) return;
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onImageClick();
-          }
-        }}
       >
         <div className="relative flex items-center justify-center bg-(--bg-base)/60">
           {shouldMountImage && displaySrc && failedSrc !== displaySrc ? (
@@ -148,7 +142,7 @@ export function CustomImagePanel({
             </div>
           )}
         </div>
-      </div>
+      </button>
 
       <div className="flex items-center gap-1.5 self-start -mt-1">
         <Button

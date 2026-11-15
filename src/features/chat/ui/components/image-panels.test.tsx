@@ -175,19 +175,26 @@ describe("off-canvas image panels", () => {
 
     expect(screen.queryByRole("button", { name: "View Zephyr portrait" })).toBeNull();
     expect(screen.getByText("No portrait")).toBeTruthy();
-    const panel = document.getElementById("character-portrait-panel");
-    expect(panel?.firstElementChild?.getAttribute("tabindex")).toBe("-1");
+    // The card is a real <button>, disabled (therefore unfocusable and
+    // inert) while there is nothing to view.
+    const card = document.getElementById("character-portrait-panel")?.firstElementChild;
+    expect(card?.tagName).toBe("BUTTON");
+    expect((card as HTMLButtonElement | null)?.disabled).toBe(true);
   });
 
-  it("opens the portrait with Enter and Space", () => {
+  it("opens the portrait via the native button activation path", () => {
     const onImageClick = vi.fn();
     renderPortrait(true, { onImageClick });
 
+    // Enter/Space activation is native now; the card only needs to be a
+    // real, enabled button — jsdom does not synthesize keyboard activation,
+    // so the click path is asserted directly.
     const target = screen.getByRole("button", { name: "View Zephyr portrait" });
-    fireEvent.keyDown(target, { key: "Enter" });
-    fireEvent.keyDown(target, { key: " " });
+    expect(target.tagName).toBe("BUTTON");
+    expect((target as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(target);
 
-    expect(onImageClick).toHaveBeenCalledTimes(2);
+    expect(onImageClick).toHaveBeenCalledTimes(1);
   });
 
   it("focuses the close button and closes on Escape", () => {
