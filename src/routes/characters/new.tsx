@@ -28,6 +28,11 @@ const searchSchema = type({
   "update?": "string > 0",
 });
 
+// Banner titles: card failures are about the picked file; card-update
+// failures (thrown transport errors, target_missing) are about the target.
+const CARD_ERROR_TITLE = "Couldn’t read that card";
+const UPDATE_ERROR_TITLE = "Couldn’t update the character";
+
 export const Route = createFileRoute("/characters/new")({
   validateSearch: searchSchema,
   component: NewCharacterPage,
@@ -43,8 +48,11 @@ export function NewCharacterPage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [previewB64, setPreviewB64] = useState<string>("");
-  const [previewErr, setPreviewErr] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ field: string; message: string }[] | null>(null);
+  // Banner state pairs the message with the title that frames it: card
+  // failures are about the file ("Couldn't read that card"); a
+  // target_missing failure is about the character, not the card.
+  const [previewErr, setPreviewErr] = useState<{ title: string; message: string } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importMutation = useImportCharacter();
@@ -87,11 +95,14 @@ export function NewCharacterPage() {
     setDeadTarget(false);
     if (!f) return;
     if (f.type !== "" && f.type !== "image/png") {
-      setPreviewErr("That file isn't a PNG. Choose a character card PNG.");
+      setPreviewErr({
+        title: CARD_ERROR_TITLE,
+        message: "That file isn't a PNG. Choose a character card PNG.",
+      });
       return;
     }
     if (f.size > MAX_IMAGE_UPLOAD_BYTES) {
-      setPreviewErr("That file is larger than 50 MB.");
+      setPreviewErr({ title: CARD_ERROR_TITLE, message: "That file is larger than 50 MB." });
       return;
     }
     processingRef.current = true;
@@ -104,7 +115,10 @@ export function NewCharacterPage() {
         if (res.error.kind === "validation") {
           setFieldErrors(res.error.errors);
         } else {
-          setPreviewErr(friendlyImportError(res.error.message));
+          setPreviewErr({
+            title: CARD_ERROR_TITLE,
+            message: friendlyImportError(res.error.message),
+          });
         }
         return;
       }
@@ -112,7 +126,7 @@ export function NewCharacterPage() {
       setTargetId(res.data.duplicates[0]?.id ?? null);
       setStep("preview");
     } catch (err) {
-      setPreviewErr(friendlyImportError(err));
+      setPreviewErr({ title: CARD_ERROR_TITLE, message: friendlyImportError(err) });
     } finally {
       processingRef.current = false;
       setProcessing(false);
@@ -137,7 +151,7 @@ export function NewCharacterPage() {
       try {
         res = await updateMutation.mutateAsync({ pngBase64: previewB64, targetId: target });
       } catch (err) {
-        setPreviewErr(friendlyImportError(err));
+        setPreviewErr({ title: UPDATE_ERROR_TITLE, message: friendlyImportError(err) });
         return;
       }
       if (res.ok) {
@@ -155,8 +169,10 @@ export function NewCharacterPage() {
         if (res.error.kind === "validation") {
           setFieldErrors(res.error.errors);
         } else if (res.error.kind === "target_missing") {
-          // The service already provides user-ready copy.
-          setPreviewErr(res.error.message);
+          // The service already provides user-ready copy. The failure is
+          // about the target character, not the card, so the banner title
+          // must not claim the card couldn't be read.
+          setPreviewErr({ title: UPDATE_ERROR_TITLE, message: res.error.message });
           if (updateTargetId) {
             // Update mode: the target comes from the URL and cannot be
             // re-picked — lock the action instead of retrying a dead id.
@@ -167,7 +183,10 @@ export function NewCharacterPage() {
             setTargetId(null);
           }
         } else {
-          setPreviewErr(friendlyImportError(res.error.message));
+          setPreviewErr({
+            title: UPDATE_ERROR_TITLE,
+            message: friendlyImportError(res.error.message),
+          });
         }
         toast.error("Card update failed");
       }
@@ -178,7 +197,7 @@ export function NewCharacterPage() {
     try {
       res = await importMutation.mutateAsync({ pngBase64: previewB64 });
     } catch (err) {
-      setPreviewErr(friendlyImportError(err));
+      setPreviewErr({ title: CARD_ERROR_TITLE, message: friendlyImportError(err) });
       toast.error("Import failed");
       return;
     }
@@ -197,7 +216,7 @@ export function NewCharacterPage() {
       if (res.error.kind === "validation") {
         setFieldErrors(res.error.errors);
       } else {
-        setPreviewErr(friendlyImportError(res.error.message));
+        setPreviewErr({ title: CARD_ERROR_TITLE, message: friendlyImportError(res.error.message) });
       }
       toast.error("Import failed");
     }
@@ -228,6 +247,7 @@ export function NewCharacterPage() {
   }
 
   const selectedDuplicate = preview?.duplicates.find((d) => d.id === targetId);
+  const fileFlowLocked = processing || importMutation.isPending || updateMutation.isPending;
   const primaryLabel = updateMutation.isPending
     ? "Updating…"
     : importMutation.isPending
@@ -239,7 +259,18 @@ export function NewCharacterPage() {
           : "Import";
 
   return (
-    <main className="mx-auto max-w-[768px] px-4 py-8">
+    <main
+      className="mx-auto max-w-[768px] px-4 py-8"
+      onDragOver={(e) => {
+        // While the file flow is locked, drags that fall through the
+        // disabled dropzone (pointer-events:none) would otherwise hit the
+        // page and let the browser navigate to the dropped file.
+        if (fileFlowLocked) e.preventDefault();
+      }}
+      onDrop={(e) => {
+        if (fileFlowLocked) e.preventDefault();
+      }}
+    >
       <PageHeader
         title={updateTargetId ? "Update character" : "Import character"}
         subtitle={updateTarget?.name ? `Updating “${updateTarget.name}”` : undefined}
@@ -259,10 +290,9 @@ export function NewCharacterPage() {
             onDrop={(e) => {
               e.preventDefault();
               setDragOver(false);
-              if (processingRef.current) return;
               processFile(e.dataTransfer.files?.[0] ?? null);
             }}
-            disabled={processing || importMutation.isPending || updateMutation.isPending}
+            disabled={fileFlowLocked}
             className={`flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-transparent p-12 text-center hover:border-brand/40 hover:bg-brand/5 transition-colors disabled:pointer-events-none disabled:opacity-50 ${
               dragOver ? "border-brand bg-brand/5" : ""
             }`}
@@ -286,12 +316,14 @@ export function NewCharacterPage() {
             type="file"
             accept="image/png"
             onChange={handleFileChange}
-            disabled={processing || importMutation.isPending || updateMutation.isPending}
+            disabled={fileFlowLocked}
             className="hidden"
             aria-label="Choose a character card PNG"
           />
           {fieldErrors ? <FieldErrorList errors={fieldErrors} /> : null}
-          {previewErr ? <ErrorBanner title="Couldn’t read that card" message={previewErr} /> : null}
+          {previewErr ? (
+            <ErrorBanner title={previewErr.title} message={previewErr.message} />
+          ) : null}
         </div>
       ) : null}
 
@@ -400,7 +432,9 @@ export function NewCharacterPage() {
             </p>
           ) : null}
           {fieldErrors ? <FieldErrorList errors={fieldErrors} /> : null}
-          {previewErr ? <ErrorBanner title="Couldn’t read that card" message={previewErr} /> : null}
+          {previewErr ? (
+            <ErrorBanner title={previewErr.title} message={previewErr.message} />
+          ) : null}
           <div className="flex flex-wrap justify-end gap-2">
             <Button
               variant="ghost"

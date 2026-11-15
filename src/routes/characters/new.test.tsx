@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, createEvent, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import type { ImportError, PreviewResult } from "@/server/fns/characters";
 
@@ -410,5 +410,43 @@ describe("NewCharacterPage update mode (?update=<id>)", () => {
       (screen.getByRole("button", { name: /choose different file/i }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
+  });
+
+  it("prevents page-level file navigation while an update is in flight", async () => {
+    enterUpdateMode({ id: "char-9", name: "Old Name" });
+    const { rerender, container } = await renderThroughPreview();
+    const main = container.querySelector("main")!;
+    // Idle: a drop on the page is not intercepted (unchanged behavior).
+    const idleDrop = createEvent.drop(main);
+    fireEvent(main, idleDrop);
+    expect(idleDrop.defaultPrevented).toBe(false);
+
+    pendingState.updating = true;
+    mockUpdateCharacterFromCard.mockReturnValue(new Promise<PreviewResponse>(() => {}));
+    rerender(<NewCharacterPage />);
+
+    // Pending: drags that fall through the disabled dropzone must not
+    // navigate the tab to the dropped file.
+    const dragOver = createEvent.dragOver(main);
+    fireEvent(main, dragOver);
+    expect(dragOver.defaultPrevented).toBe(true);
+    const drop = createEvent.drop(main);
+    fireEvent(main, drop);
+    expect(drop.defaultPrevented).toBe(true);
+  });
+
+  it("frames a target_missing failure as an update error, not a card error", async () => {
+    enterUpdateMode({ id: "char-9", name: "Old Name" });
+    await renderThroughPreview();
+    mockUpdateCharacterFromCard.mockResolvedValue({
+      ok: false,
+      error: { kind: "target_missing", message: "The character to update no longer exists." },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /update character/i }));
+    await act(async () => {});
+
+    expect(screen.getByText("Couldn’t update the character")).toBeTruthy();
+    expect(screen.queryByText("Couldn’t read that card")).toBeNull();
   });
 });
