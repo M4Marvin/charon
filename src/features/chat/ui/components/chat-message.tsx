@@ -94,6 +94,8 @@ export const ChatMessage = memo(function ChatMessage({
 
   const editRef = useRef<HTMLTextAreaElement>(null);
 
+  // `editContent` is seeded by the edit-menu handler on every open, so it
+  // never needs syncing from `message.content` while the editor is closed.
   useLayoutEffect(() => {
     if (!editRef.current || !editing) return;
     const el = editRef.current;
@@ -102,10 +104,6 @@ export const ChatMessage = memo(function ChatMessage({
     el.focus();
     el.setSelectionRange(el.value.length, el.value.length);
   }, [editing]);
-
-  useLayoutEffect(() => {
-    if (!editing) setEditContent(message.content);
-  }, [message.content, editing]);
 
   const handleSaveEdit = useCallback(() => {
     if (!onEdit(message.localId, editContent)) return;
