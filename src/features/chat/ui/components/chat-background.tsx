@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 
 interface ChatBackgroundProps {
@@ -6,20 +6,32 @@ interface ChatBackgroundProps {
   fallbackSrc: string | null;
 }
 
+interface BackgroundState {
+  /** The src this state was derived from. */
+  seen: string | null;
+  previous: string | null;
+  loaded: string | null;
+  failed: string | null;
+}
+
 export function ChatBackground({ src, fallbackSrc }: ChatBackgroundProps) {
   const effectiveSrc = src ?? fallbackSrc;
-  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
-  const [previousSrc, setPreviousSrc] = useState<string | null>(null);
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const currentSrc = useRef(effectiveSrc);
+  // Adjusting state when the src changes: derived during render (React's
+  // "you might not need an effect" pattern) so the crossfade starts with the
+  // correct previous image in the same commit, with no ref and no sync pass.
+  const [state, setState] = useState<BackgroundState>({
+    seen: effectiveSrc,
+    previous: null,
+    loaded: null,
+    failed: null,
+  });
 
-  useEffect(() => {
-    if (currentSrc.current === effectiveSrc) return;
-    setPreviousSrc(currentSrc.current);
-    currentSrc.current = effectiveSrc;
-    setLoadedSrc(null);
-    setFailedSrc(null);
-  }, [effectiveSrc]);
+  let current = state;
+  if (state.seen !== effectiveSrc) {
+    current = { seen: effectiveSrc, previous: state.seen, loaded: null, failed: null };
+    setState(current);
+  }
+  const { previous: previousSrc, loaded: loadedSrc, failed: failedSrc } = current;
 
   const currentFailed = effectiveSrc !== null && failedSrc === effectiveSrc;
   const currentVisible = effectiveSrc !== null && !currentFailed;
@@ -38,7 +50,11 @@ export function ChatBackground({ src, fallbackSrc }: ChatBackgroundProps) {
           preset="background"
           intrinsicSize={false}
           className="absolute inset-0 size-full object-cover brightness-[0.8] blur-sm scale-110"
-          onError={() => setFailedSrc(previousSrc)}
+          onError={() =>
+            setState((state) =>
+              state.failed === previousSrc ? state : { ...state, failed: previousSrc },
+            )
+          }
         />
       ) : null}
 
@@ -50,8 +66,16 @@ export function ChatBackground({ src, fallbackSrc }: ChatBackgroundProps) {
           preset="background"
           intrinsicSize={false}
           priority
-          onLoad={() => setLoadedSrc(effectiveSrc)}
-          onError={() => setFailedSrc(effectiveSrc)}
+          onLoad={() =>
+            setState((state) =>
+              state.loaded === effectiveSrc ? state : { ...state, loaded: effectiveSrc },
+            )
+          }
+          onError={() =>
+            setState((state) =>
+              state.failed === effectiveSrc ? state : { ...state, failed: effectiveSrc },
+            )
+          }
           className="absolute inset-0 size-full object-cover brightness-[0.8] blur-sm scale-110 transition-opacity duration-700"
           style={{ opacity: loadedSrc === effectiveSrc ? 1 : 0 }}
         />
