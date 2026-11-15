@@ -25,8 +25,11 @@ describe("character revisions repository", () => {
     ctx.sqlite.close();
   });
 
-  function seedCharacter(id = "char-1") {
-    createCharacter({ id, name: "Alice", data: makeCharacterData({ name: "Alice" }) }, db);
+  function seedCharacter(id = "char-1", imagePath: string | null = null) {
+    createCharacter(
+      { id, name: "Alice", data: makeCharacterData({ name: "Alice" }), imagePath },
+      db,
+    );
   }
 
   function snap(
@@ -198,7 +201,7 @@ describe("character revisions repository", () => {
 
   describe("restoreCharacterRevision", () => {
     it("copies the old snapshot onto the character and appends a new revision", () => {
-      seedCharacter();
+      seedCharacter("char-1", "uploads/avatars/old.png");
       const v1 = makeCharacterData({ name: "Alice", description: "original" });
       const v2 = makeCharacterData({ name: "Alice", description: "changed" });
       createRevision("char-1", snap({ data: v1 }), db);
@@ -207,6 +210,9 @@ describe("character revisions repository", () => {
       const char = restoreCharacterRevision("char-1", 2, db);
 
       expect(char.data).toEqual(v1);
+      // The avatar follows the row: art is not snapshotted, restores keep
+      // the current portrait (docs/user/characters.md and ui-spec 6.5.5).
+      expect(char.imagePath).toBe("uploads/avatars/old.png");
       const revisions = listRevisions("char-1", db);
       // rev 1 baseline, v1 as rev 2, save snapshotted v2 as rev 3, restore
       // appended rev 4.
