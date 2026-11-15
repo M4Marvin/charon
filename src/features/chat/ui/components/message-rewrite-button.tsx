@@ -39,17 +39,73 @@ export function RewriteDialog({
   disabled,
   onApplied,
 }: RewriteDialogProps) {
+  // The phase stays in the shell: the close-guard needs it while the form is
+  // unmounted with the dialog content.
+  const [phase, setPhase] = useState<Phase>("idle");
+  const busy = phase !== "idle";
+
+  const close = () => {
+    setPhase("idle");
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (busy) return;
+        onOpenChange(next);
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Rewrite with AI</DialogTitle>
+          <DialogDescription>
+            The rewrite is a proposal until you accept it. Nothing is written before then.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* The form lives inside the dialog content: closing through any path
+            unmounts it, so a reopened dialog never keeps a stale instruction,
+            proposal, error, or spinner. */}
+        <RewriteForm
+          chatId={chatId}
+          messageLocalId={messageLocalId}
+          disabled={disabled}
+          phase={phase}
+          setPhase={setPhase}
+          close={close}
+          onApplied={onApplied}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface RewriteFormProps {
+  chatId: string;
+  messageLocalId: number;
+  disabled?: boolean;
+  phase: Phase;
+  setPhase: (phase: Phase) => void;
+  close: () => void;
+  onApplied?: () => void;
+}
+
+function RewriteForm({
+  chatId,
+  messageLocalId,
+  disabled,
+  phase,
+  setPhase,
+  close,
+  onApplied,
+}: RewriteFormProps) {
   const [instruction, setInstruction] = useState("");
   const [proposal, setProposal] = useState<{ proposalId: string; text: string } | null>(null);
-  const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
 
-  const reset = () => {
-    setInstruction("");
-    setProposal(null);
-    setPhase("idle");
-    setError(null);
-  };
+  const busy = phase !== "idle";
 
   const generate = async () => {
     setPhase("running");
@@ -64,9 +120,9 @@ export function RewriteDialog({
         },
       });
       setProposal({ proposalId: result.proposalId, text: result.text });
-      setPhase("idle");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Rewrite failed");
+    } finally {
       setPhase("idle");
     }
   };
@@ -78,8 +134,7 @@ export function RewriteDialog({
     try {
       await acceptProposalFn({ data: { proposalId: proposal.proposalId } });
       onApplied?.();
-      onOpenChange(false);
-      reset();
+      close();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not apply rewrite");
       setPhase("idle");
@@ -91,73 +146,54 @@ export function RewriteDialog({
     setPhase("denying");
     try {
       await denyProposalFn({ data: { proposalId: proposal.proposalId } });
-      onOpenChange(false);
-      reset();
+      close();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not deny rewrite");
       setPhase("idle");
     }
   };
 
-  const busy = phase !== "idle";
-
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (busy) return;
-        onOpenChange(next);
-        if (!next) reset();
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Rewrite with AI</DialogTitle>
-          <DialogDescription>
-            The rewrite is a proposal until you accept it. Nothing is written before then.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <div className="space-y-3">
+        <Textarea
+          value={instruction}
+          onChange={(event) => setInstruction(event.target.value)}
+          placeholder="Optional instruction: make it shorter, more formal, fix tense…"
+          rows={3}
+        />
+        {error ? <p className="text-sm text-danger">{error}</p> : null}
+        {proposal ? (
+          <div className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-(--border-subtle) bg-raised p-3 text-sm leading-6">
+            {proposal.text}
+          </div>
+        ) : null}
+      </div>
 
-        <div className="space-y-3">
-          <Textarea
-            value={instruction}
-            onChange={(event) => setInstruction(event.target.value)}
-            placeholder="Optional instruction: make it shorter, more formal, fix tense…"
-            rows={3}
-          />
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
-          {proposal ? (
-            <div className="max-h-72 overflow-auto whitespace-pre-wrap rounded-lg border border-(--border-subtle) bg-raised p-3 text-sm leading-6">
-              {proposal.text}
-            </div>
-          ) : null}
-        </div>
-
-        <DialogFooter>
-          {proposal ? (
-            <>
-              <Button variant="ghost" onClick={() => void deny()} disabled={busy}>
-                {phase === "denying" ? <Spinner className="size-4" /> : null}
-                Discard
-              </Button>
-              <Button onClick={() => void accept()} disabled={busy || disabled}>
-                {phase === "accepting" ? <Spinner className="size-4" /> : null}
-                Use this rewrite
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>
-                Cancel
-              </Button>
-              <Button onClick={() => void generate()} disabled={busy || disabled}>
-                {phase === "running" ? <Spinner className="size-4" /> : null}
-                Generate
-              </Button>
-            </>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter>
+        {proposal ? (
+          <>
+            <Button variant="ghost" onClick={() => void deny()} disabled={busy}>
+              {phase === "denying" ? <Spinner className="size-4" /> : null}
+              Discard
+            </Button>
+            <Button onClick={() => void accept()} disabled={busy || disabled}>
+              {phase === "accepting" ? <Spinner className="size-4" /> : null}
+              Use this rewrite
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="ghost" onClick={close} disabled={busy}>
+              Cancel
+            </Button>
+            <Button onClick={() => void generate()} disabled={busy || disabled}>
+              {phase === "running" ? <Spinner className="size-4" /> : null}
+              Generate
+            </Button>
+          </>
+        )}
+      </DialogFooter>
+    </>
   );
 }
