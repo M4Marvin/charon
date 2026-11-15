@@ -99,12 +99,83 @@ less state), **justified** (keep, with reason).
 
 ## Verification
 
-- `pnpm exec tsc --noEmit` — see below
-- `pnpm run lint` — see below
-- `pnpm run test` — see below
-- `pnpm run build` — see below
-- Real browser pass over the chat page (composer growth, streaming follow +
-  fade, panel Escape/focus flow, settings open→close focus return, lightbox,
-  selection strip, CSS fallback paths) — see below
+Run on `refactor/chat-page-hook-cleanup` after all fixes (2026-11-15):
 
-Results are recorded at the bottom of this file after the implementation pass.
+- `pnpm run test` — **92 files, 930 tests passed**
+- `pnpm exec tsc --noEmit` — **clean** (no new errors; the two pre-existing
+  noise sites noted in CONTRIBUTING are untouched)
+- `pnpm run lint` (oxlint) — **clean**
+- `pnpm run build` — **succeeds** (`vite build`, pre-existing vendor
+  `use client` directive warning only)
+- Real browser pass over the chat page — see the log below
+
+## Implementation log
+
+Fixes were committed one at a time, each with targeted tests run between:
+
+1. `2765fc7` — fix 7: key `ChatPage` per chat; selection pruning becomes a
+   render-time filter (`checkedIds` → derived `selectedIds`).
+2. `31a3196` — fix 8: delete the `editContent` sync effect.
+3. `82f3b65` — fix 10: background crossfade state derived during render.
+4. `cd1ec38` — fix 12: panel image failure keyed by `failedSrc`; standalone
+   reset effect deleted.
+5. `4b167c5` — fix 13: lightbox viewer state in a `key={src}` body child.
+6. `85c8449` — fix 14: selection-prompt form state inside the dialog content;
+   `running` stays in the shell for the close-guard.
+7. `a000aad` — fix 15: rewrite dialog same split; explicit `close()` resets
+   phase.
+8. `eb1f544` — fixes 16/17/19: settings section changes event-driven; normalize
+   effect deleted; micro-memos dropped.
+9. `7b944c5` — fix 18: pointless `useCallback` wrappers dropped.
+10. `9c75d02` — fix 6: image cards are real buttons; tests assert semantics.
+11. `e2eb7f2` — fix 9: `autoScroll` driven by the primitive's own
+    `useMessageScrollerScrollable().end` via a bridge child.
+12. `10e8ef9` — fixes 1/2/3: `field-sizing: content` auto-grow with the
+    scrollHeight JS behind a capability gate (`src/lib/css-supports.ts`).
+13. (same commit set) fix 4: scroll-linked CSS top fade via a named
+    `--chat-top` timeline (`timeline-scope` on the scroller root,
+    `scroll-timeline-name` on the viewport, `animation-range: 0px 64px`), JS
+    fade retained as the fallback.
+14. `9c75d02` batch also covers 6; `af1a0c1` — fix 5 (Base UI trigger-focus
+    restore replaces the manual refocus) + adjacent fixes (back button is a
+    `Link`, `isBusy` tautology collapsed).
+15. `fix 11`: one shared `useFloatingPanel` hook — Escape (with a boolean
+    suppression for the nested confirm dialog), focus-on-open, onClose
+    latest-ref, and the exit-transition unmount timer.
+
+Refinements discovered during implementation (diverging from the original
+plan, noted for honesty):
+
+- **Fix 12**: a per-image child component owning failure state cannot inform
+  the parent's `canOpen` without lifting state back up, so the failure state
+  stays in the panel but keyed by src (`failedSrc` comparison) — the
+  CONTRIBUTING-documented pattern. Same effect-count reduction, no lifting.
+- **Fix 14**: the async `generate` moved to the shell and returns the failure
+  message to the form, so `running` survives a success-close (the old reset
+  effect used to clear it; the content child now unmounts instead, and the
+  shell's `finally` handles the flag).
+- **Fix 11**: focus-on-open and the Escape listener are separate effects so
+  toggling the confirm dialog doesn't steal focus back to the close button
+  (the old `confirmOpenRef` trick avoided both resubscribe *and* refocus; the
+  boolean suppression keeps that behavior with no ref mirror).
+
+## Browser pass (in progress)
+
+Dev server: `pnpm run dev` on :3000. The in-app browser tab is parked on
+`/signin` — the pass continues after sign-in. Checklist:
+
+- [ ] Composer: grows with typing, caps at 120px and scrolls, shrinks on clear
+- [ ] Streaming: follow-bottom, yank-free scroll-up, gate re-arms at bottom
+- [ ] Top fade ramps over the first 64px of scroll (CSS path)
+- [ ] Portrait/scene panels: open, Escape closes, focus lands on close button,
+      card activates on click, image failure fallback
+- [ ] Scene panel: Escape ignored while the clear-confirm is open
+- [ ] Settings: open → close returns focus to the gear (Base UI restore)
+- [ ] Settings sections: nav switches, scroll resets, sections stay visited
+- [ ] Lightbox: zoom toggle, backdrop click + Escape close, unavailable-image
+      state
+- [ ] Selection strip: select → strip appears → Prompt opens dialog → form
+      resets after close
+- [ ] Message edit: autosize (or fallback), caret at end, Ctrl+Enter saves
+- [ ] CSS fallback path spot-check (emulate no-support)
+
