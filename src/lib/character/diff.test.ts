@@ -146,4 +146,61 @@ describe("diffCharacterSnapshots", () => {
     const fields = diffCharacterSnapshots(a, b).map((d) => d.field);
     expect(fields).toEqual(["name", "description", "scenario"]);
   });
+
+  it("surfaces an untracked extensions change when nothing tracked differs", () => {
+    const a = snapshot({
+      data: { extensions: { depth_prompt: { prompt: "old", depth: 4, role: "system" } } },
+    });
+    const b = snapshot({
+      data: { extensions: { depth_prompt: { prompt: "new", depth: 4, role: "system" } } },
+    });
+
+    const diffs = diffCharacterSnapshots(a, b);
+
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0]).toMatchObject({
+      field: "extensions",
+      label: "Extension: depth_prompt",
+      before: JSON.stringify({ depth_prompt: { prompt: "old", depth: 4, role: "system" } }),
+      after: JSON.stringify({ depth_prompt: { prompt: "new", depth: 4, role: "system" } }),
+    });
+  });
+
+  it("labels a multi-key extensions change and handles added or removed keys", () => {
+    const a = snapshot({ data: { extensions: { talkativeness: 0.5, old_key: "x" } } });
+    const b = snapshot({ data: { extensions: { talkativeness: 0.5, new_key: "y" } } });
+
+    const diffs = diffCharacterSnapshots(a, b);
+
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0].label).toBe("Extensions (2 changed)");
+    expect(diffs[0].before).toBe(JSON.stringify({ old_key: "x", new_key: undefined }));
+    expect(diffs[0].after).toBe(JSON.stringify({ old_key: undefined, new_key: "y" }));
+  });
+
+  it("adds no extensions row when tracked fields already differ", () => {
+    const a = snapshot({
+      data: {
+        description: "old",
+        extensions: { depth_prompt: { prompt: "a", depth: 4, role: "system" } },
+      },
+    });
+    const b = snapshot({
+      data: {
+        description: "new",
+        extensions: { depth_prompt: { prompt: "b", depth: 4, role: "system" } },
+      },
+    });
+
+    const diffs = diffCharacterSnapshots(a, b);
+
+    expect(diffs.map((d) => d.field)).toEqual(["description"]);
+  });
+
+  it("treats legacy string-typed extensions scalars as unchanged in the fallback", () => {
+    const a = snapshot({ data: { extensions: { talkativeness: "0.5" as unknown as number } } });
+    const b = snapshot({ data: { extensions: { talkativeness: 0.5 } } });
+
+    expect(diffCharacterSnapshots(a, b)).toEqual([]);
+  });
 });

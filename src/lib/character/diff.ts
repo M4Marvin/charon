@@ -106,5 +106,33 @@ export function diffCharacterSnapshots(a: CharacterSnapshot, b: CharacterSnapsho
     });
   }
 
+  // Untracked extensions (depth_prompt rides in seed data and whole-card
+  // swaps) are invisible to the fields above. When nothing tracked differs
+  // but extensions do, surface the delta so an empty diff never claims the
+  // cards are identical. Scalar keys whose text matches (legacy cards may
+  // type talkativeness as string or number) count as unchanged.
+  if (diffs.length === 0) {
+    const aExt = (a.data.extensions ?? {}) as Record<string, unknown>;
+    const bExt = (b.data.extensions ?? {}) as Record<string, unknown>;
+    const sameScalarText = (x: unknown, y: unknown) =>
+      (typeof x === "string" || typeof x === "number") &&
+      (typeof y === "string" || typeof y === "number") &&
+      asText(x) === asText(y);
+    const keys = [...new Set([...Object.keys(aExt), ...Object.keys(bExt)])].filter(
+      (k) =>
+        !sameScalarText(aExt[k], bExt[k]) && JSON.stringify(aExt[k]) !== JSON.stringify(bExt[k]),
+    );
+    if (keys.length > 0) {
+      const pick = (ext: Record<string, unknown>) =>
+        JSON.stringify(Object.fromEntries(keys.map((k) => [k, ext[k]])));
+      diffs.push({
+        field: "extensions",
+        label: keys.length === 1 ? `Extension: ${keys[0]}` : `Extensions (${keys.length} changed)`,
+        before: pick(aExt),
+        after: pick(bExt),
+      });
+    }
+  }
+
   return diffs;
 }
