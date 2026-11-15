@@ -205,23 +205,35 @@ export function MessageList({
 
   // The top fade ramps with scroll distance instead of toggling, so it never
   // pops in at the first pixel of scroll. Scroll-driven CSS animation owns it
-  // where supported (see .chat-top-fade in styles.css); this is the fallback.
+  // where the timeline actually runs (see .chat-top-fade in styles.css); the
+  // JS fallback covers browsers without the feature and engines whose
+  // timelines construct but never activate.
   const syncTopFade = useCallback((el: HTMLElement) => {
     if (!fadeRef.current) return;
     fadeRef.current.style.opacity = String(Math.min(1, Math.max(0, el.scrollTop / 64)));
   }, []);
 
+  // `CSS.supports` over-reports: some engines build the ScrollTimeline and
+  // then never advance it (currentTime stays null while the viewport
+  // scrolls). Probe the live animation once; only a timeline with a real
+  // current time gets to own the fade.
   useEffect(() => {
-    if (supportsScrollDrivenAnimations) return;
-    if (viewportRef.current) syncTopFade(viewportRef.current);
-  }, [syncTopFade]);
+    const viewport = viewportRef.current;
+    const fade = fadeRef.current;
+    if (!viewport || !fade) return;
 
-  const handleScroll = useCallback(
-    (event: React.UIEvent<HTMLDivElement>) => {
-      syncTopFade(event.currentTarget);
-    },
-    [syncTopFade],
-  );
+    const animation =
+      typeof fade.getAnimations === "function" ? fade.getAnimations()[0] : undefined;
+    const timelineCurrent = (animation?.timeline as ScrollTimeline | undefined)?.currentTime;
+    const timelineAlive = supportsScrollDrivenAnimations && timelineCurrent !== null;
+    if (timelineAlive) return;
+
+    fade.style.animation = "none";
+    const onScroll = () => syncTopFade(viewport);
+    onScroll();
+    viewport.addEventListener("scroll", onScroll, { passive: true });
+    return () => viewport.removeEventListener("scroll", onScroll);
+  }, [syncTopFade]);
 
   const ids = entries.map((e) => String(e.message.localId));
 
@@ -239,7 +251,6 @@ export function MessageList({
           ref={viewportRef}
           className="px-3 pt-3 md:px-6 [scroll-timeline-name:--chat-top]"
           aria-busy={isStreamingPlaceholder || undefined}
-          onScroll={supportsScrollDrivenAnimations ? undefined : handleScroll}
         >
           <MessageScrollerContent
             className="mx-auto max-w-3xl flex-col justify-end gap-3 pb-6 max-md:pb-20 max-md:pr-12"
