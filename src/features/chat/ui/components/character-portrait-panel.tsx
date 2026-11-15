@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { cn } from "@/lib/utils";
+import { useFloatingPanel } from "../hooks/use-floating-panel";
 
 const PANEL_SIZES = "min(24rem, max(12rem, calc((100vw - 48rem)/2 - 2rem)))";
 
@@ -23,40 +24,20 @@ export function CharacterPortraitPanel({
   onClose,
   onImageClick,
 }: CharacterPortraitPanelProps) {
-  const [keepImageMounted, setKeepImageMounted] = useState(false);
   // Failure is keyed by src (CONTRIBUTING fallback pattern): a new version
-  // recovers without a reset effect; the open effect below still resets it on
+  // recovers without a reset effect; the effect below still resets it on
   // reopen so a previously failed load is retried.
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const onCloseRef = useRef(onClose);
+  const { keepImageMounted } = useFloatingPanel({
+    open,
+    onClose,
+    focusRef: closeButtonRef,
+  });
 
   useEffect(() => {
     setFailedSrc(null);
-    if (open) {
-      setKeepImageMounted(true);
-      return;
-    }
-
-    const timer = window.setTimeout(() => setKeepImageMounted(false), 300);
-    return () => window.clearTimeout(timer);
   }, [open, imageSrc]);
-
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!open) return;
-    closeButtonRef.current?.focus();
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
-      onCloseRef.current();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open]);
 
   const canOpen = imageSrc !== null && failedSrc !== imageSrc;
   const shouldMountImage = open || keepImageMounted;

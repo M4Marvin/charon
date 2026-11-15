@@ -1,10 +1,11 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, ImageIcon, ImagePlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OptimizedImage } from "@/components/ui/optimized-image";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/image-optimization";
 import { cn } from "@/lib/utils";
+import { useFloatingPanel } from "../hooks/use-floating-panel";
 
 const PANEL_SIZES = "min(24rem, max(12rem, calc((100vw - 48rem)/2 - 2rem)))";
 
@@ -31,67 +32,45 @@ export function CustomImagePanel({
 }: CustomImagePanelProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const onCloseRef = useRef(onClose);
-  const confirmOpenRef = useRef(false);
-  const [keepImageMounted, setKeepImageMounted] = useState(false);
   // Failure is keyed by src (CONTRIBUTING fallback pattern): a new version or
-  // a different image recovers without a reset effect; the close/open effect
-  // below still resets it on reopen so a failed load is retried.
+  // a different image recovers without a reset effect; the effect below still
+  // resets it on reopen so a failed load is retried.
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const { keepImageMounted } = useFloatingPanel({
+    open,
+    onClose,
+    // The confirm dialog owns Escape while it is open.
+    escapeDisabled: confirmClearOpen,
+    focusRef: closeButtonRef,
+  });
 
+  // Panel-owned resets: failed image on (re)open, upload error on open, and a
+  // pending confirm is discarded when the panel closes.
   useEffect(() => {
     setFailedSrc(null);
     if (open) {
-      setKeepImageMounted(true);
       setUploadError(null);
       return;
     }
-
     setConfirmClearOpen(false);
-    const timer = window.setTimeout(() => setKeepImageMounted(false), 300);
-    return () => window.clearTimeout(timer);
-  }, [open]);
-
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    confirmOpenRef.current = confirmClearOpen;
-  }, [confirmClearOpen]);
-
-  useEffect(() => {
-    if (!open) return;
-    closeButtonRef.current?.focus();
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
-      if (confirmOpenRef.current) return;
-      onCloseRef.current();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open]);
 
   const shouldMountImage = open || keepImageMounted;
 
-  const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
-        setUploadError(`File too large (max ${MAX_IMAGE_UPLOAD_BYTES / (1024 * 1024)} MB).`);
-        e.target.value = "";
-        return;
-      }
-      setUploadError(null);
-      onUploadImage(file);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      setUploadError(`File too large (max ${MAX_IMAGE_UPLOAD_BYTES / (1024 * 1024)} MB).`);
       e.target.value = "";
-    },
-    [onUploadImage],
-  );
+      return;
+    }
+    setUploadError(null);
+    onUploadImage(file);
+    e.target.value = "";
+  };
 
   const displaySrc = customImageSrc ?? imageSrc;
   const isCustom = customImageSrc !== null;
