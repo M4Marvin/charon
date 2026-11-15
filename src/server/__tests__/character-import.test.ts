@@ -8,7 +8,7 @@ import {
   previewCharacterCard,
   updateCharacterCard,
 } from "@/server/services/character/importer";
-import { createCharacter, getCharacter } from "@/db/repositories/characters";
+import { createCharacter, getCharacter, listCharacters } from "@/db/repositories/characters";
 import { getRevision, listRevisions } from "@/db/repositories/character-revisions";
 import { removePrivatePath } from "@/server/uploads";
 import {
@@ -137,6 +137,26 @@ function makeCard(name: string): string {
   return Buffer.from(png).toString("base64");
 }
 
+/** Minimal valid V2 card data for seeding characters directly. */
+function makeEmptyCardData(name: string) {
+  return {
+    name,
+    description: "",
+    personality: "",
+    scenario: "",
+    first_mes: "",
+    mes_example: "",
+    creator_notes: "",
+    system_prompt: "",
+    post_history_instructions: "",
+    alternate_greetings: [],
+    tags: [],
+    creator: "",
+    character_version: "",
+    extensions: {},
+  };
+}
+
 describe("parseAndValidateCard", () => {
   it("rejects invalid base64", () => {
     const result = parseAndValidateCard("invalid!@@");
@@ -165,6 +185,19 @@ describe("parseAndValidateCard", () => {
       expect(result.parsed.spec).toBe("chara_card_v2");
       expect(result.parsed.specVersion).toBe("2.0");
       expect(result.parsed.cardData.tags).toEqual(["fantasy", "rpg"]);
+    }
+  });
+
+  it("rejects a card with no character name", () => {
+    const result = parseAndValidateCard(makeCard(""));
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("validation");
+      if (result.error.kind === "validation") {
+        expect(result.error.errors).toEqual([
+          { field: "name", message: expect.stringMatching(/no character name/) },
+        ]);
+      }
     }
   });
 });
@@ -198,29 +231,25 @@ describe("previewCharacterCard", () => {
   });
 
   it("returns duplicates when name matches existing characters, newest first", async () => {
-    const emptyCard = {
-      name: "Zephyr",
-      description: "",
-      personality: "",
-      scenario: "",
-      first_mes: "",
-      mes_example: "",
-      creator_notes: "",
-      system_prompt: "",
-      post_history_instructions: "",
-      alternate_greetings: [],
-      tags: [],
-      creator: "",
-      character_version: "",
-      extensions: {},
-    };
     createCharacter(
-      { id: "char-1", name: "Zephyr", data: emptyCard, spec: "chara_card_v2", specVersion: "2.0" },
+      {
+        id: "char-1",
+        name: "Zephyr",
+        data: makeEmptyCardData("Zephyr"),
+        spec: "chara_card_v2",
+        specVersion: "2.0",
+      },
       db,
     );
     await new Promise((r) => setTimeout(r, 10));
     createCharacter(
-      { id: "char-2", name: "zephyr", data: emptyCard, spec: "chara_card_v2", specVersion: "2.0" },
+      {
+        id: "char-2",
+        name: "zephyr",
+        data: makeEmptyCardData("zephyr"),
+        spec: "chara_card_v2",
+        specVersion: "2.0",
+      },
       db,
     );
 
@@ -239,6 +268,47 @@ describe("previewCharacterCard", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.duplicates).toEqual([]);
+    }
+  });
+
+  it("matches NFD-named cards against NFC-named characters", async () => {
+    createCharacter(
+      {
+        id: "char-nfc",
+        name: "Café Wizard",
+        data: makeEmptyCardData("Café Wizard"),
+        spec: "chara_card_v2",
+        specVersion: "2.0",
+      },
+      db,
+    );
+
+    // NFD (decomposed) form of the same name, as some card exporters emit.
+    const nfdName = "Cafe\u0301 Wizard";
+    expect(nfdName.normalize("NFC")).toBe("Café Wizard");
+    const result = await previewCharacterCard(makeCard(nfdName), db);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.duplicates.map((d) => d.id)).toEqual(["char-nfc"]);
+    }
+  });
+
+  it("matches names that differ only in surrounding whitespace", async () => {
+    createCharacter(
+      {
+        id: "char-pad",
+        name: " Ada ",
+        data: makeEmptyCardData(" Ada "),
+        spec: "chara_card_v2",
+        specVersion: "2.0",
+      },
+      db,
+    );
+
+    const result = await previewCharacterCard(makeCard("Ada"), db);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.duplicates.map((d) => d.id)).toEqual(["char-pad"]);
     }
   });
 
@@ -317,6 +387,15 @@ describe("importCharacterCard with embedded lorebook", () => {
 
   afterEach(() => {
     ctx.sqlite.close();
+  });
+
+  it("rejects a nameless card before writing the avatar or row", async () => {
+    const res = await importCharacterCard(makeCard(""), db);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error.kind).toBe("validation");
+    }
+    expect(listCharacters(db)).toHaveLength(0);
   });
 
   it("creates a standalone disabled lorebook from the embedded book", async () => {
@@ -500,6 +579,20 @@ describe("updateCharacterCard", () => {
       (c) => c[0],
     );
     expect(removedPaths).toContain("/tmp/charon-test/uploads/avatars/old.png");
+    // The cleanup only ever deletes paths the live row no longer references.
+    expect(removedPaths).not.toContain(res.character.imagePath);
+  });
+
+  it("rejects a card with no character name instead of committing an empty one", async () => {
+    const targetId = seedTarget();
+    const res = await updateCharacterCard(makeCard(""), targetId, db);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error.kind).toBe("validation");
+    }
+    // The target is untouched.
+    expect(getCharacter(targetId, db).name).toBe("Old Name");
+    expect(listRevisions(targetId, db)).toHaveLength(1);
   });
 
   it("fails with target_missing when the character does not exist", async () => {

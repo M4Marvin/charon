@@ -112,10 +112,29 @@ export function parseAndValidateCard(
     return { ok: false, error: { kind: "validation", errors: validation.errors } };
   }
 
+  // A card with no name (empty `data.name`, no slug) would commit an empty
+  // display name — the edit form and rename validator both treat that as
+  // invalid, so reject it here for import, preview, and card-update alike.
+  const cardData = validation.card.data as CharacterDataV2;
+  if (deriveDisplayName(cardData) === "") {
+    return {
+      ok: false,
+      error: {
+        kind: "validation",
+        errors: [
+          {
+            field: "name",
+            message: "The card has no character name. Set one in the card file and re-export.",
+          },
+        ],
+      },
+    };
+  }
+
   return {
     ok: true,
     parsed: {
-      cardData: validation.card.data as CharacterDataV2,
+      cardData,
       spec: isV3 ? "chara_card_v3" : "chara_card_v2",
       specVersion: isV3 ? "3.0" : "2.0",
       pngBytes,
@@ -172,8 +191,11 @@ export async function previewCharacterCard(
   const descriptionExcerpt = (cardData.description || "").slice(0, 280);
 
   const name = deriveDisplayName(cardData);
+  // NFC + trim + lowercase: NFD names from some card exporters must match
+  // NFC-named characters, or the duplicate/Update offer silently vanishes.
+  const nameKey = name.normalize("NFC").trim().toLowerCase();
   const duplicates = repoListNameSummaries(db)
-    .filter((c) => c.name.toLowerCase() === name.toLowerCase())
+    .filter((c) => c.name.normalize("NFC").trim().toLowerCase() === nameKey)
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime() || a.id.localeCompare(b.id))
     .map((c) => ({ id: c.id, name: c.name, updatedAt: c.updatedAt.toISOString() }));
 
@@ -378,8 +400,13 @@ export async function updateCharacterCard(
     throw e;
   }
 
-  // Committed: swap the avatar files (old file may already be gone; best-effort).
-  if (oldImagePath) {
+  // Committed: swap the avatar files (old file may already be gone; best-effort,
+  // and a crash here just orphans the old PNG). Re-read the live row first: the
+  // row's current imagePath is authoritative, so a concurrent update (or any
+  // future writer that repoints the row) can never get its live file deleted
+  // by this cleanup.
+  const live = repoGet(targetId, db);
+  if (oldImagePath && live.imagePath !== oldImagePath) {
     await invalidateStoredImageCache(oldImagePath).catch(() => {});
     await removeAvatar(oldImagePath);
   }
