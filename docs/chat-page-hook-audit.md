@@ -159,23 +159,68 @@ plan, noted for honesty):
   (the old `confirmOpenRef` trick avoided both resubscribe *and* refocus; the
   boolean suppression keeps that behavior with no ref mirror).
 
-## Browser pass (in progress)
+## Browser pass
 
-Dev server: `pnpm run dev` on :3000. The in-app browser tab is parked on
-`/signin` — the pass continues after sign-in. Checklist:
+Target: production build (`node .output/server/index.mjs`, :3003) after a full
+DB reset and fresh account, per user instruction (`dev.db.bak-hook-audit`
+holds the pre-reset DB).
 
-- [ ] Composer: grows with typing, caps at 120px and scrolls, shrinks on clear
-- [ ] Streaming: follow-bottom, yank-free scroll-up, gate re-arms at bottom
-- [ ] Top fade ramps over the first 64px of scroll (CSS path)
-- [ ] Portrait/scene panels: open, Escape closes, focus lands on close button,
-      card activates on click, image failure fallback
-- [ ] Scene panel: Escape ignored while the clear-confirm is open
-- [ ] Settings: open → close returns focus to the gear (Base UI restore)
-- [ ] Settings sections: nav switches, scroll resets, sections stay visited
-- [ ] Lightbox: zoom toggle, backdrop click + Escape close, unavailable-image
-      state
-- [ ] Selection strip: select → strip appears → Prompt opens dialog → form
-      resets after close
-- [ ] Message edit: autosize (or fallback), caret at end, Ctrl+Enter saves
-- [ ] CSS fallback path spot-check (emulate no-support)
+### Environment findings (in-app Electron browser — Chromium 152)
+
+Three engine bugs found and worked around/logged (`20261115234139-opencode-in-app`):
+
+1. **`transitionend` never fires** — a plain opacity transition runs but the
+   event is never dispatched. Base UI/Radix overlays leave ghost popups on
+   close in this browser. State-level close verification used instead;
+   ghosts disposed between steps. *Not an app bug* — the same flows close
+   normally in real Chrome.
+2. **Scroll timelines construct but never activate** — `CSS.supports` says
+   supported, `getAnimations()` returns a real `ScrollTimeline`, but
+   `currentTime`/`progress` stay `null` while the viewport scrolls. This is
+   why the fade got a **runtime liveness probe** (commit `2bdf3f5`): the CSS
+   path only wins when `timeline.currentTime !== null`, otherwise the JS
+   fade takes over. Verified: fade tracks scroll 0 → 64px → 400px → back.
+3. **Vite dev hydration hangs** — SSR renders, modules fetch 200, the client
+   entry runs, but `hydrateRoot` never executes; even leaf-module
+   `import()` times out. Reproduced on a clean dep cache **and on the
+   pre-change base branch** — dev-mode-only; the production build hydrates
+   instantly. The browser pass therefore runs against the production build.
+
+### Verified ✓
+
+- [x] First-run setup → account creation (username/password set by me per
+      user instruction) → onboarding → chat page
+- [x] Composer: `field-sizing: content` active; floor 40px, grows, caps at
+      120px with scroll, shrinks on clear
+- [x] Top fade tracks scroll (via the JS fallback in this browser; CSS path
+      in engines where timelines actually run)
+- [x] Edge state: scroll-to-bottom button activates away from bottom, deactivates
+      at bottom (the store the `autoScroll` bridge consumes)
+- [x] Real send → streaming: pending overlay cleared when the placeholder
+      row arrived, message list grew 8 → 10, **auto-follow pinned to the
+      bottom through the stream**, teardown on provider failure removed the
+      placeholder cleanly (seeded OpenRouter key is expired — job `failed`
+      server-side; UI state stayed consistent, composer restored)
+- [x] Message edit: menu → editor opens autosized (floor 60px, max 240px,
+      `field-sizing: content`), caret at end, Ctrl+Enter saves, list updates
+      optimistically, composer refocused after save. (Focus is briefly
+      stolen back to the menu trigger on close by Base UI before the editor
+      effect runs — pre-existing behavior, unchanged by this refactor.)
+- [x] Selection strip: "Select for prompt" ×2 → strip shows "2 selected",
+      Prompt opens the dialog ("Prompt 2 messages"), Generate enables only
+      with text
+- [x] Prompt dialog Escape: `onOpenChange(false)` fires and clears the
+      selection (state verified — the ghost popup that remains is the
+      environment's missing `transitionend`, disposed manually)
+
+### Remaining (blocked on the in-app browser relay wedging mid-pass)
+
+- [ ] Portrait/scene panels: Escape close, focus lands on close button,
+      scene panel ignores Escape while the clear-confirm is open
+- [ ] Settings: open → close returns focus to the gear; section switching +
+      scroll reset (state-level, since the Sheet also ghosts on close)
+- [ ] Lightbox: zoom toggle, backdrop/Escape close, unavailable-image state
+- [ ] Selection → Generate → result inserted into the composer (needs a
+      working provider; the seeded key is expired)
+
 
