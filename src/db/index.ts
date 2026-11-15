@@ -1,5 +1,5 @@
 import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { migrateWithStampRepair } from "@/db/migrate";
 import * as schema from "./schema.js";
 
 let _db: BetterSQLite3Database<typeof schema> | undefined;
@@ -11,7 +11,7 @@ export const db = new Proxy<BetterSQLite3Database<typeof schema>>({} as any, {
       const client = (_db as unknown as { $client: import("better-sqlite3").Database }).$client;
       client.pragma("foreign_keys = OFF");
       try {
-        migrate(_db, { migrationsFolder: "./drizzle" });
+        migrateWithStampRepair(_db);
       } finally {
         client.pragma("foreign_keys = ON");
       }

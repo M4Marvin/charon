@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { migrateWithStampRepair } from "@/db/migrate";
 import * as schema from "@/db/schema";
 import { user } from "@/db/schema";
 
@@ -15,7 +15,7 @@ export function makeTestDb(): { db: TestDb; sqlite: TestSqlite } {
   // single_account_admission trigger stays in place — exactly one user row.
   sqlite.pragma("foreign_keys = OFF");
   try {
-    migrate(db, { migrationsFolder: "./drizzle" });
+    migrateWithStampRepair(db);
   } finally {
     sqlite.pragma("foreign_keys = ON");
   }
