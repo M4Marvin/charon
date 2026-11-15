@@ -136,6 +136,13 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 
 Upgrading an existing database after the single-user change? Run `pnpm migrate:single-user` before the first boot: it backs the DB up to `dev.db.bak-single-user-<timestamp>` (including `-wal`/`-shm` if present) and then applies pending migrations through the same `src/db` migrator production uses, so the migration is deliberate and reversible (`cp dev.db.bak-single-user-<timestamp> dev.db`, plus the matching `-wal`/`-shm` backups if present).
 
+### Migration journal rules
+
+drizzle's SQLite migrator records each applied migration's journal `when` and applies only entries whose `when` is greater than the newest recorded value. Two consequences:
+
+- **Never re-stamp a shipped migration's `when` downward.** A database that applied the migration under the old stamp keeps that value as its ceiling, so a downward re-stamp makes every later migration with a smaller `when` silently skip — the app keeps booting until it first touches the missing schema. If a stamp must change, ship a repair that rewrites the *recorded* value before the migrator filters (see `migrateWithStampRepair` in `src/db/migrate.ts`, which fixes the 0027 stamp incident; manual repair: `UPDATE __drizzle_migrations SET created_at = 1794652121346 WHERE created_at = 1797336000000;`).
+- **Hand-written backfills must be tested against pre-existing data.** In-memory test DBs migrate from scratch, so backfill SQL silently runs against zero rows in CI. Use the replay pattern in `src/db/__tests__/character-revisions.migration.test.ts` to run the journal up to a chosen migration with data in place, then hand off to the real migrator.
+
 ## Pre-commit hook
 
 A `pre-commit` hook lives in `.githooks/` (wired via `core.hooksPath` by the `prepare` script on `pnpm install`). It runs four gates in order and blocks the commit on failure:
