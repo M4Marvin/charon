@@ -602,7 +602,7 @@ One overlay contract, whether centered dialog or side sheet:
 - Rows (newest first): name, `Current` badge on the newest, “Version {n} · saved {relative time} · {tagline}”. Actions per row: **Changes** (toggle, hidden on the oldest version) and **Restore** (disabled on Current).
 - Changes expands a field-level diff vs. the previous version — label · before → after, whitespace-collapsed and truncated; empty values shown as “(empty)”; empty diff shows “No tracked fields differ”. Diff data is fetched per row on expand. Snapshots carry name, tagline, data, and spec identification; the avatar follows the row (art is not snapshotted).
 - Restore opens a ConfirmDialog (“…will replace the current character data. This save is itself recorded as a new version.”); success toast “Restored version {n}”, failure toast; detail + revisions refetch after restore.
-- States: loading `SkeletonRows`; empty `EmptyState` (History icon, “No versions yet”); query error + Retry.
+- States: loading `SkeletonRows`; empty `EmptyState` (History icon, “No versions yet”); query error + Retry; not-found (character deleted while visiting) `EmptyState` with Back to characters, replacing any restorable rows.
 - Revisions cascade with the character on delete. Saves, edits, and renames each append one revision; revision numbering is per character, monotonic, append-only.
 - Document title: `Version history · Charon`.
 - Acceptance: newest row marked Current; Restore on an older version appends a new top row instead of rewriting history; Changes toggle shows the field diff.

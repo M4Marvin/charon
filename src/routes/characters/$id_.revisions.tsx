@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { History } from "lucide-react";
+import { History, UserRoundX } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -11,6 +11,8 @@ import { SkeletonRows } from "@/components/common/Skeletons";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { RelativeTime } from "@/components/common/RelativeTime";
 import { plainExcerpt } from "@/lib/plain-text";
+import { isCharacterNotFound } from "@/lib/app-errors";
+import { friendlyLoadError } from "@/lib/error-copy";
 import {
   useCharacter,
   useCharacterRevision,
@@ -25,10 +27,36 @@ export const Route = createFileRoute("/characters/$id_/revisions")({
   component: CharacterRevisionsPage,
 });
 
-function CharacterRevisionsPage() {
+export function CharacterRevisionsPage() {
   const { id } = Route.useParams();
-  const { data: character } = useCharacter(id);
+  const { data: character, error: characterError } = useCharacter(id);
   const { data: revisions, isLoading, error, refetch } = useCharacterRevisions(id);
+  // One shared restore mutation: while it is pending, every row's Restore
+  // is disabled, so a second restore cannot race the first (last-write-wins
+  // would silently discard it).
+  const restoreMutation = useRestoreCharacterRevision();
+
+  // Deleted character (e.g. another tab deleted it mid-visit): the revision
+  // list stays nonempty until its next refetch, so a genuine not-found must
+  // replace the page instead of leaving restorable-looking rows behind.
+  // Other character-load errors are ignored — the list works without the
+  // subtitle, mirroring the import page's policy.
+  if (isCharacterNotFound(characterError)) {
+    return (
+      <main className="mx-auto max-w-[900px] px-4 py-8 pb-28 md:pb-8">
+        <PageHeader title="Version history" backTo="/characters" />
+        <EmptyState
+          icon={UserRoundX}
+          title="Character not found"
+          description="It may have been deleted, or the link may be wrong."
+        >
+          <Button asChild variant="outline">
+            <a href="/characters">Back to characters</a>
+          </Button>
+        </EmptyState>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-[900px] px-4 py-8 pb-28 md:pb-8">
@@ -56,7 +84,7 @@ function CharacterRevisionsPage() {
           description="Saving an edit to this character will create the first version here."
         />
       ) : (
-        <RevisionList characterId={id} revisions={revisions} />
+        <RevisionList characterId={id} revisions={revisions} restoreMutation={restoreMutation} />
       )}
     </main>
   );
@@ -65,9 +93,11 @@ function CharacterRevisionsPage() {
 function RevisionList({
   characterId,
   revisions,
+  restoreMutation,
 }: {
   characterId: string;
   revisions: RevisionSummary[];
+  restoreMutation: ReturnType<typeof useRestoreCharacterRevision>;
 }) {
   return (
     <ol className="space-y-3">
@@ -78,6 +108,7 @@ function RevisionList({
           revision={revision}
           previousRev={revisions[index + 1]?.rev ?? null}
           isCurrent={index === 0}
+          restoreMutation={restoreMutation}
         />
       ))}
     </ol>
@@ -89,17 +120,19 @@ function RevisionRow({
   revision,
   previousRev,
   isCurrent,
+  restoreMutation,
 }: {
   characterId: string;
   revision: RevisionSummary;
   previousRev: number | null;
   isCurrent: boolean;
+  restoreMutation: ReturnType<typeof useRestoreCharacterRevision>;
 }) {
-  const restoreMutation = useRestoreCharacterRevision();
   const [expanded, setExpanded] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
 
   const handleRestore = () => {
+    if (restoreMutation.isPending) return;
     restoreMutation.mutate(
       { id: characterId, rev: revision.rev },
       {
@@ -108,7 +141,9 @@ function RevisionRow({
           toast.success(`Restored version ${revision.rev}`);
         },
         onError: (err) =>
-          toast.error(`Restore failed: ${err instanceof Error ? err.message : String(err)}`),
+          toast.error(
+            friendlyLoadError(err, `Restoring version ${revision.rev} failed. Try again.`),
+          ),
       },
     );
   };
