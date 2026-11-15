@@ -1,6 +1,6 @@
-import { useMemo, useCallback, useRef, useState } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { withImageVersion } from "@/lib/image-optimization";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import {
@@ -88,7 +88,6 @@ function ChatNotFoundState() {
 
 export function ChatPage() {
   const { id: chatId } = useParams({ from: "/chat/$id" });
-  const navigate = useNavigate();
 
   const activePlaceholderId = useChatUiStore(selectActivePlaceholderId);
   const pendingSend = useChatUiStore(selectPendingSend);
@@ -101,7 +100,6 @@ export function ChatPage() {
   const clearInput = useChatUiStore((s) => s.clearInputDraft);
   const focusComposer = useChatUiStore((s) => s.focusComposer);
   const setSettingsOpen = useChatUiStore((s) => s.setSettingsOpen);
-  const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const setPortraitOpen = useChatUiStore((s) => s.setPortraitOpen);
   const setSceneOpen = useChatUiStore((s) => s.setSceneOpen);
   const openLightbox = useChatUiStore((s) => s.openLightbox);
@@ -220,10 +218,6 @@ export function ChatPage() {
       refuseBusy();
       return;
     }
-    if (generation.isStreaming) {
-      refuseBusy();
-      return;
-    }
     if (!ensureModelConfigured()) return;
     const trimmed = (useChatUiStore.getState().inputDrafts[chatId] ?? "").trim();
 
@@ -240,7 +234,6 @@ export function ChatPage() {
     clearInput,
     isBusy,
     refuseBusy,
-    generation.isStreaming,
     generation.start,
     hasMessages,
     ensureModelConfigured,
@@ -248,7 +241,7 @@ export function ChatPage() {
 
   const handleSwipe = useCallback(
     (messageLocalId: number, direction: "next" | "prev") => {
-      if (isBusy || generation.isStreaming) {
+      if (isBusy) {
         refuseBusy();
         return;
       }
@@ -257,24 +250,24 @@ export function ChatPage() {
         { onError: () => toast.error("Swipe failed") },
       );
     },
-    [chatId, isBusy, refuseBusy, generation.isStreaming, swipeMutation.mutate],
+    [chatId, isBusy, refuseBusy, swipeMutation.mutate],
   );
 
   const handleRegenerate = useCallback(
     (messageLocalId: number) => {
-      if (isBusy || generation.isStreaming) {
+      if (isBusy) {
         refuseBusy();
         return;
       }
       if (!ensureModelConfigured()) return;
       generation.start("regenerate", { messageLocalId });
     },
-    [isBusy, refuseBusy, generation.isStreaming, generation.start, ensureModelConfigured],
+    [isBusy, refuseBusy, generation.start, ensureModelConfigured],
   );
 
   const handleEdit = useCallback(
     (messageLocalId: number, content: string) => {
-      if (isBusy || generation.isStreaming) {
+      if (isBusy) {
         refuseBusy();
         return false;
       }
@@ -285,12 +278,12 @@ export function ChatPage() {
       );
       return true;
     },
-    [chatId, isBusy, refuseBusy, generation.isStreaming, substitute, editMutation.mutate],
+    [chatId, isBusy, refuseBusy, substitute, editMutation.mutate],
   );
 
   const handleDelete = useCallback(
     (messageLocalId: number) => {
-      if (isBusy || generation.isStreaming) {
+      if (isBusy) {
         refuseBusy();
         return false;
       }
@@ -306,11 +299,11 @@ export function ChatPage() {
       );
       return true;
     },
-    [chatId, isBusy, refuseBusy, generation.isStreaming, deleteMsgMutation.mutate, focusComposer],
+    [chatId, isBusy, refuseBusy, deleteMsgMutation.mutate, focusComposer],
   );
 
   const handleImpersonate = useCallback(() => {
-    if (isBusy || generation.isStreaming) {
+    if (isBusy) {
       refuseBusy();
       return;
     }
@@ -325,17 +318,10 @@ export function ChatPage() {
         },
       },
     );
-  }, [
-    chatId,
-    isBusy,
-    refuseBusy,
-    generation.isStreaming,
-    proposalMutation.mutate,
-    applyGeneratedText,
-  ]);
+  }, [chatId, isBusy, refuseBusy, proposalMutation.mutate, applyGeneratedText]);
 
   const handleImagePrompt = useCallback(() => {
-    if (isBusy || generation.isStreaming) {
+    if (isBusy) {
       refuseBusy();
       return;
     }
@@ -355,15 +341,7 @@ export function ChatPage() {
         },
       },
     );
-  }, [
-    chatId,
-    isBusy,
-    refuseBusy,
-    generation.isStreaming,
-    proposalMutation.mutate,
-    applyGeneratedText,
-    focusComposer,
-  ]);
+  }, [chatId, isBusy, refuseBusy, proposalMutation.mutate, applyGeneratedText, focusComposer]);
 
   const handleUploadImage = useCallback(
     async (file: File) => {
@@ -478,13 +456,11 @@ export function ChatPage() {
         characterName={config.character.name}
         avatarSrc={characterAvatarUrl}
         isGenerating={localStreaming}
-        onBack={() => navigate({ to: "/chat" })}
         portraitOpen={portraitOpen}
         sceneOpen={sceneOpen}
         onTogglePortrait={() => setPortraitOpen(!portraitOpen)}
         onToggleScene={() => setSceneOpen(!sceneOpen)}
         onOpenSettings={() => setSettingsOpen(true)}
-        settingsButtonRef={settingsButtonRef}
       />
 
       <MessageList
@@ -616,10 +592,8 @@ export function ChatPage() {
         characterAvatarSrc={characterAvatarUrl}
         messageCount={messages?.length ?? 0}
         onOpenScenePanel={() => setSceneOpen(true)}
-        onOpenChange={(open) => {
-          setSettingsOpen(open);
-          if (!open) settingsButtonRef.current?.focus();
-        }}
+        // Base UI restores focus to the settings trigger on close.
+        onOpenChange={setSettingsOpen}
       />
     </main>
   );
