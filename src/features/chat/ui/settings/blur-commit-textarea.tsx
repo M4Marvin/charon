@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { BookOpen, Maximize2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -74,15 +74,15 @@ export function BlurCommitTextarea({
     setOverflowing(el.scrollHeight > MAX_HEIGHT);
   }, [value]);
 
-  const commit = useCallback(() => {
+  const commit = () => {
     const trimmed = value.trim();
     if (trimmed !== defaultValue.trim()) onCommit(trimmed);
-  }, [value, defaultValue, onCommit]);
+  };
 
-  const handleBlur = useCallback(() => {
+  const handleBlur = () => {
     focusedRef.current = false;
     commit();
-  }, [commit]);
+  };
 
   const isOverridden = inheritedValue !== undefined && value.trim() !== "";
   const inherited = inheritedValue?.trim() ?? "";

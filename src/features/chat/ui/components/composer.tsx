@@ -110,57 +110,48 @@ export function Composer({
     };
   }, []);
 
-  const notifyImageUnsupported = useCallback(() => {
+  const notifyImageUnsupported = () => {
     toast.info(IMAGE_UNSUPPORTED_MESSAGE);
-  }, []);
+  };
 
-  const handlePaste = useCallback(
-    (e: React.ClipboardEvent) => {
-      const hasImageFile = Array.from(e.clipboardData?.files ?? []).some((file) =>
-        file.type.startsWith("image/"),
-      );
-      const hasImageItem = Array.from(e.clipboardData?.items ?? []).some(
-        (item) => item.kind === "file" && item.type.startsWith("image/"),
-      );
-      if (hasImageFile || hasImageItem) notifyImageUnsupported();
-    },
-    [notifyImageUnsupported],
-  );
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const hasImageFile = Array.from(e.clipboardData?.files ?? []).some((file) =>
+      file.type.startsWith("image/"),
+    );
+    const hasImageItem = Array.from(e.clipboardData?.items ?? []).some(
+      (item) => item.kind === "file" && item.type.startsWith("image/"),
+    );
+    if (hasImageFile || hasImageItem) notifyImageUnsupported();
+  };
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent) => {
     if (Array.from(e.dataTransfer?.types ?? []).includes("Files")) e.preventDefault();
-  }, []);
+  };
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      const hasImageFile = Array.from(e.dataTransfer?.files ?? []).some((file) =>
-        file.type.startsWith("image/"),
-      );
-      if (!(e.dataTransfer?.files.length ?? 0)) return;
-      // The app has no attachments: never let a dropped file navigate the page.
-      e.preventDefault();
-      if (hasImageFile) notifyImageUnsupported();
-    },
-    [notifyImageUnsupported],
-  );
+  const handleDrop = (e: React.DragEvent) => {
+    const hasImageFile = Array.from(e.dataTransfer?.files ?? []).some((file) =>
+      file.type.startsWith("image/"),
+    );
+    if (!(e.dataTransfer?.files.length ?? 0)) return;
+    // The app has no attachments: never let a dropped file navigate the page.
+    e.preventDefault();
+    if (hasImageFile) notifyImageUnsupported();
+  };
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
-      // Enter belongs to the IME while a composition is active.
-      if (e.nativeEvent.isComposing || e.keyCode === 229 || e.repeat) return;
-      // No action available: leave Enter to the textarea instead of swallowing it.
-      if (isFinalizing || (!isStreaming && (disabled || !canSend))) return;
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter" || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+    // Enter belongs to the IME while a composition is active.
+    if (e.nativeEvent.isComposing || e.keyCode === 229 || e.repeat) return;
+    // No action available: leave Enter to the textarea instead of swallowing it.
+    if (isFinalizing || (!isStreaming && (disabled || !canSend))) return;
 
-      e.preventDefault();
-      if (isStreaming) {
-        onStop();
-      } else {
-        onSend();
-      }
-    },
-    [isFinalizing, isStreaming, canSend, onSend, onStop],
-  );
+    e.preventDefault();
+    if (isStreaming) {
+      onStop();
+    } else {
+      onSend();
+    }
+  };
 
   const placeholder = isFinalizing
     ? "Finishing generation…"
