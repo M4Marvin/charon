@@ -449,4 +449,16 @@ describe("NewCharacterPage update mode (?update=<id>)", () => {
     expect(screen.getByText("Couldn’t update the character")).toBeTruthy();
     expect(screen.queryByText("Couldn’t read that card")).toBeNull();
   });
+
+  it("toasts a thrown update error, matching the non-ok and import paths", async () => {
+    enterUpdateMode({ id: "char-9", name: "Old Name" });
+    await renderThroughPreview();
+    mockUpdateCharacterFromCard.mockRejectedValue(new Error("boom"));
+
+    fireEvent.click(screen.getByRole("button", { name: /update character/i }));
+    await act(async () => {});
+
+    expect(mockToastError).toHaveBeenCalledWith("Card update failed");
+    expect(screen.getByText("Couldn’t update the character")).toBeTruthy();
+  });
 });

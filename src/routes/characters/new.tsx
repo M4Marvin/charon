@@ -151,7 +151,10 @@ export function NewCharacterPage() {
       try {
         res = await updateMutation.mutateAsync({ pngBase64: previewB64, targetId: target });
       } catch (err) {
+        // Canonical Error(mutation) state: inline banner AND toast, same as
+        // the non-ok branch and the import path.
         setPreviewErr({ title: UPDATE_ERROR_TITLE, message: friendlyImportError(err) });
+        toast.error("Card update failed");
         return;
       }
       if (res.ok) {
