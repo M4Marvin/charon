@@ -260,6 +260,60 @@ describe("character revisions repository", () => {
     });
   });
 
+  describe("transaction rollback", () => {
+    // RAISE(ABORT) on exactly the row createRevision is about to write
+    // (max(rev) + 1), which deterministically fails the revision insert
+    // inside the transaction. Pre-inserting a colliding row cannot work:
+    // createRevision's max read always outruns it.
+    function blockNextRevisionInsert(): void {
+      ctx.sqlite.exec(`
+        CREATE TRIGGER fail_next_revision
+        BEFORE INSERT ON character_revisions
+        WHEN NEW.rev = (SELECT COALESCE(MAX(rev), 0) + 1 FROM character_revisions WHERE character_id = NEW.character_id)
+        BEGIN SELECT RAISE(ABORT, 'test: revision insert blocked'); END
+      `);
+    }
+
+    function unblockRevisionInsert(): void {
+      ctx.sqlite.exec("DROP TRIGGER IF EXISTS fail_next_revision");
+    }
+
+    it("createCharacter rolls the character row back when the baseline revision insert fails", () => {
+      blockNextRevisionInsert();
+      try {
+        expect(() =>
+          createCharacter(
+            { id: "char-rollback", name: "Bob", data: makeCharacterData({ name: "Bob" }) },
+            db,
+          ),
+        ).toThrow(/revision insert blocked/);
+      } finally {
+        unblockRevisionInsert();
+      }
+
+      expect(() => getCharacter("char-rollback", db)).toThrow("Character not found");
+      expect(listRevisions("char-rollback", db)).toEqual([]);
+    });
+
+    it("updateCharacterWithRevision rolls the update back when the revision insert fails", () => {
+      seedCharacter();
+      blockNextRevisionInsert();
+      try {
+        expect(() => updateCharacterWithRevision("char-1", { name: "New Name" }, db)).toThrow(
+          /revision insert blocked/,
+        );
+      } finally {
+        unblockRevisionInsert();
+      }
+
+      const char = getCharacter("char-1", db);
+      expect(char.name).toBe("Alice");
+      const revisions = listRevisions("char-1", db);
+      expect(revisions).toHaveLength(1);
+      expect(revisions[0].name).toBe("Alice");
+    });
+  });
+
   describe("deleteCharacter cascade", () => {
     it("removes revisions with the character (FK enforcement off)", () => {
       seedCharacter();
