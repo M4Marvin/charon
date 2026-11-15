@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useEffect, useRef, useState } from "react";
+import { useMemo, useCallback, useRef, useState } from "react";
 import { withImageVersion } from "@/lib/image-optimization";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -107,7 +107,9 @@ export function ChatPage() {
   const openLightbox = useChatUiStore((s) => s.openLightbox);
   const closeLightbox = useChatUiStore((s) => s.closeLightbox);
   const customImage = useChatUiStore((s) => s.customImages[chatId] ?? null);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  // Selection is per-chat UI state; the route keys this component on chatId,
+  // so it never carries localIds across a route change.
+  const [checkedIds, setCheckedIds] = useState<number[]>([]);
   const [promptOpen, setPromptOpen] = useState(false);
   const setCustomImage = useChatUiStore((s) => s.setCustomImage);
   const clearCustomImage = useChatUiStore((s) => s.clearCustomImage);
@@ -380,7 +382,7 @@ export function ChatPage() {
   }, [chatId, clearCustomImage]);
 
   const toggleSelection = useCallback((messageLocalId: number) => {
-    setSelectedIds((previous) =>
+    setCheckedIds((previous) =>
       previous.includes(messageLocalId)
         ? previous.filter((id) => id !== messageLocalId)
         : [...previous, messageLocalId],
@@ -388,7 +390,7 @@ export function ChatPage() {
   }, []);
 
   const clearSelection = useCallback(() => {
-    setSelectedIds([]);
+    setCheckedIds([]);
   }, []);
 
   const handleProposalApplied = useCallback(() => {
@@ -405,24 +407,19 @@ export function ChatPage() {
     [applyGeneratedText, focusComposer],
   );
 
-  // Selection is per-chat UI state: never carry localIds across a route change.
-  useEffect(() => {
-    setSelectedIds([]);
-    setPromptOpen(false);
-  }, [chatId]);
-
   // Drop ids that left the active path (deleted messages, branch switches) so
-  // the strip never reports messages it cannot prompt.
+  // the strip never reports messages it cannot prompt. Derived during render
+  // instead of synced by an effect: the raw set can only ever contain ids
+  // picked from the current path, so the filter is a no-op until the path
+  // changes underneath it.
   const activeLocalIds = useMemo(
     () => new Set(activePath.map((entry) => entry.message.localId)),
     [activePath],
   );
-  useEffect(() => {
-    setSelectedIds((previous) => {
-      const next = previous.filter((id) => activeLocalIds.has(id));
-      return next.length === previous.length ? previous : next;
-    });
-  }, [activeLocalIds]);
+  const selectedIds = useMemo(
+    () => checkedIds.filter((id) => activeLocalIds.has(id)),
+    [checkedIds, activeLocalIds],
+  );
 
   if (configLoading || messagesLoading) {
     return (
