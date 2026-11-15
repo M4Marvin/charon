@@ -36,6 +36,7 @@ import {
 import { RichText } from "@/components/RichText";
 import { balanceMarkdown } from "@/lib/markdown";
 import { cn } from "@/lib/utils";
+import { supportsFieldSizing } from "@/lib/css-supports";
 import { useChatUiStore } from "../chat-store";
 import type { ActivePathEntry } from "@/features/chat/tree/types";
 
@@ -99,8 +100,11 @@ export const ChatMessage = memo(function ChatMessage({
   useLayoutEffect(() => {
     if (!editRef.current || !editing) return;
     const el = editRef.current;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
+    // Auto-grow is CSS (`field-sizing: content`); this JS is the fallback.
+    if (!supportsFieldSizing) {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
+    }
     el.focus();
     el.setSelectionRange(el.value.length, el.value.length);
   }, [editing]);
@@ -272,8 +276,7 @@ export const ChatMessage = memo(function ChatMessage({
                   onChange={(e) => setEditContent(e.target.value)}
                   onKeyDown={handleKeyDown}
                   aria-label="Edit message"
-                  className="min-h-[60px] resize-none rounded-lg border-0 bg-raised p-3 text-sm leading-6 text-foreground ring-1 ring-(--border-subtle) focus-visible:ring-1 focus-visible:ring-brand/60"
-                  style={{ maxHeight: TEXTAREA_MAX_HEIGHT }}
+                  className="min-h-[60px] max-h-[240px] [field-sizing:content] resize-none rounded-lg border-0 bg-raised p-3 text-sm leading-6 text-foreground ring-1 ring-(--border-subtle) focus-visible:ring-1 focus-visible:ring-brand/60"
                 />
                 <div className="mt-2 flex items-center gap-2">
                   <Button

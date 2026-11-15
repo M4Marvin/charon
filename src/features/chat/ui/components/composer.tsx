@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { useChatUiStore, selectComposerFocusNonce } from "../chat-store";
+import { supportsFieldSizing } from "@/lib/css-supports";
 
 const TEXTAREA_MAX_HEIGHT = 120;
 const IMAGE_UNSUPPORTED_MESSAGE = "Images aren't supported in the composer — use the scene panel";
@@ -66,6 +67,9 @@ export function Composer({
   }, [focusNonce, focusTextarea]);
 
   useLayoutEffect(() => {
+    // Auto-grow is CSS (`field-sizing: content`); this JS is the fallback for
+    // browsers without it.
+    if (supportsFieldSizing) return;
     const el = textareaRef.current;
     if (!el) return;
     if (!value.trim()) {
@@ -179,7 +183,7 @@ export function Composer({
             placeholder={placeholder}
             aria-label="Message"
             rows={1}
-            className="min-h-10 max-h-[120px] resize-none overflow-y-auto border-0 bg-transparent px-1 py-1.5 text-sm leading-6 text-1 placeholder:text-2 focus-visible:ring-0"
+            className="min-h-10 max-h-[120px] [field-sizing:content] resize-none overflow-y-auto border-0 bg-transparent px-1 py-1.5 text-sm leading-6 text-1 placeholder:text-2 focus-visible:ring-0"
           />
 
           <div className="flex items-center gap-1 pb-0.5 shrink-0">

@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { supportsFieldSizing } from "@/lib/css-supports";
 import {
   Dialog,
   DialogContent,
@@ -68,9 +69,13 @@ export function BlurCommitTextarea({
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`;
-    el.style.overflowY = el.scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
+    // Auto-grow is CSS (`field-sizing: content`); this JS is the fallback.
+    // `overflowing` drives the Expand button, so it is measured on both paths.
+    if (!supportsFieldSizing) {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT)}px`;
+      el.style.overflowY = el.scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
+    }
     setOverflowing(el.scrollHeight > MAX_HEIGHT);
   }, [value]);
 
@@ -194,7 +199,7 @@ export function BlurCommitTextarea({
         disabled={disabled}
         rows={2}
         aria-describedby={descriptionId}
-        className="min-h-[88px] resize-none break-words"
+        className="min-h-[88px] max-h-[360px] [field-sizing:content] resize-none break-words"
       />
 
       <Dialog
