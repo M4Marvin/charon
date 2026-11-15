@@ -34,12 +34,15 @@ export function CustomImagePanel({
   const onCloseRef = useRef(onClose);
   const confirmOpenRef = useRef(false);
   const [keepImageMounted, setKeepImageMounted] = useState(false);
-  const [imageFailed, setImageFailed] = useState(false);
+  // Failure is keyed by src (CONTRIBUTING fallback pattern): a new version or
+  // a different image recovers without a reset effect; the close/open effect
+  // below still resets it on reopen so a failed load is retried.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   useEffect(() => {
-    setImageFailed(false);
+    setFailedSrc(null);
     if (open) {
       setKeepImageMounted(true);
       setUploadError(null);
@@ -93,11 +96,9 @@ export function CustomImagePanel({
   const displaySrc = customImageSrc ?? imageSrc;
   const isCustom = customImageSrc !== null;
   const hasImage = displaySrc !== null;
-  const canOpen = hasImage && !imageFailed;
+  const canOpen = hasImage && failedSrc !== displaySrc;
   const label = isCustom ? "Custom" : "Scene";
   const imageAlt = alt ?? `${label} image`;
-
-  useEffect(() => setImageFailed(false), [displaySrc]);
 
   return (
     <div
@@ -129,7 +130,7 @@ export function CustomImagePanel({
         }}
       >
         <div className="relative flex items-center justify-center bg-(--bg-base)/60">
-          {shouldMountImage && displaySrc && !imageFailed ? (
+          {shouldMountImage && displaySrc && failedSrc !== displaySrc ? (
             <OptimizedImage
               key={displaySrc}
               src={displaySrc}
@@ -138,7 +139,7 @@ export function CustomImagePanel({
               intrinsicSize={false}
               sizes={PANEL_SIZES}
               className="w-full h-auto block transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none"
-              onError={() => setImageFailed(true)}
+              onError={() => setFailedSrc(displaySrc)}
             />
           ) : (
             <div className="flex flex-col items-center gap-2 text-(--sea-ink-soft) py-10 w-full">

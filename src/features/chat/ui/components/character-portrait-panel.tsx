@@ -24,12 +24,15 @@ export function CharacterPortraitPanel({
   onImageClick,
 }: CharacterPortraitPanelProps) {
   const [keepImageMounted, setKeepImageMounted] = useState(false);
-  const [imageFailed, setImageFailed] = useState(false);
+  // Failure is keyed by src (CONTRIBUTING fallback pattern): a new version
+  // recovers without a reset effect; the open effect below still resets it on
+  // reopen so a previously failed load is retried.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
 
   useEffect(() => {
-    setImageFailed(false);
+    setFailedSrc(null);
     if (open) {
       setKeepImageMounted(true);
       return;
@@ -55,7 +58,7 @@ export function CharacterPortraitPanel({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open]);
 
-  const canOpen = imageSrc !== null && !imageFailed;
+  const canOpen = imageSrc !== null && failedSrc !== imageSrc;
   const shouldMountImage = open || keepImageMounted;
 
   return (
@@ -88,7 +91,7 @@ export function CharacterPortraitPanel({
         }}
       >
         <div className="aspect-[3/4] max-h-[70dvh] relative flex items-center justify-center bg-(--bg-base)/60">
-          {shouldMountImage && imageSrc && !imageFailed ? (
+          {shouldMountImage && imageSrc && failedSrc !== imageSrc ? (
             <OptimizedImage
               key={imageSrc}
               src={imageSrc}
@@ -97,7 +100,7 @@ export function CharacterPortraitPanel({
               sizes={PANEL_SIZES}
               priority={open}
               className="size-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none"
-              onError={() => setImageFailed(true)}
+              onError={() => setFailedSrc(imageSrc)}
             />
           ) : (
             <div className="text-(--sea-ink-soft) text-sm">No portrait</div>
