@@ -212,7 +212,10 @@ export async function removePrivatePath(
   options: { rootDir?: string; recursive?: boolean } = {},
 ): Promise<void> {
   assertPrivatePath(options.rootDir, filePath);
-  await rm(filePath, { force: true, recursive: options.recursive });
+  // Node's fs.rm throws ERR_INVALID_ARG_TYPE when `recursive` is explicitly
+  // undefined, so default it here — every file-delete call site passed only
+  // rootDir and silently failed (files were never removed).
+  await rm(filePath, { force: true, recursive: options.recursive ?? false });
 }
 
 export async function writePrivateFileAtomic(

@@ -17,6 +17,7 @@ import { MAX_IMAGE_BYTES } from "@/server/image-limits";
 import {
   readPrivateDirectory,
   readPrivateFile,
+  removePrivatePath,
   resolveStoredUploadPath,
   writePrivateFileAtomic,
 } from "@/server/private-fs";
@@ -99,5 +100,28 @@ describe("private file I/O", () => {
     await expect(readPrivateFile(path)).rejects.toThrow(
       "Private file exceeds the allowed size limit",
     );
+  });
+});
+
+describe("removePrivatePath", () => {
+  it("removes a file without a recursive option (Node throws on recursive: undefined)", async () => {
+    const root = await makeTempDir();
+    const path = join(root, "avatar.png");
+    await writeFile(path, "bytes");
+
+    // This is exactly how the avatar/persona/background delete sites call it.
+    await removePrivatePath(path, { rootDir: root });
+
+    await expect(readFile(path)).rejects.toThrow();
+  });
+
+  it("removes a directory when recursive is true", async () => {
+    const root = await makeTempDir();
+    await mkdir(join(root, "variants"), { recursive: true });
+    await writeFile(join(root, "variants", "w.webp"), "bytes");
+
+    await removePrivatePath(join(root, "variants"), { rootDir: root, recursive: true });
+
+    expect(await readdir(root)).toEqual([]);
   });
 });
