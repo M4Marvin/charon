@@ -8,6 +8,7 @@ import {
   MessageScrollerItem,
   MessageScrollerButton,
   useMessageScroller,
+  useMessageScrollerScrollable,
   useMessageScrollerVisibility,
 } from "@/components/ui/message-scroller";
 import { Button } from "@/components/ui/button";
@@ -87,6 +88,27 @@ function MessageNavButtons({ ids }: { ids: string[] }) {
       </Button>
     </div>
   );
+}
+
+/**
+ * Lifts the scroller primitive's own edge state up to `MessageList` so the
+ * `autoScroll` prop — owned above the provider — can be driven by it. `end`
+ * is true when the viewport is more than the edge threshold away from the
+ * bottom, which is exactly the "user scrolled up" signal the list used to
+ * recompute by hand in `onScroll`.
+ */
+function ScrollStateBridge({
+  onScrolledUpChange,
+}: {
+  onScrolledUpChange: (scrolledUp: boolean) => void;
+}) {
+  const { end } = useMessageScrollerScrollable();
+
+  useEffect(() => {
+    onScrolledUpChange(end);
+  }, [end, onScrolledUpChange]);
+
+  return null;
 }
 
 /**
@@ -170,6 +192,10 @@ export function MessageList({
   const fadeRef = useRef<HTMLDivElement>(null);
   const hasPendingSend = pendingUserContent !== null;
 
+  const handleScrolledUpChange = useCallback((scrolledUp: boolean) => {
+    setUserScrolledUp((prev) => (prev === scrolledUp ? prev : scrolledUp));
+  }, []);
+
   // Sending (or recovering a run) is an intent to read the reply: follow it
   // even if the reader was scrolled up when they hit Send.
   useEffect(() => {
@@ -189,11 +215,7 @@ export function MessageList({
 
   const handleScroll = useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
-      const el = event.currentTarget;
-      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      const next = distanceFromBottom > SCROLL_EDGE_THRESHOLD;
-      setUserScrolledUp((prev) => (prev === next ? prev : next));
-      syncTopFade(el);
+      syncTopFade(event.currentTarget);
     },
     [syncTopFade],
   );
@@ -208,6 +230,7 @@ export function MessageList({
       scrollEdgeThreshold={SCROLL_EDGE_THRESHOLD}
       scrollMargin={12}
     >
+      <ScrollStateBridge onScrolledUpChange={handleScrolledUpChange} />
       <MessageScroller className="min-h-0">
         <MessageScrollerViewport
           ref={viewportRef}
