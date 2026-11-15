@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   Info,
   X,
@@ -78,41 +78,34 @@ export function SettingsPanel({
   const [visited, setVisited] = useState<Set<string>>(() => new Set(["character"]));
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const sectionsForMode = useMemo(() => getSectionsForMode(SECTIONS, mode), [mode]);
+  const sectionsForMode = getSectionsForMode(SECTIONS, mode);
   const activeSection =
     sectionsForMode.find((section) => section.id === activeId) ?? sectionsForMode[0] ?? SECTIONS[0];
 
-  useEffect(() => {
-    if (!sectionsForMode.some((section) => section.id === activeId)) {
-      const first = sectionsForMode[0];
-      if (first) setActiveId(first.id);
-    }
-  }, [activeId, sectionsForMode]);
-
-  useEffect(() => {
-    setVisited((prev) => (prev.has(activeId) ? prev : new Set(prev).add(activeId)));
-    contentRef.current?.scrollTo({ top: 0 });
-  }, [activeId]);
-
-  const handleSectionChange = useCallback((id: string) => {
+  // Section changes are event-driven: keep the visited bookkeeping and the
+  // scroll reset next to the events instead of syncing them from an effect.
+  const handleSectionChange = (id: string) => {
+    setVisited((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
     setActiveId(id);
-  }, []);
+    contentRef.current?.scrollTo({ top: 0 });
+  };
 
-  const handleModeChange = useCallback(
-    (next: SettingsMode) => {
-      if (next === mode) return;
-      const first = getSectionsForMode(SECTIONS, next)[0];
-      setMode(next);
-      if (first) setActiveId(first.id);
-    },
-    [mode],
-  );
+  const handleModeChange = (next: SettingsMode) => {
+    if (next === mode) return;
+    const first = getSectionsForMode(SECTIONS, next)[0];
+    setMode(next);
+    if (first) {
+      setVisited((prev) => (prev.has(first.id) ? prev : new Set(prev).add(first.id)));
+      setActiveId(first.id);
+    }
+    contentRef.current?.scrollTo({ top: 0 });
+  };
 
-  const handleClose = useCallback(() => onOpenChange(false), [onOpenChange]);
-  const handleOpenScene = useCallback(() => {
+  const handleClose = () => onOpenChange(false);
+  const handleOpenScene = () => {
     onOpenChange(false);
     onOpenScenePanel?.();
-  }, [onOpenChange, onOpenScenePanel]);
+  };
 
   const renderSection = (id: string) => {
     switch (id) {
