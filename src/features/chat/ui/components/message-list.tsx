@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ChevronUp, ChevronDown, MessageCircle } from "lucide-react";
 import { ChatMessage } from "./chat-message";
 import { MessageOverviewRail } from "./message-overview-rail";
+import { supportsScrollDrivenAnimations } from "@/lib/css-supports";
 import type { ActivePathEntry } from "@/features/chat/tree/types";
 
 const SCROLL_EDGE_THRESHOLD = 80;
@@ -203,13 +204,15 @@ export function MessageList({
   }, [hasPendingSend, activePlaceholderId]);
 
   // The top fade ramps with scroll distance instead of toggling, so it never
-  // pops in at the first pixel of scroll.
+  // pops in at the first pixel of scroll. Scroll-driven CSS animation owns it
+  // where supported (see .chat-top-fade in styles.css); this is the fallback.
   const syncTopFade = useCallback((el: HTMLElement) => {
     if (!fadeRef.current) return;
     fadeRef.current.style.opacity = String(Math.min(1, Math.max(0, el.scrollTop / 64)));
   }, []);
 
   useEffect(() => {
+    if (supportsScrollDrivenAnimations) return;
     if (viewportRef.current) syncTopFade(viewportRef.current);
   }, [syncTopFade]);
 
@@ -231,12 +234,12 @@ export function MessageList({
       scrollMargin={12}
     >
       <ScrollStateBridge onScrolledUpChange={handleScrolledUpChange} />
-      <MessageScroller className="min-h-0">
+      <MessageScroller className="min-h-0 [timeline-scope:--chat-top]">
         <MessageScrollerViewport
           ref={viewportRef}
-          className="px-3 pt-3 md:px-6"
+          className="px-3 pt-3 md:px-6 [scroll-timeline-name:--chat-top]"
           aria-busy={isStreamingPlaceholder || undefined}
-          onScroll={handleScroll}
+          onScroll={supportsScrollDrivenAnimations ? undefined : handleScroll}
         >
           <MessageScrollerContent
             className="mx-auto max-w-3xl flex-col justify-end gap-3 pb-6 max-md:pb-20 max-md:pr-12"

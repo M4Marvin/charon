@@ -276,6 +276,31 @@
   );
 }
 
+/* Scroll-linked opacity replaces the per-scroll JS style writes where scroll
+   timelines exist. The viewport publishes `--chat-top` via
+   `scroll-timeline-name` and the scroller root hoists it with
+   `timeline-scope` so the sibling fade can consume it; `scroll(nearest)`
+   would bind to the root's overflow-hidden box instead. Range lengths are
+   absolute scroll offsets: the gradient eases over the first 64px. */
+@supports (animation-timeline: scroll()) {
+  .chat-top-fade {
+    animation: chat-top-fade linear both;
+    animation-timeline: --chat-top;
+    animation-range: 0px 64px;
+    /* Non-zero duration is required for the timeline to apply in Firefox. */
+    animation-duration: 1ms;
+  }
+}
+
+@keyframes chat-top-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Streaming caret, rendered inside the last block so it sits at the text edge. */
 @keyframes rt-caret-blink {
   0%,
