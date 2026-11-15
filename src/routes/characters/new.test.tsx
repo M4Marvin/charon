@@ -353,6 +353,26 @@ describe("NewCharacterPage update mode (?update=<id>)", () => {
     expect(screen.queryByLabelText("Choose a character card PNG")).toBeNull();
   });
 
+  it("does not claim the target is gone on any other load error; offers a retry", async () => {
+    enterUpdateMode(undefined, new Error("boom"));
+    render(<NewCharacterPage />);
+
+    expect(screen.queryByText(/no longer exists/i)).toBeNull();
+    expect(screen.getByText(/couldn't load this character/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeTruthy();
+  });
+
+  it("keeps the update flow running when a refetch fails but the target is loaded", async () => {
+    // Cached target + a transient refetch failure (e.g. window-focus
+    // refetch during preview): stale subtitle data beats aborting the flow.
+    enterUpdateMode({ id: "char-9", name: "Old Name" }, new Error("Failed to fetch"));
+    render(<NewCharacterPage />);
+
+    expect(screen.queryByText(/couldn't load this character/i)).toBeNull();
+    expect(screen.queryByText(/no longer exists/i)).toBeNull();
+    expect(screen.getByLabelText("Choose a character card PNG")).toBeTruthy();
+  });
+
   it("locks the update action after a target_missing failure", async () => {
     enterUpdateMode({ id: "char-9", name: "Old Name" });
     await renderThroughPreview();

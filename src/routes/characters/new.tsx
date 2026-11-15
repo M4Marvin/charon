@@ -13,7 +13,8 @@ import { MAX_IMAGE_UPLOAD_BYTES } from "@/lib/image-optimization";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ErrorBanner } from "@/components/common/ErrorBanner";
 import { RelativeTime } from "@/components/common/RelativeTime";
-import { friendlyImportError } from "@/lib/error-copy";
+import { friendlyImportError, friendlyLoadError } from "@/lib/error-copy";
+import { isCharacterNotFound } from "@/lib/app-errors";
 import {
   fileToBase64,
   useCharacter,
@@ -50,7 +51,11 @@ export function NewCharacterPage() {
   const updateMutation = useUpdateCharacterFromCard();
   // The character being updated in update mode, for the subtitle, the
   // rename notice, and an upfront "gone" guard.
-  const { data: updateTarget, error: updateTargetError } = useCharacter(updateTargetId ?? "");
+  const {
+    data: updateTarget,
+    error: updateTargetError,
+    refetch: refetchUpdateTarget,
+  } = useCharacter(updateTargetId ?? "");
   // Selected target for "update existing" when the card name matches one or
   // more characters; null means the user chose import-as-new.
   const [targetId, setTargetId] = useState<string | null>(null);
@@ -199,12 +204,25 @@ export function NewCharacterPage() {
   };
 
   // Dead update target: the character was deleted between opening the page
-  // and now. Block the flow upfront instead of failing after a full preview.
-  if (updateTargetId && updateTargetError) {
+  // and now. Only a genuine not-found blocks the flow; any other failure
+  // (network blip, server error) gets a retryable banner — and neither yanks
+  // a flow whose target is already loaded (refetches fail transiently too).
+  if (updateTargetId && updateTargetError && !updateTarget) {
+    if (isCharacterNotFound(updateTargetError)) {
+      return (
+        <main className="mx-auto max-w-[768px] px-4 py-8">
+          <PageHeader title="Update character" backTo="/characters" />
+          <ErrorBanner message="The character you want to update no longer exists." />
+        </main>
+      );
+    }
     return (
       <main className="mx-auto max-w-[768px] px-4 py-8">
         <PageHeader title="Update character" backTo="/characters" />
-        <ErrorBanner message="The character you want to update no longer exists." />
+        <ErrorBanner
+          message={friendlyLoadError(updateTargetError, "We couldn't load this character.")}
+          onRetry={() => void refetchUpdateTarget()}
+        />
       </main>
     );
   }
