@@ -215,24 +215,44 @@ export function MessageList({
 
   // `CSS.supports` over-reports: some engines build the ScrollTimeline and
   // then never advance it (currentTime stays null while the viewport
-  // scrolls). Probe the live animation once; only a timeline with a real
-  // current time gets to own the fade.
+  // scrolls). Probe the live animation once — after the first painted frame,
+  // so a healthy timeline has had its layout pass to resolve — and only a
+  // timeline with a real current time gets to own the fade.
   useEffect(() => {
     const viewport = viewportRef.current;
     const fade = fadeRef.current;
     if (!viewport || !fade) return;
 
-    const animation =
-      typeof fade.getAnimations === "function" ? fade.getAnimations()[0] : undefined;
-    const timelineCurrent = (animation?.timeline as ScrollTimeline | undefined)?.currentTime;
-    const timelineAlive = supportsScrollDrivenAnimations && timelineCurrent !== null;
-    if (timelineAlive) return;
+    let fallbackScroll: (() => void) | null = null;
+    let raf = 0;
+    let cancelled = false;
 
-    fade.style.animation = "none";
-    const onScroll = () => syncTopFade(viewport);
-    onScroll();
-    viewport.addEventListener("scroll", onScroll, { passive: true });
-    return () => viewport.removeEventListener("scroll", onScroll);
+    const decide = () => {
+      if (cancelled || !viewport.isConnected) return;
+      const animation =
+        typeof fade.getAnimations === "function" ? fade.getAnimations()[0] : undefined;
+      const timelineCurrent = (animation?.timeline as ScrollTimeline | undefined)?.currentTime;
+      if (supportsScrollDrivenAnimations && timelineCurrent !== null) return;
+
+      fade.style.animation = "none";
+      fallbackScroll = () => syncTopFade(viewport);
+      fallbackScroll();
+      viewport.addEventListener("scroll", fallbackScroll, { passive: true });
+    };
+
+    if (typeof requestAnimationFrame === "function") {
+      raf = requestAnimationFrame(() => {
+        raf = requestAnimationFrame(decide);
+      });
+    } else {
+      decide();
+    }
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      if (fallbackScroll) viewport.removeEventListener("scroll", fallbackScroll);
+    };
   }, [syncTopFade]);
 
   const ids = entries.map((e) => String(e.message.localId));

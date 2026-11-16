@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useCallback, useRef, useState } from "react";
 import { withImageVersion } from "@/lib/image-optimization";
 import { Link, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -100,6 +100,9 @@ export function ChatPage() {
   const clearInput = useChatUiStore((s) => s.clearInputDraft);
   const focusComposer = useChatUiStore((s) => s.focusComposer);
   const setSettingsOpen = useChatUiStore((s) => s.setSettingsOpen);
+  // The ref targets the settings trigger; Base UI's `finalFocus` (wired into
+  // the Sheet) returns focus to it at close completion.
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const setPortraitOpen = useChatUiStore((s) => s.setPortraitOpen);
   const setSceneOpen = useChatUiStore((s) => s.setSceneOpen);
   const openLightbox = useChatUiStore((s) => s.openLightbox);
@@ -461,6 +464,7 @@ export function ChatPage() {
         onTogglePortrait={() => setPortraitOpen(!portraitOpen)}
         onToggleScene={() => setSceneOpen(!sceneOpen)}
         onOpenSettings={() => setSettingsOpen(true)}
+        settingsButtonRef={settingsButtonRef}
       />
 
       <MessageList
@@ -592,7 +596,7 @@ export function ChatPage() {
         characterAvatarSrc={characterAvatarUrl}
         messageCount={messages?.length ?? 0}
         onOpenScenePanel={() => setSceneOpen(true)}
-        // Base UI restores focus to the settings trigger on close.
+        settingsButtonRef={settingsButtonRef}
         onOpenChange={setSettingsOpen}
       />
     </main>

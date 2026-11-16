@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 import {
   Info,
   X,
@@ -58,6 +58,8 @@ interface SettingsPanelProps {
   characterAvatarSrc?: string | null;
   messageCount?: number;
   onOpenScenePanel?: () => void;
+  /** Where close-time focus goes (the settings trigger). */
+  settingsButtonRef?: RefObject<HTMLButtonElement | null>;
 }
 
 export function SettingsPanel({
@@ -70,6 +72,7 @@ export function SettingsPanel({
   characterAvatarSrc,
   messageCount,
   onOpenScenePanel,
+  settingsButtonRef,
 }: SettingsPanelProps) {
   const { error: configError, refetch: refetchConfig } = useChatConfig(chatId);
 
@@ -153,6 +156,7 @@ export function SettingsPanel({
       <SheetContent
         side="right"
         showCloseButton={false}
+        finalFocus={settingsButtonRef}
         className="flex max-h-dvh w-full flex-col gap-0 overflow-hidden bg-(--bg-raised)/95 p-0 pb-[var(--keyboard-inset,0px)] shadow-[-32px_0_80px_-32px_rgba(0,0,0,0.8)] ring-1 ring-inset ring-(--border-subtle) duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] data-[side=right]:w-full data-[side=right]:sm:max-w-[720px] data-[side=right]:sm:rounded-l-2xl data-[side=right]:xl:max-w-[780px]"
       >
         <SettingsSaveProvider activeSection={activeId}>

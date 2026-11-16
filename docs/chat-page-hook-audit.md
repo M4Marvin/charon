@@ -48,8 +48,8 @@ less state), **justified** (keep, with reason).
 | 1 | `composer.tsx:68-79` | `useLayoutEffect` auto-grow (`height = scrollHeight`, 120px cap) | `field-sizing: content`; JS behind `@supports not` fallback | done |
 | 2 | `chat-message.tsx:97-104` (autosize half) | edit-textarea auto-grow (240px cap) | Same; focus + caret half stays (imperative) | done |
 | 3 | `settings/blur-commit-textarea.tsx:68-75` (autosize half) | auto-grow (360px cap) | Same; overflow detection stays (conditional "Expand" button) | done |
-| 4 | `message-list.tsx:181-199, 186-188` | per-scroll `style.opacity = scrollTop/64` top fade + initial-sync effect | Named scroll timeline: `scroll-timeline-name` on viewport, `timeline-scope` on scroller root, fade animates over `animation-range: 0px 64px`. A named timeline is required — `scroll(nearest)` would bind to the `overflow-hidden` scroller root, not the viewport. JS behind `@supports not` fallback | done |
-| 5 | `chat-page.tsx:104, 622-625` + `chat-header.tsx:23, 133` | manual `focus()` on the settings gear after the settings Sheet closes | Base UI Dialog (what `Sheet` wraps) restores focus to the trigger on close by default (`finalFocus` default = "trigger or previously focused element"). Drop the ref + prop plumbing | done |
+| 4 | `message-list.tsx:181-199, 186-188` | per-scroll `style.opacity = scrollTop/64` top fade + initial-sync effect | Named scroll timeline: `scroll-timeline-name` on viewport, `timeline-scope` on scroller root, fade animates over `animation-range: 0px 64px`. A named timeline is required — `scroll(nearest)` would bind to the `overflow-hidden` scroller root, not the viewport. JS behind a **runtime liveness probe** (`timeline.currentTime !== null`, decided after the first painted frame) because some engines construct the timeline and never activate it | done |
+| 5 | `chat-page.tsx:104, 622-625` + `chat-header.tsx:23, 133` | manual `focus()` on the settings gear after the settings Sheet closes | **Revised during browser verification:** Base UI's default close-time restore lands on `<body>` (verified in real Chromium with a real click), and the manual call races Base UI's close-complete restore. Final shape: the trigger ref stays and is passed to the Sheet as `finalFocus` — Base UI returns focus to it at close completion, after animations | done |
 | 6 | `character-portrait-panel.tsx:78-88`, `custom-image-panel.tsx:119-129` | `role="button"` div + manual Enter/Space keydown + `tabIndex` juggling | Real `<button>`: role, activation, focus for free | done |
 
 ### Better-designed with less state
@@ -142,6 +142,13 @@ Fixes were committed one at a time, each with targeted tests run between:
 15. `fix 11`: one shared `useFloatingPanel` hook — Escape (with a boolean
     suppression for the nested confirm dialog), focus-on-open, onClose
     latest-ref, and the exit-transition unmount timer.
+16. `2bdf3f5` — fix 4 refinement: runtime scroll-timeline liveness probe
+    (after the first painted frame) replacing the pure `CSS.supports` gate.
+17. fix 5 final shape (after Helium verification): `finalFocus={ref}` wired
+    from ChatPage → SettingsPanel → SheetContent; the manual refocus call
+    removed. The plain "Base UI handles it" assumption was wrong (default
+    restore lands on `<body>`); the ref-based `finalFocus` fires at close
+    completion and is race-free.
 
 Refinements discovered during implementation (diverging from the original
 plan, noted for honesty):
@@ -235,17 +242,33 @@ UI checks:
       menu trigger right after opening via a menu — the menu's own
       focus-restore lands after the panel's focus-on-open; pre-existing
       menu behavior, unchanged by this refactor.)
+- [x] Scene panel: upload via the real file input (in-page `File` +
+      `DataTransfer`; the extension relay cannot transfer files), custom
+      image renders, clear → confirm dialog opens → **Escape closes the
+      confirm and the panel stays open** (the suppression works), confirm
+      clears the image back to "No scene set"
+- [x] Lightbox: opens from the scene card (real button), zoom toggles
+      (`scale-150`, `aria-pressed`, label flip), Escape closes cleanly
+      (no ghost — `transitionend` healthy here), composer refocused
+- [x] Settings: opens with focus on the active nav section (roving
+      tabindex); mode switch (Chat → Defaults) follows; section switching
+      works; closing returns **focus to the gear** (`finalFocus` wiring —
+      verified with a real click + Escape)
+- [x] Selection → Prompt dialog: two messages selected, strip shows
+      "2 selected", dialog opens ("Prompt 2 messages"), Generate enables
+      only with text, Escape closes the dialog and clears the selection
+- [x] Send flow (observed twice): pending overlay cleared when the
+      placeholder arrived, auto-follow pinned to the bottom through the
+      stream, failed provider run (expired OpenRouter key) tears down
+      cleanly and refetches
 
-### Remaining (blocked: MacBook asleep mid-pass)
+### Deferred
 
-- [ ] Scene panel: custom-image confirm flow (Escape suppressed while the
-      confirm dialog is open) — upload input can't be driven over the
-      extension relay (`setInputFiles` unsupported); seed via IndexedDB
-      instead (the script is ready)
-- [ ] Settings: open → close returns focus to the gear (fix 5's main
-      verification); section switching + scroll reset
-- [ ] Lightbox: open from the scene card, zoom toggle, backdrop + Escape
-      close
-- [ ] Selection → Prompt → Escape → form state resets
+- [ ] Streaming text rendering with a live provider — the seeded OpenRouter
+      key is expired (server logs `401 Missing Authentication header`); the
+      streaming UI path was exercised up to teardown, the full
+      chunk-streaming render needs a valid key. Untouched code.
+- [ ] Selection → Generate → result inserted into the composer — same
+      provider dependency.
 
 

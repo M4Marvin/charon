@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import { ArrowLeft, Check, Ellipsis, Settings, User, Image as ImageIcon } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ interface ChatHeaderProps {
   onTogglePortrait: () => void;
   onToggleScene: () => void;
   onOpenSettings: () => void;
+  settingsButtonRef?: RefObject<HTMLButtonElement | null>;
 }
 
 export function ChatHeader({
@@ -30,6 +32,7 @@ export function ChatHeader({
   onTogglePortrait,
   onToggleScene,
   onOpenSettings,
+  settingsButtonRef,
 }: ChatHeaderProps) {
   return (
     <header className="relative z-30 flex h-12 min-w-0 shrink-0 items-center justify-between border-b border-subtle bg-(--header-bg) px-3 backdrop-blur-xl md:px-5">
@@ -127,6 +130,7 @@ export function ChatHeader({
           </DropdownMenuContent>
         </DropdownMenu>
         <Button
+          ref={settingsButtonRef}
           variant="ghost"
           size="icon"
           className="size-10 rounded-full glass shrink-0 text-2 hover:text-1"
