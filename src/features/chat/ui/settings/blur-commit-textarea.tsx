@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
+// The JS fallback measurement and the Tailwind cap below must stay in sync:
+// `max-h-[360px]` on the textarea is the CSS-side twin of this number (the
+// class must stay literal for Tailwind, so a bump means touching both).
 const MAX_HEIGHT = 360;
 
 interface BlurCommitTextareaProps {

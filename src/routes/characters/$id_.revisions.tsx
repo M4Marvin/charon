@@ -70,11 +70,7 @@ export function CharacterRevisionsPage() {
         <SkeletonRows rows={4} />
       ) : error ? (
         <ErrorBanner
-          message={
-            error instanceof Error
-              ? `We couldn’t load this history. ${error.message}`
-              : "We couldn’t load this history."
-          }
+          message={friendlyLoadError(error, "We couldn’t load this history.")}
           onRetry={() => void refetch()}
         />
       ) : !revisions || revisions.length === 0 ? (
@@ -197,7 +193,7 @@ function RevisionRow({
         open={restoreOpen}
         onOpenChange={(o) => !o && setRestoreOpen(false)}
         title={`Restore version ${revision.rev}?`}
-        description={`“${revision.name}” will replace the current character data. This save is itself recorded as a new version.`}
+        description={`“${revision.name}” will replace the current character data. This save is itself recorded as a new version. The current portrait is kept — art is not part of a version.`}
         confirmLabel="Restore"
         loadingLabel="Restoring…"
         loading={restoreMutation.isPending}

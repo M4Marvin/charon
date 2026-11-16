@@ -7,6 +7,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { useChatUiStore, selectComposerFocusNonce } from "../chat-store";
 import { supportsFieldSizing } from "@/lib/css-supports";
 
+// The JS auto-grow fallback and the Tailwind cap below must stay in sync:
+// `max-h-[120px]` on the textarea is the CSS-side twin of this number (the
+// class must stay literal for Tailwind, so a bump means touching both).
 const TEXTAREA_MAX_HEIGHT = 120;
 const IMAGE_UNSUPPORTED_MESSAGE = "Images aren't supported in the composer — use the scene panel";
 

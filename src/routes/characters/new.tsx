@@ -165,6 +165,10 @@ export function NewCharacterPage() {
               res.lorebook.entriesInserted === 1 ? "entry" : "entries"
             }`,
           );
+        } else if (res.skippedExistingLorebook) {
+          // The standalone copy from the original import is user-owned; say
+          // so instead of failing silently.
+          parts.push("existing lorebook with that name left unchanged");
         }
         toast.success(parts.join(" · "));
         void navigate({ to: "/characters/$id", params: { id: res.character.id } });
@@ -212,6 +216,8 @@ export function NewCharacterPage() {
             res.lorebook.entriesInserted === 1 ? "entry" : "entries"
           }`,
         );
+      } else if (res.skippedExistingLorebook) {
+        parts.push("existing lorebook with that name left unchanged");
       }
       toast.success(parts.join(" · "));
       void navigate({ to: "/characters/$id", params: { id: res.character.id } });
@@ -265,13 +271,15 @@ export function NewCharacterPage() {
     <main
       className="mx-auto max-w-[768px] px-4 py-8"
       onDragOver={(e) => {
-        // While the file flow is locked, drags that fall through the
-        // disabled dropzone (pointer-events:none) would otherwise hit the
-        // page and let the browser navigate to the dropped file.
-        if (fileFlowLocked) e.preventDefault();
+        // Any drag that reaches the page — the dropzone is disabled while the
+        // flow is locked, or the drag simply missed the dashed zone — must
+        // not navigate the tab to the dropped file.
+        e.preventDefault();
       }}
       onDrop={(e) => {
-        if (fileFlowLocked) e.preventDefault();
+        // Intercepted even when idle: dropping a card PNG just outside the
+        // dashed zone would otherwise navigate the tab away mid-flow.
+        e.preventDefault();
       }}
     >
       <PageHeader
@@ -339,6 +347,11 @@ export function NewCharacterPage() {
             onClick={() => {
               setStep("pick");
               setPreview(null);
+              // Release the card too: a 50 MB card's ~67 MB base64 string and
+              // its File blob would otherwise stay pinned in state while the
+              // user sits on the picker.
+              setPreviewB64("");
+              setFile(null);
             }}
           >
             <ArrowLeft className="size-4" data-icon="inline-start" /> Choose different file
@@ -451,6 +464,8 @@ export function NewCharacterPage() {
                 }
                 setStep("pick");
                 setPreview(null);
+                setPreviewB64("");
+                setFile(null);
               }}
             >
               Cancel

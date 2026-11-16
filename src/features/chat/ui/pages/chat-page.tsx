@@ -467,8 +467,10 @@ export function ChatPage() {
         settingsButtonRef={settingsButtonRef}
       />
 
+      {/* No key needed: the route remounts ChatPage per chat
+          (routes/chat/$id.tsx), so the whole subtree — including the
+          scroller provider state below — resets on navigation. */}
       <MessageList
-        key={chatId}
         chatId={chatId}
         entries={activePath}
         activePlaceholderId={scopedPlaceholderId}

@@ -11,6 +11,7 @@ const {
   routerState,
   characterState,
   revisionsState,
+  revisionState,
   pendingState,
 } = vi.hoisted(() => ({
   mockRestore: vi.fn(),
@@ -22,6 +23,9 @@ const {
     error: null as Error | null,
   },
   revisionsState: { list: [] as RevisionSummary[] },
+  // Per-rev snapshot payloads for the diff panel; null means "no data"
+  // (mirrors a revision blob that has not loaded).
+  revisionState: { dataFor: null as ((rev: number) => unknown) | null },
   // Mirrors useMutation.isPending for the shared restore mutation; tests set
   // it and rerender manually because the mock holds no React state.
   pendingState: { restoring: false },
@@ -41,7 +45,11 @@ vi.mock("@/hooks/useCharacters", () => ({
     error: null,
     refetch: vi.fn(),
   }),
-  useCharacterRevision: () => ({ data: undefined, isLoading: false, error: null }),
+  useCharacterRevision: (_id: string, rev: number) => ({
+    data: revisionState.dataFor ? revisionState.dataFor(rev) : undefined,
+    isLoading: false,
+    error: null,
+  }),
   useRestoreCharacterRevision: () => ({
     isPending: pendingState.restoring,
     mutate: mockRestore,
@@ -82,6 +90,7 @@ describe("CharacterRevisionsPage", () => {
     characterState.character = { id: "char-1", name: "Ada" };
     characterState.error = null;
     revisionsState.list = [revision({ rev: 2, name: "Ada" }), revision({ rev: 1, name: "Ada" })];
+    revisionState.dataFor = null;
     pendingState.restoring = false;
   });
 
@@ -142,5 +151,76 @@ describe("CharacterRevisionsPage", () => {
     const restoreButtons = screen.getAllByRole("button", { name: "Restore" });
     expect((restoreButtons[0] as HTMLButtonElement).disabled).toBe(true);
     expect((restoreButtons[1] as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("closes the dialog and toasts success after a restore", async () => {
+    mockRestore.mockImplementation((_vars, opts) => opts.onSuccess());
+
+    render(<CharacterRevisionsPage />);
+    fireEvent.click(screen.getAllByRole("button", { name: "Restore" })[1]);
+    const dialogButtons = screen.getAllByRole("button", { name: "Restore" });
+    fireEvent.click(dialogButtons[dialogButtons.length - 1]);
+    await act(async () => {});
+
+    expect(mockToastSuccess).toHaveBeenCalledWith("Restored version 1");
+    // The dialog closed: only the two per-row Restore buttons remain.
+    expect(screen.getAllByRole("button", { name: "Restore" })).toHaveLength(2);
+  });
+
+  it("discloses in the confirm dialog that a restore keeps the current portrait", () => {
+    render(<CharacterRevisionsPage />);
+    fireEvent.click(screen.getAllByRole("button", { name: "Restore" })[1]);
+
+    expect(screen.getByText(/current portrait is kept/i)).toBeTruthy();
+  });
+
+  describe("diff panel", () => {
+    function snapshotFor(description: string) {
+      return {
+        name: "Ada",
+        tagline: null,
+        spec: "chara_card_v2",
+        specVersion: "2.0",
+        data: {
+          name: "Ada",
+          description,
+          personality: "",
+          scenario: "",
+          first_mes: "",
+          mes_example: "",
+          creator_notes: "",
+          system_prompt: "",
+          post_history_instructions: "",
+          alternate_greetings: [],
+          tags: [],
+          creator: "",
+          character_version: "",
+          extensions: {},
+        },
+      };
+    }
+
+    it("renders the changed fields between two versions", async () => {
+      revisionState.dataFor = (rev) =>
+        rev === 2 ? snapshotFor("rewritten") : snapshotFor("original");
+
+      render(<CharacterRevisionsPage />);
+      fireEvent.click(screen.getAllByRole("button", { name: "Changes" })[0]);
+      await act(async () => {});
+
+      expect(screen.getByText("Description")).toBeTruthy();
+      expect(screen.getByText("original")).toBeTruthy();
+      expect(screen.getByText("rewritten")).toBeTruthy();
+    });
+
+    it("says so when two versions have no tracked differences", async () => {
+      revisionState.dataFor = () => snapshotFor("identical");
+
+      render(<CharacterRevisionsPage />);
+      fireEvent.click(screen.getAllByRole("button", { name: "Changes" })[0]);
+      await act(async () => {});
+
+      expect(screen.getByText(/no tracked fields differ/i)).toBeTruthy();
+    });
   });
 });

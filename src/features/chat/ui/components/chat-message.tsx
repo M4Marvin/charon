@@ -40,6 +40,9 @@ import { supportsFieldSizing } from "@/lib/css-supports";
 import { useChatUiStore } from "../chat-store";
 import type { ActivePathEntry } from "@/features/chat/tree/types";
 
+// The JS auto-grow fallback and the Tailwind cap below must stay in sync:
+// `max-h-[240px]` on the textarea is the CSS-side twin of this number (the
+// class must stay literal for Tailwind, so a bump means touching both).
 const TEXTAREA_MAX_HEIGHT = 240;
 
 interface ChatMessageProps {

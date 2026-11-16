@@ -53,7 +53,7 @@ A save bar appears when you have unsaved changes: **Save** keeps them, **Discard
 
 Every save creates a version — a full snapshot of the card at that moment. Renaming also creates a version, so the newest version always matches the character as it is now.
 
-From the detail page, open the **⋯** menu and choose **History**. The list shows each version with its number, name, and when it was saved; the newest is labelled **Current**. For any version you can view **Changes** (fields that differ from the version before it) or **Restore** it. Restoring is itself a save and appears as a new version; to undo a bad edit, restore the previous one. Versions live as long as the character does.
+From the detail page, open the **⋯** menu and choose **History**. The list shows each version with its number, name, and when it was saved; the newest is labelled **Current**. For any version you can view **Changes** (fields that differ from the version before it) or **Restore** it. Restoring is itself a save; to undo a bad edit, restore the previous one. Restoring keeps the current portrait. Versions live as long as the character does.
 
 ## Related pages
 

@@ -198,6 +198,32 @@ describe("NewCharacterPage import loading state", () => {
     expect(mockToastSuccess).toHaveBeenCalledWith(expect.stringContaining("Yume"));
     expect(mockToastSuccess).toHaveBeenCalledWith(expect.stringContaining("8"));
   });
+
+  it("notes in the toast when an embedded lorebook was skipped", async () => {
+    mockFileToBase64.mockResolvedValue("fake-png-base64");
+    mockImportCharacter.mockResolvedValue({
+      ok: true,
+      character: { id: "c1", name: "Ada Lovelace", imagePath: null },
+      skippedExistingLorebook: true,
+    });
+
+    render(<NewCharacterPage />);
+    fireEvent.change(screen.getByLabelText("Choose a character card PNG"), {
+      target: { files: [makePngFile()] },
+    });
+    await act(async () => {});
+    await act(async () => {
+      mockPreviewCharacter.mockResolvedValue({ ok: true, data: minimalOkPreview });
+    });
+    await act(async () => {});
+
+    fireEvent.click(screen.getByRole("button", { name: /^import$/i }));
+    await act(async () => {});
+
+    expect(mockToastSuccess).toHaveBeenCalledWith(
+      expect.stringContaining("existing lorebook with that name left unchanged"),
+    );
+  });
 });
 
 describe("NewCharacterPage duplicate choice", () => {
@@ -264,6 +290,24 @@ describe("NewCharacterPage duplicate choice", () => {
     });
     expect(mockImportCharacter).not.toHaveBeenCalled();
     expect(mockToastSuccess).toHaveBeenCalledWith(expect.stringContaining("Updated"));
+  });
+
+  it("targets the duplicate the user re-selects, not just the default", async () => {
+    await renderWithDuplicates();
+    mockUpdateCharacterFromCard.mockResolvedValue({
+      ok: true,
+      character: { id: "char-1", name: "Ada Lovelace", imagePath: null },
+    });
+
+    // The default target is the newest duplicate (char-2); pick the other.
+    fireEvent.click(screen.getAllByRole("radio")[1]!);
+    fireEvent.click(screen.getByRole("button", { name: /update “ada lovelace”/i }));
+    await act(async () => {});
+
+    expect(mockUpdateCharacterFromCard).toHaveBeenCalledWith({
+      pngBase64: "fake-png-base64",
+      targetId: "char-1",
+    });
   });
 
   it("clamps long duplicate names in the primary button label", async () => {
@@ -416,10 +460,11 @@ describe("NewCharacterPage update mode (?update=<id>)", () => {
     enterUpdateMode({ id: "char-9", name: "Old Name" });
     const { rerender, container } = await renderThroughPreview();
     const main = container.querySelector("main")!;
-    // Idle: a drop on the page is not intercepted (unchanged behavior).
+    // Idle: a drop on the page is still intercepted — dropping a card PNG
+    // just outside the dashed zone must not navigate the tab away.
     const idleDrop = createEvent.drop(main);
     fireEvent(main, idleDrop);
-    expect(idleDrop.defaultPrevented).toBe(false);
+    expect(idleDrop.defaultPrevented).toBe(true);
 
     pendingState.updating = true;
     mockUpdateCharacterFromCard.mockReturnValue(new Promise<PreviewResponse>(() => {}));

@@ -24,9 +24,10 @@ export function CharacterPortraitPanel({
   onClose,
   onImageClick,
 }: CharacterPortraitPanelProps) {
-  // Failure is keyed by src (CONTRIBUTING fallback pattern): a new version
-  // recovers without a reset effect; the effect below still resets it on
-  // reopen so a previously failed load is retried.
+  // Failure is keyed by src (CONTRIBUTING fallback pattern): a new version or
+  // a different image recovers without any reset effect — the src-keyed gate
+  // below handles both. The effect still resets it on reopen so a
+  // previously failed load is retried.
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const { keepImageMounted } = useFloatingPanel({
@@ -37,7 +38,7 @@ export function CharacterPortraitPanel({
 
   useEffect(() => {
     setFailedSrc(null);
-  }, [open, imageSrc]);
+  }, [open]);
 
   const canOpen = imageSrc !== null && failedSrc !== imageSrc;
   const shouldMountImage = open || keepImageMounted;
