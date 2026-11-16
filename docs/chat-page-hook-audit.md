@@ -213,14 +213,39 @@ Three engine bugs found and worked around/logged (`20261115234139-opencode-in-ap
       selection (state verified — the ghost popup that remains is the
       environment's missing `transitionend`, disposed manually)
 
-### Remaining (blocked on the in-app browser relay wedging mid-pass)
+### Verified in the user's real browser (MacHelium — Helium on the MacBook,
+### via the browse extension relay, after the in-app Electron wedged)
 
-- [ ] Portrait/scene panels: Escape close, focus lands on close button,
-      scene panel ignores Escape while the clear-confirm is open
-- [ ] Settings: open → close returns focus to the gear; section switching +
-      scroll reset (state-level, since the Sheet also ghosts on close)
-- [ ] Lightbox: zoom toggle, backdrop/Escape close, unavailable-image state
-- [ ] Selection → Generate → result inserted into the composer (needs a
-      working provider; the seeded key is expired)
+Engine checks (all healthy — the two bugs above are in-app-Electron-only):
+
+- [x] `transitionend` fires; overlays close cleanly, no ghost popups
+- [x] Scroll timelines activate: the fade runs the **CSS path** (`timeline
+      currentTime` non-null), opacity tracks scrollTop/64 exactly (0 → 64px
+      ramp → capped). This also caught a probe regression: the first probe
+      version read `currentTime` before the timeline resolved and killed the
+      CSS path in healthy engines too — fixed to decide after the first
+      painted frame (`rAF` ×2)
+
+UI checks:
+
+- [x] Chat page: signed-in render, 10 message items, composer floor 40px,
+      `field-sizing: content` active
+- [x] Portrait panel: opens via the View options menu, inert + `aria-hidden`
+      when closed, Escape closes, composer refocused. (Focus stays on the
+      menu trigger right after opening via a menu — the menu's own
+      focus-restore lands after the panel's focus-on-open; pre-existing
+      menu behavior, unchanged by this refactor.)
+
+### Remaining (blocked: MacBook asleep mid-pass)
+
+- [ ] Scene panel: custom-image confirm flow (Escape suppressed while the
+      confirm dialog is open) — upload input can't be driven over the
+      extension relay (`setInputFiles` unsupported); seed via IndexedDB
+      instead (the script is ready)
+- [ ] Settings: open → close returns focus to the gear (fix 5's main
+      verification); section switching + scroll reset
+- [ ] Lightbox: open from the scene card, zoom toggle, backdrop + Escape
+      close
+- [ ] Selection → Prompt → Escape → form state resets
 
 
