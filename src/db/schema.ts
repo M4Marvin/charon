@@ -151,7 +151,9 @@ export const characterRevisions = sqliteTable(
       .$defaultFn(() => new Date()),
   },
   (table) => [
-    index("character_revisions_character_idx").on(table.characterId),
+    // The unique (character_id, rev) index serves every access pattern (all
+    // queries filter character_id, and SQLite scans its leftmost prefix for
+    // the ORDER BY rev DESC list), so no separate character_id index exists.
     uniqueIndex("character_revisions_character_rev_uq").on(table.characterId, table.rev),
   ],
 );

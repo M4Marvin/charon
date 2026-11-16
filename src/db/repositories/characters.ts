@@ -269,8 +269,10 @@ export function updateCharacter(
 }
 
 export function deleteCharacter(id: string, db: DB = defaultDb): void {
-  // Manually delete chats and messages first since FK enforcement is off in dev.db
-  // (mirrors deleteChat in src/db/repositories/chats.ts:148-158).
+  // Belt-and-braces child deletes for FK-off contexts (migrators and
+  // scripts); at runtime `foreign_keys = ON` and the ON DELETE cascade
+  // already cover these. Mirrors deleteChat in
+  // src/db/repositories/chats.ts:148-158.
   const chatIds = db
     .select({ id: chats.id })
     .from(chats)

@@ -10,6 +10,7 @@ import {
 import { createCharacter, deleteCharacter, getCharacter } from "@/db/repositories/characters";
 import { makeCharacterData } from "@/db/__tests__/character-data";
 import { makeTestDb, type TestDb } from "@/db/__tests__/helpers";
+import { CHARACTER_NOT_FOUND, isCharacterNotFound, isRevisionNotFound } from "@/lib/app-errors";
 import type { CharacterDataV2 } from "@/lib/st-core/character";
 
 describe("character revisions repository", () => {
@@ -108,7 +109,24 @@ describe("character revisions repository", () => {
 
     it("throws when the rev does not exist", () => {
       seedCharacter();
-      expect(() => getRevision("char-1", 99, db)).toThrow("Revision not found");
+      try {
+        getRevision("char-1", 99, db);
+        throw new Error("expected throw");
+      } catch (e) {
+        expect(isRevisionNotFound(e)).toBe(true);
+      }
+    });
+
+    it("throws the character not-found error when the character is gone", () => {
+      // A deleted character must route through the ui-spec not-found path,
+      // not a generic "Revision not found" failure.
+      try {
+        getRevision("missing", 1, db);
+        throw new Error("expected throw");
+      } catch (e) {
+        expect(isCharacterNotFound(e)).toBe(true);
+        expect((e as Error).message).toBe(CHARACTER_NOT_FOUND);
+      }
     });
   });
 
@@ -197,6 +215,26 @@ describe("character revisions repository", () => {
       );
       expect(listRevisions("missing", db)).toEqual([]);
     });
+
+    it("appends nothing when the save leaves the snapshot identical", () => {
+      seedCharacter();
+      // No-op rename: the patch equals the baseline revision's snapshot.
+      updateCharacterWithRevision("char-1", { name: "Alice" }, db);
+      expect(listRevisions("char-1", db).map((r) => r.rev)).toEqual([1]);
+
+      // Re-saving the identical card data appends nothing either.
+      updateCharacterWithRevision("char-1", { data: makeCharacterData({ name: "Alice" }) }, db);
+      expect(listRevisions("char-1", db).map((r) => r.rev)).toEqual([1]);
+    });
+
+    it("appends normally again once the snapshot differs", () => {
+      seedCharacter();
+      updateCharacterWithRevision("char-1", { name: "Alice" }, db);
+      updateCharacterWithRevision("char-1", { name: "Alice II" }, db);
+      const list = listRevisions("char-1", db);
+      expect(list.map((r) => r.rev)).toEqual([2, 1]);
+      expect(list[0]?.name).toBe("Alice II");
+    });
   });
 
   describe("restoreCharacterRevision", () => {
@@ -262,7 +300,21 @@ describe("character revisions repository", () => {
 
     it("throws when the revision does not exist", () => {
       seedCharacter();
-      expect(() => restoreCharacterRevision("char-1", 99, db)).toThrow("Revision not found");
+      try {
+        restoreCharacterRevision("char-1", 99, db);
+        throw new Error("expected throw");
+      } catch (e) {
+        expect(isRevisionNotFound(e)).toBe(true);
+      }
+    });
+
+    it("throws the character not-found error when the character is gone", () => {
+      try {
+        restoreCharacterRevision("missing", 1, db);
+        throw new Error("expected throw");
+      } catch (e) {
+        expect(isCharacterNotFound(e)).toBe(true);
+      }
     });
   });
 

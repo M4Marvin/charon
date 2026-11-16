@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
+import { readMigrationFiles } from "drizzle-orm/migrator";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -12,29 +13,30 @@ import * as schema from "@/db/schema";
  * the journal up to a chosen tag with pre-existing data in place, then hands
  * off to the real migrator — reproducing what an actual upgrade sees.
  *
- * It mirrors drizzle's own reader (node_modules/drizzle-orm/migrator.js):
- * statements split on `--> statement-breakpoint`, journal rows record the
- * entry's `when` and the sha256 of the raw file content.
+ * The migration list comes from drizzle's own reader, so a drizzle upgrade
+ * that changes statement splitting or journal hashing updates this harness
+ * with it. Only the stop-at-tag logic is custom; the journal rows carry the
+ * sha256 of the raw file content, exactly how the migrator keys them.
  */
 function migrateUpTo(sqlite: Database.Database, throughTag: string): void {
-  const journal = JSON.parse(readFileSync("drizzle/meta/_journal.json", "utf8")) as {
-    entries: { tag: string; when: number }[];
-  };
+  const migrations = readMigrationFiles({ migrationsFolder: "./drizzle" });
   // Exact DDL the migrator uses for its journal table.
   sqlite.exec(`CREATE TABLE IF NOT EXISTS __drizzle_migrations (
     id SERIAL PRIMARY KEY,
     hash text NOT NULL,
     created_at numeric
   )`);
-  for (const entry of journal.entries) {
-    const query = readFileSync(`drizzle/${entry.tag}.sql`, "utf8");
-    for (const statement of query.split("--> statement-breakpoint")) {
+  const stopHash = createHash("sha256")
+    .update(readFileSync(`drizzle/${throughTag}.sql`, "utf8"))
+    .digest("hex");
+  for (const migration of migrations) {
+    for (const statement of migration.sql) {
       if (statement.trim()) sqlite.exec(statement);
     }
     sqlite
       .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
-      .run(createHash("sha256").update(query).digest("hex"), entry.when);
-    if (entry.tag === throughTag) return;
+      .run(migration.hash, migration.folderMillis);
+    if (migration.hash === stopHash) return;
   }
   throw new Error(`Journal has no entry ${throughTag}`);
 }
