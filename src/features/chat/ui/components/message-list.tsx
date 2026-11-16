@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { ChevronUp, ChevronDown, MessageCircle } from "lucide-react";
 import { ChatMessage } from "./chat-message";
 import { MessageOverviewRail } from "./message-overview-rail";
-import { supportsScrollDrivenAnimations } from "@/lib/css-supports";
+import { supportsNamedScrollTimeline } from "@/lib/css-supports";
 import type { ActivePathEntry } from "@/features/chat/tree/types";
 
 const SCROLL_EDGE_THRESHOLD = 80;
@@ -232,7 +232,11 @@ export function MessageList({
       const animation =
         typeof fade.getAnimations === "function" ? fade.getAnimations()[0] : undefined;
       const timelineCurrent = (animation?.timeline as ScrollTimeline | undefined)?.currentTime;
-      if (supportsScrollDrivenAnimations && timelineCurrent !== null) return;
+      // `!= null` (not `!== null`): `undefined` means no animation was ever
+      // created or its named timeline failed to resolve — that is a dead CSS
+      // path, so the fallback must install instead of trusting a timeline
+      // that can never tick.
+      if (supportsNamedScrollTimeline && timelineCurrent != null) return;
 
       fade.style.animation = "none";
       fallbackScroll = () => syncTopFade(viewport);
@@ -258,8 +262,9 @@ export function MessageList({
   const ids = entries.map((e) => String(e.message.localId));
 
   return (
+    // No key needed: ChatPage remounts per chat (routes/chat/$id.tsx), which
+    // resets the provider's internal scroller state on navigation.
     <MessageScrollerProvider
-      key={chatId}
       autoScroll={!userScrolledUp}
       defaultScrollPosition="last-anchor"
       scrollEdgeThreshold={SCROLL_EDGE_THRESHOLD}

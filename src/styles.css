@@ -281,8 +281,10 @@
    `scroll-timeline-name` and the scroller root hoists it with
    `timeline-scope` so the sibling fade can consume it; `scroll(nearest)`
    would bind to the root's overflow-hidden box instead. Range lengths are
-   absolute scroll offsets: the gradient eases over the first 64px. */
-@supports (animation-timeline: scroll()) {
+   absolute scroll offsets: the gradient eases over the first 64px. The gate
+   tests the named-timeline form — the same form the JS probe and the code
+   below use, so gate, probe, and usage cannot disagree. */
+@supports (animation-timeline: --chat-top) {
   .chat-top-fade {
     animation: chat-top-fade linear both;
     animation-timeline: --chat-top;
