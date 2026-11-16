@@ -54,6 +54,8 @@ export type ImportResult =
       ok: true;
       character: { id: string; name: string; imagePath: string | null };
       lorebook?: ImportedLorebook | null;
+      /** An embedded book was not extracted: a same-named lorebook already exists and was left untouched. */
+      skippedExistingLorebook?: boolean;
     }
   | { ok: false; error: ImportError };
 
@@ -112,9 +114,11 @@ export function parseAndValidateCard(
     return { ok: false, error: { kind: "validation", errors: validation.errors } };
   }
 
-  // A card with no name (empty `data.name`, no slug) would commit an empty
-  // display name — the edit form and rename validator both treat that as
-  // invalid, so reject it here for import, preview, and card-update alike.
+  // A card with no usable name (empty or whitespace-only `data.name`, no
+  // slug) would commit an empty display name — the edit form and rename
+  // validator both treat that as invalid, so reject it here for import,
+  // preview, and card-update alike. Non-string names cannot reach this gate:
+  // both validators type-check data.name.
   const cardData = validation.card.data as CharacterDataV2;
   if (deriveDisplayName(cardData) === "") {
     return {
@@ -250,17 +254,28 @@ async function removeAvatar(storedPath: string): Promise<void> {
  * the same name already exists. Best-effort: failures are swallowed because
  * the character row is already committed.
  */
+type EmbeddedLorebookOutcome =
+  | { status: "created"; lorebook: ImportedLorebook }
+  | { status: "skipped_existing" }
+  | { status: "none" };
+
 function extractEmbeddedLorebook(
   cardData: CharacterDataV2,
   characterName: string,
   db?: DB,
-): ImportedLorebook | null {
+): EmbeddedLorebookOutcome {
   try {
-    if (!cardData.character_book?.entries?.length) return null;
+    if (!cardData.character_book?.entries?.length) return { status: "none" };
     const standalone = convertCharacterBookToStandalone(cardData.character_book, characterName);
-    if (standalone.entries.length === 0) return null;
-    const exists = repoListLorebooks(db).some((lb) => lb.name === standalone.name);
-    if (exists) return null;
+    if (standalone.entries.length === 0) return { status: "none" };
+    if (repoListLorebooks(db).some((lb) => lb.name === standalone.name)) {
+      // The standalone copy from the original import is user-owned; the card
+      // update must not clobber it. The row's character_book (what generation
+      // consumes) already carries the new content, so only the disabled
+      // standalone copy stays stale — surfaced to the caller so the toast can
+      // say so instead of failing silently.
+      return { status: "skipped_existing" };
+    }
 
     const lbId = randomUUID();
     repoCreateLorebook(
@@ -285,14 +300,49 @@ function extractEmbeddedLorebook(
       }
     }
     return {
-      id: lbId,
-      name: standalone.name,
-      entriesInserted,
-      entriesSkipped: standalone.entriesSkipped + (standalone.entries.length - entriesInserted),
+      status: "created",
+      lorebook: {
+        id: lbId,
+        name: standalone.name,
+        entriesInserted,
+        entriesSkipped: standalone.entriesSkipped + (standalone.entries.length - entriesInserted),
+      },
     };
   } catch {
     // Embedded lorebooks are optional; the character row and avatar are already committed.
-    return null;
+    return { status: "none" };
+  }
+}
+
+/**
+ * Post-commit avatar reconciliation: delete every avatar file the live row
+ * does not reference — the pre-update file (once the row points elsewhere)
+ * and the file this call wrote (if a concurrent writer repointed the row
+ * away from it). The live file is never deleted, whatever the interleaving;
+ * every file written by an update ends up either referenced or removed.
+ * Best-effort: a crash here just orphans a PNG.
+ */
+export async function reconcileAvatarAfterSwap(
+  targetId: string,
+  oldImagePath: string | null,
+  writtenPath: string,
+  db?: DB,
+): Promise<void> {
+  let live: { imagePath: string | null } | null = null;
+  try {
+    live = repoGet(targetId, db);
+  } catch {
+    // The row was deleted (or the DB hiccupped) after the update committed:
+    // skip cleanup instead of failing a successful update.
+    return;
+  }
+  if (oldImagePath && oldImagePath !== live.imagePath) {
+    await invalidateStoredImageCache(oldImagePath).catch(() => {});
+    await removeAvatar(oldImagePath);
+  }
+  if (live.imagePath !== writtenPath) {
+    await invalidateStoredImageCache(writtenPath).catch(() => {});
+    await removeAvatar(writtenPath);
   }
 }
 
@@ -323,7 +373,7 @@ async function importParsedCard(card: ParsedCard, db?: DB): Promise<ImportResult
     throw e;
   }
 
-  const lorebook = extractEmbeddedLorebook(cardData, character.name, db);
+  const outcome = extractEmbeddedLorebook(cardData, character.name, db);
 
   return {
     ok: true,
@@ -332,7 +382,8 @@ async function importParsedCard(card: ParsedCard, db?: DB): Promise<ImportResult
       name: character.name,
       imagePath: character.imagePath,
     },
-    lorebook,
+    lorebook: outcome.status === "created" ? outcome.lorebook : null,
+    skippedExistingLorebook: outcome.status === "skipped_existing" || undefined,
   };
 }
 
@@ -347,10 +398,12 @@ export async function importCharacterCard(pngBase64: string, db?: DB): Promise<I
 
 /**
  * Replace an existing character's card with a newly imported one: data, name,
- * spec, and avatar are swapped; the local tagline is preserved. The pre-update
- * name/tagline/data/spec are restorable via the appended revision; the avatar
- * is not snapshotted and follows the row (old art is replaced). Chats follow
- * the character because only the row content changes.
+ * spec, and avatar are swapped; the local tagline is preserved. The appended
+ * revision snapshots the *post-update* card — the latest revision always
+ * equals the current card, so the pre-update state lives in the revision the
+ * previous save (or the import baseline) appended, not in this one. The
+ * avatar is not snapshotted and follows the row (old art is replaced). Chats
+ * follow the character because only the row content changes.
  */
 export async function updateCharacterCard(
   pngBase64: string,
@@ -400,22 +453,18 @@ export async function updateCharacterCard(
     throw e;
   }
 
-  // Committed: swap the avatar files (old file may already be gone; best-effort,
-  // and a crash here just orphans the old PNG). Re-read the live row first: the
-  // row's current imagePath is authoritative, so a concurrent update (or any
-  // future writer that repoints the row) can never get its live file deleted
-  // by this cleanup.
-  const live = repoGet(targetId, db);
-  if (oldImagePath && live.imagePath !== oldImagePath) {
-    await invalidateStoredImageCache(oldImagePath).catch(() => {});
-    await removeAvatar(oldImagePath);
-  }
+  // Committed. Reconcile the avatar files through the live row: its current
+  // imagePath is authoritative, so a concurrent update (or any future writer
+  // that repoints the row) can never get its live file deleted by this
+  // cleanup, and this call's written file is removed when it lost the race.
+  await reconcileAvatarAfterSwap(targetId, oldImagePath, avatar.storedPath, db);
 
-  const lorebook = extractEmbeddedLorebook(cardData, name, db);
+  const outcome = extractEmbeddedLorebook(cardData, name, db);
 
   return {
     ok: true,
     character: { id: targetId, name, imagePath: avatar.storedPath },
-    lorebook,
+    lorebook: outcome.status === "created" ? outcome.lorebook : null,
+    skippedExistingLorebook: outcome.status === "skipped_existing" || undefined,
   };
 }

@@ -91,6 +91,11 @@ function validateUpdateInput(data: unknown): { id: string; name: string } {
   return result;
 }
 
+// Card data is stored twice per save (row + revision snapshot), so bound the
+// serialized payload. Realistic cards sit far below this; the cap guards the
+// write path, not the import path (whose own PNG-size limit still applies).
+const MAX_CARD_DATA_JSON_LENGTH = 8 * 1024 * 1024;
+
 function validateUpdateDataInput(data: unknown): {
   id: string;
   data: CharacterDataV2;
@@ -99,6 +104,12 @@ function validateUpdateDataInput(data: unknown): {
   const result = UpdateDataInput(data);
   if (result instanceof type.errors) {
     throw new Error("Invalid update data input");
+  }
+  if (typeof result.data !== "object" || result.data === null || Array.isArray(result.data)) {
+    throw new Error("Invalid update data input");
+  }
+  if (JSON.stringify(result.data).length > MAX_CARD_DATA_JSON_LENGTH) {
+    throw new Error("Card data too large");
   }
   return result as { id: string; data: CharacterDataV2; tagline?: string | null };
 }

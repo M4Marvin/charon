@@ -6,9 +6,15 @@ import {
   importCharacterCard,
   parseAndValidateCard,
   previewCharacterCard,
+  reconcileAvatarAfterSwap,
   updateCharacterCard,
 } from "@/server/services/character/importer";
-import { createCharacter, getCharacter, listCharacters } from "@/db/repositories/characters";
+import {
+  createCharacter,
+  deleteCharacter,
+  getCharacter,
+  listCharacters,
+} from "@/db/repositories/characters";
 import { getRevision, listRevisions } from "@/db/repositories/character-revisions";
 import { removePrivatePath } from "@/server/uploads";
 import {
@@ -197,6 +203,24 @@ describe("parseAndValidateCard", () => {
         expect(result.error.errors).toEqual([
           { field: "name", message: expect.stringMatching(/no character name/) },
         ]);
+      }
+    }
+  });
+
+  it("rejects a card whose name is null with a validation error, not a crash", () => {
+    // Both validators type-check data.name, so a null name is rejected by
+    // validation before the display-name gate — never by a TypeError in it.
+    // (The V2 validator reports it with an empty field key and a clear
+    // message.)
+    const card = JSON.parse(validCardJson("Alaric")) as { data: Record<string, unknown> };
+    card.data.name = null;
+    const png = buildPng([{ keyword: "chara", text: JSON.stringify(card) }]);
+    const result = parseAndValidateCard(Buffer.from(png).toString("base64"));
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe("validation");
+      if (result.error.kind === "validation") {
+        expect(result.error.errors[0]?.message).toMatch(/data.name must be a string/);
       }
     }
   });
@@ -636,6 +660,7 @@ describe("updateCharacterCard", () => {
     expect(res.ok).toBe(true);
     if (!res.ok) return;
     expect(res.lorebook).toBeNull();
+    expect(res.skippedExistingLorebook).toBe(true);
     expect(listLorebooks(db)).toHaveLength(1);
   });
 
@@ -677,5 +702,90 @@ describe("updateCharacterCard", () => {
     );
     expect(removedPaths).not.toContain("/tmp/charon-test/uploads/avatars/old.png");
     expect(mockInvalidateCache).not.toHaveBeenCalled();
+  });
+});
+
+describe("reconcileAvatarAfterSwap", () => {
+  let db: TestDb;
+  let ctx: ReturnType<typeof makeTestDb>;
+
+  beforeEach(() => {
+    ctx = makeTestDb();
+    db = ctx.db;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    ctx.sqlite.close();
+  });
+
+  function seedWithImage(imagePath: string | null): void {
+    createCharacter(
+      {
+        id: "char-target",
+        name: "Old Name",
+        data: makeEmptyCardData("Old Name"),
+        imagePath,
+        spec: "chara_card_v2",
+        specVersion: "2.0",
+      },
+      db,
+    );
+  }
+
+  function removedPaths(): string[] {
+    return (removePrivatePath as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+  }
+
+  it("removes the pre-update file and the loser's write when a concurrent writer repointed the row", async () => {
+    // Two racing updates wrote P_old/P_written and read P_old as the old
+    // path; a later commit left the row pointing at P_other. Every file the
+    // live row does not reference goes; P_other survives.
+    seedWithImage("uploads/avatars/other.png");
+
+    await reconcileAvatarAfterSwap(
+      "char-target",
+      "uploads/avatars/old.png",
+      "uploads/avatars/written.png",
+      db,
+    );
+
+    const paths = removedPaths();
+    expect(paths).toContain("/tmp/charon-test/uploads/avatars/old.png");
+    expect(paths).toContain("/tmp/charon-test/uploads/avatars/written.png");
+    expect(paths).not.toContain("/tmp/charon-test/uploads/avatars/other.png");
+    expect(mockInvalidateCache).toHaveBeenCalledWith("uploads/avatars/old.png");
+    expect(mockInvalidateCache).toHaveBeenCalledWith("uploads/avatars/written.png");
+    expect(mockInvalidateCache).not.toHaveBeenCalledWith("uploads/avatars/other.png");
+  });
+
+  it("keeps the file the live row references", async () => {
+    seedWithImage("uploads/avatars/written.png");
+
+    await reconcileAvatarAfterSwap(
+      "char-target",
+      "uploads/avatars/old.png",
+      "uploads/avatars/written.png",
+      db,
+    );
+
+    const paths = removedPaths();
+    expect(paths).toContain("/tmp/charon-test/uploads/avatars/old.png");
+    expect(paths).not.toContain("/tmp/charon-test/uploads/avatars/written.png");
+  });
+
+  it("skips cleanup instead of failing when the row was deleted after the commit", async () => {
+    seedWithImage("uploads/avatars/old.png");
+    deleteCharacter("char-target", db);
+
+    await expect(
+      reconcileAvatarAfterSwap(
+        "char-target",
+        "uploads/avatars/old.png",
+        "uploads/avatars/written.png",
+        db,
+      ),
+    ).resolves.toBeUndefined();
+    expect(removedPaths()).toEqual([]);
   });
 });
