@@ -120,6 +120,81 @@ describe("diffCharacterSnapshots", () => {
     });
   });
 
+  it("surfaces content changes inside entries when the count is unchanged", () => {
+    const unchanged = {
+      id: 1,
+      keys: ["gate"],
+      content: "The gate is sealed.",
+      extensions: {},
+      enabled: true,
+      insertion_order: 100,
+    };
+    const a = snapshot({
+      data: {
+        character_book: {
+          extensions: {},
+          entries: [unchanged, { ...unchanged, id: 2, content: "old" }],
+        },
+      },
+    });
+    const b = snapshot({
+      data: {
+        character_book: {
+          extensions: {},
+          entries: [unchanged, { ...unchanged, id: 2, content: "new" }],
+        },
+      },
+    });
+
+    const diffs = diffCharacterSnapshots(a, b);
+
+    // Only the changed entry is reported — the unchanged one stays silent.
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0]).toMatchObject({
+      field: "character_book.entries[1]",
+      before: JSON.stringify({ ...unchanged, id: 2, content: "old" }),
+      after: JSON.stringify({ ...unchanged, id: 2, content: "new" }),
+    });
+    expect(diffs[0]?.label).toContain("Lorebook entry 2");
+    expect(diffs[0]?.label).toContain("gate");
+  });
+
+  it("does not report same-count entries whose content is identical", () => {
+    const entry = {
+      id: 1,
+      keys: ["gate"],
+      content: "The gate is sealed.",
+      extensions: {},
+      enabled: true,
+      insertion_order: 100,
+    };
+    const a = snapshot({ data: { character_book: { extensions: {}, entries: [entry] } } });
+    const b = snapshot({ data: { character_book: { extensions: {}, entries: [{ ...entry }] } } });
+    expect(diffCharacterSnapshots(a, b)).toEqual([]);
+  });
+
+  it("labels a changed entry by number when it carries no keys", () => {
+    const entry = {
+      id: 1,
+      keys: [],
+      content: "old",
+      extensions: {},
+      enabled: true,
+      insertion_order: 1,
+    };
+    const a = snapshot({ data: { character_book: { extensions: {}, entries: [entry] } } });
+    const b = snapshot({
+      data: {
+        character_book: { extensions: {}, entries: [{ ...entry, content: "new" }] },
+      },
+    });
+
+    const diffs = diffCharacterSnapshots(a, b);
+
+    expect(diffs).toHaveLength(1);
+    expect(diffs[0]?.label).toBe("Lorebook entry 1");
+  });
+
   it("detects talkativeness changes in extensions (string or number)", () => {
     const a = snapshot({ data: { extensions: { talkativeness: 0.5 } } });
     const b = snapshot({ data: { extensions: { talkativeness: 0.8 } } });

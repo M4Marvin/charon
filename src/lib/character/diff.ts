@@ -35,10 +35,23 @@ function asText(value: unknown): string {
   return String(value);
 }
 
+/** Identify a lorebook entry by its activation keys, for the diff label. */
+function entryKeysLabel(...entries: unknown[]): string {
+  for (const entry of entries) {
+    const keys = (entry as { keys?: unknown } | null | undefined)?.keys;
+    if (Array.isArray(keys) && keys.length > 0) {
+      const text = keys.map(String).join(", ");
+      return text.length > 40 ? ` (${text.slice(0, 40)}…)` : ` (${text})`;
+    }
+  }
+  return "";
+}
+
 /**
  * Field-level diff between two card snapshots. Only changed fields are
  * returned, in a stable display order: scalar fields, then list fields, then
- * the embedded lorebook entry count.
+ * the embedded lorebook (count changes as one row; same-count content
+ * changes as one row per changed entry).
  */
 export function diffCharacterSnapshots(a: CharacterSnapshot, b: CharacterSnapshot): FieldDiff[] {
   const diffs: FieldDiff[] = [];
@@ -95,15 +108,33 @@ export function diffCharacterSnapshots(a: CharacterSnapshot, b: CharacterSnapsho
     });
   }
 
-  const aBookCount = a.data.character_book?.entries?.length ?? 0;
-  const bBookCount = b.data.character_book?.entries?.length ?? 0;
-  if (aBookCount !== bBookCount) {
+  const aBookEntries = a.data.character_book?.entries;
+  const bBookEntries = b.data.character_book?.entries;
+  const aBook = Array.isArray(aBookEntries) ? aBookEntries : [];
+  const bBook = Array.isArray(bBookEntries) ? bBookEntries : [];
+  if (aBook.length !== bBook.length) {
     diffs.push({
       field: "character_book.entries",
       label: "Lorebook entries",
-      before: String(aBookCount),
-      after: String(bBookCount),
+      before: String(aBook.length),
+      after: String(bBook.length),
     });
+  } else {
+    // Same count but different content — the most common card revision
+    // (edited keys, content, or enabled flags) — must not read as an empty
+    // diff. Report each changed entry: a single whole-array JSON row would
+    // excerpt to identical prefixes in the revisions UI.
+    for (let i = 0; i < aBook.length; i++) {
+      const before = JSON.stringify(aBook[i]) ?? "";
+      const after = JSON.stringify(bBook[i]) ?? "";
+      if (before === after) continue;
+      diffs.push({
+        field: `character_book.entries[${i}]`,
+        label: `Lorebook entry ${i + 1}${entryKeysLabel(bBook[i], aBook[i])}`,
+        before,
+        after,
+      });
+    }
   }
 
   // Untracked extensions (depth_prompt rides in seed data and whole-card
