@@ -28,6 +28,8 @@ import { CardSession } from "@/lib/character/card-session.js";
 
 const sessions = new Map<string, CardSession>();
 
+const key = (path: string) => resolve(path);
+
 const text = (value: string) => ({ content: [{ type: "text" as const, text: value }] });
 const failure = (error: unknown) => ({
   content: [
@@ -37,16 +39,16 @@ const failure = (error: unknown) => ({
 });
 
 function session(path: string): CardSession {
-  const found = sessions.get(path);
+  const found = sessions.get(key(path));
   if (!found) throw new Error(`card not open: ${path} (call card_open first)`);
   return found;
 }
 
 async function open(path: string): Promise<CardSession> {
-  const existing = sessions.get(path);
+  const existing = sessions.get(key(path));
   if (existing) return existing;
-  const created = await CardSession.open(path);
-  sessions.set(path, created);
+  const created = await CardSession.open(key(path));
+  sessions.set(key(path), created);
   return created;
 }
 
@@ -233,9 +235,9 @@ server.registerTool(
     inputSchema: { path: z.string().describe("path to the card PNG") },
   },
   ({ path }) => {
-    const open_ = sessions.get(path);
+    const open_ = sessions.get(key(path));
     if (!open_) return text(`card not open: ${path}`);
-    sessions.delete(path);
+    sessions.delete(key(path));
     return text(`closed ${path}${open_.dirty ? " (unsaved changes discarded)" : ""}`);
   },
 );

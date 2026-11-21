@@ -10,7 +10,7 @@ workbench page that shows the results.
 - `pnpm` is often **not on PATH** in an agent shell. Use
   `~/.local/share/pnpm/bin/pnpm` or prefix
   `PATH=$HOME/.local/share/pnpm/bin:$PATH`.
-- Workbench and submit need the app running: `pnpm dev`.
+- Workbench needs the app running: `pnpm dev`. Submit does not.
 - Submit needs Helium open and logged into chub; browse drives it.
 - In commands, `<card>` is the package directory name under the card root.
 
@@ -102,14 +102,10 @@ per run. JPEG thumbnails are written for the workbench. A screenshot under
 
 ```sh
 cd /home/marvin/codes/charon
-export PATH=$HOME/.local/share/pnpm/bin:$PATH
-
-# once per session: connect the MCP for this directory
 opencode api post "/api/experimental/mcp/charon-cards/connect?location[directory]=$PWD"
-# then card_open / card_get / card_set …
-
-pnpm card-kit check  amanda-mia
-pnpm card-kit report amanda-mia     # writes .cardkit/<card>/report.html
+# card_open … card_set … card_save, then:
+pnpm card-kit check  <card>
+pnpm card-kit report <card>   # writes .cardkit/<card>/report.html
 ```
 
 Review `report.html` (or `/cards`) before publishing. Fix the card, not the
@@ -159,8 +155,9 @@ fresh form every time.
 | `card not open` | `card_open` that exact path first |
 | `Cannot find package '@/lib'` | ran `tsx` outside the repo — use `scripts/mcp-card.sh` |
 | edits gone after restart | memory-resident; call `card_save` |
-| `?file=desktop.png` 404s | Vite intercepts image extensions — the API uses `?file=` |
+| `/api/cardkit/<name>/desktop.png` 404s | Vite intercepts image extensions; the API takes `?file=` |
 | render has empty frames | art deleted from the server and not present locally |
 | tags stop appearing | typed with synthetic events — use real keys |
 | `pnpm: command not found` | use `~/.local/share/pnpm/bin/pnpm` or set PATH |
-| `--network` reports 403, render has empty frames | Cloudflare blocks this machine from `files.m4marvin.com`; local art avoids it |
+| `--network` reports 403 | Cloudflare blocks this machine from `files.m4marvin.com` |
+| render has empty frames | the art is missing locally too — upload it or fix the URL |
