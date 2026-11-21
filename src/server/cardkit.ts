@@ -60,7 +60,8 @@ export async function workFile(name: string, file: string): Promise<string | nul
     const map = await buildAssetMap(cardDir(name));
     return map.get(basename(file.slice(4))) ?? null;
   }
-  if (!/^(desktop|mobile)\.png$|^(report|page)\.html$/.test(file)) return null;
+  if (!/^(desktop|mobile)\.png$|^(desktop|mobile)-thumb\.jpg$|^(report|page)\.html$/.test(file))
+    return null;
   const path = resolve(dir, file);
   return path.startsWith(resolve(dir)) && (await exists(path)) ? path : null;
 }
@@ -126,10 +127,10 @@ export async function cardDetail(name: string): Promise<CardDetail> {
     live,
     renders: desktop
       ? {
-          desktop: `/api/cardkit/${name}?file=desktop.png`,
+          desktop: `/api/cardkit/${name}?file=desktop-thumb.jpg`,
           mobile: mobile
-            ? `/api/cardkit/${name}?file=mobile.png`
-            : `/api/cardkit/${name}?file=desktop.png`,
+            ? `/api/cardkit/${name}?file=mobile-thumb.jpg`
+            : `/api/cardkit/${name}?file=desktop-thumb.jpg`,
           html: html ? `/api/cardkit/${name}?file=page.html` : "",
         }
       : null,

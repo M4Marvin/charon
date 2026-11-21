@@ -12,12 +12,10 @@
 import { mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
-import { writeFile } from "node:fs/promises";
 import {
   buildReport,
-  buildCardJson,
   buildSubmitPayload,
-  POST_IMPORT_SCRIPT,
+  SUBMIT_SCRIPT,
   checkCard,
   checkImageUrls,
   findCards,
@@ -70,13 +68,7 @@ async function main() {
 
     if (command === "submit") {
       const payload = await buildSubmitPayload(pkg);
-      const path = join(outDir, "submit.json");
-      await writeFile(path, JSON.stringify(payload, null, 2));
-      await writeFile(join(outDir, "post-import.js"), POST_IMPORT_SCRIPT);
-      await writeFile(join(outDir, "card.json"), buildCardJson(payload));
-      console.log(
-        `${pkg.name}: ${payload.alternates.length + 1} greetings, ${payload.tags.length} tags -> ${path}`,
-      );
+      console.log(JSON.stringify({ script: SUBMIT_SCRIPT, payload }));
       continue;
     }
 

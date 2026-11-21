@@ -43,8 +43,8 @@ export async function buildReport(
 
   const rendersHtml = renders
     ? `<div class="renders">
-         <figure><a href="desktop.png" target="_blank"><img src="desktop.png" alt="desktop"></a><figcaption>desktop · 1280</figcaption></figure>
-         <figure><a href="mobile.png" target="_blank"><img src="mobile.png" alt="mobile"></a><figcaption>mobile · 390</figcaption></figure>
+         <figure><a href="desktop.png" target="_blank"><img src="desktop-thumb.jpg" alt="desktop"></a><figcaption>desktop · 1280</figcaption></figure>
+         <figure><a href="mobile.png" target="_blank"><img src="mobile-thumb.jpg" alt="mobile"></a><figcaption>mobile · 390</figcaption></figure>
        </div>`
     : `<p class="missing">not rendered — run <code>card-kit render</code></p>`;
 

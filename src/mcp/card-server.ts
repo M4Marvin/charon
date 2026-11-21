@@ -12,15 +12,17 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { basename, dirname, join } from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
+import { basename, dirname, join, resolve } from "node:path";
 import {
+  buildPayloadFromCard,
   buildReport,
   buildSubmitPayload,
   checkCard,
   checkImageUrls,
   loadCard,
   renderCard,
+  SUBMIT_SCRIPT,
 } from "@/lib/cardkit";
 import { CardSession } from "@/lib/character/card-session.js";
 
@@ -166,12 +168,22 @@ server.registerTool(
 server.registerTool(
   "card_json",
   {
-    description: "Full JSON of an open card, including unsaved changes.",
-    inputSchema: { path: z.string().describe("path to the card PNG") },
+    description:
+      "Write the open card JSON to .cardkit/<name>/card.json and return the path. inline=true returns the JSON in the response instead (large).",
+    inputSchema: {
+      path: z.string().describe("path to the card PNG"),
+      inline: z.boolean().optional().describe("return the JSON inline instead of writing a file"),
+    },
   },
-  ({ path }) => {
+  async ({ path, inline }) => {
     try {
-      return text(session(path).json());
+      const card = session(path);
+      if (inline) return text(card.json());
+      const out = join(dirname(card.file), ".cardkit", basename(card.file, ".png"));
+      await mkdir(out, { recursive: true });
+      const file = join(out, "card.json");
+      await writeFile(file, card.json());
+      return text(`${file} (${card.json().length} bytes)`);
     } catch (error) {
       return failure(error);
     }
@@ -293,28 +305,75 @@ server.registerTool(
   },
 );
 
+function sessionInside(dir: string): CardSession | null {
+  for (const item of sessions.values()) {
+    if (item.file.startsWith(`${resolve(dir)}/`)) return item;
+  }
+  return null;
+}
+
 server.registerTool(
-  "card_submit_payload",
+  "card_submit",
   {
     description:
-      "Build the chub submission payload for a package: writes .cardkit/<card>/submit.json and submit-script.js and returns the paths.",
+      "Build the chub submit plan for a package: returns { script, payload } where payload comes from the open MCP session when there is one, otherwise from the package files. No files are written.",
     inputSchema: { dir: z.string().describe("card package directory") },
   },
   async ({ dir }) => {
     try {
       const pkg = await loadCard(dir);
-      const payload = await buildSubmitPayload(pkg);
-      const out = outDirFor(dir);
-      await mkdir(out, { recursive: true });
-      const json = join(out, "submit.json");
-      await writeFile(json, JSON.stringify(payload, null, 2));
-      await writeFile(
-        join(out, "post-import.js"),
-        (await import("@/lib/cardkit")).POST_IMPORT_SCRIPT,
-      );
+      const base = await buildSubmitPayload(pkg);
+      const open = sessionInside(dir);
+      const payload = open ? buildPayloadFromCard(open.card, base) : base;
       return text(
-        `${payload.name}: ${payload.alternates.length + 1} greetings, ${payload.tags.length} tags\n${json}`,
+        JSON.stringify({ source: open ? "session" : "package", script: SUBMIT_SCRIPT, payload }),
       );
+    } catch (error) {
+      return failure(error);
+    }
+  },
+);
+
+/**
+ * The workspace card in memory is serialised to disk only on request: large
+ * fields stay out of the transcript unless inline is true.
+ */
+server.registerTool(
+  "card_find",
+  {
+    description:
+      "Search an open card with a regular expression and return {field, snippet} matches instead of dumping the card.",
+    inputSchema: {
+      path: z.string().describe("path to the card PNG"),
+      pattern: z.string().describe("JavaScript regular expression"),
+      flags: z.string().optional().describe("regex flags, default 'i'"),
+      limit: z.number().optional().describe("max matches, default 20"),
+    },
+  },
+  ({ path, pattern, flags, limit }) => {
+    try {
+      const card = session(path);
+      const re = new RegExp(pattern, flags ?? "i");
+      const matches: { field: string; snippet: string }[] = [];
+      const walk = (node: unknown, prefix: string) => {
+        if (matches.length >= (limit ?? 20)) return;
+        if (typeof node === "string") {
+          const index = node.search(re);
+          if (index >= 0) {
+            matches.push({
+              field: prefix,
+              snippet: node.slice(Math.max(0, index - 60), index + 120),
+            });
+          }
+          return;
+        }
+        if (node && typeof node === "object") {
+          for (const [key, value] of Object.entries(node))
+            walk(value, prefix ? `${prefix}.${key}` : key);
+        }
+      };
+      walk(card.card, "");
+      return text(matches.length ? JSON.stringify(matches, null, 2) : "no matches");
     } catch (error) {
       return failure(error);
     }

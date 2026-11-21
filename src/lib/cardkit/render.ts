@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import sharp from "sharp";
 import { createServer } from "node:net";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -170,6 +171,16 @@ export async function renderCard(
     await waitForDevtools(port);
     const desktop = await screenshot(htmlPath, join(outDir, "desktop.png"), "desktop", port);
     const mobile = await screenshot(htmlPath, join(outDir, "mobile.png"), "mobile", port);
+    await Promise.all([
+      sharp(desktop)
+        .resize({ width: 1200, withoutEnlargement: true })
+        .jpeg({ quality: 82 })
+        .toFile(join(outDir, "desktop-thumb.jpg")),
+      sharp(mobile)
+        .resize({ width: 390, withoutEnlargement: true })
+        .jpeg({ quality: 82 })
+        .toFile(join(outDir, "mobile-thumb.jpg")),
+    ]);
     return { html: htmlPath, desktop, mobile };
   } finally {
     browser.kill("SIGKILL");

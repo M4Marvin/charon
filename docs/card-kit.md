@@ -23,8 +23,10 @@ per-card `check.py`:
 - no `**` speaker labels; italic narration present; soft length range
 - personality does not instruct the model to label speakers; narrator rule present
 - `<style>` blocks are wrapped in `<svg>` and together stay under the chub limit
+- the same image URL used by two greetings is flagged
+- image alt text present (house style is empty alt)
 - `avatar.png` / `card.png` are portrait if present
-- `--network` additionally HEADs every image URL
+- `--network` additionally fetches every image URL with a browser user agent
 
 Exit text is one line per card plus `error`/`warn` lines. The result is a
 `CheckResult` (`ok`, `issues[]`, `stats`) for reuse by the web UI.
@@ -40,6 +42,8 @@ buttons, content column, `.eedsfu` paragraph colour) and injects the card's
 Playwright dependency:
 
 - desktop 1280x900, mobile 390x844, deviceScaleFactor 2, full page
+- JPEG thumbnails (`desktop-thumb.jpg` 1200 px, `mobile-thumb.jpg` 390 px) are
+  what the workbench loads; the PNGs stay for the click-through
 - `HELIUM_BIN` overrides `/usr/bin/helium-browser`
 - a fresh `--user-data-dir` each run, devtools port picked per run, profile removed after
 
@@ -70,6 +74,9 @@ and the live snapshot.
   `mobile.png`, `page.html`, `report.html`, plus `art/<basename>` resolved
   through the card's asset map. Everything else 404s.
 - "Re-render" runs `renderCard` + `buildReport` for that card on the server.
+- `card_json` writes the open card to `.cardkit/<name>/card.json` and returns
+  the path; `card_find` returns `{field, snippet}` matches for a regex instead
+  of dumping the card.
 - **Live state** comes from `<card>/live.json`: `{ "syncedAt": ISO, "data": { … } }`,
   written by a browser sync (chub is unreachable from the server itself). Absent
   file = "no snapshot yet".

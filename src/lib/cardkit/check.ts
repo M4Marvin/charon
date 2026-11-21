@@ -75,6 +75,15 @@ export async function checkCard(pkg: CardPackage): Promise<CheckResult> {
 
   if (!pkg.greetings.length) add("error", "no-greetings", "no greeting files found");
 
+  const seen = new Map<string, string>();
+  for (const greeting of pkg.greetings) {
+    for (const url of greeting.images) {
+      const first = seen.get(url);
+      if (first) add("warn", "duplicate-image", `${url} used by ${first} and ${greeting.id}`);
+      else seen.set(url, greeting.id);
+    }
+  }
+
   for (const greeting of pkg.greetings) {
     const where = greeting.id;
     if (!greeting.text.length) {
