@@ -1,0 +1,133 @@
+# Card tooling
+
+Everything for taking a card from files to a chub submission: an MCP server
+that holds the card in memory, a CLI that checks/renders/reports/submits, and a
+workbench page that shows the results.
+
+## Surfaces
+
+| Surface | Entry point | Use for |
+|---|---|---|
+| MCP | `pnpm mcp:card` (stdio, `scripts/mcp-card.sh`) | editing a card across many calls |
+| CLI | `pnpm card-kit <cmd>` | check / render / report / submit a package |
+| Workbench | `/cards` in the app (`pnpm dev`) | looking at checks, renders and the live snapshot |
+
+Card root: `$CARD_ROOT`, default `~/codes/ComfyUI/chub/build`. Generated output
+goes to `<root>/.cardkit/<card>/`.
+
+## Card package
+
+A directory under the root. Files are read in this order:
+
+| File | Field |
+|---|---|
+| `description.html` | chub Creator's Notes (the page) |
+| `personality.md` | chub Description (the bible) |
+| `first_message.md`, or `greetings/01.md` | first greeting |
+| `greetings/*.md`, or `greetings.md` split on `===` | alternate greetings |
+| `scenario.md`, `example_dialogs.md` | optional fields |
+| `tagline.txt`, or the badge line in `metadata.md` | tagline |
+| `metadata.md` | name, tags |
+| `avatar.png`, `card.png` | portraits (2:3) |
+
+Images referenced by URL are rewritten to local files by basename
+(`images/final/`, `images/`, `web/`, `art/`, `shots/`) when rendering, so a
+render never depends on the file server.
+
+## MCP server
+
+Parked in `~/.config/opencode/opencode.json` as `charon-cards`; connect per
+session directory:
+
+```sh
+opencode api post "/api/experimental/mcp/charon-cards/connect?location[directory]=$DIR"
+opencode mcp list
+```
+
+It reads a card PNG once (`card_open`) and keeps it until the process ends.
+Save explicitly; unsaved edits die with the connection.
+
+| Tool | Does |
+|---|---|
+| `card_open` / `card_close` / `card_list` | session lifecycle |
+| `card_show` | summary: spec, name, counts, css size |
+| `card_get` / `card_set` / `card_unset` | fields by path (`data.alternate_greetings[2]`) |
+| `card_find` | regex search → `{field, snippet}` (no full dump) |
+| `card_json` | writes `.cardkit/<name>/card.json`, returns the path |
+| `card_save` / `card_reload` | write to the PNG / discard edits |
+| `card_check` | JSON `{name, ok, stats, issues[]}` |
+| `card_render` / `card_report` | screenshots / HTML report |
+| `card_submit` | `{source, script, payload}` for the chub form |
+
+Use `resolve`d absolute paths consistently; sessions are keyed by path.
+
+## CLI
+
+```sh
+pnpm card-kit check  [card ...] [--root DIR] [--network]
+pnpm card-kit render [card ...]
+pnpm card-kit report [card ...]
+pnpm card-kit submit <card>
+```
+
+`check` rules:
+
+- tagline `💬 N` and `🖼 M` match the card
+- every greeting ends with an image; images are not shared between greetings
+- no `**` speaker labels, no alt text, italic narration present, soft length range
+- personality does not instruct the model to label speakers; narrator rule present
+- `<style>` blocks are wrapped in `<svg>` and stay under the chub limit
+- portrait avatar/card when present
+- `--network` fetches every image URL
+- template drift (a `metadata.md` that no longer parses) is reported, not ignored
+
+`render` builds a chub-shaped shell and screenshots it with **headless Helium
+over CDP** (no Playwright): desktop 1280, mobile 390, full page, fresh profile
+per run. JPEG thumbnails are written for the workbench. A screenshot under
+20 KB fails the render.
+
+## Workbench
+
+`pnpm dev`, then `http://localhost:3000/cards` (Vite binds `::1`; `127.0.0.1`
+refuses). Per card: check issues, desktop/mobile renders, greeting-image
+gallery, live snapshot, and a Re-render button that runs render + report on the
+server.
+
+`/api/cardkit/<name>?file=…` serves only `desktop.png`, `mobile.png`, their
+thumbnails, `page.html`, `report.html` and `art/<basename>` through the asset
+map.
+
+**Live snapshot:** `<card>/live.json` — `{ "syncedAt": ISO, "data": { … } }`.
+Written by a browser sync; chub is unreachable from the server.
+
+## Submit
+
+The plan is built from the open MCP session when one exists (`source:
+"session"`, unsaved edits included), otherwise from the package. No files are
+written.
+
+1. `card_submit { dir }` → `{ script, payload }` (or `pnpm card-kit submit <card>`
+   prints the same object).
+2. In the logged-in Helium tab on `https://chub.ai/create_character`, run
+   `await (<script>)(<payload>)`. It fills name, tagline, Creator's Notes,
+   Description, first message, scenario, example dialogs, every alternate
+   greeting, then clicks Private and 🔥 NSFW. It does not create unless
+   `payload.submit` is true.
+3. Tags are typed with real keys, one at a time (Ant's multi-select drops
+   synthetic Enter after the first token).
+4. `browse.upload` the avatar into `#avatar` (files must be under `/tmp`).
+5. Read back, then click **Create Character**.
+
+`#description` is Creator's Notes; `#personality` is Description. Start from a
+fresh form every time.
+
+## Failure modes
+
+| Symptom | Cause |
+|---|---|
+| `card not open` | `card_open` that exact path first |
+| `Cannot find package '@/lib'` | ran `tsx` outside the repo — use `scripts/mcp-card.sh` |
+| edits gone after restart | memory-resident; call `card_save` |
+| `?file=desktop.png` 404s | Vite intercepts image extensions — the API uses `?file=` |
+| render has empty frames | art deleted from the server and not present locally |
+| tags stop appearing | typed with synthetic events — use real keys |

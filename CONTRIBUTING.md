@@ -134,8 +134,8 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 | Single-user migration (operator) | `pnpm run migrate:single-user` |
 | Read/edit a card PNG | `pnpm card card.png` (interactive, in memory; see `scripts/card.ts`) |
 | Card MCP server | `pnpm mcp:card` / `scripts/mcp-card.sh` (stdio; tools `card_open` … `card_save`) |
-| Card checks / render / report | `pnpm card-kit check\|render\|report` (see [docs/card-kit.md](docs/card-kit.md)) |
-| Card submit payload | `pnpm card-kit submit <card>` (see [docs/chub-submit.md](docs/chub-submit.md)) |
+| Card checks / render / report | `pnpm card-kit check\|render\|report` (see [docs/card-tooling.md](docs/card-tooling.md)) |
+| Card submit payload | `pnpm card-kit submit <card>` (see [docs/card-tooling.md](docs/card-tooling.md)) |
 | Package and publish a release | `scripts/release-local.sh v0.1.0` (no Actions) |
 | Build/publish the container image | See [packaging.md](docs/packaging.md#building-and-publishing-the-image-locally) |
 | Run the packaged server | `node bin/charon.mjs serve` (zero-config) |
