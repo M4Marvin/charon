@@ -13,7 +13,15 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { basename, dirname, join } from "node:path";
-import { buildReport, checkCard, checkImageUrls, loadCard, renderCard } from "@/lib/cardkit";
+import { mkdir, writeFile } from "node:fs/promises";
+import {
+  buildReport,
+  buildSubmitPayload,
+  checkCard,
+  checkImageUrls,
+  loadCard,
+  renderCard,
+} from "@/lib/cardkit";
 import { CardSession } from "@/lib/character/card-session.js";
 
 const sessions = new Map<string, CardSession>();
@@ -279,6 +287,31 @@ server.registerTool(
       const renders = await renderCard(pkg, outDir);
       const path = await buildReport(pkg, status, renders, outDir);
       return text(`report ${path}`);
+    } catch (error) {
+      return failure(error);
+    }
+  },
+);
+
+server.registerTool(
+  "card_submit_payload",
+  {
+    description:
+      "Build the chub submission payload for a package: writes .cardkit/<card>/submit.json and submit-script.js and returns the paths.",
+    inputSchema: { dir: z.string().describe("card package directory") },
+  },
+  async ({ dir }) => {
+    try {
+      const pkg = await loadCard(dir);
+      const payload = await buildSubmitPayload(pkg);
+      const out = outDirFor(dir);
+      await mkdir(out, { recursive: true });
+      const json = join(out, "submit.json");
+      await writeFile(json, JSON.stringify(payload, null, 2));
+      await writeFile(join(out, "submit-script.js"), (await import("@/lib/cardkit")).SUBMIT_SCRIPT);
+      return text(
+        `${payload.name}: ${payload.alternates.length + 1} greetings, ${payload.tags.length} tags\n${json}`,
+      );
     } catch (error) {
       return failure(error);
     }

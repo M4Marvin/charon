@@ -12,8 +12,11 @@
 import { mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
+import { writeFile } from "node:fs/promises";
 import {
   buildReport,
+  buildSubmitPayload,
+  SUBMIT_SCRIPT,
   checkCard,
   checkImageUrls,
   findCards,
@@ -47,7 +50,9 @@ function printCheck(pkg: CardPackage, status: Awaited<ReturnType<typeof checkCar
 async function main() {
   const [command, ...rest] = process.argv.slice(2);
   if (!command || command === "--help") {
-    console.error("usage: card-kit <check|render|report|all> [card ...] [--root DIR] [--network]");
+    console.error(
+      "usage: card-kit <check|render|report|submit|all> [card ...] [--root DIR] [--network]",
+    );
     process.exit(2);
   }
 
@@ -60,6 +65,18 @@ async function main() {
   for (const dir of dirs) {
     const pkg = await loadCard(dir);
     const outDir = join(root, ".cardkit", pkg.name);
+    await mkdir(outDir, { recursive: true });
+
+    if (command === "submit") {
+      const payload = await buildSubmitPayload(pkg);
+      const path = join(outDir, "submit.json");
+      await writeFile(path, JSON.stringify(payload, null, 2));
+      await writeFile(join(outDir, "submit-script.js"), SUBMIT_SCRIPT);
+      console.log(
+        `${pkg.name}: ${payload.alternates.length + 1} greetings, ${payload.tags.length} tags -> ${path}`,
+      );
+      continue;
+    }
 
     if (command === "check" || command === "all") {
       const status = await checkCard(pkg);
@@ -68,7 +85,6 @@ async function main() {
       if (command === "check") continue;
     }
 
-    await mkdir(outDir, { recursive: true });
     const check = await checkCard(pkg);
     const renders =
       command === "render" || command === "report" || command === "all"
