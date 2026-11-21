@@ -1,5 +1,6 @@
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
+import { metadataField, metadataTags } from "./discovery.js";
 import type { CardPackage } from "./types.js";
 
 export type SubmitPayload = {
@@ -27,23 +28,6 @@ async function text(path: string): Promise<string | null> {
   } catch {
     return null;
   }
-}
-
-function metadataField(metadata: string | null, field: string): string | null {
-  if (!metadata) return null;
-  const line = metadata
-    .split("\n")
-    .find((l) => l.toLowerCase().includes(`| ${field.toLowerCase()}`));
-  if (!line) return null;
-  const cell = line.split("|")[2] ?? "";
-  return cell.replace(/`/g, "").replace(/\*\*/g, "").trim() || null;
-}
-
-function metadataTags(metadata: string | null): string[] {
-  if (!metadata) return [];
-  const section = metadata.split(/^## Tags/m)[1] ?? "";
-  const block = section.split(/^##/m)[0] ?? "";
-  return [...block.matchAll(/`([^`]+)`/g)].map((match) => match[1].trim()).filter(Boolean);
 }
 
 export async function buildSubmitPayload(pkg: CardPackage): Promise<SubmitPayload> {

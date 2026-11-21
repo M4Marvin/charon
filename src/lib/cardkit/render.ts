@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import sharp from "sharp";
 import { createServer } from "node:net";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -171,6 +171,10 @@ export async function renderCard(
     await waitForDevtools(port);
     const desktop = await screenshot(htmlPath, join(outDir, "desktop.png"), "desktop", port);
     const mobile = await screenshot(htmlPath, join(outDir, "mobile.png"), "mobile", port);
+    for (const file of [desktop, mobile]) {
+      const size = (await stat(file)).size;
+      if (size < 20_000) throw new Error(`render looks empty (${size} bytes): ${file}`);
+    }
     await Promise.all([
       sharp(desktop)
         .resize({ width: 1200, withoutEnlargement: true })

@@ -28,8 +28,13 @@ per-card `check.py`:
 - `avatar.png` / `card.png` are portrait if present
 - `--network` additionally fetches every image URL with a browser user agent
 
-Exit text is one line per card plus `error`/`warn` lines. The result is a
-`CheckResult` (`ok`, `issues[]`, `stats`) for reuse by the web UI.
+The CLI prints one line per card plus `error`/`warn` lines; the MCP tool
+`card_check` returns the same data as JSON (`{name, ok, stats, issues[]}`) so a
+caller can branch without parsing prose.
+
+`loadCard` also reports discovery warnings — a `metadata.md` whose Name row or
+Tags section no longer parses, or a missing tagline badge, now surfaces as a
+`discovery` warning instead of silently producing empty fields.
 
 Image counting includes markdown images, `<img src>`, and CSS `url(...)`
 backgrounds (fonts and `data:` excluded) — that is why the hero counts.
@@ -46,6 +51,7 @@ Playwright dependency:
   what the workbench loads; the PNGs stay for the click-through
 - `HELIUM_BIN` overrides `/usr/bin/helium-browser`
 - a fresh `--user-data-dir` each run, devtools port picked per run, profile removed after
+- a screenshot under 20 KB is treated as an empty render and throws
 
 **Local art wins.** Every absolute image URL whose basename matches a file in
 `images/final/`, `images/`, `web/`, `art/` or `shots/` is rewritten to
@@ -69,6 +75,8 @@ with pass/fail, greeting and image counts, render state and last sync; `/cards/<
 shows the issues, the desktop/mobile renders (toggle), a greeting-image gallery
 and the live snapshot.
 
+- Start it with `pnpm dev` from the repo. Vite binds `::1`, so use
+  `http://localhost:3000` — `127.0.0.1` refuses the connection.
 - Root: `CARD_ROOT` env var, default `~/codes/ComfyUI/chub/build`.
 - Files are served by `/api/cardkit/<name>/<file>`: only `desktop.png`,
   `mobile.png`, `page.html`, `report.html`, plus `art/<basename>` resolved

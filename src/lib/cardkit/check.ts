@@ -35,6 +35,8 @@ export async function checkCard(pkg: CardPackage): Promise<CheckResult> {
   const add = (level: Issue["level"], code: string, message: string) =>
     issues.push({ level, code, message });
 
+  for (const warning of pkg.warnings) add("warn", "discovery", warning);
+
   if (!pkg.page) add("error", "page-missing", "no description.html (the chub page)");
   if (!pkg.personality) add("warn", "bible-missing", "no personality.md (chub Description)");
 

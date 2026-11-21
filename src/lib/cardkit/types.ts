@@ -14,6 +14,8 @@ export type CardPackage = {
   greetings: Greeting[];
   /** unique image URLs across the page and every greeting */
   images: string[];
+  /** discovery problems that would otherwise fail silently */
+  warnings: string[];
 };
 
 export type IssueLevel = "error" | "warn";

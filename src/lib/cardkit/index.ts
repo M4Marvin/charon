@@ -1,4 +1,4 @@
-export { findCards, loadCard, imagesIn } from "./discovery.js";
+export { findCards, imagesIn, loadCard, metadataField, metadataTags } from "./discovery.js";
 export { checkCard, checkImageUrls } from "./check.js";
 export { buildShell } from "./shell.js";
 export { buildAssetMap, rewriteAssets } from "./assets.js";

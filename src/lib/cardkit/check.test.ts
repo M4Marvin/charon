@@ -13,6 +13,7 @@ function pkg(overrides: Partial<CardPackage> = {}): CardPackage {
     tagline: "<-- 💬 1  |  🖼 1 --> hook",
     greetings: [{ id: "first_message", text: `*Beat.* "Line."\n\n![](${IMAGE})`, images: [IMAGE] }],
     images: [IMAGE],
+    warnings: [],
     ...overrides,
   };
 }

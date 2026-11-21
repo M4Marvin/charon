@@ -244,7 +244,7 @@ server.registerTool(
   "card_check",
   {
     description:
-      "Lint a card package directory: tagline counts vs greetings/images, image placement, speaker labels, narrator rules, CSS size, portrait aspect. network=true also fetches every image URL.",
+      "Lint a card package directory. Returns JSON {name, ok, stats, issues[]}. network=true also fetches every image URL.",
     inputSchema: {
       dir: z.string().describe("card package directory"),
       network: z.boolean().optional().describe("also check that every image URL resolves"),
@@ -255,11 +255,14 @@ server.registerTool(
       const pkg = await loadCard(dir);
       const status = await checkCard(pkg);
       if (network) status.issues.push(...(await checkImageUrls(pkg)));
-      const lines = [
-        `${status.ok ? "ok" : "FAIL"} ${pkg.name}: ${status.stats.greetings} greetings, ${status.stats.images} images, ${status.stats.cssBytes} B css`,
-        ...status.issues.map((issue) => `${issue.level} ${issue.code}: ${issue.message}`),
-      ];
-      return text(lines.join("\n"));
+      return text(
+        JSON.stringify({
+          name: pkg.name,
+          ok: status.ok,
+          stats: status.stats,
+          issues: status.issues,
+        }),
+      );
     } catch (error) {
       return failure(error);
     }

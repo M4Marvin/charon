@@ -72,6 +72,25 @@ async function readGreetings(dir: string, firstMessage: string | null): Promise<
   return greetings;
 }
 
+/** "| Name | `Yuki` |" → "Yuki" */
+export function metadataField(metadata: string | null, field: string): string | null {
+  if (!metadata) return null;
+  const line = metadata
+    .split("\n")
+    .find((l) => l.toLowerCase().includes(`| ${field.toLowerCase()}`));
+  if (!line) return null;
+  const cell = line.split("|")[2] ?? "";
+  return cell.replace(/`/g, "").replace(/\*\*/g, "").trim() || null;
+}
+
+/** Backticked items under "## Tags". */
+export function metadataTags(metadata: string | null): string[] {
+  if (!metadata) return [];
+  const section = metadata.split(/^## Tags/m)[1] ?? "";
+  const block = section.split(/^##/m)[0] ?? "";
+  return [...block.matchAll(/`([^`]+)`/g)].map((match) => match[1].trim()).filter(Boolean);
+}
+
 export async function loadCard(dir: string): Promise<CardPackage> {
   const [rawPage, personality, rawTagline, metadata, firstMessage] = await Promise.all([
     readOptional(join(dir, "description.html")),
@@ -81,7 +100,13 @@ export async function loadCard(dir: string): Promise<CardPackage> {
     readOptional(join(dir, "first_message.md")),
   ]);
 
+  const warnings: string[] = [];
   const tagline = rawTagline?.trim() ?? metadata?.match(/<--[^\n]*-->/)?.[0].trim() ?? null;
+  if (metadata && !tagline) warnings.push("metadata.md exists but no tagline badge was found");
+  if (metadata && !metadataField(metadata, "Name"))
+    warnings.push("metadata.md exists but no Name row parsed");
+  if (metadata && metadataTags(metadata).length === 0)
+    warnings.push("metadata.md exists but the Tags section parsed to nothing");
 
   const greetings = await readGreetings(dir, firstMessage);
   if (firstMessage) {
@@ -102,5 +127,6 @@ export async function loadCard(dir: string): Promise<CardPackage> {
     tagline,
     greetings,
     images: [...images],
+    warnings,
   };
 }
