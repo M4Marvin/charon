@@ -20,7 +20,7 @@ workbench page that shows the results.
 |---|---|---|
 | MCP | `pnpm mcp:card` (stdio, `scripts/mcp-card.sh`) | editing a card across many calls |
 | CLI | `pnpm card-kit <cmd>` | check / render / report / submit a package |
-| Workbench | `/cards` in the app (`pnpm dev`) | looking at checks, renders and the live snapshot |
+| Workbench | `/cards` in the app (`pnpm dev`) | looking at checks, renders and images |
 
 Card root: `$CARD_ROOT`, default `~/codes/ComfyUI/chub/build`. Generated output
 goes to `<root>/.cardkit/<card>/`.
@@ -114,18 +114,14 @@ report.
 ## Workbench
 
 `pnpm dev`, sign in, then `http://localhost:3000/cards` (Vite binds `::1`; `127.0.0.1`
-refuses). Per card: check issues, desktop/mobile renders, greeting-image
-gallery, live snapshot, and a Re-render button that runs render + report on the
-server.
+refuses). Per card: renders side by side (scroll inside the frame, click for
+the full screenshot), a greeting-image grid, checks and package stats in the
+aside, and a Re-render button that runs render + report on the server. Clicking
+an image opens a lightbox with ←/→ and Esc.
 
 `/api/cardkit/<name>?file=…` serves only `desktop.png`, `mobile.png`, their
 thumbnails, `page.html`, `report.html` and `art/<basename>` through the asset
 map.
-
-**Live snapshot:** `<card>/live.json` — `{ "syncedAt": ISO, "data": { … } }`.
-The UI reads it; **nothing writes it yet** (chub is unreachable from the
-server, so it has to be a browser sync). Until then the page shows "no live
-snapshot yet".
 
 ## Submit
 
