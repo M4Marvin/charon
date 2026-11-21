@@ -126,9 +126,11 @@ export async function cardDetail(name: string): Promise<CardDetail> {
     live,
     renders: desktop
       ? {
-          desktop: `/api/cardkit/${name}/desktop.png`,
-          mobile: mobile ? `/api/cardkit/${name}/mobile.png` : `/api/cardkit/${name}/desktop.png`,
-          html: html ? `/api/cardkit/${name}/page.html` : "",
+          desktop: `/api/cardkit/${name}?file=desktop.png`,
+          mobile: mobile
+            ? `/api/cardkit/${name}?file=mobile.png`
+            : `/api/cardkit/${name}?file=desktop.png`,
+          html: html ? `/api/cardkit/${name}?file=page.html` : "",
         }
       : null,
     greetings: pkg.greetings.map((greeting) => ({
@@ -136,7 +138,9 @@ export async function cardDetail(name: string): Promise<CardDetail> {
       length: greeting.text.length,
       images: greeting.images.map((url) => {
         const local = map.get(basename(url.split("?")[0]));
-        return local ? `/api/cardkit/${name}/art/${encodeURIComponent(basename(local))}` : url;
+        return local
+          ? `/api/cardkit/${name}?file=${encodeURIComponent(`art/${basename(local)}`)}`
+          : url;
       }),
     })),
   } satisfies CardDetail;

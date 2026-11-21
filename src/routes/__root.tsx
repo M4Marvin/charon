@@ -222,6 +222,8 @@ const DOCUMENT_TITLES: Array<[RegExp, string]> = [
   [/^\/lorebooks$/, "Lorebooks · Charon"],
   [/^\/lorebooks\/new$/, "New lorebook · Charon"],
   [/^\/lorebooks\/[^/]+$/, "Lorebook · Charon"],
+  [/^\/cards$/, "Cards · Charon"],
+  [/^\/cards\/[^/]+$/, "Card · Charon"],
   [/^\/settings\/preferences$/, "Preferences · Settings · Charon"],
   [/^\/settings\/profile$/, "Profile · Settings · Charon"],
   [/^\/settings\/defaults$/, "AI defaults · Settings · Charon"],

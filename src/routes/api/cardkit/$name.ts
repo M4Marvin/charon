@@ -12,17 +12,23 @@ const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
 };
 
-export const Route = createFileRoute("/api/cardkit/$name/$file")({
+/**
+ * `/api/cardkit/<name>?file=desktop.png` — the file is a query parameter
+ * because Vite's dev middleware intercepts paths that end in an image
+ * extension before the router sees them.
+ */
+export const Route = createFileRoute("/api/cardkit/$name")({
   server: {
     handlers: {
-      GET: async ({ params }) => {
+      GET: async ({ params, request }) => {
         try {
           await getSession();
         } catch {
           return new Response("Unauthorized", { status: 401 });
         }
 
-        const path = await workFile(params.name, params.file);
+        const file = new URL(request.url).searchParams.get("file") ?? "";
+        const path = await workFile(params.name, file);
         if (!path) return new Response("Not found", { status: 404 });
 
         const body = await readFile(path);
