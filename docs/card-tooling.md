@@ -142,8 +142,14 @@ written.
    `payload.submit` is true.
 3. Tags are typed with real keys, one at a time (Ant's multi-select drops
    synthetic Enter after the first token).
-4. `browse.upload` the avatar into `#avatar` (files must be under `/tmp`).
-5. Read back, then click **Create Character**.
+4. `browse.upload` the avatar into `#avatar` (files must be under `/tmp`); the
+   form item turns `has-success` and shows the uploaded image.
+5. Read back, then click **Create Character**. It submits slowly (the button
+   spins for 10–20 s); a second click or a retry creates a phantom slug, so
+   wait and check the URL instead.
+
+Alternate greetings need a real pause between **Add Alternate Greeting** clicks
+(≈350 ms). React batches a tight click loop and adds none of them.
 
 `#description` is Creator's Notes; `#personality` is Description. Start from a
 fresh form every time.
@@ -158,6 +164,8 @@ fresh form every time.
 | `/api/cardkit/<name>/desktop.png` 404s | Vite intercepts image extensions; the API takes `?file=` |
 | render has empty frames | art deleted from the server and not present locally |
 | tags stop appearing | typed with synthetic events — use real keys |
+| no alternate rows added | Add clicked in a tight loop — wait ≈350 ms between clicks |
+| `Can not find this entity` right after Create | the submit was still running; wait, then check `my_characters` |
 | `pnpm: command not found` | use `~/.local/share/pnpm/bin/pnpm` or set PATH |
 | `--network` reports 403 | Cloudflare blocks this machine from `files.m4marvin.com` |
 | render has empty frames | the art is missing locally too — upload it or fix the URL |

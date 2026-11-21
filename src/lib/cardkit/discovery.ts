@@ -87,7 +87,8 @@ export function metadataField(metadata: string | null, field: string): string | 
 export function metadataTags(metadata: string | null): string[] {
   if (!metadata) return [];
   const section = metadata.split(/^## Tags/m)[1] ?? "";
-  const block = section.split(/^##/m)[0] ?? "";
+  // Tags are the first paragraph that lists them; prose after a blank line explains them.
+  const block = section.split(/\n\s*\n/).find((part) => part.includes("`")) ?? "";
   return [...block.matchAll(/`([^`]+)`/g)].map((match) => match[1].trim()).filter(Boolean);
 }
 
