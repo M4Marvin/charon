@@ -81,9 +81,10 @@ export function buildPayloadFromCard(
 }
 
 /**
- * Fills chub's create form field by field. Runs in the page; submits only
- * when `payload.submit` is true. Tags are typed with real keys by the caller
- * (Ant's multi-select drops synthetic Enter after the first token).
+ * Fills chub's create form field by field. Tags are typed with real keys by
+ * the caller (Ant's multi-select drops synthetic Enter after the first token);
+ * Create Character is clicked by the caller too, because chub ignores an
+ * untrusted click on that button.
  */
 export const SUBMIT_SCRIPT = String.raw`(async (payload) => {
   const setValue = (el, value) => {
@@ -122,11 +123,14 @@ export const SUBMIT_SCRIPT = String.raw`(async (payload) => {
   const addButton = [...document.querySelectorAll("button")].find((b) => b.innerText.trim() === "Add Alternate Greeting");
   const alternatesNow = () => [...document.querySelectorAll("textarea")]
     .filter((t) => (t.closest("div.ant-form-item")?.querySelector("label")?.innerText ?? "").trim() === "Alternate greetings");
-  while (alternatesNow().length < payload.alternates.length) {
+  let guard = 0;
+  while (alternatesNow().length < payload.alternates.length && guard++ < 8) {
     if (!addButton) throw new Error("add alternate button not found");
     addButton.click();
-    await new Promise((r) => setTimeout(r, 120));
+    await new Promise((r) => setTimeout(r, 350));
   }
+  if (alternatesNow().length < payload.alternates.length)
+    throw new Error("could not add alternate rows: " + alternatesNow().length + "/" + payload.alternates.length);
   payload.alternates.forEach((text, index) => setValue(alternatesNow()[index], text));
   if (payload.alternates.length) done.push("alternates:" + payload.alternates.length);
 
@@ -142,11 +146,84 @@ export const SUBMIT_SCRIPT = String.raw`(async (payload) => {
   clickLabel(payload.rating === "NSFW" ? "🔥 NSFW" : "👪 SFW");
   done.push(payload.type, payload.rating);
 
-  if (payload.submit) {
-    const create = [...document.querySelectorAll("button")].find((b) => b.innerText.trim() === "Create Character");
-    if (!create) throw new Error("create button not found");
-    create.click();
-    done.push("submitted");
-  }
   return { done, url: location.href };
+})`;
+
+/** `https://chub.ai/characters/<user>/<slug>` → `https://chub.ai/edit/<user>/<slug>` */
+export function editUrlFor(published: string | null): string | null {
+  const match = published?.match(/chub\.ai\/characters\/([^/\s?#]+)\/([^/\s?#]+)/);
+  return match ? `https://chub.ai/edit/${match[1]}/${match[2]}` : null;
+}
+
+/** The `Published` row of metadata.md, if the card has been submitted. */
+export async function publishedUrl(dir: string): Promise<string | null> {
+  return metadataField(await text(join(dir, "metadata.md")), "Published");
+}
+
+/**
+ * Fills chub's edit form (`/edit/<user>/<slug>`) from the same payload. It
+ * never changes visibility, rating or avatar, and reports the tag diff instead
+ * of typing tags. The caller clicks Update Character afterwards.
+ */
+export const EDIT_SCRIPT = String.raw`(async (payload) => {
+  const setValue = (el, value) => {
+    if (!el) throw new Error("missing field");
+    const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto, "value").set.call(el, value);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  const rows = () => [...document.querySelectorAll("textarea")]
+    .filter((t) => (t.closest("div.ant-form-item")?.querySelector("label")?.innerText ?? "").trim() === "Alternate greetings");
+  const done = [];
+
+  for (const [id, value] of Object.entries({
+    name: payload.name,
+    tagline: payload.tagline,
+    in_chat_name: payload.inChatName,
+    description: payload.creatorsNotes,
+    personality: payload.description,
+    first_message: payload.firstMessage,
+    scenario: payload.scenario,
+    example_dialogs: payload.exampleDialogs,
+    system_prompt: payload.systemPrompt,
+    post_history_instructions: payload.postHistory,
+  })) {
+    if (!value) continue;
+    const el = document.getElementById(id);
+    if (!el) throw new Error("field not found: " + id);
+    setValue(el, value);
+    done.push(id);
+  }
+
+  const want = payload.alternates.length;
+  let guard = 0;
+  while (rows().length < want && guard++ < 8) {
+    const add = [...document.querySelectorAll("button")].find((b) => b.innerText.trim() === "Add Alternate Greeting");
+    if (!add) break;
+    add.click();
+    await new Promise((r) => setTimeout(r, 350));
+  }
+  if (rows().length < want) throw new Error("could not add alternate rows: " + rows().length + "/" + want);
+  payload.alternates.forEach((text, index) => setValue(rows()[index], text));
+  guard = 0;
+  while (rows().length > want && guard++ < 8) {
+    const item = rows()[rows().length - 1].closest("div.ant-form-item");
+    const del = item && item.querySelector("button.ant-btn-icon-only");
+    if (!del) throw new Error("delete button not found");
+    del.click();
+    await new Promise((r) => setTimeout(r, 350));
+  }
+  if (rows().length > want)
+    throw new Error("delete " + (rows().length - want) + " extra alternate rows by hand, then run the script again");
+  done.push("alternates:" + want);
+
+  const tagItem = [...document.querySelectorAll("div.ant-form-item")]
+    .find((item) => item.querySelector('label[title="Tags"]'));
+  const current = tagItem ? [...tagItem.querySelectorAll(".ant-tag")].map((t) => t.innerText.trim()) : [];
+  const norm = (value) => value.trim().toLowerCase();
+  const missing = payload.tags.filter((tag) => !current.some((c) => norm(c) === norm(tag)));
+  const extra = current.filter((c) => !payload.tags.some((tag) => norm(tag) === norm(c)));
+
+  return { done, tags: { count: current.length, missing, extra }, url: location.href };
 })`;

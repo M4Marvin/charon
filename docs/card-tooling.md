@@ -19,7 +19,7 @@ workbench page that shows the results.
 | Surface | Entry point | Use for |
 |---|---|---|
 | MCP | `pnpm mcp:card` (stdio, `scripts/mcp-card.sh`) | editing a card across many calls |
-| CLI | `pnpm card-kit <cmd>` | check / render / report / submit a package |
+| CLI | `pnpm card-kit <cmd>` | check / render / report / submit / edit a package |
 | Workbench | `/cards` in the app (`pnpm dev`) | looking at checks, renders and images |
 
 Card root: `$CARD_ROOT`, default `~/codes/ComfyUI/chub/build`. Generated output
@@ -67,11 +67,12 @@ Save explicitly; unsaved edits die with the connection.
 | `card_save` / `card_reload` | write to the PNG / discard edits |
 | `card_check` | JSON `{name, ok, stats, issues[]}` |
 | `card_render` / `card_report` | screenshots / HTML report |
-| `card_submit` | `{source, script, payload}` for the chub form |
+| `card_submit` | `{source, script, payload}` for the chub create form |
+| `card_edit` | `{source, url, script, payload}` for the chub edit form |
 
 Session tools (`card_open` … `card_save`) take a **PNG path** and are keyed by
-it; package tools (`card_check`, `card_render`, `card_report`, `card_submit`)
-take a **package directory**. Use absolute paths.
+it; package tools (`card_check`, `card_render`, `card_report`, `card_submit`,
+`card_edit`) take a **package directory**. Use absolute paths.
 
 ## CLI
 
@@ -80,6 +81,7 @@ pnpm card-kit check  [card ...] [--root DIR] [--network]
 pnpm card-kit render [card ...]
 pnpm card-kit report [card ...]
 pnpm card-kit submit <card>
+pnpm card-kit edit   <card> [--url URL]
 ```
 
 `check` rules:
@@ -134,8 +136,7 @@ written.
 2. In the logged-in Helium tab on `https://chub.ai/create_character`, run
    `await (<script>)(<payload>)`. It fills name, tagline, Creator's Notes,
    Description, first message, scenario, example dialogs, every alternate
-   greeting, then clicks Private and 🔥 NSFW. It does not create unless
-   `payload.submit` is true.
+   greeting, then clicks Private and 🔥 NSFW.
 3. Tags are typed with real keys, one at a time (Ant's multi-select drops
    synthetic Enter after the first token).
 4. `browse.upload` the avatar into `#avatar` (files must be under `/tmp`); the
@@ -149,6 +150,28 @@ Alternate greetings need a real pause between **Add Alternate Greeting** clicks
 
 `#description` is Creator's Notes; `#personality` is Description. Start from a
 fresh form every time.
+
+## Edit
+
+Never submit an update through the create form — that makes a second card.
+
+1. `card_edit { dir }` → `{ source, url, script, payload }` (or
+   `pnpm card-kit edit <card>`; the URL comes from the `Published` row of
+   `metadata.md`, `--url` overrides it).
+2. Open that `/edit/<user>/<slug>` URL in the logged-in tab and run
+   `await (<script>)(<payload>)`. It rewrites the text fields and the alternate
+   greetings (adding rows when the card has more), leaves visibility, rating
+   and avatar alone, and returns the tag diff:
+   `{ done, tags: { count, missing, extra }, url }`.
+   Chub ignores synthetic clicks on delete buttons, so a card with *fewer*
+   greetings than the form throws `delete N extra alternate rows by hand`;
+   click them, then run the script again.
+3. Fix tags by hand if `missing` or `extra` is non-empty, then click
+   **Update Character**. The script does not click it: chub ignores a
+   synthetic click on that button, the same as on Create.
+
+The edit payload comes from the package, or from the open MCP session when the
+card PNG is loaded there.
 
 ## Failure modes
 

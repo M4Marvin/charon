@@ -4,6 +4,8 @@
  *
  *   pnpm card-kit check  [card ...] [--root DIR] [--network]
  *   pnpm card-kit render [card ...]
+ *   pnpm card-kit submit <card>            (create form: { script, payload })
+ *   pnpm card-kit edit   <card> [--url U]  (edit form: { url, script, payload })
  *   pnpm card-kit all    [card ...]
  *
  * Default root: $CARD_ROOT or ~/codes/ComfyUI/chub/build. Output goes to
@@ -15,6 +17,9 @@ import { basename, join, resolve } from "node:path";
 import {
   buildReport,
   buildSubmitPayload,
+  editUrlFor,
+  EDIT_SCRIPT,
+  publishedUrl,
   SUBMIT_SCRIPT,
   checkCard,
   checkImageUrls,
@@ -28,11 +33,20 @@ const DEFAULT_ROOT = process.env.CARD_ROOT ?? join(homedir(), "codes/ComfyUI/chu
 
 function parseArgs(argv: string[]) {
   const rootIndex = argv.indexOf("--root");
+  const urlIndex = argv.indexOf("--url");
   const root = rootIndex >= 0 ? resolve(argv[rootIndex + 1]) : resolve(DEFAULT_ROOT);
   const names = argv.filter(
-    (arg, index) => !arg.startsWith("--") && (rootIndex < 0 || index !== rootIndex + 1),
+    (arg, index) =>
+      !arg.startsWith("--") &&
+      (rootIndex < 0 || index !== rootIndex + 1) &&
+      (urlIndex < 0 || index !== urlIndex + 1),
   );
-  return { root, names, network: argv.includes("--network") };
+  return {
+    root,
+    names,
+    network: argv.includes("--network"),
+    url: urlIndex >= 0 ? argv[urlIndex + 1] : undefined,
+  };
 }
 
 function printCheck(pkg: CardPackage, status: Awaited<ReturnType<typeof checkCard>>) {
@@ -50,12 +64,12 @@ async function main() {
   const [command, ...rest] = process.argv.slice(2);
   if (!command || command === "--help") {
     console.error(
-      "usage: card-kit <check|render|report|submit|all> [card ...] [--root DIR] [--network]",
+      "usage: card-kit <check|render|report|submit|edit|all> [card ...] [--root DIR] [--network] [--url URL]",
     );
     process.exit(2);
   }
 
-  const { root, names, network } = parseArgs(rest);
+  const { root, names, network, url } = parseArgs(rest);
   const dirs = (await findCards(root)).filter(
     (dir) => !names.length || names.includes(basename(dir)),
   );
@@ -69,6 +83,14 @@ async function main() {
     if (command === "submit") {
       const payload = await buildSubmitPayload(pkg);
       console.log(JSON.stringify({ script: SUBMIT_SCRIPT, payload }));
+      continue;
+    }
+
+    if (command === "edit") {
+      const payload = await buildSubmitPayload(pkg);
+      const target = url ?? editUrlFor(await publishedUrl(dir));
+      if (!target) throw new Error(`${pkg.name}: no Published URL in metadata.md — pass --url`);
+      console.log(JSON.stringify({ url: target, script: EDIT_SCRIPT, payload }));
       continue;
     }
 

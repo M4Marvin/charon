@@ -18,6 +18,9 @@ import {
   buildPayloadFromCard,
   buildReport,
   buildSubmitPayload,
+  editUrlFor,
+  EDIT_SCRIPT,
+  publishedUrl,
   checkCard,
   checkImageUrls,
   loadCard,
@@ -332,6 +335,38 @@ server.registerTool(
       const payload = open ? buildPayloadFromCard(open.card, base) : base;
       return text(
         JSON.stringify({ source: open ? "session" : "package", script: SUBMIT_SCRIPT, payload }),
+      );
+    } catch (error) {
+      return failure(error);
+    }
+  },
+);
+
+server.registerTool(
+  "card_edit",
+  {
+    description:
+      "Build the chub edit plan for an already published card: returns {source, url, script, payload}. The script fills the edit form without touching visibility, rating, avatar or tags. Pass url to override the Published row in metadata.md.",
+    inputSchema: {
+      dir: z.string().describe("card package directory"),
+      url: z.string().optional().describe("chub character URL, defaults to metadata.md Published"),
+    },
+  },
+  async ({ dir, url }) => {
+    try {
+      const pkg = await loadCard(dir);
+      const base = await buildSubmitPayload(pkg);
+      const open = sessionInside(dir);
+      const payload = open ? buildPayloadFromCard(open.card, base) : base;
+      const target = url ?? editUrlFor(await publishedUrl(pkg.dir));
+      if (!target) throw new Error("no Published URL in metadata.md — pass url");
+      return text(
+        JSON.stringify({
+          source: open ? "session" : "package",
+          url: target,
+          script: EDIT_SCRIPT,
+          payload,
+        }),
       );
     } catch (error) {
       return failure(error);
