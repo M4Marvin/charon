@@ -15,6 +15,8 @@ import { Route as SettingsRouteRouteImport } from './routes/settings/route'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as UpRouteImport } from './routes/up'
+import { Route as CardsIndexRouteImport } from './routes/cards/index'
+import { Route as CardsNameRouteImport } from './routes/cards/$name'
 import { Route as CharactersIndexRouteImport } from './routes/characters/index'
 import { Route as CharactersIdRouteImport } from './routes/characters/$id'
 import { Route as CharactersNewRouteImport } from './routes/characters/new'
@@ -34,6 +36,7 @@ import { Route as ApiGenerationChatRouteImport } from './routes/api/generation/c
 import { Route as CharactersIdEditRouteImport } from './routes/characters/$id_.edit'
 import { Route as CharactersIdRevisionsRouteImport } from './routes/characters/$id_.revisions'
 import { Route as ApiBackgroundsIdImageRouteImport } from './routes/api/backgrounds/$id/image'
+import { Route as ApiCardkitNameFileRouteImport } from './routes/api/cardkit/$name/$file'
 import { Route as ApiCharactersIdAvatarRouteImport } from './routes/api/characters/$id/avatar'
 import { Route as ApiPersonasIdIconRouteImport } from './routes/api/personas/$id/icon'
 
@@ -65,6 +68,16 @@ const SigninRoute = SigninRouteImport.update({
 const UpRoute = UpRouteImport.update({
   id: '/up',
   path: '/up',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CardsIndexRoute = CardsIndexRouteImport.update({
+  id: '/cards/',
+  path: '/cards/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CardsNameRoute = CardsNameRouteImport.update({
+  id: '/cards/$name',
+  path: '/cards/$name',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CharactersIndexRoute = CharactersIndexRouteImport.update({
@@ -162,6 +175,11 @@ const ApiBackgroundsIdImageRoute = ApiBackgroundsIdImageRouteImport.update({
   path: '/api/backgrounds/$id/image',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCardkitNameFileRoute = ApiCardkitNameFileRouteImport.update({
+  id: '/api/cardkit/$name/$file',
+  path: '/api/cardkit/$name/$file',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCharactersIdAvatarRoute = ApiCharactersIdAvatarRouteImport.update({
   id: '/api/characters/$id/avatar',
   path: '/api/characters/$id/avatar',
@@ -180,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/setup': typeof SetupRoute
   '/signin': typeof SigninRoute
   '/up': typeof UpRoute
+  '/cards/$name': typeof CardsNameRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
   '/chat/$id': typeof ChatIdRoute
@@ -190,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/settings/presets': typeof SettingsPresetsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/providers': typeof SettingsProvidersRoute
+  '/cards/': typeof CardsIndexRoute
   '/characters/': typeof CharactersIndexRoute
   '/chat/': typeof ChatIndexRoute
   '/lorebooks/': typeof LorebooksIndexRoute
@@ -199,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/characters/$id/edit': typeof CharactersIdEditRoute
   '/characters/$id/revisions': typeof CharactersIdRevisionsRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
+  '/api/cardkit/$name/$file': typeof ApiCardkitNameFileRoute
   '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
   '/api/personas/$id/icon': typeof ApiPersonasIdIconRoute
 }
@@ -208,6 +229,7 @@ export interface FileRoutesByTo {
   '/setup': typeof SetupRoute
   '/signin': typeof SigninRoute
   '/up': typeof UpRoute
+  '/cards/$name': typeof CardsNameRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
   '/chat/$id': typeof ChatIdRoute
@@ -218,6 +240,7 @@ export interface FileRoutesByTo {
   '/settings/presets': typeof SettingsPresetsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/providers': typeof SettingsProvidersRoute
+  '/cards': typeof CardsIndexRoute
   '/characters': typeof CharactersIndexRoute
   '/chat': typeof ChatIndexRoute
   '/lorebooks': typeof LorebooksIndexRoute
@@ -227,6 +250,7 @@ export interface FileRoutesByTo {
   '/characters/$id/edit': typeof CharactersIdEditRoute
   '/characters/$id/revisions': typeof CharactersIdRevisionsRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
+  '/api/cardkit/$name/$file': typeof ApiCardkitNameFileRoute
   '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
   '/api/personas/$id/icon': typeof ApiPersonasIdIconRoute
 }
@@ -238,6 +262,7 @@ export interface FileRoutesById {
   '/setup': typeof SetupRoute
   '/signin': typeof SigninRoute
   '/up': typeof UpRoute
+  '/cards/$name': typeof CardsNameRoute
   '/characters/$id': typeof CharactersIdRoute
   '/characters/new': typeof CharactersNewRoute
   '/chat/$id': typeof ChatIdRoute
@@ -248,6 +273,7 @@ export interface FileRoutesById {
   '/settings/presets': typeof SettingsPresetsRoute
   '/settings/profile': typeof SettingsProfileRoute
   '/settings/providers': typeof SettingsProvidersRoute
+  '/cards/': typeof CardsIndexRoute
   '/characters/': typeof CharactersIndexRoute
   '/chat/': typeof ChatIndexRoute
   '/lorebooks/': typeof LorebooksIndexRoute
@@ -257,6 +283,7 @@ export interface FileRoutesById {
   '/characters/$id_/edit': typeof CharactersIdEditRoute
   '/characters/$id_/revisions': typeof CharactersIdRevisionsRoute
   '/api/backgrounds/$id/image': typeof ApiBackgroundsIdImageRoute
+  '/api/cardkit/$name/$file': typeof ApiCardkitNameFileRoute
   '/api/characters/$id/avatar': typeof ApiCharactersIdAvatarRoute
   '/api/personas/$id/icon': typeof ApiPersonasIdIconRoute
 }
@@ -269,6 +296,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/signin'
     | '/up'
+    | '/cards/$name'
     | '/characters/$id'
     | '/characters/new'
     | '/chat/$id'
@@ -279,6 +307,7 @@ export interface FileRouteTypes {
     | '/settings/presets'
     | '/settings/profile'
     | '/settings/providers'
+    | '/cards/'
     | '/characters/'
     | '/chat/'
     | '/lorebooks/'
@@ -288,6 +317,7 @@ export interface FileRouteTypes {
     | '/characters/$id/edit'
     | '/characters/$id/revisions'
     | '/api/backgrounds/$id/image'
+    | '/api/cardkit/$name/$file'
     | '/api/characters/$id/avatar'
     | '/api/personas/$id/icon'
   fileRoutesByTo: FileRoutesByTo
@@ -297,6 +327,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/signin'
     | '/up'
+    | '/cards/$name'
     | '/characters/$id'
     | '/characters/new'
     | '/chat/$id'
@@ -307,6 +338,7 @@ export interface FileRouteTypes {
     | '/settings/presets'
     | '/settings/profile'
     | '/settings/providers'
+    | '/cards'
     | '/characters'
     | '/chat'
     | '/lorebooks'
@@ -316,6 +348,7 @@ export interface FileRouteTypes {
     | '/characters/$id/edit'
     | '/characters/$id/revisions'
     | '/api/backgrounds/$id/image'
+    | '/api/cardkit/$name/$file'
     | '/api/characters/$id/avatar'
     | '/api/personas/$id/icon'
   id:
@@ -326,6 +359,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/signin'
     | '/up'
+    | '/cards/$name'
     | '/characters/$id'
     | '/characters/new'
     | '/chat/$id'
@@ -336,6 +370,7 @@ export interface FileRouteTypes {
     | '/settings/presets'
     | '/settings/profile'
     | '/settings/providers'
+    | '/cards/'
     | '/characters/'
     | '/chat/'
     | '/lorebooks/'
@@ -345,6 +380,7 @@ export interface FileRouteTypes {
     | '/characters/$id_/edit'
     | '/characters/$id_/revisions'
     | '/api/backgrounds/$id/image'
+    | '/api/cardkit/$name/$file'
     | '/api/characters/$id/avatar'
     | '/api/personas/$id/icon'
   fileRoutesById: FileRoutesById
@@ -356,11 +392,13 @@ export interface RootRouteChildren {
   SetupRoute: typeof SetupRoute
   SigninRoute: typeof SigninRoute
   UpRoute: typeof UpRoute
+  CardsNameRoute: typeof CardsNameRoute
   CharactersIdRoute: typeof CharactersIdRoute
   CharactersNewRoute: typeof CharactersNewRoute
   ChatIdRoute: typeof ChatIdRoute
   LorebooksIdRoute: typeof LorebooksIdRoute
   LorebooksNewRoute: typeof LorebooksNewRoute
+  CardsIndexRoute: typeof CardsIndexRoute
   CharactersIndexRoute: typeof CharactersIndexRoute
   ChatIndexRoute: typeof ChatIndexRoute
   LorebooksIndexRoute: typeof LorebooksIndexRoute
@@ -369,6 +407,7 @@ export interface RootRouteChildren {
   CharactersIdEditRoute: typeof CharactersIdEditRoute
   CharactersIdRevisionsRoute: typeof CharactersIdRevisionsRoute
   ApiBackgroundsIdImageRoute: typeof ApiBackgroundsIdImageRoute
+  ApiCardkitNameFileRoute: typeof ApiCardkitNameFileRoute
   ApiCharactersIdAvatarRoute: typeof ApiCharactersIdAvatarRoute
   ApiPersonasIdIconRoute: typeof ApiPersonasIdIconRoute
 }
@@ -415,6 +454,20 @@ declare module '@tanstack/react-router' {
       path: '/up'
       fullPath: '/up'
       preLoaderRoute: typeof UpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cards/': {
+      id: '/cards/'
+      path: '/cards'
+      fullPath: '/cards/'
+      preLoaderRoute: typeof CardsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cards/$name': {
+      id: '/cards/$name'
+      path: '/cards/$name'
+      fullPath: '/cards/$name'
+      preLoaderRoute: typeof CardsNameRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/characters/': {
@@ -550,6 +603,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBackgroundsIdImageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cardkit/$name/$file': {
+      id: '/api/cardkit/$name/$file'
+      path: '/api/cardkit/$name/$file'
+      fullPath: '/api/cardkit/$name/$file'
+      preLoaderRoute: typeof ApiCardkitNameFileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/characters/$id/avatar': {
       id: '/api/characters/$id/avatar'
       path: '/api/characters/$id/avatar'
@@ -596,11 +656,13 @@ const rootRouteChildren: RootRouteChildren = {
   SetupRoute: SetupRoute,
   SigninRoute: SigninRoute,
   UpRoute: UpRoute,
+  CardsNameRoute: CardsNameRoute,
   CharactersIdRoute: CharactersIdRoute,
   CharactersNewRoute: CharactersNewRoute,
   ChatIdRoute: ChatIdRoute,
   LorebooksIdRoute: LorebooksIdRoute,
   LorebooksNewRoute: LorebooksNewRoute,
+  CardsIndexRoute: CardsIndexRoute,
   CharactersIndexRoute: CharactersIndexRoute,
   ChatIndexRoute: ChatIndexRoute,
   LorebooksIndexRoute: LorebooksIndexRoute,
@@ -609,6 +671,7 @@ const rootRouteChildren: RootRouteChildren = {
   CharactersIdEditRoute: CharactersIdEditRoute,
   CharactersIdRevisionsRoute: CharactersIdRevisionsRoute,
   ApiBackgroundsIdImageRoute: ApiBackgroundsIdImageRoute,
+  ApiCardkitNameFileRoute: ApiCardkitNameFileRoute,
   ApiCharactersIdAvatarRoute: ApiCharactersIdAvatarRoute,
   ApiPersonasIdIconRoute: ApiPersonasIdIconRoute,
 }

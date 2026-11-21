@@ -58,6 +58,22 @@ Cloudflare in front of it).
 - `hayashi` keeps its tagline in `metadata.md`; `tagline.txt` is optional and
   the badge line is read from either.
 
+## Workbench UI
+
+`/cards` (in the app, sign-in required) lists every package under the card root
+with pass/fail, greeting and image counts, render state and last sync; `/cards/<name>`
+shows the issues, the desktop/mobile renders (toggle), a greeting-image gallery
+and the live snapshot.
+
+- Root: `CARD_ROOT` env var, default `~/codes/ComfyUI/chub/build`.
+- Files are served by `/api/cardkit/<name>/<file>`: only `desktop.png`,
+  `mobile.png`, `page.html`, `report.html`, plus `art/<basename>` resolved
+  through the card's asset map. Everything else 404s.
+- "Re-render" runs `renderCard` + `buildReport` for that card on the server.
+- **Live state** comes from `<card>/live.json`: `{ "syncedAt": ISO, "data": { … } }`,
+  written by a browser sync (chub is unreachable from the server itself). Absent
+  file = "no snapshot yet".
+
 ## Limits
 
 - The shell is an approximation of chub's DOM. It reproduces the selectors the
