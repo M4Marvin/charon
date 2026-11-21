@@ -12,6 +12,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { basename, dirname, join } from "node:path";
+import { buildReport, checkCard, checkImageUrls, loadCard, renderCard } from "@/lib/cardkit";
 import { CardSession } from "@/lib/character/card-session.js";
 
 const sessions = new Map<string, CardSession>();
@@ -36,6 +38,10 @@ async function open(path: string): Promise<CardSession> {
   const created = await CardSession.open(path);
   sessions.set(path, created);
   return created;
+}
+
+function outDirFor(dir: string): string {
+  return join(dirname(dir), ".cardkit", basename(dir));
 }
 
 const server = new McpServer({ name: "charon-cards", version: "0.1.0" });
@@ -211,6 +217,71 @@ server.registerTool(
     if (!open_) return text(`card not open: ${path}`);
     sessions.delete(path);
     return text(`closed ${path}${open_.dirty ? " (unsaved changes discarded)" : ""}`);
+  },
+);
+
+server.registerTool(
+  "card_check",
+  {
+    description:
+      "Lint a card package directory: tagline counts vs greetings/images, image placement, speaker labels, narrator rules, CSS size, portrait aspect. network=true also fetches every image URL.",
+    inputSchema: {
+      dir: z.string().describe("card package directory"),
+      network: z.boolean().optional().describe("also check that every image URL resolves"),
+    },
+  },
+  async ({ dir, network }) => {
+    try {
+      const pkg = await loadCard(dir);
+      const status = await checkCard(pkg);
+      if (network) status.issues.push(...(await checkImageUrls(pkg)));
+      const lines = [
+        `${status.ok ? "ok" : "FAIL"} ${pkg.name}: ${status.stats.greetings} greetings, ${status.stats.images} images, ${status.stats.cssBytes} B css`,
+        ...status.issues.map((issue) => `${issue.level} ${issue.code}: ${issue.message}`),
+      ];
+      return text(lines.join("\n"));
+    } catch (error) {
+      return failure(error);
+    }
+  },
+);
+
+server.registerTool(
+  "card_render",
+  {
+    description:
+      "Render the card page locally (chub-shaped shell) and screenshot it at desktop 1280 and mobile 390. Uses local art when the package has it.",
+    inputSchema: { dir: z.string().describe("card package directory") },
+  },
+  async ({ dir }) => {
+    try {
+      const pkg = await loadCard(dir);
+      const renders = await renderCard(pkg, outDirFor(dir));
+      return text(`desktop ${renders.desktop}\nmobile ${renders.mobile}`);
+    } catch (error) {
+      return failure(error);
+    }
+  },
+);
+
+server.registerTool(
+  "card_report",
+  {
+    description:
+      "Check a card, render it, and write report.html (checks, renders, greeting image gallery).",
+    inputSchema: { dir: z.string().describe("card package directory") },
+  },
+  async ({ dir }) => {
+    try {
+      const pkg = await loadCard(dir);
+      const outDir = outDirFor(dir);
+      const status = await checkCard(pkg);
+      const renders = await renderCard(pkg, outDir);
+      const path = await buildReport(pkg, status, renders, outDir);
+      return text(`report ${path}`);
+    } catch (error) {
+      return failure(error);
+    }
   },
 );
 

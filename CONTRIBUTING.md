@@ -58,6 +58,7 @@ scripts/
   migrate-data.ts         # Legacy data importer
   card.ts                 # Character card PNG reader/editor (pnpm card)
   mcp-card.sh             # stdio MCP server for open cards (pnpm mcp:card)
+  card-kit.ts             # check / render / report a card package (pnpm card-kit)
 migrate-to-single-user.ts  # Single-user migration operator (pnpm migrate:single-user)
 ```
 
@@ -133,6 +134,7 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 | Single-user migration (operator) | `pnpm run migrate:single-user` |
 | Read/edit a card PNG | `pnpm card card.png` (interactive, in memory; see `scripts/card.ts`) |
 | Card MCP server | `pnpm mcp:card` / `scripts/mcp-card.sh` (stdio; tools `card_open` … `card_save`) |
+| Card checks / render / report | `pnpm card-kit check\|render\|report` (see [docs/card-kit.md](docs/card-kit.md)) |
 | Package and publish a release | `scripts/release-local.sh v0.1.0` (no Actions) |
 | Build/publish the container image | See [packaging.md](docs/packaging.md#building-and-publishing-the-image-locally) |
 | Run the packaged server | `node bin/charon.mjs serve` (zero-config) |
