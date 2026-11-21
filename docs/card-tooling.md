@@ -131,12 +131,18 @@ The plan is built from the open MCP session when one exists (`source:
 "session"`, unsaved edits included), otherwise from the package. No files are
 written.
 
-1. `card_submit { dir }` → `{ script, payload }` (or `pnpm card-kit submit <card>`
-   prints the same object).
-2. In the logged-in Helium tab on `https://chub.ai/create_character`, run
-   `await (<script>)(<payload>)`. It fills name, tagline, Creator's Notes,
-   Description, first message, scenario, example dialogs, every alternate
-   greeting, then clicks Private and 🔥 NSFW.
+1. `card_submit { dir }` → `{ source, script, payload }` (or
+   `pnpm card-kit submit <card>` prints the same object).
+2. In the logged-in Helium tab on `https://chub.ai/create_character`, run it in
+   one page eval, with `plan` being the object from step 1:
+
+   ```js
+   await (0, eval)(plan.script)(plan.payload)
+   ```
+
+   It fills name, tagline, Creator's Notes, Description, first message,
+   scenario, example dialogs, every alternate greeting, then clicks Private and
+   🔥 NSFW.
 3. Tags are typed with real keys, one at a time (Ant's multi-select drops
    synthetic Enter after the first token).
 4. `browse.upload` the avatar into `#avatar` (files must be under `/tmp`); the
@@ -155,14 +161,25 @@ fresh form every time.
 
 Never submit an update through the create form — that makes a second card.
 
+0. Once, after the first submit, record the character URL in `metadata.md`:
+
+   ```md
+   | Published | `https://chub.ai/characters/<user>/<slug>` | (private, NSFW) |
+   ```
+
 1. `card_edit { dir }` → `{ source, url, script, payload }` (or
-   `pnpm card-kit edit <card>`; the URL comes from the `Published` row of
-   `metadata.md`, `--url` overrides it).
-2. Open that `/edit/<user>/<slug>` URL in the logged-in tab and run
-   `await (<script>)(<payload>)`. It rewrites the text fields and the alternate
-   greetings (adding rows when the card has more), leaves visibility, rating
-   and avatar alone, and returns the tag diff:
-   `{ done, tags: { count, missing, extra }, url }`.
+   `pnpm card-kit edit <card>`; the URL is derived from the `Published` row,
+   `--url` overrides it).
+2. Open that `/edit/<user>/<slug>` URL in the logged-in tab and run it in one
+   page eval, with `plan` being the object from step 1:
+
+   ```js
+   await (0, eval)(plan.script)(plan.payload)
+   ```
+
+   It rewrites the text fields and the alternate greetings (adding rows when
+   the card has more), leaves visibility, rating and avatar alone, and returns
+   the tag diff: `{ done, tags: { count, missing, extra }, url }`.
    Chub ignores synthetic clicks on delete buttons, so a card with *fewer*
    greetings than the form throws `delete N extra alternate rows by hand`;
    click them, then run the script again.
