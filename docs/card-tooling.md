@@ -4,6 +4,16 @@ Everything for taking a card from files to a chub submission: an MCP server
 that holds the card in memory, a CLI that checks/renders/reports/submits, and a
 workbench page that shows the results.
 
+## Before you start
+
+- Repo: `/home/marvin/codes/charon`, `pnpm install` once.
+- `pnpm` is often **not on PATH** in an agent shell. Use
+  `~/.local/share/pnpm/bin/pnpm` or prefix
+  `PATH=$HOME/.local/share/pnpm/bin:$PATH`.
+- Workbench and submit need the app running: `pnpm dev`.
+- Submit needs Helium open and logged into chub; browse drives it.
+- In commands, `<card>` is the package directory name under the card root.
+
 ## Surfaces
 
 | Surface | Entry point | Use for |
@@ -59,7 +69,9 @@ Save explicitly; unsaved edits die with the connection.
 | `card_render` / `card_report` | screenshots / HTML report |
 | `card_submit` | `{source, script, payload}` for the chub form |
 
-Use `resolve`d absolute paths consistently; sessions are keyed by path.
+Session tools (`card_open` … `card_save`) take a **PNG path** and are keyed by
+it; package tools (`card_check`, `card_render`, `card_report`, `card_submit`)
+take a **package directory**. Use absolute paths.
 
 ## CLI
 
@@ -86,9 +98,26 @@ over CDP** (no Playwright): desktop 1280, mobile 390, full page, fresh profile
 per run. JPEG thumbnails are written for the workbench. A screenshot under
 20 KB fails the render.
 
+## Agent session
+
+```sh
+cd /home/marvin/codes/charon
+export PATH=$HOME/.local/share/pnpm/bin:$PATH
+
+# once per session: connect the MCP for this directory
+opencode api post "/api/experimental/mcp/charon-cards/connect?location[directory]=$PWD"
+# then card_open / card_get / card_set …
+
+pnpm card-kit check  amanda-mia
+pnpm card-kit report amanda-mia     # writes .cardkit/<card>/report.html
+```
+
+Review `report.html` (or `/cards`) before publishing. Fix the card, not the
+report.
+
 ## Workbench
 
-`pnpm dev`, then `http://localhost:3000/cards` (Vite binds `::1`; `127.0.0.1`
+`pnpm dev`, sign in, then `http://localhost:3000/cards` (Vite binds `::1`; `127.0.0.1`
 refuses). Per card: check issues, desktop/mobile renders, greeting-image
 gallery, live snapshot, and a Re-render button that runs render + report on the
 server.
@@ -98,7 +127,9 @@ thumbnails, `page.html`, `report.html` and `art/<basename>` through the asset
 map.
 
 **Live snapshot:** `<card>/live.json` — `{ "syncedAt": ISO, "data": { … } }`.
-Written by a browser sync; chub is unreachable from the server.
+The UI reads it; **nothing writes it yet** (chub is unreachable from the
+server, so it has to be a browser sync). Until then the page shows "no live
+snapshot yet".
 
 ## Submit
 
@@ -131,3 +162,5 @@ fresh form every time.
 | `?file=desktop.png` 404s | Vite intercepts image extensions — the API uses `?file=` |
 | render has empty frames | art deleted from the server and not present locally |
 | tags stop appearing | typed with synthetic events — use real keys |
+| `pnpm: command not found` | use `~/.local/share/pnpm/bin/pnpm` or set PATH |
+| `--network` reports 403, render has empty frames | Cloudflare blocks this machine from `files.m4marvin.com`; local art avoids it |
