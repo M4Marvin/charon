@@ -21,7 +21,7 @@ function CardsPage() {
     <main className="mx-auto max-w-[1200px] px-4 py-8">
       <PageHeader
         title="Cards"
-        subtitle="Card packages on disk: checks, renders and the last synced live state."
+        subtitle="Card packages on disk with their checks, renders and images."
       />
 
       {error ? (
@@ -42,7 +42,6 @@ function CardsPage() {
                 <th className="px-4 py-3">Greetings</th>
                 <th className="px-4 py-3">Images</th>
                 <th className="px-4 py-3">Render</th>
-                <th className="px-4 py-3">Live</th>
               </tr>
             </thead>
             <tbody>
@@ -67,12 +66,11 @@ function CardsPage() {
                   <td className="px-4 py-3 tabular-nums">{card.greetings}</td>
                   <td className="px-4 py-3 tabular-nums">{card.images}</td>
                   <td className="px-4 py-3 text-muted-foreground">{card.rendered ? "yes" : "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{card.syncedAt ?? "—"}</td>
                 </tr>
               ))}
               {!data.length ? (
                 <tr>
-                  <td className="px-4 py-6 text-muted-foreground" colSpan={6}>
+                  <td className="px-4 py-6 text-muted-foreground" colSpan={5}>
                     No packages found under the card root.
                   </td>
                 </tr>

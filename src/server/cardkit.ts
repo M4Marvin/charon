@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import {
@@ -23,7 +23,6 @@ export type CardSummary = {
   greetings: number;
   images: number;
   rendered: boolean;
-  syncedAt: string | null;
 };
 
 export type CardDetail = Omit<CardSummary, "greetings"> & {
@@ -31,8 +30,7 @@ export type CardDetail = Omit<CardSummary, "greetings"> & {
   dir: string;
   check: CheckResult;
   issues: CheckResult["issues"];
-  renders: { desktop: string; mobile: string; html: string } | null;
-  live: { syncedAt: string; raw: string } | null;
+  renders: { desktop: string; mobile: string; html: string; report: string } | null;
   greetings: { id: string; length: number; images: string[] }[];
 };
 
@@ -66,26 +64,12 @@ export async function workFile(name: string, file: string): Promise<string | nul
   return path.startsWith(resolve(dir)) && (await exists(path)) ? path : null;
 }
 
-async function liveFor(name: string): Promise<CardDetail["live"]> {
-  const raw = await readFile(join(cardDir(name), "live.json"), "utf8").catch(() => null);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as { syncedAt?: string; data?: Record<string, unknown> };
-    return parsed.syncedAt && parsed.data
-      ? { syncedAt: parsed.syncedAt, raw: JSON.stringify(parsed.data, null, 2) }
-      : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function listCards(): Promise<CardSummary[]> {
   const dirs = await findCards(CARD_ROOT);
   const cards: CardSummary[] = [];
   for (const dir of dirs) {
     const pkg = await loadCard(dir);
     const check = await checkCard(pkg);
-    const live = await liveFor(pkg.name);
     cards.push({
       name: pkg.name,
       ok: check.ok,
@@ -94,7 +78,6 @@ export async function listCards(): Promise<CardSummary[]> {
       greetings: check.stats.greetings,
       images: check.stats.images,
       rendered: await exists(join(workDir(pkg.name), "desktop.png")),
-      syncedAt: live?.syncedAt ?? null,
     });
   }
   return cards;
@@ -104,11 +87,11 @@ export async function cardDetail(name: string): Promise<CardDetail> {
   const dir = cardDir(name);
   const pkg = await loadCard(dir);
   const check = await checkCard(pkg);
-  const live = await liveFor(name);
-  const [desktop, mobile, html] = await Promise.all([
+  const [desktop, mobile, html, report] = await Promise.all([
     exists(join(workDir(name), "desktop.png")),
     exists(join(workDir(name), "mobile.png")),
     exists(join(workDir(name), "page.html")),
+    exists(join(workDir(name), "report.html")),
   ]);
   const map = await buildAssetMap(dir);
 
@@ -123,8 +106,6 @@ export async function cardDetail(name: string): Promise<CardDetail> {
     greetingCount: check.stats.greetings,
     images: check.stats.images,
     rendered: desktop,
-    syncedAt: live?.syncedAt ?? null,
-    live,
     renders: desktop
       ? {
           desktop: `/api/cardkit/${name}?file=desktop-thumb.jpg`,
@@ -132,6 +113,7 @@ export async function cardDetail(name: string): Promise<CardDetail> {
             ? `/api/cardkit/${name}?file=mobile-thumb.jpg`
             : `/api/cardkit/${name}?file=desktop-thumb.jpg`,
           html: html ? `/api/cardkit/${name}?file=page.html` : "",
+          report: report ? `/api/cardkit/${name}?file=report.html` : "",
         }
       : null,
     greetings: pkg.greetings.map((greeting) => ({
