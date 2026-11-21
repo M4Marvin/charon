@@ -73,14 +73,40 @@ export async function buildSubmitPayload(pkg: CardPackage): Promise<SubmitPayloa
   };
 }
 
+/** Chara card v2 file for chub's own Import JSON input. */
+export function buildCardJson(payload: SubmitPayload): string {
+  return JSON.stringify(
+    {
+      spec: "chara_card_v2",
+      spec_version: "2.0",
+      data: {
+        name: payload.name,
+        description: payload.description,
+        personality: "",
+        scenario: payload.scenario,
+        first_mes: payload.firstMessage,
+        mes_example: payload.exampleDialogs,
+        creator_notes: payload.creatorsNotes,
+        system_prompt: payload.systemPrompt,
+        post_history_instructions: payload.postHistory,
+        alternate_greetings: payload.alternates,
+        tags: payload.tags,
+        creator: "SmutFixer",
+        character_version: "1.0",
+        extensions: {},
+      },
+    },
+    null,
+    2,
+  );
+}
+
 /**
- * Fills the chub create_character form from a payload. Runs inside the page;
- * never submits unless `payload.submit` is true. Returns a report of the work.
- *
- * Tags are NOT set here: Ant's multi-select stops accepting synthetic Enter
- * after the first token, so the caller types them with real key events.
+ * Post-import steps for chub's create form: the Import JSON input fills
+ * everything except the tagline, and the type/rating radios are not part of
+ * the card file. Small enough to inline in one eval.
  */
-export const SUBMIT_SCRIPT = String.raw`(async (payload) => {
+export const POST_IMPORT_SCRIPT = String.raw`(async (payload) => {
   const setValue = (el, value) => {
     if (!el) throw new Error("missing field");
     const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
@@ -88,64 +114,30 @@ export const SUBMIT_SCRIPT = String.raw`(async (payload) => {
     el.dispatchEvent(new Event("input", { bubbles: true }));
     el.dispatchEvent(new Event("change", { bubbles: true }));
   };
-  const byId = (id) => document.getElementById(id);
-  const formItemByLabel = (label) => [...document.querySelectorAll("div.ant-form-item")]
-    .find((item) => (item.querySelector("label")?.innerText ?? "").trim() === label);
   const clickLabel = (label) => {
     const target = [...document.querySelectorAll("label")].find((l) => l.innerText.trim() === label);
     if (!target) throw new Error("label not found: " + label);
     target.click();
   };
-  const filled = [];
+  const done = [];
 
-  for (const [id, value] of Object.entries({
-    name: payload.name,
-    tagline: payload.tagline,
-    in_chat_name: payload.inChatName,
-    description: payload.creatorsNotes,
-    personality: payload.description,
-    first_message: payload.firstMessage,
-    scenario: payload.scenario,
-    example_dialogs: payload.exampleDialogs,
-    system_prompt: payload.systemPrompt,
-    post_history_instructions: payload.postHistory,
-  })) {
-    if (!value) continue;
-    const el = byId(id);
-    if (!el) throw new Error("field not found: " + id);
-    setValue(el, value);
-    filled.push(id);
+  if (payload.tagline) {
+    setValue(document.getElementById("tagline"), payload.tagline);
+    done.push("tagline");
   }
-
-  const note = [...document.querySelectorAll("textarea")].find((t) => t.placeholder === "Character's Note");
-  if (note && payload.characterNote) {
-    setValue(note, payload.characterNote);
-    filled.push("character_note");
-  }
-
-  const countAlternates = () => [...document.querySelectorAll("textarea")]
-    .filter((t) => (t.closest("div.ant-form-item")?.querySelector("label")?.innerText ?? "").trim() === "Alternate greetings").length;
-  const addButton = [...document.querySelectorAll("button")].find((b) => b.innerText.trim() === "Add Alternate Greeting");
-  while (countAlternates() < payload.alternates.length) {
-    if (!addButton) throw new Error("add alternate button not found");
-    addButton.click();
-    await new Promise((r) => setTimeout(r, 120));
-  }
-  const alternates = [...document.querySelectorAll("textarea")]
-    .filter((t) => (t.closest("div.ant-form-item")?.querySelector("label")?.innerText ?? "").trim() === "Alternate greetings");
-  payload.alternates.forEach((text, index) => setValue(alternates[index], text));
-  if (payload.alternates.length) filled.push("alternates:" + payload.alternates.length);
-
   clickLabel(payload.type);
   clickLabel(payload.rating === "NSFW" ? "🔥 NSFW" : "👪 SFW");
-  filled.push(payload.type, payload.rating);
+  done.push(payload.type, payload.rating);
+
+  const alternates = [...document.querySelectorAll("textarea")]
+    .filter((t) => (t.closest("div.ant-form-item")?.querySelector("label")?.innerText ?? "").trim() === "Alternate greetings").length;
+  done.push("alternates:" + alternates);
 
   if (payload.submit) {
     const create = [...document.querySelectorAll("button")].find((b) => b.innerText.trim() === "Create Character");
     if (!create) throw new Error("create button not found");
     create.click();
-    filled.push("submitted");
+    done.push("submitted");
   }
-
-  return { filled, url: location.href };
+  return { done, url: location.href };
 })`;

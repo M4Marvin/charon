@@ -124,14 +124,19 @@ function normalizeModel(model) {
   };
 }
 
-const NON_CHAT = /(image|audio|tts|whisper|transcrib|embed|moderat|realtime|dall-e|sora|video|computer-use)/i;
+const NON_CHAT =
+  /(image|audio|tts|whisper|transcrib|embed|moderat|realtime|dall-e|sora|video|computer-use)/i;
 
 function textModels(provider) {
   return Object.values(provider?.models ?? {})
     .filter((model) => model?.modalities?.output?.includes("text"))
     .filter((model) => !NON_CHAT.test(model.id))
     .map(normalizeModel)
-    .sort((a, b) => String(b.released ?? "").localeCompare(String(a.released ?? "")) || a.name.localeCompare(b.name))
+    .sort(
+      (a, b) =>
+        String(b.released ?? "").localeCompare(String(a.released ?? "")) ||
+        a.name.localeCompare(b.name),
+    )
     .slice(0, MAX_MODELS);
 }
 

@@ -25,11 +25,7 @@ let updated = 0;
 let skipped = 0;
 
 for (const chat of stale) {
-  const char = db
-    .select()
-    .from(characters)
-    .where(eq(characters.id, chat.characterId))
-    .get();
+  const char = db.select().from(characters).where(eq(characters.id, chat.characterId)).get();
 
   if (!char) {
     skipped++;

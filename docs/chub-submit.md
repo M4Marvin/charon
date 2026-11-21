@@ -1,11 +1,11 @@
-# Submitting a card to chub (browse)
+# Submitting a card to chub (browse + Import JSON)
 
-Chub's create form is filled by a fixed script, executed in the logged-in
-Helium browser through the `browse` tools. The payload is generated from the
-card package, so the same card always produces the same fields in the same
-order.
+Chub's form has an **Import JSON** input that fills every field from a
+`chara_card_v2` file — name, Creator's Notes, Description, scenario, first
+message, alternates, example dialogs and tags. Only the tagline, the
+type/rating radios and the avatar are left, and those are two small steps.
 
-## 1. Build the payload
+## 1. Build the files
 
 ```sh
 pnpm card-kit submit <card>
@@ -13,81 +13,84 @@ pnpm card-kit submit <card>
 
 Writes to `<root>/.cardkit/<card>/`:
 
-| File | Contents |
+| File | Purpose |
 |---|---|
-| `submit.json` | every form field, tags, type/rating, avatar path |
-| `submit-script.js` | the page-side filler (`async (payload) => …`) |
+| `card.json` | `chara_card_v2` for chub's Import JSON — description (bible), creator_notes (page), alternates, tags |
+| `submit.json` | same fields plus tagline, type/rating and avatar path |
+| `post-import.js` | the small page script that sets tagline + radios + Create |
 
-Field mapping (verified against chub's DOM):
+Field mapping (verified against the live form):
 
-| Form | Selector | Package source |
+| Form | Selector | Source |
 |---|---|---|
 | Name | `#name` | `metadata.md` → Name |
-| Tagline | `#tagline` | `tagline.txt` |
 | Creator's Notes | `#description` | `description.html` |
 | Description | `#personality` | `personality.md` |
 | Initial message | `#first_message` | first greeting |
-| Scenario | `#scenario` | `scenario.md` |
-| Example dialogs | `#example_dialogs` | `example_dialogs.md` |
-| Alternate greetings | `textarea` under the `Alternate greetings` form item | remaining greetings |
-| Character's Note | textarea with `placeholder="Character's Note"` | payload |
-| Type / Rating | labels `Private`, `Unlisted`, `Public`, `🔥 NSFW`, `👪 SFW` | payload (Private + NSFW by default) |
-| Avatar | `#avatar` (file input) | `avatar.png` if present |
+| Alternate greetings | `textarea` under the `Alternate greetings` item | remaining greetings |
+| Tags | Ant multi-select | imported |
+| Tagline | `#tagline` | **not in v2 — set after import** |
+| Type / Rating | labels `Private` / `🔥 NSFW` | **not in v2 — set after import** |
+| Avatar | `#avatar` | `avatar.png` |
 
-## 2. Fill the form
+## 2. Import JSON
 
-In a Helium tab on `https://chub.ai/create_character`:
+`browse.upload` can only read files under its roots (`/tmp`):
+
+```sh
+cp <card>/.cardkit/card.json /tmp/opencode/card.json
+```
+
+Then, in the Helium tab on `https://chub.ai/create_character`:
+
+```
+upload  input[type=file][accept*='JSON']  /tmp/opencode/card.json
+```
+
+The importer fills everything but the tagline. Verify before moving on:
+`#name`, `#description` length (page HTML survives), `#personality` length,
+`#first_message`, number of `Alternate greetings` textareas, `.ant-tag` count.
+
+## 3. Tagline, type, rating
+
+One eval with `post-import.js`:
 
 ```js
-// one eval: install the filler, then run it with the payload
-window.__cardSubmit = <contents of submit-script.js>;
-await window.__cardSubmit(<contents of submit.json>);
-// -> { filled: ["name","tagline","description",…,"alternates:13","Private","NSFW"] }
+await (<contents of post-import.js>)({ tagline, type: "Private", rating: "NSFW", submit: false })
+// -> { done: ["tagline","Private","NSFW","alternates:13"] }
 ```
 
-The script refuses to submit unless the payload says `submit: true`; by default
-it only fills and reports.
-
-## 3. Tags (real keys)
-
-Ant's multi-select stops accepting synthetic Enter after the first token, so
-tags are typed with real key events, one at a time, in payload order:
-
-```
-for tag in submit.json.tags:
-    click  div.ant-form-item:has(label:text-is('Tags')) .ant-select-selector
-    type   div.ant-form-item:has(label:text-is('Tags')) input   <tag>
-    press  Enter
-```
-
-Check afterwards: every tag renders as `.ant-tag` inside the Tags item.
+The script never submits unless `submit: true`.
 
 ## 4. Avatar
 
-`browse.upload` against `#avatar` with the absolute path from
-`submit.json.avatar`. Chub wants a portrait PNG (2:3).
+```sh
+cp <card>/avatar.png /tmp/opencode/avatar.png
+```
 
-## 5. Verify, then create
+```
+upload  #avatar  /tmp/opencode/avatar.png
+```
 
-- Read back: `#name`, `#tagline` length, `#description` length (20 KB page
-  survives the textarea), alternate count, `.ant-tag` count, selected Type and
-  Rating.
-- Only then click **Create Character**, either by re-running the script with
-  `submit: true` or by clicking the button in the browser.
-- Chub sometimes stays on `/create_character` for a few seconds; if the URL
-  does not change, look in `my_characters` before retrying.
+Chub wants a portrait PNG (2:3).
+
+## 5. Create
+
+Read back: tagline length, checked radios, tag count, alternate count. Then
+either re-run the script with `submit: true` or click **Create Character**.
+Chub sometimes stays on `/create_character` for a few seconds; if the URL does
+not change, check `my_characters` before retrying.
 
 ## Gotchas
 
-- **Vite/dev-server note does not apply here** — this runs on chub, not
-  locally.
-- `#description` is *Creator's Notes* (the page), `#personality` is the
-  *Description* (the bible). The labels read backwards from the ids.
-- The tagline already carries the `💬`/`🖼` badge; do not add another.
-- The form keeps whatever was typed if the page is not reloaded — always start
-  from a fresh `create_character`.
-- No tag typing in the script: doing it there silently drops all but the first
-  tag.
+- `#description` is **Creator's Notes** (the page); `#personality` is
+  **Description** (the bible). The labels read backwards from the ids.
+- The tagline carries the `💬`/`🖼` badge and is set exactly once, after import.
+- Always start from a fresh `create_character`; the form keeps typed state.
+- Import JSON brings the tags — do not type them again.
+- `browse.upload` refuses paths outside its file roots; copy to `/tmp` first.
+- If the browser is on the MacBook, the same steps run there against the same
+  chub account; only the local paths differ.
 
 ## Live snapshot (for the workbench)
 

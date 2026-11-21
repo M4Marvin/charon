@@ -308,7 +308,10 @@ server.registerTool(
       await mkdir(out, { recursive: true });
       const json = join(out, "submit.json");
       await writeFile(json, JSON.stringify(payload, null, 2));
-      await writeFile(join(out, "submit-script.js"), (await import("@/lib/cardkit")).SUBMIT_SCRIPT);
+      await writeFile(
+        join(out, "post-import.js"),
+        (await import("@/lib/cardkit")).POST_IMPORT_SCRIPT,
+      );
       return text(
         `${payload.name}: ${payload.alternates.length + 1} greetings, ${payload.tags.length} tags\n${json}`,
       );

@@ -38,7 +38,9 @@ function journalMigrations(): number {
 function appliedMigrations(dbPath: string): number {
   const sqlite = new Database(dbPath, { readonly: true });
   try {
-    const row = sqlite.prepare("SELECT count(*) AS c FROM __drizzle_migrations").get() as { c: number };
+    const row = sqlite.prepare("SELECT count(*) AS c FROM __drizzle_migrations").get() as {
+      c: number;
+    };
     return row.c;
   } catch {
     return 0; // __drizzle_migrations doesn't exist yet → never migrated

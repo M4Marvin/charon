@@ -57,15 +57,15 @@ function scenarioFreshDb(dir: string): string {
   const dbMtime = statSync(dbPath).mtimeMs;
   assert.ok(
     backupMtime <= dbMtime,
-    `backup (${backupMtime}) must predate migrated DB (${dbMtime})`
+    `backup (${backupMtime}) must predate migrated DB (${dbMtime})`,
   );
 
   // Migrations actually applied to the scratch DB.
   const sqlite = new Database(dbPath, { readonly: true });
   try {
-    const { c } = sqlite
-      .prepare("SELECT count(*) AS c FROM __drizzle_migrations")
-      .get() as { c: number };
+    const { c } = sqlite.prepare("SELECT count(*) AS c FROM __drizzle_migrations").get() as {
+      c: number;
+    };
     assert.ok(c > 0, `expected applied migrations, __drizzle_migrations has ${c} rows`);
   } finally {
     sqlite.close();

@@ -15,8 +15,9 @@ import { basename, join, resolve } from "node:path";
 import { writeFile } from "node:fs/promises";
 import {
   buildReport,
+  buildCardJson,
   buildSubmitPayload,
-  SUBMIT_SCRIPT,
+  POST_IMPORT_SCRIPT,
   checkCard,
   checkImageUrls,
   findCards,
@@ -71,7 +72,8 @@ async function main() {
       const payload = await buildSubmitPayload(pkg);
       const path = join(outDir, "submit.json");
       await writeFile(path, JSON.stringify(payload, null, 2));
-      await writeFile(join(outDir, "submit-script.js"), SUBMIT_SCRIPT);
+      await writeFile(join(outDir, "post-import.js"), POST_IMPORT_SCRIPT);
+      await writeFile(join(outDir, "card.json"), buildCardJson(payload));
       console.log(
         `${pkg.name}: ${payload.alternates.length + 1} greetings, ${payload.tags.length} tags -> ${path}`,
       );
