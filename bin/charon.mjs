@@ -19,7 +19,7 @@
  * ENCRYPTION_KEY, APP_URL), so nothing in src/ needs to know about the CLI.
  */
 import { execFileSync, spawn } from "node:child_process";
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import {
   chmodSync,
   closeSync,
@@ -42,7 +42,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = resolve(HERE, "..");
 const VERSION = "0.1.3";
-const REPO = "M4Marvin/charon";
 
 function env(name, fallback) {
   const value = process.env[name];
@@ -55,7 +54,6 @@ const LOG_DIR = join(DATA_DIR, "logs");
 const PID_FILE = join(DATA_DIR, "charon.pid");
 const SERVER_ENTRY = join(APP_ROOT, ".output", "server", "index.mjs");
 const INSTANCE_FILE = join(DATA_DIR, "instance.json");
-const INSTALL_FILE = join(HOME, "install.json");
 const PORT = Number(env("PORT", "3000"));
 const HOST = env("CHARON_HOST", "127.0.0.1");
 // Keep the browser origin and APP_URL identical. better-auth rejects cookie
@@ -390,93 +388,6 @@ async function backup(destination) {
   log(`Backup written to ${target} (database, uploads, instance secrets)`);
 }
 
-function platformTag() {
-  if (platform() === "win32") {
-    // The Windows installer ships the x64 build for ARM64 too (emulation);
-    // publishing a native arm64 asset is a separate decision.
-    return "windows-x64";
-  }
-  const os = platform() === "darwin" ? "darwin" : "linux";
-  const cpu = arch() === "arm64" ? "arm64" : "x64";
-  return `${os}-${cpu}`;
-}
-
-async function download(url, target) {
-  const response = await fetch(url, { redirect: "follow" });
-  if (!response.ok) throw new Error(`${response.status} ${response.statusText} for ${url}`);
-  const bytes = Buffer.from(await response.arrayBuffer());
-  writeFileSync(target, bytes);
-  return createHash("sha256").update(bytes).digest("hex");
-}
-
-async function update() {
-  const tag = platformTag();
-  const windows = platform() === "win32";
-  const base = `https://github.com/${REPO}/releases/latest/download`;
-  const asset = `charon-${tag}.${windows ? "zip" : "tar.gz"}`;
-  const tmp = join(DATA_DIR, "update");
-  rmSync(tmp, { recursive: true, force: true });
-  mkdirSync(tmp, { recursive: true });
-  log(`Downloading ${asset}...`);
-  try {
-    await download(`${base}/${asset}.sha256`, join(tmp, "asset.sha256"));
-    const digest = await download(`${base}/${asset}`, join(tmp, asset));
-    const expected = readFileSync(join(tmp, "asset.sha256"), "utf8").trim().split(/\s+/)[0];
-    if (!expected) throw new Error("The release checksum file is empty; refusing to update.");
-    if (expected !== digest) throw new Error("Checksum mismatch; refusing to install the update.");
-
-    // Stage the new tree next to the live one and validate it before touching
-    // the running install. An update never extracts into the live directory.
-    const staging = join(HOME, "app.new");
-    rmSync(staging, { recursive: true, force: true });
-    mkdirSync(staging, { recursive: true });
-    // bsdtar on Windows reads .zip; GNU tar on macOS/Linux reads .tar.gz.
-    const extract = spawn(
-      "tar",
-      windows ? ["-xf", join(tmp, asset), "-C", staging] : ["-xzf", join(tmp, asset), "-C", staging],
-      { stdio: "inherit" },
-    );
-    const code = await new Promise((r) => extract.on("exit", r));
-    if (code !== 0) throw new Error("Extraction failed; the running install was not touched.");
-    for (const required of [
-      "bin/charon.mjs",
-      ".output/server/index.mjs",
-      "drizzle",
-      "LICENSE",
-      "NOTICE",
-    ]) {
-      if (!existsSync(join(staging, required))) {
-        throw new Error(`The update is missing ${required}; rolled back.`);
-      }
-    }
-
-    // Snapshot the database, uploads, and the encryption key before the swap.
-    // A failed update must not be the reason a chat history is lost.
-    if (existsSync(process.env.DATABASE_URL || join(DATA_DIR, "charon.db"))) {
-      await backup();
-    }
-    await stop();
-    const appDir = join(HOME, "app");
-    const old = join(HOME, "app.old");
-    rmSync(old, { recursive: true, force: true });
-    renameSync(appDir, old);
-    try {
-      renameSync(staging, appDir);
-    } catch (error) {
-      renameSync(old, appDir);
-      throw new Error(`Could not activate the update: ${error.message}`);
-    }
-    writeFileSync(INSTALL_FILE, JSON.stringify({ version: "latest", updatedAt: new Date().toISOString() }, null, 2));
-    log("Update installed. Starting...");
-    await start({ open: true });
-    // Keep app.old until the new server is healthy. If start exits, the old
-    // tree is still on disk and can be restored with: mv app.old app
-    rmSync(old, { recursive: true, force: true });
-  } catch (error) {
-    fail(`Update failed: ${error.message}. Your data in ${DATA_DIR} was not touched.`);
-  }
-}
-
 async function doctor() {
   const rows = [];
   const push = (ok, label, detail = "") => rows.push({ ok, label, detail });
@@ -515,7 +426,6 @@ Usage: charon <command>
   logs [-f]   Print the log, or follow it
   backup      Write a consistent SQLite backup
   doctor      Check runtime, data dir, and health
-  update      Install the latest release
   version     Print the version
 
 Environment:
@@ -550,8 +460,6 @@ async function main() {
       return backup(args[0]);
     case "doctor":
       return doctor();
-    case "update":
-      return update();
     case "version":
     case "--version":
     case "-v":

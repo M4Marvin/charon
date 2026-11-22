@@ -1,8 +1,11 @@
 # Packaging and onboarding: the accessible path
 
-> Status: proposal, with the install/packaging layer implemented in this branch.
-> Detail lives in three review reports referenced at the end. This document is
-> the decision record and the build order.
+> Status: historical decision record. The repo is private now, so there is no
+> public install path: Charon runs at app.charonx.dev and is built on this
+> machine. The install-funnel sections below are kept for context; the current
+> release process is in [Release on beast](#release-on-beast).
+>
+> Detail lives in three review reports referenced at the end.
 
 ## 1. The problem, in one table
 
@@ -51,35 +54,26 @@ them replaces the others.
 
 | Tier | Person | Command | Prerequisites | Status |
 | --- | --- | --- | --- | --- |
-| 0 | Contributor / homelab | `git clone && docker compose up -d` | Git, Docker | Works; now pulls a prebuilt image instead of compiling |
-| 1 | Anyone on macOS/Linux | `curl -fsSL .../install.sh | sh` | none | Script implemented; needs a release to exist |
-| 1 | Anyone on Windows | `irm .../install.ps1 | iex` | none | Script implemented; needs a release to exist |
-| 2 | Docker user | `docker run ... ghcr.io/m4marvin/charon` | Docker only | Image built from the same release commit |
+| 0 | Contributor / homelab | `git clone && docker compose up -d --build` | Git, Docker | Works; builds `charon:local` |
+| 1 | Anyone on macOS/Linux | one-line installer | none | Removed with the public repo |
+| 1 | Anyone on Windows | one-line installer | none | Removed with the public repo |
+| 2 | Docker user | `docker run ... charon:local` | Docker only | Built here, shipped with `scripts/release-beast.sh` |
 | 3 | "I will not open a terminal" | Download, double-click | none | Roadmap (Electron, 10–15 dev-days) |
 
-### Tier 0 — Docker, but pull instead of build
+### Tier 0 — Docker, built locally
 
-The compose file now points at `ghcr.io/m4marvin/charon:latest`, binds
-`127.0.0.1` by default, has a healthcheck against `/up`, and asks for no
-secrets. Contributors who want to build use the overlay:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
-```
-
-### Tier 1 — the one-liner (the important one)
-
-macOS/Linux:
+The compose file builds `charon:local` on this machine, binds `127.0.0.1` by
+default, has a healthcheck against `/up`, and asks for no secrets:
 
 ```bash
-curl -fsSL https://github.com/M4Marvin/charon/releases/latest/download/install.sh | sh
+docker compose up -d --build
 ```
 
-Windows:
+### Tier 1 — the one-liner (historical)
 
-```powershell
-irm https://github.com/M4Marvin/charon/releases/latest/download/install.ps1 | iex
-```
+The `install.sh` / `install.ps1` one-liners were removed when the repo went
+private: a private repo has no anonymous release download. The behaviour they
+implemented is kept here as a record.
 
 What the installer does, and why each choice matters:
 
@@ -91,7 +85,7 @@ What the installer does, and why each choice matters:
 | Pins to a release asset, not a mutable branch | The script itself is versioned with the release |
 | Starts the server on `127.0.0.1` and opens `localhost` | Private by default; the browser origin matches `APP_URL` so auth cookies work |
 | Generates and persists two secrets with mode 0600 | The user never sees "secret" or "openssl" |
-| Writes a `charon` CLI | start, stop, status, logs, backup, doctor, update, open |
+| Writes a `charon` CLI | start, stop, status, logs, backup, doctor, open |
 | Never edits the shell profile unless `--add-to-path` | Surprising PATH edits are a trust failure |
 
 The CLI is dependency-free (`bin/charon.mjs`) and doubles as the server entry
@@ -104,14 +98,13 @@ Data layout:
 
 ```
 ~/.charon/
-  app/          .output + drizzle + bin   (replaced by updates)
+  app/          .output + drizzle + bin
   data/         charon.db, uploads/, logs/, instance.json, backups/
   runtime/      private Node.js           (only if the system had none)
   bin/charon    shim
 ```
 
-Updates stage the new tree in `app.new`, validate it, stop the server, swap,
-and roll back on failure. Chats never live in `app/`.
+Chats never live in `app/`, only in `data/`.
 
 ### Tier 2 — the image
 
@@ -121,73 +114,43 @@ build stage, then copy only `.output`, `drizzle`, and `bin` onto
 `/app/data`.
 
 Measured inputs: `.output` is 62.5 MiB raw and 27 MB gzipped. `node:22-slim`
-is ~80 MB compressed. Expect a ~90–100 MB pull, below Open WebUI's 197 MB
+is ~80 MB compressed. Expect a ~90–100 MB image, below Open WebUI's 197 MB
 `:slim`. Optional trimming (foreign `better-sqlite3` prebuilds and musl libvips)
 can take another ~15 MB; do it after the first release works.
 
-Releases are built locally with `scripts/release-local.sh` — no GitHub Actions.
-The script builds `.output`, fetches the non-host Sharp binaries from npm,
-assembles the four tarballs plus the Windows zip, writes checksums, and
-publishes with `gh release create`. The Docker image is built from the same
-commit and pushed to GHCR manually.
+### Release on beast
 
-### Building and publishing the image locally
-
-The container image is built from the same tag as the release archives and pushed to GHCR by hand. `scripts/release-local.sh` does not touch Docker.
+No registry and no CI. `scripts/release-beast.sh` builds the image on this
+machine, copies it to hetzner, and leaves the deploy as an opt-in step.
 
 ```bash
-export VERSION=v0.1.3
-export IMAGE=ghcr.io/m4marvin/charon
-
-gh auth token | docker login ghcr.io -u M4Marvin --password-stdin
-
-docker build --pull -t "$IMAGE:$VERSION" -t "$IMAGE:latest" .
-docker push "$IMAGE:$VERSION"
-docker push "$IMAGE:latest"
+scripts/release-beast.sh                # build charon:<short-sha>, load it on hetzner
+scripts/release-beast.sh --deploy       # ... then `ssh hetzner swapdock up chats`
+scripts/release-beast.sh --allow-dirty  # build uncommitted work (tag still says HEAD)
 ```
 
-The container can be checked before pushing:
+- `set -euo pipefail`, and it refuses a dirty tree unless `--allow-dirty`, so
+  the tag always describes the code in the image.
+- `docker buildx build --platform linux/amd64 --load -t charon:<sha> .`
+- `docker save | ssh hetzner docker load`: no push, no public image.
+- Re-running for the same commit reuses the existing image and loads the same
+  tag again, so it is safe to repeat.
+- The deploy step is last and opt-in. swapdock deploys from its own checkout,
+  so it only uses this image once its registry entry points at `charon:<sha>`;
+  until then `swapdock up chats` rebuilds on the host.
+- Rollback: `ssh hetzner swapdock rollback chats`.
+
+Check an image before shipping it:
 
 ```bash
 docker run --rm -d --name charon-test \
   -p 127.0.0.1:3001:3000 \
   -e APP_URL=http://localhost:3001 \
   -v charon-test-data:/app/data \
-  "$IMAGE:$VERSION"
+  charon:<sha>
 curl -fsS http://127.0.0.1:3001/up   # {"status":"ok"}
 docker rm -f charon-test
 ```
-
-The package must be public for `docker compose pull` to work without a login:
-
-```bash
-gh api -X PATCH /user/packages/container/charon -f visibility=public
-```
-
-`gh auth token` needs the `write:packages` scope. If `~/.docker` is not writable (immutable home, sandboxed shell), use a temporary Docker config for login, build, and push:
-
-```bash
-export DOCKER_CONFIG=/tmp/charon-docker
-mkdir -p "$DOCKER_CONFIG"
-```
-
-Release images are published as `linux/amd64`. To publish a multi-arch image as well:
-
-```bash
-docker run --privileged --rm tonistiigi/binfmt --install arm64
-docker buildx create --name charon-builder --use --bootstrap 2>/dev/null || docker buildx use charon-builder
-
-docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  --pull \
-  -t "$IMAGE:$VERSION" \
-  -t "$IMAGE:latest" \
-  --push .
-```
-
-`--push` is required for a multi-arch build; buildx cannot load a multi-platform image into the local engine.
-
-
 
 ### Tier 3 — desktop (defer)
 
@@ -202,16 +165,13 @@ users, not before.
 
 | File | Change |
 | --- | --- |
-| `bin/charon.mjs` | New. Zero-dependency launcher/CLI: start, serve, stop, status, logs, backup, doctor, update. Generates 0600 secrets, sets a private umask, binds localhost, consistent `APP_URL`, staged updates |
-| `scripts/install.sh` | New. POSIX installer, private Node runtime, checksum fail-closed, no sudo, idempotent, uninstall/purge |
-| `scripts/install.ps1` | New. Windows parity: private Node zip, checksum verify, `charon.cmd`, user PATH |
+| `bin/charon.mjs` | New. Zero-dependency launcher/CLI: start, serve, stop, status, logs, backup, doctor. Generates 0600 secrets, sets a private umask, binds localhost, consistent `APP_URL` |
 | `src/server/private-fs.ts` | Uploads root honours `CHARON_DATA_DIR`, so packaged data lives outside the replaceable app directory |
 | `Dockerfile` | Two-stage, non-root, `NODE_ENV=production`, healthcheck, `charon serve` |
-| `docker-compose.yml` | Prebuilt GHCR image, loopback binding, no secret defaults, healthcheck |
-| `docker-compose.build.yml` | Contributor overlay for local builds |
-| `scripts/release-local.sh` | Local release build: per-platform tarballs/zips, checksums, `gh release create` (no Actions) |
-| `README.md` | Rewritten for a non-technical first-time user; honest about limitations |
-| `src/routes/index.tsx` | State-aware landing page: first-run welcome or marketing hero, OS install tabs with copy feedback, features, branch diagram, privacy, FAQ |
+| `docker-compose.yml` | `charon:local` build, loopback binding, no secret defaults, healthcheck |
+| `scripts/release-beast.sh` | Builds `charon:<sha>` here, loads it on hetzner, deploys on request |
+| `README.md` | Rewritten for a first-time reader; honest about limitations |
+| `src/routes/index.tsx` | State-aware landing page: first-run welcome or marketing hero, how-to-start card, features, branch diagram, privacy, FAQ |
 | `src/routes/__root.tsx` | Landing page owns its nav; SFW meta description |
 | `src/components/Header.tsx` | Removed the dead-end "Create account" button for logged-out visitors |
 | `src/lib/models-dev.ts`, `src/lib/models-dev.json`, `scripts/sync-models-dev.mjs` | Offline provider/model catalog generated from models.dev |
@@ -386,8 +346,8 @@ asks for blind trust.
   unless explicitly requested.
 - **Predictable writes.** Everything goes under one directory; uninstall is
   documented; `--purge` requires typing `delete`.
-- **Signed images.** GHCR images are built from the tagged commit, published
-  multi-arch, accompanied by SBOM/provenance, and signed with cosign keyless.
+- **Traceable images.** Each image is tagged with the commit it was built from
+  and only ever leaves this machine for the host that runs it.
 - **Visible releases.** Release notes name the commit and the checksums; the
   install scripts are attached as assets.
 - **A manual path.** The Docker command and the source instructions remain in
@@ -398,7 +358,7 @@ asks for blind trust.
 | Week | Work | Outcome |
 | --- | --- | --- |
 | 1 | P0 4–7 (CTA state, fonts, starters, license decision), tag `v0.1.0` | The installer works end to end; the page no longer lies |
-| 2 | P0 1–3 (provider cards, welcome/character cleanup), publish GHCR | A non-technical user reaches a reply without help |
+| 2 | P0 1–3 (provider cards, welcome/character cleanup), first release | A non-technical user reaches a reply without help |
 | 3 | SFW screenshots, landing page implementation, README polish | A page that can be shown to strangers |
 | 4 | Launch posts, feedback loop, fix the top three issues | Real users, real friction data |
 | 5–8 | No-key demo, `npx`, Electron spike | Lower-friction tiers |

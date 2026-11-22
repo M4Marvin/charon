@@ -1,11 +1,9 @@
-import { useState } from "react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { SkipLink } from "@/components/common/SkipLink";
 import {
   ArrowRight,
   BookOpen,
   Check,
-  Copy,
   FileImage,
   GitBranch,
   HardDrive,
@@ -19,13 +17,11 @@ import {
 
 import { Logo } from "@/components/common/Logo";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getSession } from "@/lib/auth.functions";
 import { getSetupRequired } from "@/server/fns/setup";
 
-const GITHUB = "https://github.com/M4Marvin/charon";
-const SITE_URL =
-  (typeof process !== "undefined" && process.env.APP_URL) || "https://chat.m4marvin.com";
+const APP_URL = "https://app.charonx.dev";
+const SITE_URL = (typeof process !== "undefined" && process.env.APP_URL) || APP_URL;
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -39,13 +35,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "A self-hosted chat app for stories and roleplay. Import character cards, bring your own model, and keep every branching conversation on your own computer.",
+          "A chat app for stories and roleplay. Import character cards, bring your own model, and keep every branching conversation in one place.",
       },
       { property: "og:title", content: "Charon — a private home for your AI characters" },
       {
         property: "og:description",
         content:
-          "Self-hosted AI character chat with branching conversations. Your cards, your model, your machine.",
+          "AI character chat with branching conversations. Your cards, your model, every branch kept.",
       },
       { property: "og:url", content: SITE_URL },
       { property: "og:image", content: `${SITE_URL}/og.png` },
@@ -54,7 +50,7 @@ export const Route = createFileRoute("/")({
       {
         name: "twitter:description",
         content:
-          "Self-hosted AI character chat with branching conversations. Your cards, your model, your machine.",
+          "AI character chat with branching conversations. Your cards, your model, every branch kept.",
       },
       { name: "twitter:image", content: `${SITE_URL}/og.png` },
     ],
@@ -62,39 +58,13 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
-const INSTALL_METHODS = [
-  {
-    id: "unix",
-    label: "macOS & Linux",
-    terminal: "Open Terminal",
-    prerequisite: "Nothing to install first.",
-    command:
-      "curl -fsSL https://github.com/M4Marvin/charon/releases/latest/download/install.sh | sh",
-    note: "No administrator rights. The installer checks the download and keeps everything in one folder.",
-    installer: true,
-    script: "install.sh",
-  },
-  {
-    id: "windows",
-    label: "Windows",
-    terminal: "Open PowerShell",
-    prerequisite: "Nothing to install first.",
-    command: "irm https://github.com/M4Marvin/charon/releases/latest/download/install.ps1 | iex",
-    note: "No administrator rights. The installer checks the download and keeps everything in one folder.",
-    installer: true,
-    script: "install.ps1",
-  },
-  {
-    id: "docker",
-    label: "Docker",
-    terminal: "Open a terminal",
-    prerequisite: "Docker Desktop or Docker Engine. Builds locally.",
-    command:
-      "git clone https://github.com/M4Marvin/charon.git charon && cd charon && docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build",
-    note: "Builds the current release from source. The prebuilt image is one release behind.",
-    installer: false,
-    script: null,
-  },
+const START_STEPS = [
+  ["Open the app", "This page is the app. Bookmark it; it works on a phone too."],
+  ["Sign in", "One private instance: accounts are made by whoever runs it."],
+  [
+    "Pick a character and say hello",
+    "Three starters are waiting, or import a PNG card of your own.",
+  ],
 ] as const;
 
 const TRUST = ["No cloud account", "No subscription", "No telemetry", "Works with Ollama"];
@@ -123,7 +93,7 @@ const FEATURES = [
   {
     icon: ImageIcon,
     title: "Scenes and portraits",
-    body: "Put a backdrop behind the conversation and a portrait beside it. Your images stay on your disk.",
+    body: "Put a backdrop behind the conversation and a portrait beside it. Your images stay with your chats.",
   },
   {
     icon: MonitorSmartphone,
@@ -135,11 +105,11 @@ const FEATURES = [
 const FAQ = [
   {
     q: "Do I need to be technical?",
-    a: "The install is one command. After that, setup happens in the browser: account, provider, character, chat. There are no config files to edit for normal use. A desktop app with no terminal at all is next.",
+    a: "No. Open the app, sign in, connect a provider, pick a character. There are no config files to edit for normal use.",
   },
   {
     q: "Does it cost anything?",
-    a: "Charon is free and open source. You pay your AI provider directly, or nothing if you run a model on your own machine. No subscription, no seats, nothing to unlock.",
+    a: "Nothing to unlock here. You pay your AI provider directly, or nothing if you point Charon at a model on your own machine. No subscription, no seats.",
   },
   {
     q: "Do I need an API key?",
@@ -155,7 +125,7 @@ const FAQ = [
   },
   {
     q: "Does it work on my phone?",
-    a: "Yes. Run Charon on a computer, publish the port, and open that address from your phone's browser on the same network. One library, one account.",
+    a: "Yes. Open the same address in your phone's browser. One library, one account.",
   },
   {
     q: "Is this NSFW?",
@@ -167,7 +137,7 @@ const FAQ = [
   },
   {
     q: "Something is broken. What do I check?",
-    a: "Run charon doctor in a terminal. It checks Node, the app files, the data folder, and the health endpoint, and names what failed. charon logs shows the server log. The troubleshooting guide covers the common cases.",
+    a: "Reload the page first. If it keeps happening, tell whoever runs this instance what you were doing and when.",
   },
 ] as const;
 
@@ -277,18 +247,10 @@ function LandingNav({ minimal = false }: { minimal?: boolean }) {
                 Features
               </a>
               <a
-                href={`${GITHUB}/blob/main/docs/user/index.md`}
+                href="#faq"
                 className="text-2 hidden min-h-6 items-center no-underline transition-colors hover:text-1 focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-4 sm:inline-flex"
-                rel="noreferrer"
               >
-                Docs
-              </a>
-              <a
-                href={GITHUB}
-                className="text-2 hidden min-h-6 items-center no-underline transition-colors hover:text-1 focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-4 sm:inline-flex"
-                rel="noreferrer"
-              >
-                GitHub
+                FAQ
               </a>
             </>
           )}
@@ -312,9 +274,9 @@ function Hero() {
           A private home for your AI characters.
         </h1>
         <p className="text-2 mb-8 max-w-xl text-lg leading-relaxed">
-          Charon is a chat app for stories and roleplay that runs on your own computer. Bring the
-          character cards you already have and your own AI key — or a model running locally — and
-          keep every conversation, including every branch of it, to yourself.
+          Charon is a chat app for stories and roleplay. Bring the character cards you already have
+          and your own AI key — or a model running locally — and keep every conversation, including
+          every branch of it, to yourself.
         </p>
         <div className="mb-8 flex flex-wrap items-center gap-3">
           <InstallCta />
@@ -334,7 +296,7 @@ function Hero() {
           ))}
         </ul>
       </div>
-      <div className="lg:col-span-5" id="install">
+      <div className="lg:col-span-5">
         <InstallCard />
       </div>
     </section>
@@ -343,147 +305,34 @@ function Hero() {
 
 function InstallCta() {
   return (
-    <Button
-      type="button"
-      className="h-11 px-6 text-sm"
-      onClick={() => {
-        const card = document.getElementById("install");
-        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        card?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
-        card?.querySelector<HTMLElement>('[role="tab"]')?.focus({ preventScroll: true });
-        card?.classList.add("outline-2", "outline-brand", "outline-offset-4");
-        window.setTimeout(
-          () => card?.classList.remove("outline-2", "outline-brand", "outline-offset-4"),
-          1400,
-        );
-      }}
-    >
-      Install Charon <ArrowRight className="size-4" />
+    <Button asChild className="h-11 px-6 text-sm">
+      <Link to="/signin">
+        Sign in to Charon <ArrowRight className="size-4" />
+      </Link>
     </Button>
   );
 }
 
 function InstallCard() {
-  const [copied, setCopied] = useState<string | null>(null);
-  const [failed, setFailed] = useState<string | null>(null);
-
-  async function copy(method: (typeof INSTALL_METHODS)[number]) {
-    setFailed(null);
-    try {
-      await navigator.clipboard.writeText(method.command);
-      setCopied(method.id);
-      window.setTimeout(() => setCopied(null), 1600);
-    } catch {
-      setFailed(method.id);
-    }
-  }
-
   return (
     <div className="rounded-3xl border border-border bg-surface p-5 shadow-2xl shadow-black/30 sm:p-6">
-      <h2 className="text-headline text-1">Run Charon on this computer</h2>
-      <p className="text-2 mt-1 mb-5 text-sm">One command. About five minutes.</p>
+      <h2 className="text-headline text-1">Charon runs at app.charonx.dev</h2>
+      <p className="text-2 mt-1 mb-5 text-sm">No install, no download, nothing to run here.</p>
 
-      <Tabs defaultValue="unix" className="gap-4">
-        <TabsList variant="line" className="w-full justify-start gap-4 border-b border-border">
-          {INSTALL_METHODS.map((method) => (
-            <TabsTrigger
-              key={method.id}
-              value={method.id}
-              className="flex-none rounded-none px-0 pb-2 text-2 data-active:text-1"
-            >
-              {method.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {INSTALL_METHODS.map((method) => (
-          <TabsContent key={method.id} value={method.id} className="mt-2">
-            <ol className="grid gap-4">
-              <li className="flex gap-3">
-                <StepDot n={1} />
-                <div className="grid gap-1">
-                  <span className="text-sm font-medium text-1">{method.terminal}</span>
-                  <span className="text-2 text-xs">{method.prerequisite}</span>
-                </div>
-              </li>
-              <li className="flex gap-3">
-                <StepDot n={2} />
-                <div className="grid w-full gap-2">
-                  <span className="text-sm font-medium text-1">Paste this</span>
-                  <div className="rounded-xl border border-border bg-base">
-                    <pre
-                      tabIndex={0}
-                      onFocus={(event) => {
-                        const range = document.createRange();
-                        range.selectNodeContents(event.currentTarget);
-                        const selection = window.getSelection();
-                        selection?.removeAllRanges();
-                        selection?.addRange(range);
-                      }}
-                      className="p-3 text-[13px] leading-relaxed break-all whitespace-pre-wrap text-1 focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2"
-                    >
-                      <code>{method.command}</code>
-                    </pre>
-                    <div className="flex items-center justify-between gap-3 border-t border-border px-3 py-2">
-                      <span aria-live="polite" className="text-2 text-xs">
-                        {copied === method.id ? "Copied to clipboard" : null}
-                        {failed === method.id ? "The command is selected; press Ctrl/Cmd+C." : null}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => void copy(method)}
-                        aria-label={`Copy the ${method.label} install command`}
-                        className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-border px-2.5 text-xs font-medium text-2 transition-colors hover:text-1 focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-2"
-                      >
-                        {copied === method.id ? (
-                          <Check className="size-3.5 text-brand" aria-hidden="true" />
-                        ) : (
-                          <Copy className="size-3.5" aria-hidden="true" />
-                        )}
-                        {copied === method.id ? "Copied" : "Copy"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </li>
-              <li className="flex gap-3">
-                <StepDot n={3} />
-                <div className="grid gap-1">
-                  <span className="text-sm font-medium text-1">Open Charon</span>
-                  <a
-                    href="http://localhost:3000"
-                    className="text-sm text-brand underline-offset-4 hover:underline"
-                  >
-                    localhost:3000
-                  </a>
-                </div>
-              </li>
-            </ol>
-            <p className="text-2 mt-4 border-t border-border pt-3 text-xs leading-relaxed">
-              {method.note}
-              {method.installer ? (
-                <>
-                  {" "}
-                  <a
-                    href={`${GITHUB}/blob/main/scripts/${method.script}`}
-                    className="underline underline-offset-4 hover:text-1"
-                    rel="noreferrer"
-                  >
-                    Read the script
-                  </a>{" "}
-                  first if you like.
-                </>
-              ) : null}
-            </p>
-          </TabsContent>
+      <ol className="grid gap-4">
+        {START_STEPS.map(([title, body], index) => (
+          <li key={title} className="flex gap-3">
+            <StepDot n={index + 1} />
+            <div className="grid gap-1">
+              <span className="text-sm font-medium text-1">{title}</span>
+              <span className="text-2 text-xs">{body}</span>
+            </div>
+          </li>
         ))}
-      </Tabs>
+      </ol>
 
       <p className="text-2 mt-4 border-t border-border pt-3 text-xs">
-        Already installed?{" "}
-        <Link to="/signin" className="text-brand underline-offset-4 hover:underline">
-          Sign in
-        </Link>
+        Runs in the browser. Nothing to install, nothing to update.
       </p>
     </div>
   );
@@ -505,7 +354,7 @@ function Tour() {
     <section id="tour" className="border-t border-border">
       <div className="mx-auto max-w-[1200px] px-5 py-16 sm:px-6 lg:py-24">
         <h2 className="text-display mb-3 max-w-[20ch] text-4xl leading-tight text-1">
-          See it before you install it.
+          See it before you sign in.
         </h2>
         <p className="text-2 mb-10 max-w-2xl text-lg">
           This is the whole app, not a mockup: the conversation view, the library, and the branch
@@ -689,19 +538,19 @@ function Privacy() {
         </h2>
         <p className="text-2 mb-10 max-w-2xl text-lg">
           Not “we don’t sell your data.” There is no we. Charon is one process on one machine, and
-          you can read the code that runs it.
+          everything it knows lives in one SQLite file.
         </p>
         <div className="grid gap-6 md:grid-cols-3">
           {[
             {
               icon: HardDrive,
-              title: "One database, on your disk",
+              title: "One database, one folder",
               body: "Characters, chats, lorebooks, personas, and settings are one SQLite file. Back it up by copying a folder; move it by moving that folder.",
             },
             {
               icon: Lock,
               title: "Keys encrypted before storage",
-              body: "Your provider key is encrypted with a secret that only your install has, then written to the database. It travels only to the provider you chose.",
+              body: "Your provider key is encrypted with a secret that only this instance has, then written to the database. It travels only to the provider you chose.",
             },
             {
               icon: ShieldCheck,
@@ -766,9 +615,9 @@ function FinalCta() {
         </h2>
         <p className="text-2 mb-8 text-lg">Bring them aboard.</p>
         <Button asChild className="h-11 px-6 text-sm">
-          <a href="#install">
-            Install Charon <ArrowRight className="size-4" />
-          </a>
+          <Link to="/signin">
+            Open Charon <ArrowRight className="size-4" />
+          </Link>
         </Button>
       </div>
     </section>
@@ -779,17 +628,18 @@ function LandingFooter() {
   return (
     <footer className="border-t border-border">
       <div className="mx-auto grid max-w-[1200px] gap-8 px-5 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
-        <div>
+        <div className="lg:col-span-2">
           <div className="mb-3 flex items-center gap-2">
             <Logo className="size-6" />
             <span className="text-sm font-semibold text-1">Charon</span>
           </div>
-          <p className="text-2 text-xs leading-relaxed">
-            A private home for AI characters. Self-hosted, open source, no telemetry.
+          <p className="text-2 max-w-xs text-xs leading-relaxed">
+            A private home for AI characters. No telemetry, no analytics, no account on anyone
+            else&apos;s service.
           </p>
         </div>
         <FooterColumn
-          title="Product"
+          title="Explore"
           links={[
             ["Tour", "#tour"],
             ["Features", "#features"],
@@ -799,27 +649,16 @@ function LandingFooter() {
           ]}
         />
         <FooterColumn
-          title="Docs"
+          title="This instance"
           links={[
-            ["Getting started", `${GITHUB}/blob/main/docs/user/getting-started.md`],
-            ["Chatting", `${GITHUB}/blob/main/docs/user/chatting.md`],
-            ["Troubleshooting", `${GITHUB}/blob/main/docs/user/troubleshooting.md`],
+            ["Open Charon", "/signin"],
+            ["Where data lives", "#privacy"],
+            ["Questions", "#faq"],
           ]}
-          external
-        />
-        <FooterColumn
-          title="Project"
-          links={[
-            ["GitHub", GITHUB],
-            ["Issues", `${GITHUB}/issues`],
-            ["Contributing", `${GITHUB}/blob/main/CONTRIBUTING.md`],
-            ["License & notices", `${GITHUB}/blob/main/NOTICE`],
-          ]}
-          external
         />
       </div>
       <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-5 text-xs text-2 sm:px-6">
-        <span>Runs on your machine · No telemetry · Built by Marv</span>
+        <span>Runs at app.charonx.dev · No telemetry · No analytics</span>
         <span>Charon</span>
       </div>
     </footer>
@@ -829,11 +668,9 @@ function LandingFooter() {
 function FooterColumn({
   title,
   links,
-  external = false,
 }: {
   title: string;
   links: ReadonlyArray<readonly [string, string]>;
-  external?: boolean;
 }) {
   return (
     <div>
@@ -841,22 +678,12 @@ function FooterColumn({
       <ul className="grid gap-2">
         {links.map(([label, href]) => (
           <li key={label}>
-            {external ? (
-              <a
-                href={href}
-                className="text-2 inline-flex min-h-6 items-center text-xs no-underline transition-colors hover:text-1 focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-4"
-                rel="noreferrer"
-              >
-                {label}
-              </a>
-            ) : (
-              <a
-                href={href}
-                className="text-2 inline-flex min-h-6 items-center text-xs no-underline transition-colors hover:text-1 focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-4"
-              >
-                {label}
-              </a>
-            )}
+            <a
+              href={href}
+              className="text-2 inline-flex min-h-6 items-center text-xs no-underline transition-colors hover:text-1 focus-visible:outline-2 focus-visible:outline-brand focus-visible:outline-offset-4"
+            >
+              {label}
+            </a>
           </li>
         ))}
       </ul>

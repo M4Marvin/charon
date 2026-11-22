@@ -6,7 +6,7 @@ Stuck on something? Here are the answers to the most common questions, in plain 
 
 **Q: The app won't start.**
 
-A: Run `charon doctor`. It checks Node, the app files, the data folder, and `/up`, then names what failed. `charon logs` shows the server log. Check that nothing else is using port 3000. With Docker, check `docker ps`. The README has the install commands.
+A: Run `charon doctor`. It checks Node, the app files, the data folder, and `/up`, then names what failed. `charon logs` shows the server log. Check that nothing else is using port 3000. With Docker, check `docker ps`. The README covers running the app locally.
 
 **Q: Test connection fails when I add a provider.**
 

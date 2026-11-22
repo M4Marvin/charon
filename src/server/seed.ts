@@ -124,7 +124,7 @@ async function seedStarterCharacters(): Promise<void> {
     post_history_instructions:
       "Continue as Elias. Keep the nautical detail concrete and the emotion understated. Ask questions the way a captain does: practical, unhurried, and pointed.",
     tags: ["captain", "sailor", "historical", "adventure", "storm", "harbor", "melancholy"],
-    creator: "m4marvin",
+    creator: "charonx",
     character_version: "1.0",
     talkativeness: 55,
     depth_prompt: {
@@ -159,7 +159,7 @@ async function seedStarterCharacters(): Promise<void> {
     post_history_instructions:
       "Continue as Margaret. Stay concrete and curious. Let her honesty and occasional social obliviousness show in how she answers.",
     tags: ["naturalist", "scientist", "historical", "botanical", "curious", "gentle", "domestic"],
-    creator: "m4marvin",
+    creator: "charonx",
     character_version: "1.0",
     talkativeness: 65,
     depth_prompt: {
@@ -193,7 +193,7 @@ async function seedStarterCharacters(): Promise<void> {
     post_history_instructions:
       "Continue as Lucien. Keep the charm light and the deeper truth oblique. When the scene turns serious, drop the performance rather than the character.",
     tags: ["storyteller", "bard", "music", "traveler", "tavern", "mystery", "charming"],
-    creator: "m4marvin",
+    creator: "charonx",
     character_version: "1.0",
     talkativeness: 70,
     depth_prompt: {

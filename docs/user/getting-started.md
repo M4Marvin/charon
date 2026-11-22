@@ -2,25 +2,11 @@
 
 Charon is a roleplaying app that runs on your own computer. This page walks you through the first run: making an account, running the setup wizard, connecting an AI service, getting a character, and starting your first chat. No terminal is needed. The wizard does the whole setup in your browser.
 
-## You've already installed Charon
+## You have an account
 
-This guide assumes Charon is installed and running. If it is not, the README at ../../README.md has the full install steps.
+This guide assumes you can reach Charon at https://app.charonx.dev and have signed in. Accounts are made by whoever runs the instance; there is nothing to download and nothing to install.
 
-The easy path is one command. On macOS or Linux:
-
-```bash
-curl -fsSL https://github.com/M4Marvin/charon/releases/latest/download/install.sh | sh
-```
-
-On Windows, in PowerShell:
-
-```powershell
-irm https://github.com/M4Marvin/charon/releases/latest/download/install.ps1 | iex
-```
-
-The installer puts Charon in your user folder, downloads a private copy of Node.js if you do not have one, verifies the download, and opens the browser for you. It does not need an administrator password.
-
-If you prefer Docker, the README has the build steps. Migrations run automatically on first start, so there is nothing else to do. When Charon is ready, open http://localhost:3000 in your browser.
+Running the app yourself instead (development, Docker, the release script) is covered in the [README](../../README.md). Migrations run automatically on first start.
 
 ## Create your account (first run)
 

@@ -454,7 +454,7 @@ One overlay contract, whether centered dialog or side sheet:
 
 **Purpose.** Explain Charon, prove the product with screenshots, and install/sign in.
 
-- Header: logo + wordmark; desktop nav (Tour, Features, Docs, GitHub, Sign in); mobile menu button (44) opening a sheet with the same links and Sign in. No global app chrome.
+- Header: logo + wordmark; desktop nav (Tour, Features, FAQ, Sign in); mobile menu button (44) opening a sheet with the same links and Sign in. No global app chrome.
 - Hero: H1 “A private home for your AI characters.”; supporting paragraph; primary CTA (“Install Charon” or “Create owner account” when setup is required); secondary “See what is different”; trust row.
 - Install card: platform tabs (macOS & Linux, Windows, Docker), prerequisite, command, Copy (44), note, “Already installed? Sign in”.
 - Sections: live product screenshots, branching explanation, feature grid, data/privacy, FAQ (accordion), final CTA, footer with Product/Docs/Project links.

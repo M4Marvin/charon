@@ -2,7 +2,7 @@
 
 **A private home for your AI characters.**
 
-Charon is a self-hosted chat app for stories and roleplay. Bring the character cards you already have, connect your own AI provider (or a model running on your machine), and keep every conversation — including every branch of it — on your own computer.
+Charon is a chat app for stories and roleplay. Bring the character cards you already have, connect your own AI provider (or a model running on your machine), and keep every conversation — including every branch of it — in one place.
 
 No cloud account. No subscription. No telemetry. One SQLite file you can copy.
 
@@ -18,64 +18,18 @@ No cloud account. No subscription. No telemetry. One SQLite file you can copy.
 
 **You choose the model.** OpenAI, OpenRouter, Anthropic through a proxy, vLLM, LM Studio, Ollama, or any other OpenAI-compatible endpoint. Your key is encrypted before it is stored, and it only travels to the provider you configured.
 
-**It is a web app you host.** Run it on your desktop, a home server, or a small VPS. Open it from your laptop or phone. There is one library and one account.
+**It is a web app.** One small server, one SQLite file, one account. Open it from a laptop or a phone.
 
 ---
 
-## Install
+## Running Charon
 
-Charon is single-user and runs on your own machine. Pick one path.
+Charon is a private app. The instance runs at
+**[app.charonx.dev](https://app.charonx.dev)**; there is no public download, no
+clone, and no container image to pull. The instructions below are for working
+on the code.
 
-### macOS and Linux — one command
-
-```bash
-curl -fsSL https://github.com/M4Marvin/charon/releases/latest/download/install.sh | sh
-```
-
-The installer:
-
-- checks for Node.js 22.14+ and downloads a private copy into `~/.charon/runtime` if you do not have one;
-- downloads the Charon release for your OS and CPU, and verifies its SHA-256 checksum (the installer itself is served from the release asset; read it first if you prefer);
-- installs everything under `~/.charon` — **no `sudo`, nothing system-wide**;
-- starts Charon and opens **http://localhost:3000**.
-
-Your data lives in `~/.charon/data`. To update later: `charon update`. To back up: `charon backup`.
-
-Prefer to read before you run? [Download the script](https://github.com/M4Marvin/charon/blob/main/scripts/install.sh) first. It is plain POSIX shell and every step prints what it is doing.
-
-### Windows — one command
-
-Open **PowerShell** (not the old Command Prompt) and run:
-
-```powershell
-irm https://github.com/M4Marvin/charon/releases/latest/download/install.ps1 | iex
-```
-
-It installs under `%LOCALAPPDATA%\Charon`, needs no administrator prompt, downloads a private Node.js runtime if needed, verifies the release checksum, and starts Charon at [http://localhost:3000](http://localhost:3000).
-
-### Docker
-
-The public image currently tracks `v0.1.2`. The `v0.1.3` image has not been
-pushed yet. Until it is, use the installer above, or build the current release
-locally:
-
-```bash
-git clone https://github.com/M4Marvin/charon.git charon
-cd charon
-docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
-```
-
-Open [http://localhost:3000](http://localhost:3000). Everything persists in the
-`charon-data` volume. Secrets are generated inside the volume on first start;
-you do not need to create any.
-
-The Dockerfile builds `linux/amd64`. On ARM, use the installer.
-
-To reach it from your phone on the same network, change the port mapping to
-`3000:3000` and set `APP_URL` in the service environment to the address you
-will open.
-
-### From source (contributors)
+### From source
 
 ```bash
 pnpm install
@@ -84,6 +38,27 @@ pnpm run dev
 ```
 
 Generate the two secrets with `openssl rand -hex 64` and `openssl rand -hex 32`. Migrations run automatically on first start. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the architecture and commands.
+
+### Docker
+
+```bash
+docker compose up -d --build
+```
+
+Open [http://localhost:3000](http://localhost:3000). Everything persists in the
+`charon-data` volume. Secrets are generated inside the volume on first start;
+you do not need to create any. The image is tagged `charon:local` and built on
+this machine.
+
+### Releases
+
+The server gets its image from this machine, not from a registry:
+
+```bash
+scripts/release-beast.sh --deploy
+```
+
+See [docs/packaging.md](./docs/packaging.md#release-on-beast) for what it does.
 
 ---
 
@@ -163,19 +138,19 @@ charon stop && cp -R ~/.charon/data /path/to/backup
 ## FAQ
 
 **Is this NSFW?**
-No. Charon is built and presented for stories and roleplay. It ships SFW starter characters, bundles no adult content, and is not marketed as an unfiltered or adult platform. Because it runs on your machine and uses your model, what you import and write is your choice — but if you are looking for an adult platform, this is not one.
+No. Charon is built and presented for stories and roleplay. It ships SFW starter characters, bundles no adult content, and is not marketed as an unfiltered or adult platform. Because you choose the model and import what you like, what you write is your choice — but if you are looking for an adult platform, this is not one.
 
 **Do I need to be technical?**
-The installer is one command. After that, setup happens in the browser: account, provider, character, chat. There are no config files to edit for normal use. A desktop app with no terminal at all is on the roadmap.
+No. Setup happens in the browser: account, provider, character, chat. There are no config files to edit for normal use.
 
 **What does it cost?**
-Charon is free and open source. You pay your AI provider directly, or nothing if you run a local model. There is no subscription and nothing to unlock.
+Nothing to unlock. You pay your AI provider directly, or nothing if you run a local model. There is no subscription.
 
 **Do I need an API key?**
 For real replies, yes — Charon connects to a provider rather than bundling a model. Use a key from OpenAI, OpenRouter, or a compatible service, or run Ollama / LM Studio locally.
 
 **Does it work on my phone?**
-Yes. Run Charon on a computer, publish the port, and open the computer's address from your phone's browser on the same network. One library, one account.
+Yes. Open the same address in your phone's browser. One library, one account.
 
 **Can I import my existing characters?**
 Yes. V2 and V3 PNG cards, including embedded lorebooks. World-info JSON imports too.
@@ -187,13 +162,13 @@ Anything that speaks the OpenAI chat-completions API. If it has a base URL, Char
 In one SQLite file plus an uploads folder, in the data directory listed above. Nothing is stored anywhere else.
 
 **How do I update?**
-`charon update` on macOS/Linux. On Windows, run `charon update` from a new terminal. Docker: rebuild from source for `v0.1.3` until the published image catches up. Your data is untouched.
+Deploys are operator work: `scripts/release-beast.sh --deploy` builds the image here and ships it. Your data is untouched.
 
 **How do I uninstall?**
-macOS/Linux: run the installer with `--uninstall` to remove the app and keep your data, or delete `~/.charon`. Windows: run `install.ps1 -Uninstall` or remove `%LOCALAPPDATA%\Charon`. Docker: `docker rm -f charon && docker volume rm charon-data` (the second command deletes your chats).
+Docker: `docker rm -f charon && docker volume rm charon-data` (the second command deletes your chats).
 
 **Something is broken.**
-Run `charon doctor`. It checks Node, the app bundle, the data directory, and `/up`. Then read [troubleshooting](./docs/user/troubleshooting.md).
+Run `charon doctor`. It checks the runtime, the app bundle, the data directory, and `/up`. Then read [troubleshooting](./docs/user/troubleshooting.md).
 
 ---
 
@@ -251,22 +226,16 @@ The app is a single Node process serving a TanStack Start frontend and an SSE ge
 
 ## Project status
 
-Charon is actively developed by one person. The core is stable enough for daily use; the packaging and onboarding are being rebuilt for people who do not want a terminal.
+Charon is actively developed by one person. The core is stable enough for daily use.
 
-Shipped in the latest release:
+Shipped:
 
-- one-line installers for macOS, Windows, and Linux;
 - provider presets and a bundled models.dev catalog;
 - a persona step, self-hosted fonts, and three portrait'd SFW starters;
 - a landing page with an SFW screenshot tour.
 
-The installer is the primary path. The public GHCR image currently tracks
-`v0.1.2`; the `v0.1.3` image is pending. Build locally from the Docker section
-above if you need it now.
-
 Still planned:
 
-- a desktop app with no Docker and no terminal;
 - a no-key demo mode;
 - a model-catalog refresh button (the snapshot updates with `pnpm models:sync`).
 
@@ -274,7 +243,7 @@ Still planned:
 
 ## Contributing
 
-Issues and pull requests are welcome. Read [CONTRIBUTING.md](./CONTRIBUTING.md) first. The pre-commit hook runs format, lint, tests, and typecheck.
+This is a private repository: ask the owner for access before opening a branch. Read [CONTRIBUTING.md](./CONTRIBUTING.md) first. The pre-commit hook runs format, lint, tests, and typecheck.
 
 If you hit friction — a confusing error, a missing doc, a command that failed — log it with `npx frog log`. That is how the rough edges above get fixed.
 

@@ -3,8 +3,9 @@
 Drafts for the first public posts. Adjust the voice, keep the claims true, and
 do not post the same text to every platform on the same day.
 
-> Do not post the `chat.m4marvin.com` link until that deployment is rebuilt
-> from the current `main`. The live build predates the latest copy changes.
+> **Status: obsolete.** Charon is a private app at app.charonx.dev; the repo is
+> private and there is no public install or image. Do not publish any of the
+> drafts below. They are kept only as a record of the positioning and voice.
 
 ---
 
@@ -67,7 +68,7 @@ your own model, keep every conversation on your machine.
 
 One command to install. Free and open source.
 
-https://chat.m4marvin.com
+https://app.charonx.dev
 
 Follow-up post:
 
@@ -101,7 +102,7 @@ It is single-user and self-hosted:
 Install:
 
 ```bash
-curl -fsSL https://github.com/M4Marvin/charon/releases/latest/download/install.sh | sh
+Open https://app.charonx.dev and sign in.
 ```
 
 Windows has a PowerShell installer. Docker users can build from the repo; the
@@ -119,8 +120,7 @@ Honest tradeoffs:
 I would especially like to hear from people running it on a home server or
 behind a reverse proxy. What broke, and what was missing?
 
-GitHub: https://github.com/M4Marvin/charon
-Site: https://chat.m4marvin.com
+Site: https://app.charonx.dev
 
 ---
 
@@ -150,14 +150,13 @@ You still need a model.
 I would like feedback on the local-model path in particular: base URLs,
 context handling, and what breaks with smaller models.
 
-GitHub: https://github.com/M4Marvin/charon
 
 ---
 
 ## Before posting
 
 - [ ] `v0.1.3` is the latest release, and the one-liner installs it.
-- [ ] `chat.m4marvin.com` is rebuilt from the same commit.
+- [ ] `app.charonx.dev` is rebuilt from the same commit.
 - [ ] Docker path is current: either push the `v0.1.3` image or link the local build.
 - [ ] The 60-second video and a 15-second GIF exist.
 - [ ] X and LinkedIn previews show the OG image and the right title.

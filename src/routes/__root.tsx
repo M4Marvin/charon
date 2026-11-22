@@ -120,7 +120,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         name: "description",
         content:
-          "Charon is a self-hosted chat app for stories and roleplay. Import character cards, bring your own model, and keep every branching conversation on your own computer.",
+          "Charon is a chat app for stories and roleplay. Import character cards, bring your own model, and keep every branching conversation in one place.",
+      },
+      {
+        name: "robots",
+        content: "noindex, nofollow",
       },
       {
         property: "og:site_name",
@@ -133,7 +137,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         property: "og:description",
         content:
-          "A private home for your AI characters. Self-hosted, branching conversations, your cards and your model.",
+          "A private home for your AI characters. Branching conversations, your cards and your model.",
       },
       {
         property: "og:type",
@@ -141,11 +145,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         property: "og:url",
-        content: "https://chat.m4marvin.com",
+        content: "https://app.charonx.dev",
       },
       {
         property: "og:image",
-        content: "https://chat.m4marvin.com/og.png",
+        content: "https://app.charonx.dev/og.png",
       },
       {
         name: "twitter:card",
@@ -158,11 +162,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         name: "twitter:description",
         content:
-          "Self-hosted AI character chat. Import character cards, build lorebooks, connect any LLM provider.",
+          "AI character chat. Import character cards, build lorebooks, connect any LLM provider.",
       },
       {
         name: "twitter:image",
-        content: "https://chat.m4marvin.com/og.png",
+        content: "https://app.charonx.dev/og.png",
       },
       {
         name: "theme-color",
@@ -183,7 +187,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         rel: "canonical",
-        href: "https://chat.m4marvin.com",
+        href: "https://app.charonx.dev",
       },
       {
         rel: "icon",

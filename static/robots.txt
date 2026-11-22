@@ -1,5 +1,4 @@
 # https://www.robotstxt.org/robotstxt.html
+# The app is private and single-instance; the public site is charonx.dev.
 User-agent: *
-Disallow:
-
-Sitemap: https://chat.m4marvin.com/sitemap.xml
+Disallow: /

@@ -34,7 +34,7 @@ const SPECS = [
 ];
 
 const API = "https://commons.wikimedia.org/w/api.php";
-const UA = "CharonSeed/1.0 (https://github.com/M4Marvin/charon)";
+const UA = "CharonSeed/1.0 (https://charonx.dev)";
 
 async function imageInfo(title) {
   const url = `${API}?${new URLSearchParams({

@@ -136,10 +136,8 @@ Import with `@/*` (not `#/*`). st-core internal imports use `.js` extensions.
 | Card MCP server | `pnpm mcp:card` / `scripts/mcp-card.sh` (stdio; tools `card_open` … `card_save`) |
 | Card checks / render / report | `pnpm card-kit check\|render\|report` (see [docs/card-tooling.md](docs/card-tooling.md)) |
 | Card submit payload | `pnpm card-kit submit <card>` (see [docs/card-tooling.md](docs/card-tooling.md)) |
-| Package and publish a release | `scripts/release-local.sh v0.1.0` (no Actions) |
-| Build/publish the container image | See [packaging.md](docs/packaging.md#building-and-publishing-the-image-locally) |
+| Build and ship a release | `scripts/release-beast.sh [--deploy]` (see [packaging.md](docs/packaging.md#release-on-beast)) |
 | Run the packaged server | `node bin/charon.mjs serve` (zero-config) |
-| Installer smoke test | `CHARON_SOURCE=... CHARON_ALLOW_UNVERIFIED=1 sh scripts/install.sh --no-open` |
 
 Upgrading an existing database after the single-user change? Run `pnpm migrate:single-user` before the first boot: it backs the DB up to `dev.db.bak-single-user-<timestamp>` (including `-wal`/`-shm` if present) and then applies pending migrations through the same `src/db` migrator production uses, so the migration is deliberate and reversible (`cp dev.db.bak-single-user-<timestamp> dev.db`, plus the matching `-wal`/`-shm` backups if present).
 

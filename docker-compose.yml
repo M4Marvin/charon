@@ -1,8 +1,9 @@
 services:
   charon:
-    # Prebuilt linux/amd64 image. No clone and no local build required.
-    # For ARM or multi-arch, build and push locally with docs/packaging.md.
-    image: ghcr.io/m4marvin/charon:latest
+    # Built on this machine: charon:local. No public registry.
+    #   docker compose up -d --build
+    image: charon:local
+    build: .
     container_name: charon
     init: true
     ports:

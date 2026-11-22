@@ -2,10 +2,8 @@
 
 ## Reporting a vulnerability
 
-Do not open a public issue for a security problem. Use GitHub's private
-vulnerability reporting:
-
-<https://github.com/M4Marvin/charon/security/advisories/new>
+Do not open a public issue for a security problem: this repository is
+private, so report it to the owner directly through your usual private channel.
 
 Include:
 
@@ -38,7 +36,7 @@ Out of scope:
 
 ## Supported versions
 
-The latest GitHub release and the current `main` branch.
+The current `main` branch and the image deployed from it.
 
 ## Deployment note
 
