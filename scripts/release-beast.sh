@@ -70,10 +70,10 @@ if [ "$DOWNLOAD" -eq 1 ]; then
   bytes="$(stat -c %s "$tmp/charon.tar.gz")"
   key="dl/charon-$SHA.tar.gz"
   echo "==> Uploading $(numfmt --to=si "$bytes") to $R2_REMOTE/$key"
-  "$RCLONE" copyto "$tmp/charon.tar.gz" "$R2_REMOTE/$key" \
+  "$RCLONE" copyto "$tmp/charon.tar.gz" "$R2_REMOTE/$key" --s3-no-check-bucket \
     --header-upload "Cache-Control: public, max-age=31536000, immutable"
   printf '%s  charon-%s.tar.gz\n' "$sha256" "$SHA" >"$tmp/charon.tar.gz.sha256"
-  "$RCLONE" copyto "$tmp/charon.tar.gz.sha256" "$R2_REMOTE/$key.sha256" \
+  "$RCLONE" copyto "$tmp/charon.tar.gz.sha256" "$R2_REMOTE/$key.sha256" --s3-no-check-bucket \
     --header-upload "Cache-Control: public, max-age=31536000, immutable"
   # latest.txt: url, sha256, bytes, date. The installer and the site read it.
   {
@@ -82,7 +82,7 @@ if [ "$DOWNLOAD" -eq 1 ]; then
     printf '%s\n' "$bytes"
     date -u +%Y-%m-%dT%H:%M:%SZ
   } >"$tmp/latest.txt"
-  "$RCLONE" copyto "$tmp/latest.txt" "$R2_REMOTE/dl/latest.txt" \
+  "$RCLONE" copyto "$tmp/latest.txt" "$R2_REMOTE/dl/latest.txt" --s3-no-check-bucket \
     --header-upload "Cache-Control: no-cache"
   echo "==> Verifying $PUBLIC_BASE/$key"
   remote_len="$(curl -fsSI "$PUBLIC_BASE/$key" | tr -d '\r' | awk 'tolower($1)=="content-length:"{print $2}')"
