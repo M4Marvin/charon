@@ -4,15 +4,18 @@ import {
   ArrowRight,
   BookOpen,
   Check,
+  Eye,
   FileImage,
-  GitBranch,
   HardDrive,
   Image as ImageIcon,
   Lock,
   MonitorSmartphone,
   Plug,
   ShieldCheck,
+  Smartphone,
+  Type,
   UserRound,
+  Zap,
 } from "lucide-react";
 
 import { Logo } from "@/components/common/Logo";
@@ -32,26 +35,26 @@ export const Route = createFileRoute("/")({
   },
   head: () => ({
     meta: [
-      { title: "Charon — a private home for your AI characters" },
+      { title: "Charon — roleplay, with the finish it deserves" },
       {
         name: "description",
         content:
-          "A chat app for stories and roleplay. Import character cards, bring your own model, and keep every branching conversation in one place.",
+          "A chat app for stories and roleplay with the finish of a published book. Fast replies, a library worth looking at, and everything on your own machine.",
       },
-      { property: "og:title", content: "Charon — a private home for your AI characters" },
+      { property: "og:title", content: "Charon — roleplay, with the finish it deserves" },
       {
         property: "og:description",
         content:
-          "AI character chat with branching conversations. Your cards, your model, every branch kept.",
+          "AI character chat that looks as good as the story. Your cards, your model, your machine.",
       },
       { property: "og:url", content: SITE_URL },
       { property: "og:image", content: `${SITE_URL}/og.png` },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Charon — a private home for your AI characters" },
+      { name: "twitter:title", content: "Charon — roleplay, with the finish it deserves" },
       {
         name: "twitter:description",
         content:
-          "AI character chat with branching conversations. Your cards, your model, every branch kept.",
+          "AI character chat that looks as good as the story. Your cards, your model, your machine.",
       },
       { name: "twitter:image", content: `${SITE_URL}/og.png` },
     ],
@@ -133,6 +136,10 @@ const FAQ = [
     a: 'No. Charon is built and presented for stories and roleplay: SFW starter characters, no adult content bundled, and no "unfiltered" marketing. Because it is your machine and your model, what you import is your choice — but if you are looking for an adult platform, this is not one.',
   },
   {
+    q: "Is Charon open source?",
+    a: "Yes. It is MIT-licensed, and the whole source is published at charonx.dev/source, ready to download. Read it, build it, change it.",
+  },
+  {
     q: "Where do my chats live?",
     a: "In one SQLite database and an uploads folder on the machine running Charon. Copy that folder to back everything up. Nothing is stored anywhere else.",
   },
@@ -195,9 +202,9 @@ function FirstRun() {
             </span>
           </summary>
           <p className="text-2 mt-3 leading-relaxed">
-            Charon is a chat app for stories and roleplay that runs on your own computer. Every
-            swipe creates a branch, so no reply is ever overwritten. Your cards, chats, and keys
-            stay in one local database.
+            Charon is a chat app for stories and roleplay that runs on your own computer. Replies
+            stream as they are written, the take you liked stays saved, and your cards, chats, and
+            keys live in one local database.
           </p>
         </details>
       </main>
@@ -213,7 +220,7 @@ function Marketing() {
       <main id="main" tabIndex={-1}>
         <Hero />
         <Tour />
-        <Branch />
+        <Craft />
         <Features />
         <Privacy />
         <Faq />
@@ -271,21 +278,21 @@ function Hero() {
         <p className="mb-5 text-xs font-semibold tracking-[0.14em] text-brand uppercase">
           For stories and roleplay
         </p>
-        <h1 className="text-hero mb-6 max-w-[13ch] text-1">
-          A private home for your AI characters.
+        <h1 className="text-hero mb-6 max-w-[15ch] text-1">
+          Roleplay, with the finish it deserves.
         </h1>
         <p className="text-2 mb-8 max-w-xl text-lg leading-relaxed">
-          Charon is a chat app for stories and roleplay. Bring the character cards you already have
-          and your own AI key — or a model running locally — and keep every conversation, including
-          every branch of it, to yourself.
+          Charon is a chat app for stories and roleplay, made with the care of a printed book: type
+          set for long scenes, a library that looks like a shelf, and replies quick enough to feel
+          live. Private, and running on a machine you own.
         </p>
         <div className="mb-8 flex flex-wrap items-center gap-3">
           <InstallCta />
           <a
-            href="#branch"
+            href="#craft"
             className="text-2 inline-flex h-11 items-center px-2 text-sm no-underline transition-colors hover:text-1"
           >
-            See what is different
+            See the craft
           </a>
         </div>
         <ul className="text-2 flex flex-wrap gap-x-6 gap-y-2 text-sm">
@@ -361,8 +368,8 @@ function Tour() {
           See it before you sign in.
         </h2>
         <p className="text-2 mb-10 max-w-2xl text-lg">
-          This is the whole app, not a mockup: the conversation view, the library, and the branch
-          controls you will actually use.
+          This is the whole app, not a mockup: the reading view, the library, and the controls you
+          will actually use.
         </p>
 
         <figure className="mb-4 overflow-hidden rounded-2xl border border-border bg-surface">
@@ -370,7 +377,7 @@ function Tour() {
             src="/marketing/chat-branching.webp"
             width={1440}
             height={900}
-            alt="A conversation with Captain Elias Thorne. The last reply shows a 2/3 counter with previous and next arrows."
+            alt="A conversation with Captain Elias Thorne in the reading view, with the reply controls under the last message."
             className="w-full"
             loading="lazy"
           />
@@ -395,12 +402,12 @@ function Tour() {
               src="/marketing/tree-detail.webp"
               width={960}
               height={468}
-              alt="Close view of a reply with its branch counter and regenerate control."
+              alt="Close view of a reply with its regenerate control."
               className="w-full rounded-xl border border-border"
               loading="lazy"
             />
             <figcaption className="text-2 mt-2 text-xs">
-              The branch controls: change the reply without losing the old one.
+              The controls stay quiet until you reach for them.
             </figcaption>
           </figure>
           <figure>
@@ -408,7 +415,7 @@ function Tour() {
               src="/marketing/chat-mobile.webp"
               width={390}
               height={844}
-              alt="The same conversation on a phone, with the composer and swipe controls."
+              alt="The same conversation on a phone, with the composer and reply controls."
               className="mx-auto max-h-[420px] w-auto rounded-xl border border-border"
               loading="lazy"
             />
@@ -425,10 +432,10 @@ function Features() {
     <section id="features" className="border-t border-border">
       <div className="mx-auto max-w-[1200px] px-5 py-16 sm:px-6 lg:py-24">
         <h2 className="text-display mb-3 max-w-[18ch] text-4xl leading-tight text-1">
-          What you get
+          Everything the story needs
         </h2>
         <p className="text-2 mb-10 max-w-2xl text-lg">
-          Everything a long-running story needs, in one app, with no extensions to install.
+          One app, nothing bolted on. Import the cards you own, set the scene, and keep going.
         </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((feature) => (
@@ -444,92 +451,53 @@ function Features() {
   );
 }
 
-function Branch() {
+function Craft() {
+  const marks = [
+    {
+      icon: Type,
+      title: "Set for long scenes",
+      body: "A comfortable measure, a quiet hierarchy, and figures that line up. The page reads well at hour three, not just minute one.",
+    },
+    {
+      icon: Zap,
+      title: "Quick enough to feel live",
+      body: "Replies stream from the first token. Opening a chat, switching characters, and scrolling back through a scene stay out of your way.",
+    },
+    {
+      icon: Eye,
+      title: "Nothing competing for attention",
+      body: "One accent, no badges, no banners, no upsell. The story is the only thing on the page.",
+    },
+    {
+      icon: Smartphone,
+      title: "The same care on a phone",
+      body: "The same type, spacing, and controls at phone width. One library, one account, whichever screen is in your hand.",
+    },
+  ];
+
   return (
-    <section id="branch" className="border-t border-border bg-surface">
-      <div className="mx-auto grid max-w-[1200px] grid-cols-1 items-center gap-12 px-5 py-16 sm:px-6 lg:grid-cols-12 lg:py-24">
-        <div className="lg:col-span-6">
-          <h2 className="text-display mb-4 max-w-[16ch] text-4xl leading-tight text-1">
-            Every reply is a branch. Nothing gets overwritten.
-          </h2>
-          <p className="text-2 mb-6 max-w-xl leading-relaxed">
-            Swipe to see another version of a reply and the one you had stays where it was.
-            Regenerate, edit, or continue, and each choice becomes a path you can come back to. Go
-            three scenes forward, change your mind, and take the other road — the first story is
-            still there.
-          </p>
-          <ul className="text-2 grid gap-3 text-sm">
-            <li className="flex gap-2">
-              <GitBranch className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />
-              A small counter under the message tells you which reply you are reading.
-            </li>
-            <li className="flex gap-2">
-              <GitBranch className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />
-              Edit any message and the story continues from your edit.
-            </li>
-            <li className="flex gap-2">
-              <GitBranch className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />
-              Delete a branch without touching the rest of the tree.
-            </li>
-            <li className="flex gap-2">
-              <GitBranch className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />
-              Close the tab. The tree is in your database, not a session.
-            </li>
-          </ul>
-        </div>
-        <div className="lg:col-span-6">
-          <BranchDiagram />
+    <section id="craft" className="border-t border-border bg-surface">
+      <div className="mx-auto max-w-[1200px] px-5 py-16 sm:px-6 lg:py-24">
+        <h2 className="text-display mb-3 max-w-[16ch] text-4xl leading-tight text-1">
+          Made to be read.
+        </h2>
+        <p className="text-2 mb-10 max-w-2xl text-lg">
+          Charon is not a chat window with a character sheet stapled to it. The type, the measure,
+          the spacing, and the motion were set for one thing: a scene you want to keep reading.
+        </p>
+        <div className="grid gap-x-12 gap-y-8 sm:grid-cols-2">
+          {marks.map((mark) => (
+            <div key={mark.title} className="flex gap-3">
+              <mark.icon className="mt-0.5 size-5 shrink-0 text-brand" aria-hidden="true" />
+              <div>
+                <h3 className="text-headline mb-1 text-1">{mark.title}</h3>
+                <p className="text-2 text-sm leading-relaxed">{mark.body}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
-  );
-}
-
-function BranchDiagram() {
-  const nodes = [
-    { x: 30, y: 112, w: 90, label: "You", active: false },
-    { x: 220, y: 52, w: 200, label: "reply 1", active: false },
-    { x: 220, y: 112, w: 200, label: "reply 2", active: false },
-    { x: 220, y: 172, w: 200, label: "reply 3 · 3/3", active: true },
-  ];
-  return (
-    <svg
-      viewBox="0 0 460 250"
-      role="img"
-      aria-label="One message branches into three replies. All three remain reachable; the third is selected."
-      className="hidden w-full rounded-2xl border border-border bg-base p-4 sm:block"
-    >
-      <path d="M120 130 H170 V70 H220" stroke="var(--border)" strokeWidth="1.5" fill="none" />
-      <path d="M120 130 H220" stroke="var(--border)" strokeWidth="1.5" fill="none" />
-      <path d="M120 130 H170 V190 H220" stroke="var(--brand)" strokeWidth="1.5" fill="none" />
-      {nodes.map((node) => (
-        <g key={node.label}>
-          <rect
-            x={node.x}
-            y={node.y}
-            width={node.w}
-            height="36"
-            rx="18"
-            fill={node.active ? "var(--brand)" : "var(--bg-raised)"}
-            stroke={node.active ? "var(--brand)" : "var(--border)"}
-            strokeWidth="1.5"
-          />
-          <text
-            x={node.x + node.w / 2}
-            y={node.y + 18}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            className="text-[12px]"
-            fill={node.active ? "var(--bg-base)" : "var(--text-2)"}
-          >
-            {node.label}
-          </text>
-        </g>
-      ))}
-      <text x="230" y="235" textAnchor="middle" fill="var(--text-2)" className="text-[12px]">
-        one message · three futures · all saved
-      </text>
-    </svg>
   );
 }
 
@@ -647,7 +615,7 @@ function LandingFooter() {
           links={[
             ["Tour", "#tour"],
             ["Features", "#features"],
-            ["Branching", "#branch"],
+            ["Craft", "#craft"],
             ["Privacy", "#privacy"],
             ["FAQ", "#faq"],
           ]}
