@@ -78,6 +78,12 @@ function RootNotFoundComponent() {
   );
 }
 
+// Absolute URLs in OG/canonical tags; a local install falls back to localhost
+// instead of advertising the author's instance.
+const ORIGIN =
+  (typeof process !== "undefined" && process.env.APP_URL?.replace(/\/$/, "")) ||
+  "http://localhost:3000";
+
 export const Route = createRootRouteWithContext<MyRouterContext>()({
   errorComponent: RootErrorComponent,
   notFoundComponent: RootNotFoundComponent,
@@ -145,11 +151,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         property: "og:url",
-        content: "https://app.charonx.dev",
+        content: ORIGIN,
       },
       {
         property: "og:image",
-        content: "https://app.charonx.dev/og.png",
+        content: `${ORIGIN}/og.png`,
       },
       {
         name: "twitter:card",
@@ -166,7 +172,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         name: "twitter:image",
-        content: "https://app.charonx.dev/og.png",
+        content: `${ORIGIN}/og.png`,
       },
       {
         name: "theme-color",
@@ -187,7 +193,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         rel: "canonical",
-        href: "https://app.charonx.dev",
+        href: ORIGIN,
       },
       {
         rel: "icon",

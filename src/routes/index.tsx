@@ -20,8 +20,9 @@ import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth.functions";
 import { getSetupRequired } from "@/server/fns/setup";
 
-const APP_URL = "https://app.charonx.dev";
-const SITE_URL = (typeof process !== "undefined" && process.env.APP_URL) || APP_URL;
+const SITE_URL =
+  (typeof process !== "undefined" && process.env.APP_URL?.replace(/\/$/, "")) ||
+  "http://localhost:3000";
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -316,8 +317,11 @@ function InstallCta() {
 function InstallCard() {
   return (
     <div className="rounded-3xl border border-border bg-surface p-5 shadow-2xl shadow-black/30 sm:p-6">
-      <h2 className="text-headline text-1">Charon runs at app.charonx.dev</h2>
-      <p className="text-2 mt-1 mb-5 text-sm">No install, no download, nothing to run here.</p>
+      <h2 className="text-headline text-1">Runs on the machine that hosts it</h2>
+      <p className="text-2 mt-1 mb-5 text-sm">
+        One container, one SQLite file, one account. Nothing here depends on someone else&apos;s
+        server.
+      </p>
 
       <ol className="grid gap-4">
         {START_STEPS.map(([title, body], index) => (
@@ -658,7 +662,7 @@ function LandingFooter() {
         />
       </div>
       <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-5 text-xs text-2 sm:px-6">
-        <span>Runs at app.charonx.dev · No telemetry · No analytics</span>
+        <span>Self-hosted · No telemetry · No analytics</span>
         <span>Charon</span>
       </div>
     </footer>

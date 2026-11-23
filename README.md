@@ -24,10 +24,11 @@ No cloud account. No subscription. No telemetry. One SQLite file you can copy.
 
 ## Running Charon
 
-Charon is a private app. The instance runs at
-**[app.charonx.dev](https://app.charonx.dev)**; there is no public download, no
-clone, and no container image to pull. The instructions below are for working
-on the code.
+Charon is self-hosted: your machine runs the server, holds the SQLite file,
+and makes the only account. The image is published at
+**[charonx.dev/download](https://charonx.dev/download)**; there is no registry
+login and no account with us. The instructions below are for working on the
+code.
 
 ### From source
 
